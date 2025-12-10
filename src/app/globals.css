@@ -1,0 +1,1000 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== CUSTOM ANIMATIONS ===== */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes bounce-subtle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.8);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out;
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 2s infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s infinite;
+}
+
+/* React PDF Styles */
+.react-pdf__Page {
+  margin: 1em 0;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+}
+
+.react-pdf__Page__canvas {
+  display: block;
+  user-select: none;
+}
+
+.react-pdf__Page__textContent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  opacity: 0.2;
+  line-height: 1.0;
+}
+
+.react-pdf__Page__textContent--disabled {
+  opacity: 0;
+}
+
+.react-pdf__Page__annotations {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  opacity: 0.2;
+  line-height: 1.0;
+}
+
+.react-pdf__Page__annotations--disabled {
+  opacity: 0;
+}
+
+/* ===== ROOT VARIABLES ===== */
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 34, 41, 47;
+    --background-start-rgb: 255, 255, 255;
+    --background-end-rgb: 255, 255, 255;
+  }
+}
+
+/* ===== BASE STYLES ===== */
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+/* ===== UTILITY CLASSES ===== */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  /* Focus utilities */
+  .focus-visible-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2;
+  }
+  
+  /* Smooth transitions */
+  .transition-smooth {
+    @apply transition-all duration-300 ease-in-out;
+  }
+  
+  /* Glass effect */
+  .glass-effect {
+    @apply bg-white/10 backdrop-blur-md border border-white/20;
+  }
+  
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent;
+  }
+}
+
+/* ===== LINE CLAMP UTILITIES ===== */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+.line-clamp-4 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes spin-fast {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-spin-fast {
+  animation: spin-fast 0.6s linear infinite;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+/* ===== PAGE TRANSITIONS ===== */
+.page-transition-enter {
+  opacity: 0;
+}
+
+.page-transition-enter-active {
+  opacity: 1;
+  transition: opacity 300ms ease-in;
+}
+
+.page-transition-exit {
+  opacity: 1;
+}
+
+.page-transition-exit-active {
+  opacity: 0;
+  transition: opacity 300ms ease-out;
+}
+
+/* ===== SCROLLBAR UTILITIES ===== */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* ===== MOBILE UTILITIES ===== */
+@media (max-width: 767px) {
+  .shortcut-no-underline * {
+    border-bottom: none !important;
+    text-decoration: none !important;
+    box-shadow: none !important;
+  }
+  
+  /* Mobile-specific utilities */
+  .mobile-full-width {
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
+  }
+  
+  .mobile-safe-area {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* ===== LAYOUT UTILITIES ===== */
+.container-responsive {
+  @apply w-full mx-auto px-4;
+}
+
+@media (min-width: 640px) {
+  .container-responsive {
+    @apply px-6;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-responsive {
+    @apply px-8 max-w-7xl;
+  }
+}
+
+/* ===== FOOTER STYLES ===== */
+.footer-custom {
+  background: linear-gradient(135deg, #0F3460 0%, #1a4a7a 100%);
+  color: white;
+  margin-bottom: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.footer-custom::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #04A1B3, transparent);
+}
+
+.footer-container {
+  padding: 2rem 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 2rem;
+  align-items: start;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.footer-column {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Logo Section */
+.footer-logo-section {
+  margin-bottom: 1.5rem;
+}
+
+/* Company Info */
+.footer-company-info {
+  margin-top: 1rem;
+}
+
+.footer-contact-item {
+  margin-bottom: 1rem;
+  padding: 0.5rem 0;
+  border-left: 2px solid #04A1B3;
+  padding-left: 0.75rem;
+  transition: all 0.3s ease;
+}
+
+.footer-contact-item:hover {
+  border-left-color: #ffffff;
+  transform: translateX(2px);
+}
+
+/* Section Titles */
+.footer-section-title {
+  margin: 0 0 1.5rem 0;
+  font-weight: 700;
+  font-size: 1.125rem;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  position: relative;
+  padding-bottom: 0.5rem;
+}
+
+.footer-section-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 2rem;
+  height: 2px;
+  background: linear-gradient(90deg, #04A1B3, transparent);
+}
+
+/* Lists */
+.footer-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 0.5rem;
+}
+
+.footer-list-item {
+  margin: 0;
+}
+
+.footer-link {
+  display: block;
+  color: #cbd5e1;
+  text-decoration: none;
+  font-size: 0.875rem;
+  padding: 0.5rem 0;
+  transition: all 0.3s ease;
+  position: relative;
+  border-radius: 4px;
+}
+
+.footer-link:hover {
+  color: #ffffff;
+  background: rgba(4, 161, 179, 0.1);
+  padding-left: 0.5rem;
+  transform: translateX(4px);
+}
+
+.footer-more-info {
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-style: italic;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0;
+}
+
+.nganh-hang {
+  margin-left: 28px;
+}
+
+@media (max-width: 5000px) {
+  .nganh-hang {
+    margin-left: 26px;
+  }
+}
+
+/* ===== RESPONSIVE BREAKPOINTS ===== */
+
+/* Tablet (640px+) */
+@media (min-width: 640px) {
+  .footer-container {
+    padding: 2.5rem 1.5rem;
+  }
+  
+  .footer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2.5rem;
+    align-items: start;
+  }
+  
+  .footer-list {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+  
+  .footer-section-title {
+    font-size: 1.25rem;
+  }
+}
+
+/* Desktop (768px+) */
+@media (min-width: 768px) {
+  .footer-column h3 {
+    font-size: 1.125rem;
+  }
+}
+
+/* Large Desktop (1024px+) */
+@media (min-width: 1024px) {
+  .footer-container {
+    padding: 3rem 2rem;
+  }
+  
+  .footer-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 3rem;
+    align-items: start;
+  }
+  
+  .footer-list {
+    grid-template-columns: repeat(1, 1fr);
+    gap: 0.5rem;
+  }
+  
+  .footer-section-title {
+    font-size: 1.375rem;
+  }
+  
+  .footer-link {
+    font-size: 0.9rem;
+  }
+  
+  .footer-contact-item {
+    margin-bottom: 1.25rem;
+  }
+}
+
+/* Mobile Footer Bottom Spacing */
+@media (max-width: 1024px) {
+  .footer-custom {
+    padding-top: 0;
+    padding-bottom: 5rem;
+  }
+  .nganh-hang {
+    margin-left: 0px;
+  }
+  .ul-nganh-hang {
+    margin-left: -28px;
+  }
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-break {
+    page-break-before: always;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}
+
+/* Mobile-first responsive design improvements */
+@layer base {
+  /* Improved mobile typography */
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Better touch targets for mobile */
+  button, a, input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Improved mobile scrolling */
+  body {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  /* Prevent zoom on input focus for mobile */
+  input, select, textarea {
+    font-size: 16px;
+  }
+}
+
+@layer components {
+  /* Mobile-optimized components */
+  .mobile-optimized {
+    @apply touch-manipulation;
+  }
+
+  /* Enhanced mobile shadows */
+  .mobile-shadow {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  .mobile-shadow-lg {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Mobile-friendly buttons */
+  .btn-mobile {
+    @apply px-4 py-3 rounded-lg font-medium transition-all duration-200 active:scale-95;
+  }
+
+  .btn-mobile-primary {
+    @apply bg-orange-500 hover:bg-orange-600 text-white shadow-md hover:shadow-lg;
+  }
+
+  .btn-mobile-secondary {
+    @apply bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-200;
+  }
+
+  /* Mobile-optimized cards */
+  .card-mobile {
+    @apply bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden;
+  }
+
+  /* Mobile-friendly inputs */
+  .input-mobile {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all duration-200;
+  }
+
+  /* Mobile navigation styles */
+  .mobile-nav-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-50 transition-all duration-200 active:bg-gray-100;
+  }
+
+  /* Mobile header optimizations */
+  .mobile-header {
+    @apply fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200;
+  }
+
+  /* Mobile hero optimizations */
+  .mobile-hero {
+    @apply min-h-[70vh] flex items-center justify-center px-4 py-8;
+  }
+
+  /* Mobile search optimizations */
+  .mobile-search {
+    @apply w-full max-w-md mx-auto;
+  }
+
+  .mobile-search-input {
+    @apply flex-1 px-4 py-3 text-base border-0 focus:outline-none bg-transparent;
+  }
+
+  .mobile-search-button {
+    @apply bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 font-semibold transition-colors;
+  }
+}
+
+@layer utilities {
+  /* Mobile-specific utilities */
+  .mobile-only {
+    @apply block md:hidden;
+  }
+
+  .desktop-only {
+    @apply hidden md:block;
+  }
+
+  /* Mobile spacing utilities */
+  .mobile-px {
+    @apply px-4 sm:px-6;
+  }
+
+  .mobile-py {
+    @apply py-4 sm:py-6;
+  }
+
+  /* Mobile text utilities */
+  .mobile-text-sm {
+    @apply text-sm sm:text-base;
+  }
+
+  .mobile-text-lg {
+    @apply text-lg sm:text-xl;
+  }
+
+  .mobile-text-xl {
+    @apply text-xl sm:text-2xl;
+  }
+
+  /* Mobile flex utilities */
+  .mobile-flex-col {
+    @apply flex flex-col sm:flex-row;
+  }
+
+  .mobile-flex-row {
+    @apply flex flex-row;
+  }
+
+  /* Mobile grid utilities */
+  .mobile-grid-1 {
+    @apply grid grid-cols-1 sm:grid-cols-2;
+  }
+
+  .mobile-grid-2 {
+    @apply grid grid-cols-2 sm:grid-cols-3;
+  }
+
+  /* Mobile animation utilities */
+  .mobile-fade-in {
+    animation: mobileFadeIn 0.3s ease-out;
+  }
+
+  .mobile-slide-up {
+    animation: mobileSlideUp 0.3s ease-out;
+  }
+
+  .mobile-scale-in {
+    animation: mobileScaleIn 0.2s ease-out;
+  }
+}
+
+/* Mobile-specific animations */
+@keyframes mobileFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes mobileSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mobileScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Mobile scrollbar improvements */
+.mobile-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+.mobile-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.mobile-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mobile-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 2px;
+}
+
+/* Mobile focus improvements */
+.mobile-focus {
+  @apply focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:ring-offset-2;
+}
+
+/* Mobile touch improvements */
+.mobile-touch {
+  @apply touch-manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Mobile loading states */
+.mobile-loading {
+  @apply animate-pulse bg-gray-200 rounded;
+}
+
+/* Mobile error states */
+.mobile-error {
+  @apply border-red-500 bg-red-50 text-red-700;
+}
+
+/* Mobile success states */
+.mobile-success {
+  @apply border-green-500 bg-green-50 text-green-700;
+}
+
+/* Mobile warning states */
+.mobile-warning {
+  @apply border-yellow-500 bg-yellow-50 text-yellow-700;
+}
+
+/* Mobile info states */
+.mobile-info {
+  @apply border-blue-500 bg-blue-50 text-blue-700;
+}
+
+/* Mobile responsive breakpoints */
+@media (max-width: 640px) {
+  .mobile-xs {
+    @apply text-xs;
+  }
+  
+  .mobile-xs-px {
+    @apply px-3;
+  }
+  
+  .mobile-xs-py {
+    @apply py-3;
+  }
+}
+
+@media (max-width: 480px) {
+  .mobile-xxs {
+    @apply text-xs;
+  }
+  
+  .mobile-xxs-px {
+    @apply px-2;
+  }
+  
+  .mobile-xxs-py {
+    @apply py-2;
+  }
+}
+
+/* Mobile performance optimizations */
+.mobile-optimized {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Mobile accessibility improvements */
+.mobile-accessible {
+  @apply focus-visible:outline-2 focus-visible:outline-orange-500 focus-visible:outline-offset-2;
+}
+
+/* Mobile dark mode support */
+@media (prefers-color-scheme: dark) {
+  .mobile-dark {
+    @apply bg-gray-900 text-white;
+  }
+  
+  .mobile-dark-card {
+    @apply bg-gray-800 border-gray-700;
+  }
+  
+  .mobile-dark-input {
+    @apply bg-gray-800 border-gray-700 text-white;
+  }
+}
+
+/* Mobile print styles */
+@media print {
+  .mobile-print-hidden {
+    display: none !important;
+  }
+  
+  .mobile-print-visible {
+    display: block !important;
+  }
+}
+
+/* ===== LOGIN PAGE SPECIFIC STYLES ===== */
+/* Chỉ ẩn navigation links trong nav, không ẩn logo */
+.login-page nav .flex.items-center.gap-6 {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* Ẩn tất cả navigation links trong nav */
+.login-page nav a:not([href="/"]),
+.login-page nav button {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* Ẩn category dropdown */
+.login-page [class*="category"],
+.login-page [class*="Category"],
+.login-page .category-dropdown {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Ẩn các phần được đánh dấu trong hero section */
+.login-page h1.text-3xl,
+.login-page h1.text-4xl,
+.login-page h1.text-6xl {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+.login-page p.text-lg,
+.login-page p.text-xl,
+.login-page p.text-2xl {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* Ẩn search bar và search button (không ẩn form đăng nhập) */
+.login-page .search-bar,
+.login-page input[type="text"]:not(.login-form-container input),
+.login-page button[type="submit"]:not(.login-form-container button) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* Ẩn popular keywords section */
+.login-page .text-center.max-w-4xl.mx-auto > div:last-child,
+.login-page .text-center.max-w-4xl.mx-auto > div:nth-last-child(2) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* Đảm bảo form login hiển thị đúng vị trí */
+.login-page .login-form-container {
+  position: absolute !important;
+  top: 50% !important;
+  left: 70% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 50 !important;
+  width: 100% !important;
+  max-width: 350px !important;
+  padding: 1rem !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Sửa LoginForm để hiển thị đúng */
+.login-page .login-form-container .flex.items-center.justify-center {
+  min-height: auto !important;
+  background: transparent !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.login-page .login-form-container .relative.bg-gradient-to-br.from-white\/90.via-white\/95.to-white\/90.backdrop-blur-xl.p-6.rounded-2xl.shadow-\[0_25px_50px_-12px_rgba\(0\,0\,0\,0\.25\)\].max-w-sm.w-full.border.border-white\/30.overflow-hidden {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.9)) !important;
+  backdrop-filter: blur(24px) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Đảm bảo tất cả các phần tử trong form login hiển thị */
+.login-page .login-form-container input,
+.login-page .login-form-container button,
+.login-page .login-form-container label,
+.login-page .login-form-container div,
+.login-page .login-form-container form {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Đảm bảo form hiển thị */
+.login-page .login-form-container form {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 100% !important;
+}
+
+/* Đảm bảo tất cả các phần tử trong form đăng nhập hiển thị */
+.login-page .login-form-container .space-y-4,
+.login-page .login-form-container .space-y-1,
+.login-page .login-form-container .relative,
+.login-page .login-form-container .text-center,
+.login-page .login-form-container .flex,
+.login-page .login-form-container .inline-flex,
+.login-page .login-form-container .absolute {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Đảm bảo input fields hiển thị */
+.login-page .login-form-container input[type="text"],
+.login-page .login-form-container input[type="password"] {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 100% !important;
+}
+
+/* Đảm bảo labels hiển thị */
+.login-page .login-form-container label[for="user"],
+.login-page .login-form-container label[for="password"] {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Đảm bảo body có class login-page khi ở trang login */
+body.login-page {
+  padding-top: 0 !important;
+  overflow: hidden !important;
+}
+
+/* FloatingZalo positioning when cart is open */
+/* Đảm bảo FloatingZalo luôn hiển thị và có transition mượt mà */
+[data-floating-zalo] {
+  transition: right 0.3s ease-in-out, opacity 0.3s ease-in-out !important;
+}
+
+/* Responsive positioning cho FloatingZalo */
+@media (min-width: 768px) {
+  [data-floating-zalo].md\\:right-96 {
+    right: 24rem !important; /* Đẩy ra ngoài Cart (384px + padding) */
+  }
+}

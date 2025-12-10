@@ -1,0 +1,71 @@
+export interface Products {
+  unit?: string;
+  priceChangeReason?: string;
+  price?: string;
+  oldPrice?: string;
+  regularPrice?: string;
+  displayPrice?: string;
+  hasPromotion?: boolean;
+  crdfd_productsid: string;
+  crdfd_fullname: string;
+  crdfd_name: string;
+  crdfd_masanpham?: string;
+  crdfd_thuonghieu?: string;
+  crdfd_quycach?: string;
+  cr1bb_giaban: string;
+  _crdfd_productgroup_value: string;
+  don_vi_DH?: string;
+  crdfd_onvichuantext?: string;
+  cr1bb_giaban_Bg?: string;
+  cr1bb_nhomsanphamcha?: string;
+  cr1bb_imageurlproduct?: string;
+  cr1bb_levelproductgroup?: string;
+  crdfd_manhomsp?: string;
+  crdfd_productgroup?: string;
+  crdfd_chatlieu?: string;
+  isPriceUpdated?: boolean;
+  crdfd_hoanthienbemat?: string;
+  crdfd_nhomsanphamtext?: string;
+  crdfd_unitname?: string;
+  cr1bb_json_gia?: Array<any>;
+  _crdfd_onvi_value?: string;
+  cr1bb_imageurl?: string;
+  cr1bb_banchatgiaphatra_text?: string;
+  crdfd_gtgt?: number;
+  cr1bb_banchatgiaphatra?: number;
+  crdfd_gtgt_value?: number;
+  crdfd_gia?: number;
+  cr1bb_giakhongvat?: number;
+  crdfd_giatheovc?: number;
+  crdfd_onvichuan?: string;
+  crdfd_onvi?: string;
+  crdfd_trangthaihieulucname?: string;
+  crdfd_trangthaihieuluc?: number;
+  cr1bb_tylechuyenoi?: string;
+  promotion?: {
+    promotionId: string;
+    value: string;
+    value2?: string;
+    cr1bb_vn: string;
+    name: string;
+    conditions?: string;
+    congdonsoluong?: boolean;
+    soluongapdung?: number;
+    discountAmount?: string;
+    ieuKhoanThanhToanApDung?: string;
+    soluongcondon?: number;
+    isValue2Applied?: boolean;
+    appliedValue?: string;
+  };
+}
+
+export interface CartItem extends Products {
+  quantity: number;
+  price: string;
+  isApplyPromotion?: boolean;
+  soluongapdung?: number;
+  soluongcondon?: number;
+  promotionId?: string;
+  productId: string;
+  productName: string;
+} 
