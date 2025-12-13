@@ -1,16 +1,39 @@
 "use client";
 import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import {
-  FaClipboardList,
-  FaPlus,
-  FaRedo,
-  FaWarehouse,
-  FaPlusSquare,
-  FaSyncAlt,
-  FaClipboardCheck,
-  FaTrash,
-  FaUser,
-} from "react-icons/fa";
+  Box,
+  Button,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Checkbox,
+  FormControlLabel,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TableFooter,
+  Paper,
+  Grid,
+  Typography,
+  IconButton,
+  CircularProgress,
+  Alert,
+  InputAdornment,
+  Chip,
+} from "@mui/material";
+import {
+  Add as AddIcon,
+  Save as SaveIcon,
+  Refresh as RefreshIcon,
+  Delete as DeleteIcon,
+  ArrowUpward,
+  ArrowDownward,
+} from "@mui/icons-material";
 import axios from "axios";
 import { getItem, setItem } from "@/utils/SecureStorage";
 import { X } from "lucide-react";
@@ -29,6 +52,9 @@ type AdminRow = {
   vat: number; // %
   expectedDate: string;
   approver?: string;
+  warehouse?: string;
+  shift?: string;
+  discountPolicy?: string;
 };
 
 const formatCurrency = (value: number) =>
@@ -86,15 +112,13 @@ const InfiniteScrollSelect = ({
     try {
       setLoading(true);
       const newOptions = await loadOptions(searchValue, currentPageSize);
-      // Vì API luôn trả về danh sách từ đầu đến pageSize hiện tại,
-      // ta thay thế toàn bộ danh sách options để tránh trùng lặp key
       const uniqueOptionsMap = new Map<string, any>();
       for (const opt of newOptions) {
         uniqueOptionsMap.set(opt.value, opt);
       }
       setOptions(Array.from(uniqueOptionsMap.values()));
       
-      setHasMore(newOptions.length === currentPageSize); // Có thêm data nếu trả về đủ pageSize
+      setHasMore(newOptions.length === currentPageSize);
       setPageSize(currentPageSize);
     } catch (error) {
       console.error('Error loading options:', error);
@@ -103,12 +127,10 @@ const InfiniteScrollSelect = ({
     }
   }, [loadOptions]);
 
-  // Load data ban đầu khi component mount
   useEffect(() => {
     loadMore('', 10);
   }, [loadMore]);
 
-  // Sync inputValue với value prop
   useEffect(() => {
     setInputValue(value?.label || '');
   }, [value]);
@@ -124,13 +146,11 @@ const InfiniteScrollSelect = ({
     setInputValue(value);
     setPageSize(10);
     setHasMore(true);
-    // Load data khi user gõ
     if (value.trim() === '') {
       loadMore('', 10);
     } else {
       loadMore(value, 10);
     }
-    // Mở dropdown khi user gõ
     setIsOpen(true);
   }, [loadMore]);
 
@@ -140,7 +160,6 @@ const InfiniteScrollSelect = ({
     setInputValue(option.label);
   }, [onChange]);
 
-  // Đóng dropdown khi click ra ngoài
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -155,61 +174,76 @@ const InfiniteScrollSelect = ({
   }, []);
 
   return (
-    <div className="relative">
-      <input
-        type="text"
+    <Box position="relative">
+      <TextField
+        fullWidth
+        size="small"
         value={inputValue}
         onChange={(e) => handleInputChange(e.target.value)}
         onFocus={() => setIsOpen(true)}
         placeholder={placeholder}
-        className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        InputProps={{
+          endAdornment: inputValue && (
+            <InputAdornment position="end">
+              <IconButton
+                size="small"
+                onClick={() => {
+                  setInputValue('');
+                  onChange(null);
+                  loadMore('', 10);
+                  setIsOpen(true);
+                }}
+              >
+                <X size={16} />
+              </IconButton>
+            </InputAdornment>
+          ),
+        }}
       />
       
-      {inputValue && (
-        <button
-          className="absolute top-1/2 right-2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-          onClick={() => {
-            setInputValue('');
-            onChange(null);
-            // Reload danh sách ban đầu khi clear
-            loadMore('', 10);
-            setIsOpen(true); // Mở dropdown để hiển thị danh sách ban đầu
-          }}
-        >
-          <X size={16} />
-        </button>
-      )}
-      
       {isOpen && options.length > 0 && (
-        <div 
+        <Paper
           ref={containerRef}
-          className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+          sx={{
+            position: 'absolute',
+            zIndex: 1300,
+            width: '100%',
+            mt: 0.5,
+            maxHeight: 240,
+            overflow: 'auto',
+            boxShadow: 3,
+          }}
           onScroll={handleScroll}
         >
-          {options.map((option, index) => (
-            <div
+          {options.map((option) => (
+            <Box
               key={option.value}
-              className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+              sx={{
+                px: 2,
+                py: 1,
+                cursor: 'pointer',
+                '&:hover': { bgcolor: 'action.hover' },
+              }}
               onClick={() => handleSelect(option)}
             >
               {option.label}
-            </div>
+            </Box>
           ))}
           
           {loading && (
-            <div className="px-3 py-2 text-gray-500 text-center">
+            <Box sx={{ px: 2, py: 1, textAlign: 'center', color: 'text.secondary' }}>
               Loading...
-            </div>
+            </Box>
           )}
           
           {!hasMore && options.length > 0 && (
-            <div className="px-3 py-2 text-gray-500 text-center">
+            <Box sx={{ px: 2, py: 1, textAlign: 'center', color: 'text.secondary' }}>
               No more results
-            </div>
+            </Box>
           )}
-        </div>
+        </Paper>
       )}
-    </div>
+    </Box>
   );
 };
 
@@ -242,27 +276,31 @@ const AdminAppPage: React.FC = () => {
   const [inputVat, setInputVat] = useState<number>(0);
   const [stockQuantity, setStockQuantity] = useState<number>(0);
   const [nextId, setNextId] = useState<number>(100);
+  const [selectedWarehouse, setSelectedWarehouse] = useState<string>("");
+  const [stockDiscardPurchase, setStockDiscardPurchase] = useState<number>(0);
+  const [stockAccountingLT, setStockAccountingLT] = useState<number>(0);
+  const [suggestedWarehouse, setSuggestedWarehouse] = useState<string>("");
+  const [selectedDiscountPolicy, setSelectedDiscountPolicy] = useState<string>("");
+  const [discountPercent1, setDiscountPercent1] = useState<number>(3);
+  const [discountPercent2, setDiscountPercent2] = useState<number>(0);
+  const [southernPrice, setSouthernPrice] = useState<number>(0);
 
-  // Hàm load options async với pageSize - copied from sale-order
+  // Hàm load options async với pageSize
   const loadCustomerOptions = useCallback(async (inputValue: string, pageSize: number = 10) => {
     try {
       const saleName = getItem("saleName");
       const customerId = getItem("id");
       const searchParam = inputValue ? `&search=${encodeURIComponent(inputValue)}` : '';
       
-      // Sử dụng saleName và customerId để tìm khách hàng
       const res = await axios.get(`/api/getCustomerDataLazyLoad?customerId=${customerId}&saleName=${saleName}${searchParam}&page=1&pageSize=${pageSize}`);
       
       if (res.data?.data) {
-        // Kiểm tra xem data có phải là array không
         const dataArray = Array.isArray(res.data.data) ? res.data.data : [res.data.data];
         const options = dataArray.map((customer: any) => ({
           value: customer.crdfd_customerid,
           label: `${customer.crdfd_name}${
             customer.cr1bb_ngunggiaodich !== null
-              ? ` (Công nợ: ${customer.debtInfo?.cr1bb_tongcongno?.toLocaleString(
-                  "vi-VN"
-                )} VNĐ)`
+              ? ` (Công nợ: ${customer.debtInfo?.cr1bb_tongcongno?.toLocaleString("vi-VN")} VNĐ)`
               : ""
           }`,
           isBlocked: customer.cr1bb_ngunggiaodich !== null,
@@ -276,7 +314,6 @@ const AdminAppPage: React.FC = () => {
     }
   }, []);
 
-  // Test load để kiểm tra API - copied from sale-order
   useEffect(() => {
     const testLoad = async () => {
       const saleName = getItem("saleName");
@@ -302,21 +339,18 @@ const AdminAppPage: React.FC = () => {
         setLoading(true);
         setError(null);
         
-        // Fetch products - you can add filters as needed
         const response = await axios.get('/api/getProductsOnly', {
           params: {
             page: 1,
-            pageSize: 100, // Adjust as needed
+            pageSize: 100,
             all: false
           }
         });
 
         if (response.data && response.data.data) {
-          // Transform API response to AdminRow format
           const products: AdminRow[] = [];
           const groupedData = response.data.data;
           
-          // Iterate through grouped products
           Object.keys(groupedData).forEach((category) => {
             const categoryProducts = groupedData[category].products || [];
             categoryProducts.forEach((product: any, index: number) => {
@@ -329,8 +363,8 @@ const AdminAppPage: React.FC = () => {
                 unit: product.crdfd_unitname || product.crdfd_onvichuantext || '',
                 quantity: 1,
                 price: price,
-                surcharge: 0.03, // Default surcharge, can be fetched from API if available
-                discount: 0.03, // Default discount, can be fetched from API if available
+                surcharge: 0.03,
+                discount: 0.03,
                 vat: vat,
                 expectedDate: new Date().toISOString().split("T")[0],
               });
@@ -339,7 +373,6 @@ const AdminAppPage: React.FC = () => {
           
           setAvailableProducts(products);
           
-          // Set default selected product
           if (products.length > 0 && selectedProductId === null) {
             setSelectedProductId(products[0].id);
             setInputQuantity(products[0].quantity);
@@ -360,16 +393,13 @@ const AdminAppPage: React.FC = () => {
   }, []);
 
   const handleSearch = useCallback((term: string) => {
-    // Placeholder: admin page không cần search, nhưng giữ hook để khớp header
     console.debug("admin-app search", term);
   }, []);
 
   const handleCartClick = useCallback(() => {
-    // Placeholder: mở cart global nếu cần
     console.debug("admin-app cart click");
   }, []);
 
-  // Handle customer change - copied from sale-order
   const handleCustomerChange = useCallback((
     selectedOption: {
       value: string;
@@ -378,20 +408,23 @@ const AdminAppPage: React.FC = () => {
   ) => {
     setSelectedCustomer(selectedOption);
     
-    // Extract customerId when a customer is selected
     if (selectedOption) {
       const customerId = selectedOption.value;
       setItem("selectedCustomerId", customerId);
     }
   }, []);
 
-  // Update input fields when product selection changes
   useEffect(() => {
     const product = availableProducts.find((p) => p.id === selectedProductId);
     if (product) {
       setInputQuantity(product.quantity || 1);
       setInputPrice(product.price);
+      setSouthernPrice(product.price);
       setInputVat(product.vat);
+      setStockQuantity(0);
+      setStockDiscardPurchase(0);
+      setStockAccountingLT(0);
+      setSuggestedWarehouse("");
     }
   }, [selectedProductId, availableProducts]);
 
@@ -421,10 +454,12 @@ const AdminAppPage: React.FC = () => {
 
   const selectedPriceAfterDiscount = useMemo(() => {
     if (!selectedProduct) return 0;
+    const totalDiscount = (discountPercent1 + discountPercent2) / 100;
+    const surcharge = selectedProduct.surcharge || 0;
     return Math.round(
-      inputPrice * (1 - (selectedProduct.discount || 0) + (selectedProduct.surcharge || 0))
+      inputPrice * (1 - totalDiscount + surcharge)
     );
-  }, [inputPrice, selectedProduct]);
+  }, [inputPrice, selectedProduct, discountPercent1, discountPercent2]);
 
   const selectedLineTotal = useMemo(() => {
     const baseTotal = selectedPriceAfterDiscount * inputQuantity;
@@ -432,7 +467,6 @@ const AdminAppPage: React.FC = () => {
     return { baseTotal, vatAmount, grand: baseTotal + vatAmount };
   }, [selectedPriceAfterDiscount, inputQuantity, inputVat]);
 
-  // Handle add product to order
   const handleAddProduct = useCallback(() => {
     if (!selectedProduct) {
       alert("Vui lòng chọn sản phẩm");
@@ -444,6 +478,8 @@ const AdminAppPage: React.FC = () => {
       return;
     }
 
+    const totalDiscount = (discountPercent1 + discountPercent2) / 100;
+
     const newRow: AdminRow = {
       id: nextId,
       name: selectedProduct.name,
@@ -451,27 +487,36 @@ const AdminAppPage: React.FC = () => {
       quantity: inputQuantity,
       price: inputPrice,
       surcharge: selectedProduct.surcharge || 0,
-      discount: selectedProduct.discount || 0,
+      discount: totalDiscount,
       vat: inputVat,
-      expectedDate: new Date().toISOString().split("T")[0],
+      expectedDate: deliveryDate,
+      warehouse: selectedWarehouse || suggestedWarehouse,
+      shift: shift,
+      discountPolicy: selectedDiscountPolicy,
     };
 
     setRows((prev) => [...prev, newRow]);
     setNextId((prev) => prev + 1);
 
-    // Reset form
     setInputQuantity(selectedProduct.quantity || 1);
     setInputPrice(selectedProduct.price);
     setInputVat(selectedProduct.vat);
+    setSouthernPrice(selectedProduct.price);
   }, [
     inputQuantity,
     inputPrice,
     inputVat,
     selectedProduct,
     nextId,
+    discountPercent1,
+    discountPercent2,
+    deliveryDate,
+    selectedWarehouse,
+    suggestedWarehouse,
+    shift,
+    selectedDiscountPolicy,
   ]);
 
-  // Handle delete product from order
   const handleDeleteProduct = useCallback(
     (id: number) => {
       setRows((prev) => prev.filter((row) => row.id !== id));
@@ -479,7 +524,6 @@ const AdminAppPage: React.FC = () => {
     []
   );
 
-  // Handle update quantity in table
   const handleUpdateQuantity = useCallback(
     (id: number, newQuantity: number) => {
       if (newQuantity <= 0) return;
@@ -492,7 +536,6 @@ const AdminAppPage: React.FC = () => {
     []
   );
 
-  // Handle update price in table
   const handleUpdatePrice = useCallback(
     (id: number, newPrice: number) => {
       if (newPrice < 0) return;
@@ -503,7 +546,6 @@ const AdminAppPage: React.FC = () => {
     []
   );
 
-  // Handle refresh
   const handleRefresh = useCallback(() => {
     setRows([]);
     setNextId(100);
@@ -511,33 +553,30 @@ const AdminAppPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading data...</p>
-        </div>
-      </div>
+      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'grey.50' }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress />
+          <Typography sx={{ mt: 2, color: 'text.secondary' }}>Loading data...</Typography>
+        </Box>
+      </Box>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
+      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'grey.50' }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+          <Button variant="contained" onClick={() => window.location.reload()}>
             Retry
-          </button>
-        </div>
-      </div>
+          </Button>
+        </Box>
+      </Box>
     );
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <Box sx={{ bgcolor: 'grey.50', minHeight: '100vh' }}>
       <JDStyleHeader
         cartItemsCount={cartItemsCount}
         onSearch={handleSearch}
@@ -545,45 +584,45 @@ const AdminAppPage: React.FC = () => {
         hideSearch
       />
 
-      <main className="px-2 sm:px-4 pt-20 pb-10">
-        <div className="bg-white rounded-lg shadow-md border border-gray-100 px-3 sm:px-5 py-4">
-          <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
-            <div className="flex items-center gap-2">
-              <button className="inline-flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 text-sm font-semibold rounded-lg border border-blue-100 hover:bg-blue-100 transition">
-                <FaClipboardList />
-                Bán hàng thường
-              </button>
-              <button className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600">
-                <FaRedo />
-              </button>
-            </div>
-            <div className="flex items-center gap-2 text-gray-700 text-sm font-semibold">
-              <span>Loại đơn</span>
-              <select
-                value={orderType}
-                onChange={(e) => setOrderType(e.target.value as "SO" | "BO")}
-                className="rounded-md border border-gray-200 bg-white px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+      <Box component="main" sx={{ px: { xs: 2, sm: 4 }, pt: 20, pb: 10 }}>
+        <Paper sx={{ p: { xs: 3, sm: 5 }, borderRadius: 2, boxShadow: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Button
+                variant="outlined"
+                startIcon={<AddIcon />}
+                sx={{ bgcolor: 'primary.50', color: 'primary.main', borderColor: 'primary.100' }}
               >
-                <option value="SO">SO</option>
-                <option value="BO">BO</option>
-              </select>
-              <span className="px-3 py-1 rounded-md border border-gray-200 bg-white text-sm font-semibold">
-                {orderType}
-              </span>
-            </div>
-          </div>
+                Bán hàng thường
+              </Button>
+              <IconButton>
+                <RefreshIcon />
+              </IconButton>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="body2" fontWeight="bold">Loại đơn</Typography>
+              <FormControl size="small" sx={{ minWidth: 80 }}>
+                <Select
+                  value={orderType}
+                  onChange={(e) => setOrderType(e.target.value as "SO" | "BO")}
+                >
+                  <MenuItem value="SO">SO</MenuItem>
+                  <MenuItem value="BO">BO</MenuItem>
+                </Select>
+              </FormControl>
+              <Chip label={orderType} size="small" />
+            </Box>
+          </Box>
 
           {/* Header với Khách hàng và Đơn hàng */}
-          <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
-            <div className="flex items-center gap-4 flex-1">
-              <div className="flex flex-col gap-1 min-w-[200px]">
-                <label className="text-xs font-semibold text-gray-600">
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, pb: 2, borderBottom: 1, borderColor: 'divider', flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1, flexWrap: 'wrap' }}>
+              <Box sx={{ minWidth: 200 }}>
+                <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 'bold' }}>
                   Khách hàng
-                </label>
+                </Typography>
                 {customerError ? (
-                  <div className="p-2 bg-yellow-100 border border-yellow-400 rounded-md text-yellow-700 text-sm">
-                    {customerError}
-                  </div>
+                  <Alert severity="warning" sx={{ mt: 1 }}>{customerError}</Alert>
                 ) : (
                   <InfiniteScrollSelect
                     loadOptions={loadCustomerOptions}
@@ -592,419 +631,467 @@ const AdminAppPage: React.FC = () => {
                     placeholder="Khách hàng"
                   />
                 )}
-              </div>
-              <div className="flex flex-col gap-1 min-w-[200px]">
-                <label className="text-xs font-semibold text-gray-600">
-                  Đơn hàng
-                </label>
-                <input
-                  value={orderCode || orderType}
-                  onChange={(e) => setOrderCode(e.target.value)}
-                  placeholder={orderType}
-                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                />
-              </div>
-            </div>
-            <div className="text-xs text-gray-500">V2.93.86</div>
-          </div>
+              </Box>
+              <Box sx={{ minWidth: 200 }}>
+                <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 'bold' }}>
+                  Đơn hàng {orderVat}
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                  <TextField
+                    size="small"
+                    value={orderCode || orderType}
+                    onChange={(e) => setOrderCode(e.target.value)}
+                    placeholder={orderType}
+                    sx={{ flex: 1 }}
+                  />
+                  <FormControl size="small" sx={{ minWidth: 100 }}>
+                    <InputLabel>Có VAT</InputLabel>
+                    <Select
+                      value={orderVat}
+                      onChange={(e) => setOrderVat(e.target.value as "Có VAT" | "Không VAT")}
+                      label="Có VAT"
+                    >
+                      <MenuItem value="Có VAT">Có VAT</MenuItem>
+                      <MenuItem value="Không VAT">Không VAT</MenuItem>
+                    </Select>
+                  </FormControl>
+                  <FormControl size="small" sx={{ minWidth: 80 }}>
+                    <InputLabel>Loại</InputLabel>
+                    <Select
+                      value={orderType}
+                      onChange={(e) => setOrderType(e.target.value as "SO" | "BO")}
+                      label="Loại"
+                    >
+                      <MenuItem value="SO">SO</MenuItem>
+                      <MenuItem value="BO">BO</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Box>
+              </Box>
+            </Box>
+            <Typography variant="caption" color="text.secondary">V2.93.86</Typography>
+          </Box>
 
           {/* Product Input Section */}
-          <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-              <div className="flex flex-col">
-                <label className="text-xs font-semibold text-gray-600 mb-1">
-                  {orderVat === "Có VAT" ? "Sản phẩm có VAT" : "Sản phẩm không VAT"}
-                </label>
-                <select
-                  value={selectedProductId || ''}
-                  onChange={(e) => setSelectedProductId(Number(e.target.value))}
-                  className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  disabled={availableProducts.length === 0}
-                >
-                  <option value="">Chọn sản phẩm</option>
-                  {availableProducts.length > 0 ? (
-                    availableProducts.map((product) => (
-                      <option key={product.id} value={product.id}>
+          <Paper sx={{ p: 3, mb: 3, bgcolor: 'grey.50' }}>
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid item xs={12} md={6} lg={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>{orderVat === "Có VAT" ? "Sản phẩm có VAT" : "Sản phẩm không VAT"}</InputLabel>
+                  <Select
+                    value={selectedProductId || ''}
+                    onChange={(e) => setSelectedProductId(Number(e.target.value))}
+                    disabled={availableProducts.length === 0}
+                    label={orderVat === "Có VAT" ? "Sản phẩm có VAT" : "Sản phẩm không VAT"}
+                  >
+                    <MenuItem value="">Chọn sản phẩm</MenuItem>
+                    {availableProducts.map((product) => (
+                      <MenuItem key={product.id} value={product.id}>
                         {product.name}
-                      </option>
-                    ))
-                  ) : (
-                    <option>No products available</option>
-                  )}
-                </select>
-              </div>
-              <div className="flex flex-col">
-                <label className="text-xs font-semibold text-gray-600 mb-1">
-                  Đơn vị
-                </label>
-                <select
-                  value={selectedProduct?.unit || ''}
-                  onChange={(e) => {
-                    // Update unit if needed
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={6} lg={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Đơn vị</InputLabel>
+                  <Select
+                    value={selectedProduct?.unit || ''}
+                    disabled={!selectedProduct}
+                    label="Đơn vị"
+                  >
+                    <MenuItem value={selectedProduct?.unit || ''}>{selectedProduct?.unit || 'Chọn đơn vị'}</MenuItem>
+                    <MenuItem value="Con">Con</MenuItem>
+                    <MenuItem value="Kg">Kg</MenuItem>
+                    <MenuItem value="Bịch 95-100 con">Bịch 95-100 con</MenuItem>
+                    <MenuItem value="Bịch 100 con">Bịch 100 con</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={6} lg={3}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Số lượng"
+                  type="number"
+                  value={inputQuantity}
+                  onChange={(e) => setInputQuantity(Number(e.target.value) || 0)}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                          <IconButton size="small" onClick={() => setInputQuantity(prev => prev + 1)}>
+                            <ArrowUpward fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" onClick={() => setInputQuantity(prev => Math.max(0, prev - 1))}>
+                            <ArrowDownward fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      </InputAdornment>
+                    ),
                   }}
-                  className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  disabled={!selectedProduct}
-                >
-                  <option>{selectedProduct?.unit || 'Chọn đơn vị'}</option>
-                  <option>Con</option>
-                  <option>Kg</option>
-                  <option>Bịch 95-100 con</option>
-                </select>
-              </div>
-              <div className="flex flex-col">
-                <label className="text-xs font-semibold text-gray-600 mb-1">
-                  Số lượng
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={0}
-                    value={inputQuantity}
-                    onChange={(e) =>
-                      setInputQuantity(Number(e.target.value) || 0)
-                    }
-                    className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 pr-8 text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col">
-                    <button
-                      type="button"
-                      onClick={() => setInputQuantity(prev => prev + 1)}
-                      className="text-xs text-gray-500 hover:text-gray-700"
-                    >
-                      ▲
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setInputQuantity(prev => Math.max(0, prev - 1))}
-                      className="text-xs text-gray-500 hover:text-gray-700"
-                    >
-                      ▼
-                    </button>
-                  </div>
-                </div>
-                {stockQuantity > 0 && (
-                  <span className="text-xs text-gray-500 mt-1">SL theo kho: {stockQuantity.toFixed(2)}</span>
-                )}
-              </div>
-              <div className="flex flex-col">
-                <label className="text-xs font-semibold text-gray-600 mb-1">
-                  Giá
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={0}
-                    value={inputPrice}
-                    onChange={(e) => setInputPrice(Number(e.target.value) || 0)}
-                    className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 pr-8 text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col">
-                    <button
-                      type="button"
-                      onClick={() => setInputPrice(prev => prev + 1000)}
-                      className="text-xs text-gray-500 hover:text-gray-700"
-                    >
-                      ▲
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setInputPrice(prev => Math.max(0, prev - 1000))}
-                      className="text-xs text-gray-500 hover:text-gray-700"
-                    >
-                      ▼
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+                />
+              </Grid>
+              <Grid item xs={12} md={6} lg={3}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Giá Miền Nam"
+                  type="number"
+                  value={southernPrice || inputPrice}
+                  onChange={(e) => {
+                    const val = Number(e.target.value) || 0;
+                    setSouthernPrice(val);
+                    setInputPrice(val);
+                  }}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                          <IconButton size="small" onClick={() => {
+                            setSouthernPrice(prev => prev + 1000);
+                            setInputPrice(prev => prev + 1000);
+                          }}>
+                            <ArrowUpward fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" onClick={() => {
+                            setSouthernPrice(prev => Math.max(0, prev - 1000));
+                            setInputPrice(prev => Math.max(0, prev - 1000));
+                          }}>
+                            <ArrowDownward fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+            </Grid>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-              <div className="flex flex-col">
-                <label className="text-xs font-semibold text-gray-600 mb-1">
-                  Thành tiền
-                </label>
-                <input
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid item xs={12} md={6} lg={3}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Giá đã giảm"
+                  value={formatCurrency(selectedPriceAfterDiscount)}
+                  InputProps={{ readOnly: true }}
+                />
+              </Grid>
+              <Grid item xs={12} md={6} lg={3}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Thành tiền"
                   value={formatCurrency(selectedLineTotal.baseTotal)}
-                  readOnly
-                  className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800"
+                  InputProps={{ readOnly: true }}
                 />
-              </div>
-              <div className="flex flex-col">
-                <label className="text-xs font-semibold text-gray-600 mb-1">
-                  VAT (%)
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={inputVat}
-                    onChange={(e) => setInputVat(Number(e.target.value) || 0)}
-                    className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 pr-8 text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col">
-                    <button
-                      type="button"
-                      onClick={() => setInputVat(prev => Math.min(100, prev + 1))}
-                      className="text-xs text-gray-500 hover:text-gray-700"
-                    >
-                      ▲
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setInputVat(prev => Math.max(0, prev - 1))}
-                      className="text-xs text-gray-500 hover:text-gray-700"
-                    >
-                      ▼
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-col">
-                <label className="text-xs font-semibold text-gray-600 mb-1">
-                  GTGT
-                </label>
-                <input
+              </Grid>
+              <Grid item xs={12} md={6} lg={3}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="VAT (%)"
+                  type="number"
+                  value={inputVat}
+                  onChange={(e) => setInputVat(Number(e.target.value) || 0)}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                          <IconButton size="small" onClick={() => setInputVat(prev => Math.min(100, prev + 1))}>
+                            <ArrowUpward fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" onClick={() => setInputVat(prev => Math.max(0, prev - 1))}>
+                            <ArrowDownward fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} md={6} lg={3}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="GTGT"
                   value={formatCurrency(selectedLineTotal.vatAmount)}
-                  readOnly
-                  className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800"
+                  InputProps={{ readOnly: true }}
                 />
-              </div>
-              <div className="flex flex-col">
-                <label className="text-xs font-semibold text-gray-600 mb-1">
-                  Tổng tiền
-                </label>
-                <input
+              </Grid>
+            </Grid>
+
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid item xs={12} md={6} lg={3}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Tổng tiền"
                   value={formatCurrency(selectedLineTotal.grand)}
-                  readOnly
-                  className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 font-semibold"
+                  InputProps={{ readOnly: true }}
+                  sx={{ '& .MuiInputBase-input': { fontWeight: 'bold' } }}
                 />
-              </div>
-            </div>
+              </Grid>
+              <Grid item xs={12} md={6} lg={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Kho</InputLabel>
+                  <Select
+                    value={selectedWarehouse}
+                    onChange={(e) => setSelectedWarehouse(e.target.value)}
+                    label="Kho"
+                  >
+                    <MenuItem value="">Chọn kho</MenuItem>
+                    <MenuItem value="Kho Tp. Hồ Chí Minh">Kho Tp. Hồ Chí Minh</MenuItem>
+                    <MenuItem value="Kho Hà Nội">Kho Hà Nội</MenuItem>
+                    <MenuItem value="Kho Đà Nẵng">Kho Đà Nẵng</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={6} lg={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Chính sách giảm giá</InputLabel>
+                  <Select
+                    value={selectedDiscountPolicy}
+                    onChange={(e) => setSelectedDiscountPolicy(e.target.value)}
+                    label="Chính sách giảm giá"
+                  >
+                    <MenuItem value="">Chọn chính sách giảm giá</MenuItem>
+                    <MenuItem value="[MIỀN NAM] GIẢM GIÁ NHÓM SẢN PHẨM MỚI_V1">[MIỀN NAM] GIẢM GIÁ NHÓM SẢN PHẨM MỚI_V1</MenuItem>
+                    <MenuItem value="[MIỀN BẮC] GIẢM GIÁ NHÓM SẢN PHẨM MỚI_V1">[MIỀN BẮC] GIẢM GIÁ NHÓM SẢN PHẨM MỚI_V1</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={6} lg={3}>
+                <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 'bold' }}>
+                  Giảm
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <TextField
+                    size="small"
+                    type="number"
+                    value={discountPercent1}
+                    onChange={(e) => setDiscountPercent1(Number(e.target.value) || 0)}
+                    sx={{ width: 80 }}
+                  />
+                  <Typography>% +</Typography>
+                  <TextField
+                    size="small"
+                    type="number"
+                    value={discountPercent2}
+                    onChange={(e) => setDiscountPercent2(Number(e.target.value) || 0)}
+                    sx={{ width: 80 }}
+                  />
+                  <Typography>%</Typography>
+                </Box>
+              </Grid>
+            </Grid>
 
-            <div className="flex items-center gap-4 mb-4">
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={approvePrice}
-                  onChange={(e) => setApprovePrice(e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                Duyệt giá
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={approveSupPrice}
-                  onChange={(e) => setApproveSupPrice(e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                Duyệt giá SUP
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={urgentOrder}
-                  onChange={(e) => setUrgentOrder(e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                Đơn hàng gấp
-              </label>
-              <div className="flex items-center gap-2 ml-auto">
-                <span className="text-sm text-gray-700 font-semibold">Giá bình thường</span>
-                <input
-                  type="text"
-                  className="rounded-md border border-gray-200 bg-white px-3 py-1 text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none w-32"
-                  placeholder="Giá bình thường"
-                />
-              </div>
-            </div>
+            {/* Warehouse and Stock Information */}
+            <Paper sx={{ p: 2, mb: 2, bgcolor: 'primary.50', border: 1, borderColor: 'primary.200' }}>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6} lg={3}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Tồn kho (bỏ mua)"
+                    value={`${stockDiscardPurchase.toFixed(2)} ${selectedProduct?.unit || ''}`}
+                    InputProps={{ readOnly: true }}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6} lg={3}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Tồn LT kế toán"
+                    value={`${stockAccountingLT.toFixed(2)} ${selectedProduct?.unit || ''}`}
+                    InputProps={{ readOnly: true }}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6} lg={3}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="SL theo kho"
+                    value={`${stockQuantity.toFixed(2)} ${selectedProduct?.unit || ''}`}
+                    InputProps={{ readOnly: true }}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6} lg={3}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Kho đề xuất"
+                    value={suggestedWarehouse || "Chưa có đề xuất"}
+                    InputProps={{ readOnly: true }}
+                  />
+                </Grid>
+              </Grid>
+            </Paper>
 
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-700 font-semibold">Ngày giao NM</label>
-                <input
-                  type="date"
-                  value={deliveryDate}
-                  onChange={(e) => setDeliveryDate(e.target.value)}
-                  className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-700 font-semibold">Ca</label>
-                <select
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+              <FormControlLabel
+                control={<Checkbox checked={approvePrice} onChange={(e) => setApprovePrice(e.target.checked)} />}
+                label="Duyệt giá"
+              />
+              <FormControlLabel
+                control={<Checkbox checked={approveSupPrice} onChange={(e) => setApproveSupPrice(e.target.checked)} />}
+                label="Duyệt giá SUP"
+              />
+              <FormControlLabel
+                control={<Checkbox checked={urgentOrder} onChange={(e) => setUrgentOrder(e.target.checked)} />}
+                label="Đơn hàng gấp"
+              />
+            </Box>
+
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+              <TextField
+                size="small"
+                label="Ngày giao NM"
+                type="date"
+                value={deliveryDate}
+                onChange={(e) => setDeliveryDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Ca</InputLabel>
+                <Select
                   value={shift}
                   onChange={(e) => setShift(e.target.value as "Ca sáng" | "Ca chiều")}
-                  className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  label="Ca"
                 >
-                  <option value="Ca sáng">Ca sáng</option>
-                  <option value="Ca chiều">Ca chiều</option>
-                </select>
-              </div>
-              <div className="flex-1">
-                <input
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Ghi chú"
-                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleAddProduct}
-                  className="p-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition"
-                  title="Thêm"
-                >
-                  <FaPlus className="text-sm" />
-                </button>
-                <button
-                  className="p-2 rounded-md bg-green-600 text-white hover:bg-green-700 transition"
-                  title="Lưu"
-                >
-                  <FaClipboardCheck className="text-sm" />
-                </button>
-                <button
-                  onClick={handleRefresh}
-                  className="p-2 rounded-md border border-gray-200 text-gray-700 hover:bg-gray-50 transition"
-                  title="Làm mới"
-                >
-                  <FaSyncAlt className="text-sm" />
-                </button>
-              </div>
-            </div>
-          </div>
+                  <MenuItem value="Ca sáng">Ca sáng</MenuItem>
+                  <MenuItem value="Ca chiều">Ca chiều</MenuItem>
+                </Select>
+              </FormControl>
+              <TextField
+                size="small"
+                label="Ghi chú"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                sx={{ flex: 1 }}
+              />
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <IconButton color="primary" onClick={handleAddProduct} title="Thêm">
+                  <AddIcon />
+                </IconButton>
+                <IconButton color="success" title="Lưu">
+                  <SaveIcon />
+                </IconButton>
+                <IconButton onClick={handleRefresh} title="Làm mới">
+                  <RefreshIcon />
+                </IconButton>
+              </Box>
+            </Box>
+          </Paper>
 
           {/* Bảng dữ liệu */}
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm text-left border border-gray-200 rounded-lg overflow-hidden">
-              <thead className="bg-[#2b8c8c] text-white uppercase text-xs">
-                <tr>
-                  <th className="px-3 py-2 w-14">STT</th>
-                  <th className="px-3 py-2 min-w-[220px]">Tên sản phẩm</th>
-                  <th className="px-3 py-2">Đơn vị</th>
-                  <th className="px-3 py-2">Số lượng</th>
-                  <th className="px-3 py-2">Giá</th>
-                  <th className="px-3 py-2">Phụ phí</th>
-                  <th className="px-3 py-2">Chiết khấu</th>
-                  <th className="px-3 py-2">Giá đã CK</th>
-                  <th className="px-3 py-2">VAT</th>
-                  <th className="px-3 py-2">Tổng tiền</th>
-                  <th className="px-3 py-2">Người duyệt</th>
-                  <th className="px-3 py-2">Ngày giao</th>
-                  <th className="px-3 py-2">Ca</th>
-                  <th className="px-3 py-2">Kho đáp ứng</th>
-                  <th className="px-3 py-2 w-20">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
+          <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
+            <Table stickyHeader size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ bgcolor: '#2b8c8c', color: 'white', fontWeight: 'bold', width: 60 }}>STT</TableCell>
+                  <TableCell sx={{ bgcolor: '#2b8c8c', color: 'white', fontWeight: 'bold', minWidth: 220 }}>Tên sản phẩm</TableCell>
+                  <TableCell sx={{ bgcolor: '#2b8c8c', color: 'white', fontWeight: 'bold' }}>Đơn vị</TableCell>
+                  <TableCell sx={{ bgcolor: '#2b8c8c', color: 'white', fontWeight: 'bold' }}>Số lượng</TableCell>
+                  <TableCell sx={{ bgcolor: '#2b8c8c', color: 'white', fontWeight: 'bold' }}>Giá</TableCell>
+                  <TableCell sx={{ bgcolor: '#2b8c8c', color: 'white', fontWeight: 'bold' }}>Phụ phí</TableCell>
+                  <TableCell sx={{ bgcolor: '#2b8c8c', color: 'white', fontWeight: 'bold' }}>Chiết khấu</TableCell>
+                  <TableCell sx={{ bgcolor: '#2b8c8c', color: 'white', fontWeight: 'bold' }}>Giá đã CK</TableCell>
+                  <TableCell sx={{ bgcolor: '#2b8c8c', color: 'white', fontWeight: 'bold' }}>VAT</TableCell>
+                  <TableCell sx={{ bgcolor: '#2b8c8c', color: 'white', fontWeight: 'bold' }}>Tổng tiền</TableCell>
+                  <TableCell sx={{ bgcolor: '#2b8c8c', color: 'white', fontWeight: 'bold' }}>Người duyệt</TableCell>
+                  <TableCell sx={{ bgcolor: '#2b8c8c', color: 'white', fontWeight: 'bold' }}>Ngày giao</TableCell>
+                  <TableCell sx={{ bgcolor: '#2b8c8c', color: 'white', fontWeight: 'bold' }}>Ca</TableCell>
+                  <TableCell sx={{ bgcolor: '#2b8c8c', color: 'white', fontWeight: 'bold' }}>Kho đáp ứng</TableCell>
+                  <TableCell sx={{ bgcolor: '#2b8c8c', color: 'white', fontWeight: 'bold', width: 80 }}>Thao tác</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
                 {rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={13} className="px-3 py-8 text-center text-gray-500">
+                  <TableRow>
+                    <TableCell colSpan={16} align="center" sx={{ py: 4, color: 'text.secondary' }}>
                       Chưa có đơn hàng
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   totals.detail.map((row, index) => (
-                    <tr
-                      key={row.id}
-                      className="border-t border-gray-100 bg-white hover:bg-gray-50"
-                    >
-                      <td className="px-3 py-2 text-gray-800 font-semibold">
-                        {index + 1}
-                      </td>
-                      <td className="px-3 py-2 text-gray-800">{row.name}</td>
-                      <td className="px-3 py-2 text-gray-800">{row.unit}</td>
-                      <td className="px-3 py-2 text-gray-800">
-                        <input
+                    <TableRow key={row.id} hover>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell>{row.name}</TableCell>
+                      <TableCell>{row.unit}</TableCell>
+                      <TableCell>
+                        <TextField
+                          size="small"
                           type="number"
-                          min={1}
                           value={row.quantity}
-                          onChange={(e) =>
-                            handleUpdateQuantity(
-                              row.id,
-                              Number(e.target.value) || 1
-                            )
-                          }
-                          className="w-20 rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          onChange={(e) => handleUpdateQuantity(row.id, Number(e.target.value) || 1)}
+                          sx={{ width: 80 }}
                         />
-                      </td>
-                      <td className="px-3 py-2 text-gray-800">
-                        <input
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          size="small"
                           type="number"
-                          min={0}
                           value={row.price}
-                          onChange={(e) =>
-                            handleUpdatePrice(row.id, Number(e.target.value) || 0)
-                          }
-                          className="w-24 rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          onChange={(e) => handleUpdatePrice(row.id, Number(e.target.value) || 0)}
+                          sx={{ width: 100 }}
                         />
-                      </td>
-                      <td className="px-3 py-2 text-gray-800">
-                        {(row.surcharge * 100).toFixed(0)}%
-                      </td>
-                      <td className="px-3 py-2 text-gray-800">
-                        {(row.discount * 100).toFixed(0)}%
-                      </td>
-                      <td className="px-3 py-2 text-gray-800">
-                        {formatCurrency(row.priceAfterDiscount)}
-                      </td>
-                      <td className="px-3 py-2 text-gray-800">{row.vat}%</td>
-                      <td className="px-3 py-2 text-gray-900 font-semibold">
-                        {formatCurrency(row.lineTotal + row.vatAmount)}
-                      </td>
-                      <td className="px-3 py-2 text-gray-800">
-                        {row.approver || "-"}
-                      </td>
-                      <td className="px-3 py-2 text-gray-800 whitespace-nowrap">
-                        {row.expectedDate.split("-").reverse().join("/")}
-                      </td>
-                      <td className="px-3 py-2 text-gray-800">
-                        <select
-                          value={shift}
-                          onChange={(e) => setShift(e.target.value as "Ca sáng" | "Ca chiều")}
-                          className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      </TableCell>
+                      <TableCell>{(row.surcharge * 100).toFixed(0)}%</TableCell>
+                      <TableCell>{row.discount.toFixed(2)}</TableCell>
+                      <TableCell>{formatCurrency(row.priceAfterDiscount)}</TableCell>
+                      <TableCell>{row.vat}%</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>{formatCurrency(row.lineTotal + row.vatAmount)}</TableCell>
+                      <TableCell>{row.approver || "-"}</TableCell>
+                      <TableCell>{row.expectedDate.split("-").reverse().join("/")}</TableCell>
+                      <TableCell>
+                        <Select
+                          size="small"
+                          value={row.shift || shift}
+                          onChange={(e) => {
+                            setRows((prev) =>
+                              prev.map((r) =>
+                                r.id === row.id ? { ...r, shift: e.target.value as "Ca sáng" | "Ca chiều" } : r
+                              )
+                            );
+                          }}
+                          sx={{ minWidth: 100 }}
                         >
-                          <option value="Ca sáng">Ca sáng</option>
-                          <option value="Ca chiều">Ca chiều</option>
-                        </select>
-                      </td>
-                      <td className="px-3 py-2 text-gray-800">
-                        <button
-                          onClick={() => handleDeleteProduct(row.id)}
-                          className="p-1 rounded-md text-red-600 hover:bg-red-50 transition"
-                          title="Xóa sản phẩm"
-                        >
-                          <FaTrash className="text-sm" />
-                        </button>
-                      </td>
-                    </tr>
+                          <MenuItem value="Ca sáng">Ca sáng</MenuItem>
+                          <MenuItem value="Ca chiều">Ca chiều</MenuItem>
+                        </Select>
+                      </TableCell>
+                      <TableCell>{row.warehouse || "-"}</TableCell>
+                      <TableCell>
+                        <IconButton size="small" color="error" onClick={() => handleDeleteProduct(row.id)} title="Xóa sản phẩm">
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
                   ))
                 )}
-              </tbody>
-              <tfoot>
-                <tr className="bg-gray-50 border-t border-gray-200">
-                  <td
-                    colSpan={10}
-                    className="px-3 py-3 text-right text-sm font-semibold text-gray-700"
-                  >
+              </TableBody>
+              <TableFooter>
+                <TableRow sx={{ bgcolor: 'grey.100' }}>
+                  <TableCell colSpan={10} align="right" sx={{ fontWeight: 'bold' }}>
                     Tổng tiền
-                  </td>
-                  <td className="px-3 py-3 text-gray-900 font-bold">
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
                     {formatCurrency(totals.grandTotal)}
-                  </td>
-                  <td />
-                  <td />
-                  <td />
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-      </main>
+                  </TableCell>
+                  <TableCell colSpan={5} />
+                </TableRow>
+              </TableFooter>
+            </Table>
+          </TableContainer>
+        </Paper>
+      </Box>
 
       <Toolbar />
       <Footer />
-    </div>
+    </Box>
   );
 };
 
