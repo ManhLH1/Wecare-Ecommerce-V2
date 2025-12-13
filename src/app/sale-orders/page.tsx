@@ -124,7 +124,7 @@ const SalesManagementInterfaceContent = () => {
   const { cartItems, addToCart, updateQuantity, removeItem, clearCart } =
     useCart();
   const [isLoggedIn, setIsLoggedIn] = useState(true);
-  const [activeTab, setActiveTab] = useState("saleorder");
+  const [activeTab, setActiveTab] = useState<"saleorder" | "sale_confirm">("saleorder");
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<{
@@ -198,7 +198,7 @@ const SalesManagementInterfaceContent = () => {
               <h2 className="text-2xl font-bold text-gray-900 mb-1 flex items-center gap-2"><FaShippingFast className="text-blue-500" /> Quản lý Sale Orders</h2>
               <p className="text-gray-500 mb-4">Tạo, xác nhận và quản lý các đơn hàng bán hàng của bạn.</p>
               {/* Tab chuyển đổi */}
-              <div className="flex space-x-4 w-full mb-4 border-b border-gray-200">
+              <div className="flex space-x-4 w-full mb-4 border-b border-gray-200 overflow-x-auto">
                 <button
                   className={`py-2 px-4 w-1/2 md:w-auto transition-all duration-200 rounded-t-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
                     ${activeTab === "saleorder" ? "border-b-2 border-blue-500 font-bold text-blue-700 bg-blue-50" : "text-gray-700 hover:bg-gray-50"}`}

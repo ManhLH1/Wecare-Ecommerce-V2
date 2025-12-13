@@ -9,6 +9,7 @@ import { useCart } from "@/components/CartManager";
 import { X } from "lucide-react";
 import { getItem, setItem } from "@/utils/SecureStorage";
 import Loading from "@/components/loading";
+import SaleOrderType from "@/model/saleOder";
 
 // Simple debounce function
 const debounce = (func: Function, delay: number) => {
@@ -215,6 +216,10 @@ const SaleOrder: React.FC<SaleOrderProps> = ({
   const { clearCart } = useCart();
   const [customerError, setCustomerError] = useState<string | null>(null);
   const [refreshTimestamp, setRefreshTimestamp] = useState<number>(Date.now());
+  const [saleOrders, setSaleOrders] = useState<SaleOrderType[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<SaleOrderType | null>(null);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Products | null>(null);
 
   // Hàm load options async với pageSize
   const loadOptions = useCallback(async (inputValue: string, pageSize: number = 10) => {
@@ -278,6 +283,31 @@ const SaleOrder: React.FC<SaleOrderProps> = ({
     [addToCart]
   );
 
+  // Hàm lấy đơn hàng của khách hàng
+  const fetchSaleOrders = useCallback(async (customerId: string) => {
+    try {
+      setLoadingOrders(true);
+      const response = await axios.get<SaleOrderType[]>(
+        `/api/getSaleOrdersData?id_khachhang=${customerId}`
+      );
+      
+      if (Array.isArray(response.data) && response.data.length > 0) {
+        setSaleOrders(response.data);
+        // Tự động chọn đơn hàng gần nhất (đã được sort theo ngày giảm dần trong API)
+        setSelectedOrder(response.data[0]);
+      } else {
+        setSaleOrders([]);
+        setSelectedOrder(null);
+      }
+    } catch (error) {
+      console.error("Error fetching sale orders:", error);
+      setSaleOrders([]);
+      setSelectedOrder(null);
+    } finally {
+      setLoadingOrders(false);
+    }
+  }, []);
+
   const handleCustomerChange = (
     selectedOption: {
       value: string;
@@ -287,6 +317,7 @@ const SaleOrder: React.FC<SaleOrderProps> = ({
     onCustomerSelect(selectedOption);
     clearCart();
     setSearchTerm(""); // Reset search input
+    setSelectedProduct(null); // Reset selected product
     // Reset refreshTimestamp để trigger reload danh sách sản phẩm
     setRefreshTimestamp(Date.now());
 
@@ -294,10 +325,25 @@ const SaleOrder: React.FC<SaleOrderProps> = ({
     if (selectedOption) {
       const customerId = selectedOption.value;
       setItem("selectedCustomerId", customerId);
+      // Lấy đơn hàng gần nhất của khách hàng
+      fetchSaleOrders(customerId);
     } else {
       console.log("No customer selected - handleCustomerChange - line 103: ");
+      setSaleOrders([]);
+      setSelectedOrder(null);
     }
   };
+
+  // Hàm xử lý khi chọn đơn hàng từ dropdown
+  const handleOrderChange = (order: SaleOrderType | null) => {
+    setSelectedOrder(order);
+    clearCart();
+    setSelectedProduct(null);
+    setRefreshTimestamp(Date.now());
+  };
+
+  // Kiểm tra đơn hàng có VAT hay không
+  const isOrderWithVAT = selectedOrder ? (selectedOrder.crdfd_gtgtnew > 0) : false;
 
   // Hàm handle search change
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -368,6 +414,50 @@ const SaleOrder: React.FC<SaleOrderProps> = ({
               />
             </div>
 
+            {selectedCustomer && (
+              <div className="mb-4">
+                <label
+                  htmlFor="orderSelect"
+                  className="block mb-2 text-sm font-medium text-gray-700"
+                >
+                  {isOrderWithVAT ? "Đơn hàng Có VAT" : "Đơn hàng"}:
+                </label>
+                {loadingOrders ? (
+                  <div className="px-3 py-2 border border-gray-300 rounded-lg">
+                    <Loading />
+                  </div>
+                ) : (
+                  <Select
+                    id="orderSelect"
+                    instanceId="orderSelect"
+                    options={saleOrders.map((order) => ({
+                      value: order.crdfd_sale_orderid || order.crdfd_so_code,
+                      label: order.crdfd_name || order.crdfd_so_code || "Đơn hàng không tên",
+                      order: order,
+                    }))}
+                    value={
+                      selectedOrder
+                        ? {
+                            value: selectedOrder.crdfd_sale_orderid || selectedOrder.crdfd_so_code,
+                            label: selectedOrder.crdfd_name || selectedOrder.crdfd_so_code || "Đơn hàng không tên",
+                            order: selectedOrder,
+                          }
+                        : null
+                    }
+                    onChange={(option) => {
+                      handleOrderChange(option?.order || null);
+                    }}
+                    isClearable
+                    isSearchable
+                    placeholder="Chọn đơn hàng..."
+                    styles={{
+                      container: (base) => ({ ...base, width: "100%" }),
+                    }}
+                  />
+                )}
+              </div>
+            )}
+
             <div className="mb-4">
               <label
                 htmlFor="searchProduct"
@@ -411,6 +501,8 @@ const SaleOrder: React.FC<SaleOrderProps> = ({
                   customerSelectId={selectedCustomer.value}
                   refreshTimestamp={refreshTimestamp}
                 />
+                {/* Các field chi tiết sản phẩm sẽ được hiển thị sau khi chọn sản phẩm từ ProductGroupList */}
+                {/* ProductGroupList đã xử lý việc hiển thị và thêm sản phẩm vào cart */}
               </div>
             ) : (
               <div className="mt-4 p-3 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700">
