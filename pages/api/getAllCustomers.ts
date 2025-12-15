@@ -69,18 +69,34 @@ const fetchCustomerGroupData = async (customerId: string, token: string) => {
 };
 
 const getAllCustomers = async (req: NextApiRequest, res: NextApiResponse) => {
+  const startTime = Date.now();
+  console.log('\n========== getAllCustomers START ==========');
+  console.log('getAllCustomers - Method:', req.method);
+  console.log('getAllCustomers - Request URL:', req.url);
+  console.log('getAllCustomers - Full URL:', req.headers.host + req.url);
+  
   if (req.method !== "GET") {
+    console.log('getAllCustomers - Method not allowed:', req.method);
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
   try {
     // Log incoming request để debug
-    console.log('getAllCustomers - Incoming request query:', JSON.stringify(req.query, null, 2));
-    console.log('getAllCustomers - Request URL:', req.url);
+    console.log('getAllCustomers - Raw query params:', req.query);
+    console.log('getAllCustomers - Query string:', JSON.stringify(req.query, null, 2));
     
     const customerId = req.query.customerId;
     const saleName = req.query.saleName;
     const search = req.query.search;
+    
+    console.log('getAllCustomers - Parsed params:', {
+      customerId: customerId,
+      saleName: saleName,
+      search: search,
+      customerIdType: typeof customerId,
+      saleNameType: typeof saleName,
+      searchType: typeof search
+    });
 
     // customerId là optional - nếu không có sẽ lấy tất cả khách hàng
     const customerIdStr = customerId
@@ -150,11 +166,15 @@ const getAllCustomers = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     // Log filter để debug
-    console.log('getAllCustomers - Final filter:', filter);
+    console.log('\n--- Filter Building ---');
+    console.log('getAllCustomers - Initial filter:', filter);
     console.log('getAllCustomers - hasValidCustomerId:', hasValidCustomerId);
     console.log('getAllCustomers - customerIdStr:', customerIdStr);
+    console.log('getAllCustomers - saleNameStr:', saleNameStr);
     console.log('getAllCustomers - decodedSaleName:', decodedSaleName);
     console.log('getAllCustomers - searchStr:', searchStr);
+    console.log('getAllCustomers - Final filter:', filter);
+    console.log('getAllCustomers - Filter length:', filter.length);
 
     // Validate filter trước khi gọi API
     if (!filter || filter.trim() === '') {
@@ -162,7 +182,9 @@ const getAllCustomers = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(400).json({ error: "Invalid filter" });
     }
 
+    console.log('\n--- Getting Access Token ---');
     const token = await getAccessToken();
+    console.log('getAllCustomers - Token obtained:', token ? 'Yes' : 'No');
 
     if (!token) {
       return res.status(401).json({ error: "Failed to obtain access token" });
@@ -192,40 +214,94 @@ const getAllCustomers = async (req: NextApiRequest, res: NextApiResponse) => {
     let allCustomers: any[] = [];
     let apiEndpoint = `${BASE_URL}${CUSTOMER_TABLE}?${queryParams}`;
 
-    console.log('getAllCustomers - API Endpoint:', apiEndpoint);
+    console.log('\n--- Building API Endpoint ---');
+    console.log('getAllCustomers - BASE_URL:', BASE_URL);
+    console.log('getAllCustomers - CUSTOMER_TABLE:', CUSTOMER_TABLE);
+    console.log('getAllCustomers - Query params parts:', {
+      selectPart: selectPart.substring(0, 50) + '...',
+      filterPart: filterPart.substring(0, 100) + '...',
+      orderbyPart,
+      expandPart: expandPart.substring(0, 50) + '...'
+    });
+    console.log('getAllCustomers - Full API Endpoint:', apiEndpoint);
+    console.log('getAllCustomers - Endpoint length:', apiEndpoint.length);
 
+    let pageCount = 0;
     while (apiEndpoint) {
+      pageCount++;
+      console.log(`\n--- Fetching page ${pageCount} ---`);
+      console.log('getAllCustomers - Page endpoint:', apiEndpoint.substring(0, 200) + '...');
+      
       try {
+        const pageStartTime = Date.now();
         const response = await axios.get(apiEndpoint, { headers });
+        const pageDuration = Date.now() - pageStartTime;
+        
+        console.log(`getAllCustomers - Page ${pageCount} response time: ${pageDuration}ms`);
+        console.log('getAllCustomers - Response status:', response.status);
+        console.log('getAllCustomers - Response has value:', !!response.data?.value);
+        console.log('getAllCustomers - Response value is array:', Array.isArray(response.data?.value));
         
         if (response.data?.value && Array.isArray(response.data.value)) {
           allCustomers = allCustomers.concat(response.data.value);
-          console.log(`getAllCustomers - Fetched ${response.data.value.length} customers, total: ${allCustomers.length}`);
+          console.log(`getAllCustomers - Page ${pageCount}: Fetched ${response.data.value.length} customers`);
+          console.log(`getAllCustomers - Total customers so far: ${allCustomers.length}`);
+        } else {
+          console.warn('getAllCustomers - Page response has no value array:', response.data);
         }
 
         // Lấy nextLink để tiếp tục lấy trang tiếp theo
         apiEndpoint = response.data["@odata.nextLink"] || null;
+        if (apiEndpoint) {
+          console.log('getAllCustomers - Has next page, continuing...');
+        } else {
+          console.log('getAllCustomers - No more pages');
+        }
       } catch (error: any) {
-        console.error('getAllCustomers - Error fetching customers:', error);
+        console.error('\n--- ERROR FETCHING CUSTOMERS ---');
+        console.error('getAllCustomers - Error type:', error.constructor.name);
+        console.error('getAllCustomers - Error message:', error.message);
+        console.error('getAllCustomers - Error stack:', error.stack);
+        
         if (axios.isAxiosError(error)) {
           const errorDetails = error.response?.data;
-          console.error('getAllCustomers - Error response:', JSON.stringify(errorDetails, null, 2));
-          console.error('getAllCustomers - Error status:', error.response?.status);
+          console.error('getAllCustomers - Is Axios Error: Yes');
+          console.error('getAllCustomers - Error response status:', error.response?.status);
+          console.error('getAllCustomers - Error response headers:', error.response?.headers);
+          console.error('getAllCustomers - Error response data:', JSON.stringify(errorDetails, null, 2));
+          console.error('getAllCustomers - Error config method:', error.config?.method);
           console.error('getAllCustomers - Error config URL:', error.config?.url);
+          console.error('getAllCustomers - Error config headers:', error.config?.headers);
           console.error('getAllCustomers - Filter used:', filter);
+          console.error('getAllCustomers - Failed endpoint:', apiEndpoint);
           
           // Trả về lỗi chi tiết hơn
-          return res.status(error.response?.status || 500).json({
+          const errorResponse = {
             error: "Error fetching data from CRM",
             details: errorDetails || error.message,
             filter: filter,
-            endpoint: apiEndpoint,
-            message: errorDetails?.error?.message || errorDetails?.message || "Unknown error"
+            endpoint: apiEndpoint?.substring(0, 500),
+            message: errorDetails?.error?.message || errorDetails?.message || error.message || "Unknown error",
+            statusCode: error.response?.status,
+            requestUrl: error.config?.url
+          };
+          
+          console.error('getAllCustomers - Returning error response:', JSON.stringify(errorResponse, null, 2));
+          return res.status(error.response?.status || 500).json(errorResponse);
+        } else {
+          console.error('getAllCustomers - Not an Axios error');
+          return res.status(500).json({ 
+            error: "Internal server error",
+            message: error.message,
+            stack: error.stack
           });
         }
-        return res.status(500).json({ error: "Internal server error" });
       }
     }
+    
+    console.log(`\n--- Finished fetching all pages ---`);
+    console.log(`getAllCustomers - Total pages fetched: ${pageCount}`);
+    console.log(`getAllCustomers - Total customers: ${allCustomers.length}`);
 
     // Nếu không có khách hàng nào
     if (allCustomers.length === 0) {
@@ -312,24 +388,39 @@ const getAllCustomers = async (req: NextApiRequest, res: NextApiResponse) => {
       console.log(`getAllCustomers - Processed batch ${Math.floor(i / BATCH_SIZE) + 1}, total: ${processedCustomers.length}`);
     }
 
+    const totalTime = Date.now() - startTime;
+    console.log(`\n--- SUCCESS ---`);
+    console.log(`getAllCustomers - Total processing time: ${totalTime}ms`);
+    console.log(`getAllCustomers - Returning ${processedCustomers.length} customers`);
+    console.log('========== getAllCustomers END ==========\n');
+    
     return res.status(200).json({
       data: processedCustomers,
       totalCount: processedCustomers.length
     });
 
   } catch (error: any) {
-    console.error('getAllCustomers - Unhandled error:', error);
+    const totalTime = Date.now() - startTime;
+    console.error('\n--- UNHANDLED ERROR ---');
+    console.error('getAllCustomers - Total time before error:', totalTime + 'ms');
+    console.error('getAllCustomers - Error type:', error?.constructor?.name);
+    console.error('getAllCustomers - Error message:', error?.message);
+    console.error('getAllCustomers - Error stack:', error?.stack);
+    console.error('getAllCustomers - Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+    console.error('========== getAllCustomers ERROR END ==========\n');
     
     if (axios.isAxiosError(error)) {
       return res.status(error.response?.status || 500).json({
         error: "Error fetching data",
         details: error.response?.data || error.message,
+        statusCode: error.response?.status
       });
     }
     
     return res.status(500).json({ 
       error: "Internal server error",
       message: error?.message || String(error),
+      stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined
     });
   }
 };
