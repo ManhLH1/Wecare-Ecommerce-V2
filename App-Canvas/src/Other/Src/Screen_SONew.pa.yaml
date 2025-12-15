@@ -1,0 +1,2311 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  Screen_SONew:
+    Properties:
+      Height: =900//Max(App.Height, App.MinScreenHeight)
+      OnHidden: =Set(is_Screen_SO_New,false);
+      OnVisible: =Set(is_Screen_SO_New,true);
+    Children:
+      - ScreenContainer2:
+          Control: GroupContainer@1.3.0
+          Variant: AutoLayout
+          Properties:
+            Fill: =RGBA(245, 245, 245, 1)
+            Height: =826
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Horizontal
+            LayoutGap: =12
+            LayoutOverflowY: =LayoutOverflow.Scroll
+            LayoutWrap: =true
+            PaddingBottom: =12
+            PaddingLeft: =12
+            PaddingRight: =12
+            PaddingTop: =12
+            Width: =Parent.Width
+            Y: =74
+          Children:
+            - LeftContainer1:
+                Control: GroupContainer@1.3.0
+                Variant: AutoLayout
+                Properties:
+                  Fill: =RGBA(255, 255, 255, 1)
+                  FillPortions: =0
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutMinHeight: =400
+                  LayoutMinWidth: =150
+                  LayoutOverflowY: =LayoutOverflow.Scroll
+                  RadiusBottomLeft: =8
+                  RadiusBottomRight: =8
+                  RadiusTopLeft: =8
+                  RadiusTopRight: =8
+                  Width: =600
+                Children:
+                  - Container_Left:
+                      Control: GroupContainer@1.3.0
+                      Variant: ManualLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        LayoutMinHeight: =1300
+                        RadiusBottomLeft: =0
+                        RadiusBottomRight: =0
+                        RadiusTopLeft: =0
+                        RadiusTopRight: =0
+                      Children:
+                        - Container_ThietlapSP:
+                            Control: GroupContainer@1.3.0
+                            Variant: ManualLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Height: =1200
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              Width: =600
+                              Y: =135
+                            Children:
+                              - TextCanvas_prmotion:
+                                  Control: Text@0.0.51
+                                  Properties:
+                                    Font: =Font.'Open Sans'
+                                    Height: =35
+                                    Size: =16
+                                    Text: ="Promotion"
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    Visible: =Dropdown_Promotion.Visible
+                                    Weight: ='TextCanvas.Weight'.Semibold
+                                    Width: =Parent.Width - 30
+                                    X: =15
+                                    Y: =NumberInput_SL.Y + NumberInput_SL.Height
+                              - TextCanvas1_31:
+                                  Control: Text@0.0.51
+                                  Properties:
+                                    Font: =Font.'Open Sans'
+                                    Height: =40
+                                    Size: =22
+                                    Text: '="Thiết lập sản phẩm" '
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    Weight: ='TextCanvas.Weight'.Bold
+                                    Width: =500
+                                    X: =50
+                                    Y: =IconFontAwesome1_13.Y
+                              - IconFontAwesome1_13:
+                                  Control: CodeComponent
+                                  ComponentName: crdfd_CustomComponent.IconFontAwesome
+                                  Properties:
+                                    Height: =37
+                                    Width: =40
+                                    X: =10
+                                    Y: =10
+                                    iconHtml: |-
+                                      ="<i class='fa-solid fa-gear' style='color: #04a1b3;'></i>"
+                                    iconSize: =30
+                              - cb_SanPham_SO_New:
+                                  Control: Classic/ComboBox@2.4.0
+                                  Properties:
+                                    AccessibleLabel: =
+                                    BorderColor: =RGBA(202, 202, 202, 1)
+                                    ChevronBackground: =RGBA(255, 255, 255, 1)
+                                    ChevronFill: =RGBA(0, 0, 0, 1)
+                                    ChevronHoverBackground: =RGBA(0, 0, 0, 1)
+                                    ChevronHoverFill: =RGBA(255, 255, 255, 1)
+                                    Color: =RGBA(77, 77, 77, 1)
+                                    DisplayFields: =["crdfd_name"]
+                                    Font: =Font.'Open Sans'
+                                    Height: =32
+                                    HoverFill: =RGBA(255, 255, 255, 1)
+                                    InputTextPlaceholder: ="Chọn sản phẩm"
+                                    Items: =List_Product
+                                    OnChange: =
+                                    PressedColor: =RGBA(116, 116, 116, 1)
+                                    SearchFields: =["crdfd_name"]
+                                    SelectMultiple: =false
+                                    SelectionColor: =RGBA(255, 255, 255, 1)
+                                    SelectionFill: =RGBA(116, 192, 252, 1)
+                                    Size: =12
+                                    Tooltip: =
+                                    Width: =Parent.Width - 30
+                                    X: =15
+                                    Y: =85
+                              - TextCanvas_khachhang_4:
+                                  Control: Text@0.0.51
+                                  Properties:
+                                    Font: =Font.'Open Sans'
+                                    Height: =35
+                                    Size: =16
+                                    Text: ="Sản phẩm"
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    Weight: ='TextCanvas.Weight'.Semibold
+                                    Width: =225
+                                    X: =15
+                                    Y: =50
+                              - Dropdown_DVT_new:
+                                  Control: DropDown@0.0.45
+                                  Properties:
+                                    Appearance: ='DropdownCanvas.Appearance'.FilledLighter
+                                    BorderColor: =If(IsEmpty(var_list_gia_nhom),RGBA(184, 26, 28,1),RGBA(214, 221, 224, 1))
+                                    BorderRadius: =10
+                                    BorderStyle: =BorderStyle.Solid
+                                    BorderThickness: =1
+                                    DefaultSelectedItems: =First(List_DVT)
+                                    Fill: =RGBA(255, 255, 255, 1)
+                                    FontSize: =18
+                                    Height: =40
+                                    Items: =List_DVT
+                                    OnChange: =Reset(Dropdown_NhomGia_New)
+                                    Width: =280
+                                    X: =TextCanvas_DVT.X
+                                    Y: =158
+                                  Children:
+                                    - Đơn vị chuyển đổi-Transfome1:
+                                        Control: DropDownDataField@1.5.0
+                                        Variant: textualColumn
+                                        IsLocked: true
+                                        Properties:
+                                          FieldDisplayName: ="Đơn vị chuyển đổi-Transfome"
+                                          FieldName: ="crdfd_onvichuyenoitransfome"
+                                          FieldType: ="s"
+                                          Order: =1
+                              - TextCanvas_DVT:
+                                  Control: Text@0.0.51
+                                  Properties:
+                                    Font: =Font.'Open Sans'
+                                    FontColor: =If(IsEmpty(var_list_gia_nhom),RGBA(184, 26, 28,1),RGBA(45, 45, 45,1))
+                                    Height: =35
+                                    Size: =16
+                                    Text: =If(!IsEmpty(var_list_gia_nhom) , "Đơn vị tính","Đơn vị tính """ & Dropdown_DVT_new.Selected.'Đơn vị chuyển đổi-Transfome' & """ chưa có giá!")
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    Weight: ='TextCanvas.Weight'.Semibold
+                                    Width: =300
+                                    X: =15
+                                    Y: =123
+                              - Dropdown_VAT_New:
+                                  Control: DropDown@0.0.45
+                                  Properties:
+                                    Appearance: ='DropdownCanvas.Appearance'.FilledLighter
+                                    BorderColor: =RGBA(214, 221, 224, 1)
+                                    BorderRadius: =10
+                                    BorderStyle: =BorderStyle.Solid
+                                    BorderThickness: =1
+                                    DefaultSelectedItems: |-
+                                      =[
+                                          If(
+                                              var_selected_VAT_SO = VAT_choice.'Có VAT' And var_selected_SP.'Bản chất giá phát ra' = 'Bản chất giá phát ra (products)'.'Giá đã bao gồm VAT( VAT hỗ trợ)',
+                                              Switch(
+                                                  var_selected_SP.GTGT,
+                                                  'GTGT (products)'.'10%',
+                                                  10,
+                                                  'GTGT (products)'.'8%',
+                                                  8,
+                                                  'GTGT (products)'.'5%',
+                                                  5,
+                                                  'GTGT (products)'.'0%',
+                                                  0
+                                              ),
+                                              If(
+                                                  var_selected_VAT_SO = VAT_choice.'Có VAT',
+                                                  Dropdown_NhomGia_New.Selected.GTGT * 100,
+                                                  0
+                                              )
+                                          )
+                                      ]
+                                    DisplayMode: |-
+                                      =If(
+                                          var_selected_VAT_SO = VAT_choice.'Có VAT',
+                                          DisplayMode.Edit,
+                                          DisplayMode.View
+                                      )
+                                    Fill: =RGBA(255, 255, 255, 1)
+                                    FontSize: =18
+                                    Height: =40
+                                    Items: |-
+                                      =Sort(
+                                          If(
+                                              var_selected_VAT_SO = VAT_choice.'Có VAT' And var_selected_SP.'Bản chất giá phát ra' = 'Bản chất giá phát ra (products)'.'Giá đã bao gồm VAT( VAT hỗ trợ)',
+                                              Switch(
+                                                  var_selected_SP.GTGT,
+                                                  'GTGT (products)'.'10%',
+                                                  [10],
+                                                  'GTGT (products)'.'8%',
+                                                  [8],
+                                                  'GTGT (products)'.'5%',
+                                                  [5],
+                                                  'GTGT (products)'.'0%',
+                                                  [0]
+                                              ),
+                                              If(
+                                                  var_selected_VAT_SO = VAT_choice.'Có VAT',
+                                                  [
+                                                      10,
+                                                      8,
+                                                      0
+                                                  ],
+                                                  [0]
+                                              )
+                                          ),
+                                          Value,
+                                          SortOrder.Descending
+                                      )
+                                    Width: =280
+                                    X: =307
+                                    Y: =158
+                                  Children:
+                                    - Value6:
+                                        Control: DropDownDataField@1.5.0
+                                        Variant: textualColumn
+                                        IsLocked: true
+                                        Properties:
+                                          FieldDisplayName: ="Value"
+                                          FieldName: ="Value"
+                                          FieldType: ="n"
+                                          Order: =1
+                              - TextCanvas_khachhang_6:
+                                  Control: Text@0.0.51
+                                  Properties:
+                                    Font: =Font.'Open Sans'
+                                    Height: =35
+                                    Size: =16
+                                    Text: '="Thuế VAT (%)" '
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    Weight: ='TextCanvas.Weight'.Semibold
+                                    Width: =225
+                                    X: =307
+                                    Y: =123
+                              - TextCanvas_khachhang_7:
+                                  Control: Text@0.0.51
+                                  Properties:
+                                    Font: =Font.'Open Sans'
+                                    Height: =35
+                                    Size: =16
+                                    Text: ="Số lượng"
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    Weight: ='TextCanvas.Weight'.Semibold
+                                    Width: =225
+                                    X: =15
+                                    Y: =lbl_tonkhobomua_kt.Height + lbl_tonkhobomua_kt.Y
+                              - txt_Gia_SONew:
+                                  Control: Classic/TextInput@2.3.2
+                                  Properties:
+                                    Align: =Align.Right
+                                    BorderColor: =RGBA(219, 219, 219, 1)
+                                    BorderThickness: =1
+                                    Color: =RGBA(77, 77, 77, 1)
+                                    Default: =gia_duyet
+                                    DisabledFill: =RGBA(0, 0, 0, 0)
+                                    DisplayMode: |-
+                                      =If(
+                                          Checkbox_DuyetGiaSO.Checked,
+                                          If(
+                                              dp_nhapthucong_theochietkhau_SO.Selected.Value = "Nhập thủ công",
+                                              DisplayMode.Edit,
+                                              DisplayMode.Disabled
+                                          ),
+                                          DisplayMode.Disabled
+                                      )
+                                    Format: =TextFormat.Number
+                                    Height: =35
+                                    HoverBorderColor: =RGBA(186, 202, 226, 1)
+                                    HoverFill: =RGBA(0, 0, 0, 0)
+                                    OnChange: |-
+                                      =UpdateContext({so_luong: txt_Gia_SONew.Text})
+                                    PressedFill: =
+                                    Size: =14
+                                    Visible: =!Dropdown_NhomGia_New.Visible
+                                    Width: =280
+                                    X: =307
+                                    Y: =NumberInput_SL.Y
+                              - Dropdown_NhomGia_New:
+                                  Control: DropDown@0.0.45
+                                  Properties:
+                                    Appearance: ='DropdownCanvas.Appearance'.FilledLighter
+                                    BorderColor: =RGBA(214, 221, 224, 1)
+                                    BorderRadius: =10
+                                    BorderStyle: =BorderStyle.Solid
+                                    BorderThickness: =1
+                                    DefaultSelectedItems: =First(var_list_gia_nhom)
+                                    Fill: =RGBA(255, 255, 255, 1)
+                                    FontSize: =18
+                                    Height: =40
+                                    Items: =var_list_gia_nhom
+                                    Visible: |-
+                                      =If(
+                                          (Checkbox_DuyetGiaSUPSO.Checked And CountRows(var_duyetgiasup) > 0),
+                                          false,
+                                          !Checkbox_DuyetGiaSO.Checked,
+                                          true,
+                                          false
+                                      )
+                                    Width: =280
+                                    X: =307
+                                    Y: =NumberInput_SL.Y
+                                  Children:
+                                    - Gia_format1:
+                                        Control: DropDownDataField@1.5.0
+                                        Variant: textualColumn
+                                        IsLocked: true
+                                        Properties:
+                                          FieldDisplayName: ="Gia_format"
+                                          FieldName: ="Gia_format"
+                                          FieldType: ="s"
+                                          Order: =1
+                              - TextCanvas_khachhang_8:
+                                  Control: Text@0.0.51
+                                  Properties:
+                                    Font: =Font.'Open Sans'
+                                    Height: =35
+                                    Size: =16
+                                    Text: ="Giá " & Dropdown_NhomGia_New.Selected.'Nhóm đối tượng text'
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    Weight: ='TextCanvas.Weight'.Semibold
+                                    Width: =225
+                                    X: =307
+                                    Y: =TextCanvas_khachhang_7.Y
+                              - NumberInput_SL:
+                                  Control: NumberInput@2.9.12
+                                  Properties:
+                                    Appearance: ='NumberInput.Appearance'.FilledLighter
+                                    BorderColor: =RGBA(214, 221, 224, 1)
+                                    BorderRadius: =10
+                                    BorderStyle: =BorderStyle.Solid
+                                    BorderThickness: =1
+                                    FontSize: =18
+                                    Height: =40
+                                    Min: =1
+                                    Precision: ='NumberInput.Precision'.'1'
+                                    Value: =1
+                                    Width: =280
+                                    X: =15
+                                    Y: =TextCanvas_khachhang_7.Height + TextCanvas_khachhang_7.Y
+                              - Dropdown_Promotion:
+                                  Control: DropDown@0.0.45
+                                  Properties:
+                                    Appearance: ='DropdownCanvas.Appearance'.FilledLighter
+                                    BorderColor: =RGBA(214, 221, 224, 1)
+                                    BorderRadius: =10
+                                    BorderStyle: =BorderStyle.Solid
+                                    BorderThickness: =1
+                                    DefaultSelectedItems: |-
+                                      =If(
+                                          !IsBlank(var_selected_maSP) And !IsBlank(txt_Gia_SONew.Text) And !Checkbox_DuyetGiaSO.Checked And !Checkbox_DuyetGiaSUPSO.Checked And Dropdown_NhomGia_New.Selected.'Loại bỏ Promotion' = "No" And !Checkbox_LoaiBoPromotion.Checked,
+                                          First(ListPromotion),
+                                          First([])
+                                      )
+                                    DisplayMode: =If(!IsBlank(var_selected_maSP) And !IsBlank(txt_Gia_SONew.Text) And !Checkbox_DuyetGiaSO.Checked And !Checkbox_DuyetGiaSUPSO.Checked And Dropdown_NhomGia_New.Selected.'Loại bỏ Promotion' = "No", DisplayMode.Edit, DisplayMode.Disabled)
+                                    Fill: =RGBA(255, 255, 255, 1)
+                                    FontSize: =18
+                                    Height: =40
+                                    Items: =ListPromotion
+                                    Width: =Parent.Width - 130
+                                    X: =15
+                                    Y: =TextCanvas_prmotion.Y + TextCanvas_prmotion .Height
+                                  Children:
+                                    - NamePromotion2:
+                                        Control: DropDownDataField@1.5.0
+                                        Variant: textualColumn
+                                        IsLocked: true
+                                        Properties:
+                                          FieldDisplayName: ="NamePromotion"
+                                          FieldName: ="NamePromotion"
+                                          FieldType: ="s"
+                                          Order: =1
+                              - Container_total:
+                                  Control: GroupContainer@1.3.0
+                                  Variant: ManualLayout
+                                  Properties:
+                                    BorderColor: =RGBA(240, 253, 246, 1)
+                                    BorderThickness: =0.5
+                                    Fill: =RGBA(240, 253, 244, 1)
+                                    Height: =161
+                                    RadiusBottomLeft: =10
+                                    RadiusBottomRight: =10
+                                    RadiusTopLeft: =10
+                                    RadiusTopRight: =10
+                                    Width: =570
+                                    X: =15
+                                    Y: =Dropdown_Promotion.Height + Dropdown_Promotion.Y + 20
+                                  Children:
+                                    - TextCanvas_khachhang_10:
+                                        Control: Text@0.0.51
+                                        Properties:
+                                          Font: =Font.'Open Sans'
+                                          FontColor: =RGBA(45, 128, 40, 1)
+                                          Height: =30
+                                          PaddingLeft: =5
+                                          PaddingTop: =5
+                                          Size: =16
+                                          Text: ="Chiết khấu:"
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          Weight: ='TextCanvas.Weight'.Medium
+                                          Width: =152
+                                    - TextCanvas_KM:
+                                        Control: Text@0.0.51
+                                        Properties:
+                                          Font: =Font.'Open Sans'
+                                          FontColor: =RGBA(45, 128, 40, 1)
+                                          Height: =30
+                                          PaddingTop: =5
+                                          Size: =16
+                                          Text: |-
+                                            ="Giảm: " & If(
+                                                dp_nhapthucong_theochietkhau_SO.Selected.Value = "Theo chiết khấu",
+                                                Text(gia_theochietkhau * dp_theochietkhau_SO.Selected.Value/100,"#,### đ"),
+                                                If(
+                                                    var_selected_Promotion.VND_Percent = 'VNĐ/% (Promotion)'.VNĐ,
+                                                    Text(
+                                                        Value_Promotion,
+                                                        "#,###"
+                                                    ) & " + " & Value_Promtion_Muakem,
+                                                    Text(Value_Promotion) & "%" & " + " & Value_Promtion_Muakem & "%"
+                                                )
+                                            )
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          Visible: =!IsBlank(cb_SanPham_SO_New.Selected)
+                                          Weight: ='TextCanvas.Weight'.Semibold
+                                          Width: =380
+                                          X: =97
+                                    - TextCanvas_khachhang_12:
+                                        Control: Text@0.0.51
+                                        Properties:
+                                          Font: =Font.'Open Sans'
+                                          FontColor: =RGBA(45, 128, 40, 1)
+                                          Height: =30
+                                          PaddingLeft: =5
+                                          PaddingTop: =5
+                                          Size: =16
+                                          Text: |-
+                                            ="Giá sau giảm: "
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          Weight: ='TextCanvas.Weight'.Medium
+                                          Width: =152
+                                          Y: =30
+                                    - TextCanvas_GiaSauGiam:
+                                        Control: Text@0.0.51
+                                        Properties:
+                                          Font: =Font.'Open Sans'
+                                          FontColor: =RGBA(45, 128, 40, 1)
+                                          Height: =30
+                                          PaddingLeft: =5
+                                          PaddingTop: =5
+                                          Size: =16
+                                          Text: |-
+                                            =With(
+                                                {
+                                                    Gia: If(
+                                                        dp_nhapthucong_theochietkhau_SO.Selected.Value = "Theo chiết khấu",
+                                                        gia_theochietkhau,
+                                                        Value(txt_Gia_SONew.Text)
+                                                    )
+                                                },
+                                                Text(
+                                                    If(
+                                                        cb_donhang_SO_new.Selected.'Loại hóa đơn' = 'Loại hóa đơn (Sale_Orders)'.'Hộ kinh doanh' And cb_donhang_SO_new.Selected.VAT = VAT_choice.'Không VAT',
+                                                        // Nếu có xuất hóa đơn và không VAT → áp thêm 1.5%
+                                                        If(
+                                                            var_selected_Promotion.VND_Percent = 'VNĐ/% (Promotion)'.VNĐ And Gia > 0,
+                                                            (Gia - Value_Promotion - Value_Promtion_Muakem) * 1.015,
+                                                            (Gia * (1 - (Value_Promotion + Value_Promtion_Muakem) / 100)) * 1.015
+                                                        ),
+                                                    // Nếu không khớp điều kiện trên → không cộng VAT
+                                                        If(
+                                                            var_selected_Promotion.VND_Percent = 'VNĐ/% (Promotion)'.VNĐ And Gia > 0,
+                                                            Gia - Value_Promotion - Value_Promtion_Muakem,
+                                                            Gia * (1 - (Value_Promotion + Value_Promtion_Muakem) / 100)
+                                                        )
+                                                    ),
+                                                    "#,###"
+                                                )
+                                            )
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          Visible: =!IsBlank(cb_SanPham_SO_New.Selected)
+                                          Weight: ='TextCanvas.Weight'.Semibold
+                                          Width: =464
+                                          X: =106
+                                          Y: =30
+                                    - TextCanvas_khachhang_14:
+                                        Control: Text@0.0.51
+                                        Properties:
+                                          Font: =Font.'Open Sans'
+                                          FontColor: =RGBA(45, 128, 40, 1)
+                                          Height: =30
+                                          PaddingLeft: =5
+                                          PaddingTop: =5
+                                          Size: =16
+                                          Text: ="Thành tiền:"
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          Weight: ='TextCanvas.Weight'.Medium
+                                          Width: =152
+                                          Y: =60
+                                    - TextCanvas_ThanhTien:
+                                        Control: Text@0.0.51
+                                        Properties:
+                                          Font: =Font.'Open Sans'
+                                          FontColor: =RGBA(45, 128, 40, 1)
+                                          Height: =30
+                                          PaddingLeft: =3
+                                          PaddingTop: =5
+                                          Size: =16
+                                          Text: |+
+                                            =If(
+                                                var_Nganh_nghe = "Shop",
+                                                Text(
+                                                    NumberInput_SL.Value * (Value(TextCanvas_GiaSauGiam.Text)),
+                                                    "#,###"
+                                                ),
+                                                Text(
+                                                    NumberInput_SL.Value * Value(txt_Gia_SONew.Text),
+                                                    "#,###"
+                                                )
+                                            )
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          Visible: =!IsBlank(cb_SanPham_SO_New.Selected)
+                                          Weight: ='TextCanvas.Weight'.Semibold
+                                          Width: =464
+                                          X: =94
+                                          Y: =60
+                                    - TextCanvas_khachhang_16:
+                                        Control: Text@0.0.51
+                                        Properties:
+                                          Font: =Font.'Open Sans'
+                                          FontColor: =RGBA(45, 128, 40, 1)
+                                          Height: =30
+                                          PaddingLeft: =5
+                                          PaddingTop: =5
+                                          Size: =16
+                                          Text: ="VAT(" & var_selected_VAT & "%):"
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          Weight: ='TextCanvas.Weight'.Medium
+                                          Width: =152
+                                          Y: =90
+                                    - TextCanvas_GiaVAT:
+                                        Control: Text@0.0.51
+                                        Properties:
+                                          Font: =Font.'Open Sans'
+                                          FontColor: =RGBA(45, 128, 40, 1)
+                                          Height: =30
+                                          PaddingTop: =5
+                                          Size: =16
+                                          Text: |-
+                                            =If(
+                                                var_selected_VAT = 0,
+                                                "0",
+                                                Text(
+                                                    Value(TextCanvas_ThanhTien.Text) * (var_selected_VAT / 100),
+                                                    "#,###"
+                                                )
+                                            )
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          Visible: =!IsBlank(cb_SanPham_SO_New.Selected)
+                                          Weight: ='TextCanvas.Weight'.Semibold
+                                          Width: =464
+                                          X: =91
+                                          Y: =90
+                                    - TextCanvas_TongTien_SONew:
+                                        Control: Text@0.0.51
+                                        Properties:
+                                          Font: =Font.'Open Sans'
+                                          FontColor: =RGBA(45, 128, 40, 1)
+                                          Height: =30
+                                          PaddingBottom: =5
+                                          PaddingLeft: =5
+                                          Size: =16
+                                          Text: |-
+                                            ="Tổng tiền: "
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          Weight: ='TextCanvas.Weight'.Semibold
+                                          Width: =100
+                                          Y: =130
+                                    - Rectangle4:
+                                        Control: Rectangle@2.3.0
+                                        Properties:
+                                          Fill: =RGBA(166, 215, 153, 1)
+                                          Height: =1
+                                          Width: =Parent.Width - 30
+                                          X: =Parent.X
+                                          Y: =125
+                                    - TextCanvas_TongTien_SO:
+                                        Control: Text@0.0.51
+                                        Properties:
+                                          Font: =Font.'Open Sans'
+                                          FontColor: =RGBA(45, 128, 40, 1)
+                                          Height: =30
+                                          Size: =16
+                                          Text: =Text(TextCanvas_ThanhTien.Text + TextCanvas_GiaVAT.Text, "#,###")
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          Visible: =!IsBlank(cb_SanPham_SO_New.Selected)
+                                          Weight: ='TextCanvas.Weight'.Semibold
+                                          Width: =200
+                                          X: =95
+                                          Y: =128
+                              - Container_Setup_Duyet:
+                                  Control: GroupContainer@1.3.0
+                                  Variant: ManualLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Height: =541
+                                    Width: =600
+                                    Y: =Container_total.Y + Container_total.Height
+                                  Children:
+                                    - TextCanvas_Option:
+                                        Control: Text@0.0.51
+                                        Properties:
+                                          Font: =Font.'Open Sans'
+                                          Height: =40
+                                          Size: =16
+                                          Text: ="Option"
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          Weight: ='TextCanvas.Weight'.Semibold
+                                          Width: =100
+                                          X: =145
+                                          Y: =252
+                                    - TextCanvas_ngaygiao_SO:
+                                        Control: Text@0.0.51
+                                        Properties:
+                                          Font: =Font.'Open Sans'
+                                          Height: =35
+                                          Size: =16
+                                          Text: ="Ngày giao hàng"
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          Weight: ='TextCanvas.Weight'.Semibold
+                                          Width: =225
+                                          X: =15
+                                          Y: =10
+                                    - Dropdown_CaGiaoSO:
+                                        Control: DropDown@0.0.45
+                                        Properties:
+                                          Appearance: ='DropdownCanvas.Appearance'.FilledLighter
+                                          BorderColor: =RGBA(214, 221, 224, 1)
+                                          BorderRadius: =10
+                                          BorderStyle: =BorderStyle.Solid
+                                          BorderThickness: =1
+                                          DefaultSelectedItems: |-
+                                            =If(var_Ca, {Ca:"Ca sáng"}, {Ca: "Ca chiều"})
+                                          DisplayMode: =If(var_Nganh_nghe = "Shop" And !(cb_donhang_SO_new.Selected.'Mã Đơn Hàng'), DisplayMode.Edit,DisplayMode.Disabled)
+                                          Fill: =RGBA(255, 255, 255, 1)
+                                          FontSize: =18
+                                          Height: =40
+                                          Items: =colCa
+                                          Width: =280
+                                          X: =307
+                                          Y: =45
+                                        Children:
+                                          - Ca2:
+                                              Control: DropDownDataField@1.5.0
+                                              Variant: textualColumn
+                                              IsLocked: true
+                                              Properties:
+                                                FieldDisplayName: ="Ca"
+                                                FieldName: ="Ca"
+                                                FieldType: ="s"
+                                                Order: =1
+                                    - TextCanvas_cagiaohang_SO:
+                                        Control: Text@0.0.51
+                                        Properties:
+                                          Font: =Font.'Open Sans'
+                                          Height: =35
+                                          Size: =16
+                                          Text: ="Ca giao hàng"
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          Weight: ='TextCanvas.Weight'.Semibold
+                                          Width: =225
+                                          X: =305
+                                          Y: =10
+                                    - TextCanvas_KenhtiepnhanSO:
+                                        Control: Text@0.0.51
+                                        Properties:
+                                          Font: =Font.'Open Sans'
+                                          Height: =35
+                                          Size: =16
+                                          Text: ="Kênh tiếp nhận"
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          Weight: ='TextCanvas.Weight'.Semibold
+                                          Width: =225
+                                          X: =15
+                                          Y: =89
+                                    - Dropdown_KhoDapUngSO:
+                                        Control: DropDown@0.0.45
+                                        Properties:
+                                          Appearance: ='DropdownCanvas.Appearance'.FilledLighter
+                                          BorderColor: =RGBA(214, 221, 224, 1)
+                                          BorderRadius: =10
+                                          BorderStyle: =BorderStyle.Solid
+                                          BorderThickness: =1
+                                          DefaultSelectedItems: =LookUp(var_filterkho,'Tên kho' =First([var_MultiChoiceKho.'Vị trí kho'.'Tên kho']).Value)
+                                          Fill: =RGBA(255, 255, 255, 1)
+                                          FontSize: =18
+                                          Height: =40
+                                          Items: =var_filterkho
+                                          Width: =280
+                                          X: =307
+                                          Y: =124
+                                        Children:
+                                          - crdfd_name1:
+                                              Control: DropDownDataField@1.5.0
+                                              Variant: textualColumn
+                                              IsLocked: true
+                                              Properties:
+                                                FieldDisplayName: ="crdfd_name"
+                                                FieldName: ="crdfd_name"
+                                                FieldType: ="s"
+                                                Order: =1
+                                    - TextCanvas_KhodapungSO:
+                                        Control: Text@0.0.51
+                                        Properties:
+                                          Font: =Font.'Open Sans'
+                                          Height: =35
+                                          Size: =16
+                                          Text: ="Kho đáp ứng"
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          Weight: ='TextCanvas.Weight'.Semibold
+                                          Width: =225
+                                          X: =307
+                                          Y: =89
+                                    - DatePicker_NgayGiaoSO:
+                                        Control: DatePicker@0.0.46
+                                        Properties:
+                                          Appearance: ='DatePickerCanvas.Appearance'.Outline
+                                          Font: =Font.'Open Sans'
+                                          FontSize: =18
+                                          Format: ="dd/mm/yyyy"
+                                          Height: =40
+                                          OnChange: |-
+                                            =If(
+                                                var_Nganh_nghe = "Shop",
+                                                If(
+                                                    DateValue(DatePicker_NgayGiaoSO.SelectedDate) < DateValue(ngay_giao),
+                                                    Notify(
+                                                        "Ngày giao dự kiến không hợp lệ!!!",
+                                                        NotificationType.Warning,
+                                                        1000
+                                                    );
+                                                    Reset(DatePicker_NgayGiaoSO)
+                                                ),
+                                                If(
+                                                    DatePicker_NgayGiaoSO.SelectedDate < Max(
+                                                        formData_new,
+                                                        'Ngày giao'
+                                                    ) || (DatePicker_NgayGiaoSO.SelectedDate = Today() && Hour(Now()) >= 15),
+                                                    Notify(
+                                                        "Ngày giao dự kiến không hợp lệ",
+                                                        NotificationType.Warning,
+                                                        1000
+                                                    );
+                                                    Reset(DatePicker_NgayGiaoSO),
+                                                    UpdateIf(
+                                                        formData_new,
+                                                        true,
+                                                        {'Ngày giao': DateValue(DatePicker_NgayGiaoSO.SelectedDate)}
+                                                    )
+                                                )
+                                            )
+                                          Placeholder: ="Chọn ngày..."
+                                          SelectedDate: |-
+                                            =If(
+                                                var_Nganh_nghe = "Shop",
+                                                ngay_giao,
+                                                If(
+                                                    Hour(Now()) >= 15,
+                                                    DateAdd(
+                                                        Today(),
+                                                        1
+                                                    ),
+                                                    Today()
+                                                )
+                                            )
+                                          Width: =280
+                                          X: =15
+                                          Y: =45
+                                    - Dropdown_KenhTiepNhanSO:
+                                        Control: DropDown@0.0.45
+                                        Properties:
+                                          Appearance: ='DropdownCanvas.Appearance'.FilledLighter
+                                          BorderColor: =RGBA(214, 221, 224, 1)
+                                          BorderRadius: =10
+                                          BorderStyle: =BorderStyle.Solid
+                                          BorderThickness: =1
+                                          DefaultSelectedItems: =//[If(!IsBlank(var_KenhTiepNhan), var_KenhTiepNhan, First(Choices(Sale_Orders.'Kênh tiếp nhận')).Value)]
+                                          DisplayMode: =If(var_Nganh_nghe = "Shop" And !(cb_donhang_SO_new.Selected.'Mã Đơn Hàng'), DisplayMode.Edit,DisplayMode.Disabled)
+                                          Fill: =RGBA(255, 255, 255, 1)
+                                          FontSize: =18
+                                          Height: =40
+                                          Items: =Choices(Sale_Orders.'Kênh tiếp nhận')
+                                          OnChange: |-
+                                            =//UpdateContext({var_kenhtiepnhan_isSelected: true});
+                                          Visible: =false
+                                          Width: =280
+                                          X: =15
+                                          Y: =124
+                                        Children:
+                                          - Value8:
+                                              Control: DropDownDataField@1.5.0
+                                              Variant: textualColumn
+                                              IsLocked: true
+                                              Properties:
+                                                FieldDisplayName: ="Value"
+                                                FieldName: ="Value"
+                                                FieldType: ="l"
+                                                Order: =1
+                                    - TextCanvas_nguoiduyetSO:
+                                        Control: Text@0.0.51
+                                        Properties:
+                                          Font: =Font.'Open Sans'
+                                          Height: =35
+                                          Size: =16
+                                          Text: ="Người duyệt"
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          Weight: ='TextCanvas.Weight'.Semibold
+                                          Width: =225
+                                          X: =15
+                                          Y: =164
+                                    - Dropdown_NguoiDuyetSO:
+                                        Control: DropDown@0.0.45
+                                        Properties:
+                                          Appearance: ='DropdownCanvas.Appearance'.FilledLighter
+                                          BorderColor: =RGBA(214, 221, 224, 1)
+                                          BorderRadius: =10
+                                          BorderStyle: =BorderStyle.Solid
+                                          BorderThickness: =1
+                                          DefaultSelectedItems: |-
+                                            =If(
+                                                Checkbox_DuyetGiaSO.Checked Or Checkbox_DuyetGiaSUPSO.Checked,
+                                                If(
+                                                    var_Nganh_nghe = "Shop",
+                                                    If(
+                                                        !IsBlank(First(var_duyetgiasup).'Người duyệt'.Name) And Checkbox_DuyetGiaSUPSO.Checked,
+                                                        [First(var_duyetgiasup).'Người duyệt'.Name],
+                                                        ["Lê Thị Ngọc Anh"]
+                                                    ),
+                                                    ["Phạm Thị Mỹ Hương"]
+                                                ),
+                                                []
+                                            )
+                                          Fill: =RGBA(255, 255, 255, 1)
+                                          FontSize: =18
+                                          Height: =40
+                                          Items: =var_table_supduyet
+                                          Width: =570
+                                          X: =15
+                                          Y: =199
+                                        Children:
+                                          - Value7:
+                                              Control: DropDownDataField@1.5.0
+                                              Variant: textualColumn
+                                              IsLocked: true
+                                              Properties:
+                                                FieldDisplayName: ="Value"
+                                                FieldName: ="Value"
+                                                FieldType: ="s"
+                                                Order: =1
+                                    - Checkbox_DuyetGiaSO:
+                                        Control: CheckBox@0.0.30
+                                        Properties:
+                                          Font: =Font.'Open Sans'
+                                          FontSize: =16
+                                          FontWeight: =FontWeight.Normal
+                                          Height: =40
+                                          Label: ="Duyệt giá"
+                                          OnCheck: =Reset(dp_theochietkhau_SO);
+                                          OnUncheck: |-
+                                            =Reset(dp_nhapthucong_theochietkhau_SO);
+                                            Reset(dp_theochietkhau_SO);
+                                          Width: =130
+                                          X: =15
+                                          Y: =252
+                                    - Checkbox_DuyetGiaSUPSO:
+                                        Control: CheckBox@0.0.30
+                                        Properties:
+                                          DisplayMode: |-
+                                            =If(
+                                                CountRows(var_duyetgiasup) > 0,
+                                                DisplayMode.Edit,
+                                                DisplayMode.Disabled
+                                            )
+                                          Font: =Font.'Open Sans'
+                                          FontSize: =16
+                                          FontWeight: =FontWeight.Normal
+                                          Height: =40
+                                          Label: ="Duyệt giá Supervisor"
+                                          OnCheck: =
+                                          Width: =210
+                                          X: =15
+                                          Y: =299
+                                    - Checkbox_DonHangGap:
+                                        Control: CheckBox@0.0.30
+                                        Properties:
+                                          DisplayMode: |+
+                                            = If(
+                                                NumberInput_SL.Value * var_selected_donvi.'Giá trị chuyển đổi (Chuyển đổi/chuẩn)' <= Var_ton_kho_lythuyet_bomua,
+                                                DisplayMode.Edit,
+                                                DisplayMode.Disabled
+                                            )
+                                          Font: =Font.'Open Sans'
+                                          FontSize: =16
+                                          FontWeight: =FontWeight.Normal
+                                          Height: =40
+                                          Label: ="Đơn hàng gấp"
+                                          X: =222
+                                          Y: =299
+                                    - TextCanvas_ghichuSO:
+                                        Control: Text@0.0.51
+                                        Properties:
+                                          Font: =Font.'Open Sans'
+                                          Height: =35
+                                          Size: =16
+                                          Text: ="Ghi chú"
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          Weight: ='TextCanvas.Weight'.Semibold
+                                          Width: =225
+                                          X: =15
+                                          Y: =338
+                                    - Button_ThemGioHangSO:
+                                        Control: Classic/Button@2.2.0
+                                        Properties:
+                                          BorderColor: =RGBA(16, 185, 129, 1)
+                                          DisplayMode: =If(!IsEmpty(var_list_gia_nhom) And !var_warning_gia.value,DisplayMode.Edit,DisplayMode.Disabled)
+                                          Fill: =RGBA(16,185,129,1)
+                                          FontWeight: =FontWeight.Bold
+                                          Height: =50
+                                          HoverBorderColor: =
+                                          HoverFill: =
+                                          OnSelect: "=If(\r\n    !IsBlank(var_selected_maSP) And !IsBlank(var_selected_donvi.'Đơn vị chuyển đổi-Transfome') And !IsBlank(NumberInput_SL.Value) And !IsBlank(txt_Gia_SONew.Text) Or (Dropdown_NguoiDuyetSO.Selected.Value And Dropdown_NguoiDuyetSO.Selected.Value),\r\n    UpdateIf(\r\n        formData_new,\r\n        ThisRecord.PromotionRecord.'Promotion type (text)' = var_selected_Promotion.TypePromotion && ThisRecord.PromotionRecord.'Cộng dồn số lượng' = 'Cộng dồn số lượng (Promotion)'.Yes && (IsBlank(ThisRecord.PromotionRecord.'Số lượng áp dụng') || var_cong_don + var_input_soluong >= ThisRecord.PromotionRecord.'Số lượng áp dụng'),\r\n        With(\r\n            {\r\n                giamgia: If(\r\n                    !IsBlank(ThisRecord.PromotionRecord.'Số lượng áp dụng mức 3') && var_cong_don + var_input_soluong >= ThisRecord.PromotionRecord.'Số lượng áp dụng mức 3' And (IsBlank(ThisRecord.PromotionRecord.'Điều khoản thanh toán áp dụng mức 3') Or ThisRecord.PromotionRecord.'Điều khoản thanh toán áp dụng mức 3' = var_selected_dieukhoanthanhtoan_choice),\r\n                    ThisRecord.PromotionRecord.'Value 3',\r\n                    If(\r\n                        (IsBlank(ThisRecord.PromotionRecord.'Điều khoản thanh toán áp dụng mức 2') Or ThisRecord.PromotionRecord.'Điều khoản thanh toán áp dụng mức 2' = var_selected_dieukhoanthanhtoan_choice),\r\n                        ThisRecord.PromotionRecord.'Value 2',\r\n                        ThisRecord.PromotionRecord.Value\r\n                    )\r\n                ),\r\n                Value_muakem: If(\r\n                    !IsBlank(ThisRecord.PromotionRecord.'Value mua kèm') && (IsBlank(ThisRecord.PromotionRecord.'Số lượng áp dụng mức 3') || ThisRecord.PromotionRecord.'Số lượng áp dụng mức 3' > var_input_soluong),\r\n                    ThisRecord.PromotionRecord.'Value mua kèm',\r\n                    0\r\n                ),\r\n                Record: ThisRecord\r\n            },\r\n            With(\r\n                {\r\n                    PPHD: If(\r\n                        cb_donhang_SO_new.Selected.'Loại hóa đơn' = 'Loại hóa đơn (Sale_Orders)'.'Hộ kinh doanh' And cb_donhang_SO_new.Selected.VAT = VAT_choice.'Không VAT',\r\n                        1.015,\r\n                        1\r\n                    ),\r\n                    Gia_da_chietkhau: If(\r\n                        Record.PromotionRecord.'VNĐ/% Text' = \"VNĐ\",\r\n                        Record.Giá - (giamgia+Value_muakem),\r\n                        Record.Giá * (1 - (giamgia + Value_muakem) / 100)\r\n                    )\r\n                },\r\n                {\r\n                    '% Giảm giá': If(\r\n                        var_selected_Promotion.VND_Percent = 'VNĐ/% (Promotion)'.'%',\r\n                        (giamgia + Value_muakem) / 100,\r\n                        giamgia + Value_muakem\r\n                    ),\r\n                    'Giá đã giảm': Gia_da_chietkhau * PPHD,\r\n                    'Tổng tiền': (Record.'Số lượng' * Gia_da_chietkhau * PPHD) + Record.VAT,\r\n                    Chietkhauphantram: If(\r\n                        var_selected_Promotion.VND_Percent = 'VNĐ/% (Promotion)'.'%' && var_selected_khachhang.'Ngành nghề' = 'Ngành nghề mới'.Shop,\r\n                        (giamgia + Value_muakem) / 100,\r\n                        0\r\n                    ),\r\n                    Chietkhautien: If(\r\n                        var_selected_Promotion.VND_Percent = 'VNĐ/% (Promotion)'.VNĐ && var_selected_khachhang.'Ngành nghề' = 'Ngành nghề mới'.Shop,\r\n                        (giamgia + Value_muakem),\r\n                        0\r\n                    )\r\n                }\r\n            )\r\n        )\r\n    );\r\n    UpdateIf(\r\n        formData_new,\r\n        var_count_thiet_bi_nuoc >= 200000000,\r\n        {'Ngày giao': DateValue(DatePicker_NgayGiaoSO.SelectedDate)}\r\n    );\r\n    Collect(\r\n        formData_new,\r\n        {\r\n            IDform: GUID(),\r\n            'Tên sản phẩm': var_selected_SP.'Tên sản phẩm',\r\n            'Mã sản phẩm': var_selected_SP.'Mã sản phẩm',\r\n            'Record sản phẩm': var_selected_SP,\r\n            'Mã nhóm SP': var_selected_manhomSP,\r\n            'Số lượng': Value(NumberInput_SL.Value),\r\n            'Đơn vị': var_selected_donvi.'Đơn vị chuyển đổi-Transfome',\r\n            'Record Đơn vị': var_selected_donvi,\r\n            Giá: Value(txt_Gia_SONew.Text),\r\n            'Giá đã giảm': If(\r\n                Value(txt_Gia_SONew.Text) = 0,\r\n                0,\r\n                Value(TextCanvas_GiaSauGiam.Text)\r\n            ),\r\n            '% Giảm giá': If(\r\n                var_selected_Promotion.VND_Percent = 'VNĐ/% (Promotion)'.VNĐ,\r\n                Value_Promotion + Value_Promtion_Muakem,\r\n                (Value_Promotion + Value_Promtion_Muakem) / 100\r\n            ),\r\n            'Thành Tiền': Value(TextCanvas_ThanhTien.Text),\r\n            'Tổng tiền': Value(TextCanvas_TongTien_SO.Text),\r\n            VAT: Dropdown_VAT_New.Selected.Value,\r\n            GTGT: Value(TextCanvas_GiaVAT.Text),\r\n            'Ngày giao': DateValue(DatePicker_NgayGiaoSO.SelectedDate),\r\n            Ca: Dropdown_CaGiaoSO.Selected.Ca,\r\n            'Ngày giao NM': DateValue(DatePicker_NgayGiaoSO.SelectedDate),\r\n            MaDH: cb_donhang_SO_new.Selected.'Mã Đơn Hàng',\r\n            STT: If(\r\n                Max(\r\n                    formData_new,\r\n                    STT\r\n                ) = 0,\r\n                1,\r\n                Max(\r\n                    formData_new,\r\n                    STT\r\n                ) + 1\r\n            ),\r\n            GhiChu: TextInput_GhiChuSO.Text,\r\n            duyet_gia: Dropdown_NguoiDuyetSO.Selected.Value,\r\n            DonhangGap: Checkbox_DonHangGap.Checked,\r\n            Chietkhauphantram: If(\r\n                var_selected_Promotion.VND_Percent = 'VNĐ/% (Promotion)'.'%' And var_selected_khachhang.'Ngành nghề' = 'Ngành nghề mới'.Shop,\r\n                (Value_Promotion + Value_Promtion_Muakem) / 100,\r\n                0\r\n            ),\r\n            Chietkhautien: If(\r\n                var_selected_Promotion.VND_Percent = 'VNĐ/% (Promotion)'.VNĐ And var_selected_khachhang.'Ngành nghề' = 'Ngành nghề mới'.Shop,\r\n                Value_Promotion + Value_Promtion_Muakem,\r\n                0\r\n            ),\r\n            promotiontext: If(\r\n                var_Nganh_nghe = \"Shop\",\r\n                var_selected_Promotion.NamePromotion\r\n            ),\r\n            PromotionRecord: LookUp(\r\n                Promotion,\r\n                ID = var_selected_Promotion.crdfd_promotionid\r\n            ),\r\n            id_duyetgiaSUP: First(var_duyetgiasup).ID,\r\n            'Kho đáp ứng': LookUp(\r\n                TanSuatKho,\r\n                TênSảnPhẩm = var_selected_SP.'Tên sản phẩm',\r\n                Kho\r\n            ),\r\n            DKTT: var_selected_Promotion.DKTT,\r\n            Createdon: Now(),\r\n            'Phụ phí hoá đơn': If(\r\n                cb_donhang_SO_new.Selected.'Loại hóa đơn' = 'Loại hóa đơn (Sale_Orders)'.'Hộ kinh doanh' And cb_donhang_SO_new.Selected.VAT = VAT_choice.'Không VAT' And var_Nganh_nghe = \"Shop\",\r\n                0.015,\r\n                0\r\n            )\r\n        }\r\n    );\r\n    If(\r\n        var_Nganh_nghe = \"Shop\",\r\n        UpdateIf(\r\n            Filter(\r\n                formData_new,\r\n                'Record sản phẩm'.'Cấp 2 NHSP' = \"Thiết bị nước\" || 'Record sản phẩm'.'Cấp 4' = \"Ống cứng PVC\"\r\n            ),\r\n            ((var_count_thiet_bi_nuoc >= 50 && var_sum_thiet_bi_nuoc >= 100000000) || var_sum_ong_cung >= 100000000),\r\n            {\r\n                'Ngày giao': DateAdd(\r\n                    DateTimeValue(ngay_giao),\r\n                    If(\r\n                        var_sum_thiet_bi_nuoc >= 200000000 || var_sum_ong_cung >= 200000000,\r\n                        24,\r\n                        12\r\n                    ),\r\n                    TimeUnit.Hours\r\n                ),\r\n                Ca: If(\r\n                    Hour(\r\n                        DateAdd(\r\n                            DateTimeValue(ngay_giao),\r\n                            If(\r\n                                (var_count_thiet_bi_nuoc >= 50 && var_sum_thiet_bi_nuoc >= 200000000) || var_sum_ong_cung >= 200000000,\r\n                                24,\r\n                                12\r\n                            ),\r\n                            TimeUnit.Hours\r\n                        )\r\n                    ) <= 12,\r\n                    'Ca (SOD báo giá)'.'Ca sáng',\r\n                    'Ca (SOD báo giá)'.'Ca chiều'\r\n                )\r\n            }\r\n        );\r\n        UpdateIf(\r\n            Filter(\r\n                formData_new,\r\n                'Record sản phẩm'.'Cấp 2 NHSP' = \"Thiết bị điện\"\r\n            ),\r\n            var_sum_thiet_bi_dien >= 200000000,\r\n            {\r\n                'Ngày giao': DateAdd(\r\n                    DateTimeValue(ngay_giao),\r\n                    12,\r\n                    TimeUnit.Hours\r\n                ),\r\n                Ca: If(\r\n                    Hour(\r\n                        DateAdd(\r\n                            DateTimeValue(ngay_giao),\r\n                            12,\r\n                            TimeUnit.Hours\r\n                        )\r\n                    ) >= 0 && Hour(\r\n                        DateAdd(\r\n                            DateTimeValue(ngay_giao),\r\n                            12,\r\n                            TimeUnit.Hours\r\n                        )\r\n                    ) <= 12,\r\n                    'Ca (SOD báo giá)'.'Ca sáng',\r\n                    'Ca (SOD báo giá)'.'Ca chiều'\r\n                )\r\n            }\r\n        );\r\n        UpdateIf(\r\n            Filter(\r\n                formData_new,\r\n                'Record sản phẩm'.'Cấp 2 NHSP' = \"Vật tư kim khí\"\r\n            ),\r\n            var_count_kim_khi >= 100,\r\n            {\r\n                'Ngày giao': DateAdd(\r\n                    DateTimeValue(ngay_giao),\r\n                    12,\r\n                    TimeUnit.Hours\r\n                ),\r\n                Ca: If(\r\n                    Hour(\r\n                        DateAdd(\r\n                            DateTimeValue(ngay_giao),\r\n                            12,\r\n                            TimeUnit.Hours\r\n                        )\r\n                    ) >= 0 && Hour(\r\n                        DateAdd(\r\n                            DateTimeValue(ngay_giao),\r\n                            12,\r\n                            TimeUnit.Hours\r\n                        )\r\n                    ) <= 12,\r\n                    'Ca (SOD báo giá)'.'Ca sáng',\r\n                    'Ca (SOD báo giá)'.'Ca chiều'\r\n                )\r\n            }\r\n        );\r\n    );\r\n    Reset(cb_SanPham_SO_New);\r\n    Reset(Dropdown_DVT_new);\r\n    Reset(NumberInput_SL);\r\n    Reset(txt_Gia_SONew);\r\n    Reset(Dropdown_VAT_New);\r\n    Reset(Dropdown_NguoiDuyetSO);\r\n    Reset(DatePicker_NgayGiaoSO);\r\n    Reset(Checkbox_DonHangGap);\r\n    Reset(Checkbox_DuyetGiaSUPSO);\r\n    Reset(Dropdown_Promotion);\r\n    Reset(Checkbox_DuyetGiaSO);\r\n    Reset(Dropdown_KhoDapUngSO);\r\n    Reset(Dropdown_KenhTiepNhanSO);\r\n    Reset(dp_nhapthucong_theochietkhau_SO);\r\n    Reset(Checkbox_LoaiBoPromotion);\r\n    //Set(\r\n    //    var_kenhtiepnhan_isSelected,\r\n    //    false\r\n    //);\r\n    ,\r\n    Notify(\r\n        \"Vui lòng điền đầy đủ thông tin!!\",\r\n        NotificationType.Warning,\r\n        1000\r\n    );\r\n    \r\n);\r\nClear(TanSuatKho);\r\nForAll(\r\n    formData_new As ColData,\r\n    ForAll(\r\n        var_filterkho As Kho,\r\n        If(\r\n            CountRows(\r\n                Filter(\r\n                    'Kho Bình Định',\r\n                    'Vị trí kho'.'Tên kho' = Kho.'Tên kho' && 'Tên sản phẩm'.'Tên sản phẩm' = ColData.'Tên sản phẩm' && 'Tồn kho lý thuyết - Bỏ mua' >= ColData.'Số lượng'\r\n                )\r\n            ) > 0,\r\n            Collect(\r\n                TanSuatKho,\r\n                {\r\n                    TênSảnPhẩm: ColData.'Tên sản phẩm',\r\n                    SốLượng: ColData.'Số lượng',\r\n                    Kho: Kho.'Tên kho'\r\n                }\r\n            )\r\n        )\r\n    )\r\n);\r\nWith(\r\n    {tempData: formData_new},\r\n    ForAll(\r\n        tempData As ColData,\r\n        Patch(\r\n            formData_new,\r\n            LookUp(\r\n                formData_new,\r\n                'Tên sản phẩm' = ColData.'Tên sản phẩm'\r\n            ),\r\n            {\r\n                'Kho đáp ứng': LookUp(\r\n                    TanSuatKho,\r\n                    TênSảnPhẩm = ColData.'Tên sản phẩm',\r\n                    Kho\r\n                )\r\n            }\r\n        )\r\n    )\r\n);\r\nReset(Dropdown_CaGiaoSO);"
+                                          PressedBorderColor: =
+                                          PressedFill: =RGBA(16, 143, 100, 1)
+                                          Size: =14
+                                          Text: ="Thêm vào giỏ hàng"
+                                          Width: =577
+                                          X: =10
+                                          Y: =452
+                                    - IconFontAwesome_ThemGioHangSO:
+                                        Control: CodeComponent
+                                        ComponentName: crdfd_CustomComponent.IconFontAwesome
+                                        Properties:
+                                          Height: =26
+                                          Width: =35
+                                          X: =Button_ThemGioHangSO.X + 170
+                                          Y: =Button_ThemGioHangSO.Y + 10
+                                          iconHtml: |-
+                                            ="<i class='fa-solid fa-check' style='color: #ffffff;'></i>"
+                                          iconSize: =30
+                                    - dp_nhapthucong_theochietkhau_SO:
+                                        Control: DropDown@0.0.45
+                                        Properties:
+                                          Appearance: ='DropdownCanvas.Appearance'.FilledLighter
+                                          BorderColor: =RGBA(214, 221, 224, 1)
+                                          BorderRadius: =10
+                                          BorderStyle: =BorderStyle.Solid
+                                          BorderThickness: =1
+                                          DefaultSelectedItems: =First(var_choice_nhapthucong_theochietkhau)
+                                          DisplayMode: =If(Checkbox_DuyetGiaSO.Checked, DisplayMode.Edit, DisplayMode.Disabled)
+                                          FontSize: =18
+                                          Height: =40
+                                          Items: =var_choice_nhapthucong_theochietkhau
+                                          OnChange: |-
+                                            =Reset(dp_theochietkhau_SO);
+                                            Reset(txt_Gia_SONew);
+                                          Width: =180
+                                          X: =208
+                                          Y: =252
+                                    - dp_theochietkhau_SO:
+                                        Control: DropDown@0.0.45
+                                        Properties:
+                                          Appearance: ='DropdownCanvas.Appearance'.FilledLighter
+                                          BorderColor: =RGBA(214, 221, 224, 1)
+                                          BorderRadius: =10
+                                          BorderStyle: =BorderStyle.Solid
+                                          BorderThickness: =1
+                                          DefaultSelectedItems: =["1"]
+                                          DisplayMode: =If(dp_nhapthucong_theochietkhau_SO.Selected.Value = "Theo chiết khấu", DisplayMode.Edit, DisplayMode.Disabled)
+                                          FontSize: =18
+                                          Height: =40
+                                          Items: =var_choice_theochietkhau
+                                          Width: =80
+                                          X: =499
+                                          Y: =252
+                                    - TextCanvas_Option_1:
+                                        Control: Text@0.0.51
+                                        Properties:
+                                          Font: =Font.'Open Sans'
+                                          Height: =40
+                                          Size: =16
+                                          Text: ="Chiết khấu"
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          Weight: ='TextCanvas.Weight'.Semibold
+                                          Width: =100
+                                          X: =402
+                                          Y: =252
+                                    - TextInput_GhiChuSO:
+                                        Control: Classic/TextInput@2.3.2
+                                        Properties:
+                                          BorderColor: =RGBA(202, 202, 202, 1)
+                                          BorderThickness: =1
+                                          Color: =RGBA(255, 0, 0, 1)
+                                          Default: |-
+                                            =If(
+                                                CountRows(var_list_gia_KH) = 1 And var_Nganh_nghe = "Shop",
+                                                LookUp(
+                                                    var_list_gia_KH,
+                                                    'Mã KH' = var_MaKH
+                                                ).'Ghi chú',
+                                                If(Checkbox_DuyetGiaSO.Checked Or Checkbox_DuyetGiaSUPSO.Checked,"Duyệt giá bởi " &  Dropdown_NguoiDuyetSO.Selected.Value)
+                                            )
+                                          Fill: =RGBA(241, 244, 249, 1)
+                                          Font: =Font.'Open Sans'
+                                          Height: =61
+                                          HintText: ="Nhập ghi chú"
+                                          Mode: =TextMode.MultiLine
+                                          RadiusBottomLeft: =15
+                                          RadiusBottomRight: =15
+                                          RadiusTopLeft: =15
+                                          RadiusTopRight: =15
+                                          Size: =14
+                                          Width: =564
+                                          X: =15
+                                          Y: =376
+                              - TextCanvas_tonkhobomua:
+                                  Control: Text@0.0.51
+                                  Properties:
+                                    Font: =Font.'Open Sans'
+                                    FontItalic: =true
+                                    Height: =20
+                                    Size: =13
+                                    Text: |+
+                                      ="Tồn kho (bỏ mua): " & Coalesce(
+                                          Var_ton_kho_lythuyet_bomua,
+                                          0
+                                      ) & " " & var_selected_SP.'Đơn vị chuẩn text'
+                                    Weight: ='TextCanvas.Weight'.Regular
+                                    Width: =280
+                                    X: =15
+                                    Y: =Dropdown_DVT_new.Height + Dropdown_DVT_new.Y + 10
+                              - TextCanvas_sltheokho:
+                                  Control: Text@0.0.51
+                                  Properties:
+                                    Font: =Font.'Open Sans'
+                                    FontItalic: =true
+                                    Height: =20
+                                    Size: =13
+                                    Text: |-
+                                      ="SL theo kho: " & Text(NumberInput_SL.Value * var_selected_donvi.'Giá trị chuyển đổi (Chuyển đổi/chuẩn)', "#,###.##") &" "& var_selected_SP.'Đơn vị chuẩn text'
+                                    Weight: ='TextCanvas.Weight'.Regular
+                                    Width: =280
+                                    X: =308
+                                    Y: =Dropdown_DVT_new.Height + Dropdown_DVT_new.Y + 10
+                              - Checkbox_LoaiBoPromotion:
+                                  Control: CheckBox@0.0.30
+                                  Properties:
+                                    Font: =Font.'Open Sans'
+                                    FontSize: =14
+                                    Height: =36
+                                    Label: ="Loại bỏ Promotion"
+                                    Width: =110
+                                    X: =481
+                                    Y: =357
+                              - lb_warning_Gia_1:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =Align.Right
+                                    Color: =If(var_warning_gia.value,RGBA(255, 0, 0, 1),RGBA(0, 0, 0, 1))
+                                    Height: =17
+                                    Italic: =true
+                                    PaddingRight: =0
+                                    Role: =
+                                    Size: =10
+                                    Text: =var_warning_gia.Label
+                                    Visible: =var_warning_gia.value
+                                    X: =435
+                                    Y: =266
+                              - lbl_tonkhobomua_kt:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =If(var_ton_kho_lythuyet_KT < var_input_soluong * var_selected_donvi.'Giá trị chuyển đổi (Chuyển đổi/chuẩn)',RGBA(255, 0, 0, 1),RGBA(0, 0, 0, 1))
+                                    Height: =20
+                                    Italic: =true
+                                    PaddingLeft: =0
+                                    Size: =10
+                                    Text: |-
+                                      ="Tồn LT kế toán: " & Coalesce(var_ton_kho_lythuyet_KT,
+                                          0
+                                      ) & " " & cb_SanPham_SO_New.Selected.'Đơn vị chuẩn text'
+                                    Visible: =!IsBlank(cb_san_pham.Selected) And !IsBlank(var_ton_kho_lythuyet_KT)
+                                    Width: =170
+                                    X: =15
+                                    Y: =TextCanvas_tonkhobomua.Height + TextCanvas_tonkhobomua.Y
+                        - Container_Locdonhang_SO:
+                            Control: GroupContainer@1.3.0
+                            Variant: ManualLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =RGBA(255, 255, 255, 1)
+                              Height: =135
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              Width: =600
+                            Children:
+                              - TextCanvas1_26:
+                                  Control: Text@0.0.51
+                                  Properties:
+                                    Font: =Font.'Open Sans'
+                                    Height: =40
+                                    Size: =22
+                                    Text: '="Lọc đơn hàng" '
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    Weight: ='TextCanvas.Weight'.Bold
+                                    Width: =225
+                                    X: =50
+                                    Y: =IconFontAwesome1_12.Y
+                              - IconFontAwesome1_12:
+                                  Control: CodeComponent
+                                  ComponentName: crdfd_CustomComponent.IconFontAwesome
+                                  Properties:
+                                    Height: =37
+                                    Width: =40
+                                    X: =10
+                                    Y: =10
+                                    iconHtml: |-
+                                      ="<i class='fa-solid fa-filter' style='color: #04a1b3;'></i>"
+                                    iconSize: =30
+                              - TextCanvas_khachhang_2:
+                                  Control: Text@0.0.51
+                                  Properties:
+                                    Font: =Font.'Open Sans'
+                                    Height: =35
+                                    Size: =16
+                                    Text: ="Chọn khách hàng"
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    Weight: ='TextCanvas.Weight'.Semibold
+                                    Width: =225
+                                    X: =15
+                                    Y: =55
+                              - TextCanvas_khachhang_3:
+                                  Control: Text@0.0.51
+                                  Properties:
+                                    Font: =Font.'Open Sans'
+                                    Height: =35
+                                    Size: =16
+                                    Text: ="Chọn mã đơn hàng"
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    Weight: ='TextCanvas.Weight'.Semibold
+                                    Width: =225
+                                    X: =307
+                                    Y: =TextCanvas_khachhang_2.Y
+                              - cb_khach_hang_SO_new:
+                                  Control: Classic/ComboBox@2.4.0
+                                  Properties:
+                                    AccessibleLabel: =
+                                    BorderColor: =RGBA(202, 202, 202, 1)
+                                    ChevronBackground: =RGBA(255, 255, 255, 1)
+                                    ChevronFill: =RGBA(0, 0, 0, 1)
+                                    ChevronHoverBackground: =RGBA(0, 0, 0, 1)
+                                    ChevronHoverFill: =RGBA(255, 255, 255, 1)
+                                    Color: =RGBA(77, 77, 77, 1)
+                                    DisplayFields: =["crdfd_name"]
+                                    Font: =Font.'Open Sans'
+                                    Height: =32
+                                    HoverFill: =RGBA(255, 255, 255, 1)
+                                    InputTextPlaceholder: ="Chọn khách hàng"
+                                    Items: =List_Customer
+                                    OnChange: |
+                                      =ClearCollect(
+                                          colCa,
+                                          {Ca: "Ca sáng"},
+                                          {Ca: "Ca chiều"}
+                                      );
+                                      Reset(cb_SanPham_SO_New);
+                                      Reset(Dropdown_DVT_new);
+                                      Reset(NumberInput_SL);
+                                      Reset(txt_Gia_SONew);
+                                      Reset(Dropdown_VAT_New);
+                                      Reset(Dropdown_NguoiDuyetSO);
+                                      Reset(DatePicker_NgayGiaoSO);
+                                      Reset(Checkbox_DonHangGap);
+                                      Reset(Checkbox_DuyetGiaSUPSO);
+                                      Reset(Dropdown_Promotion);
+                                      Reset(Checkbox_DuyetGiaSO);
+                                      Reset(Dropdown_KhoDapUngSO);
+                                      Reset(Dropdown_KenhTiepNhanSO);
+                                      Reset(dp_nhapthucong_theochietkhau_SO);
+                                    PressedColor: =RGBA(116, 116, 116, 1)
+                                    Reset: =true
+                                    SearchFields: =["crdfd_name"]
+                                    SelectMultiple: =false
+                                    SelectionColor: =RGBA(255, 255, 255, 1)
+                                    SelectionFill: =RGBA(116, 192, 252, 1)
+                                    Size: =12
+                                    Tooltip: =
+                                    Width: =280
+                                    X: =15
+                                    Y: =TextCanvas_khachhang_2.Height + TextCanvas_khachhang_2.Y
+                              - cb_donhang_SO_new:
+                                  Control: Classic/ComboBox@2.4.0
+                                  Properties:
+                                    AccessibleLabel: =
+                                    BorderColor: =RGBA(202, 202, 202, 1)
+                                    ChevronBackground: =RGBA(255, 255, 255, 1)
+                                    ChevronFill: =RGBA(0, 0, 0, 1)
+                                    ChevronHoverBackground: =RGBA(0, 0, 0, 1)
+                                    ChevronHoverFill: =RGBA(255, 255, 255, 1)
+                                    Color: =RGBA(77, 77, 77, 1)
+                                    DefaultSelectedItems: =First(var_DHSO)
+                                    DisplayFields: =["crdfd_name"]
+                                    Font: =Font.'Open Sans'
+                                    Height: =32
+                                    HoverFill: =RGBA(255, 255, 255, 1)
+                                    InputTextPlaceholder: ="Chọn mã đơn hàng"
+                                    Items: |-
+                                      =Sort(
+                                          Filter(
+                                              Sale_Orders,
+                                              'Mã khách hàng' = var_MaKH,
+                                              'Trạng thái giao nhận 1' = 'trạng thái giao nhận sale'.'Chưa giao',
+                                              Status = 'Status (Sale_Orders)'.Active,
+                                              'Active data' = 'Active data (Sale_Orders)'.Active
+                                          ),
+                                          'Created On',
+                                          SortOrder.Descending
+                                      )
+                                    OnChange: "=Clear(formData_new);\nIf(\n    IsBlank(cb_khach_hang_SO_new.Selected),\n    [],\n    ForAll(\n        var_SOD As itemSOD,\n        With(\n            {\n                mappedApproval: LookUp(\n                    var_table_duyetgia,\n                    Value = itemSOD[@'Duyệt giá (crdfd_duyetgia)'],\n                    Name\n                ),\n                Promotion_Record: LookUp(\n                    Promotion,\n                    ID = itemSOD[@Promotion].ID\n                )\n            },\n            Collect(\n                formData_new,\n                {\n                    STT: itemSOD[@'Stt đơn'],\n                    'ID đơn hàng': itemSOD[@Id],\n                    'Record SOD3': itemSOD,\n                    'Tên sản phẩm': itemSOD[@'Tên sản phẩm text'],\n                    'Mã sản phẩm': itemSOD[@'Mã sản phẩm'],\n                    'Mã nhóm SP': itemSOD[@'Mã nhóm sp'],\n                    'Record Đơn vị': itemSOD[@ID_Unit_Sp],\n                    'Record sản phẩm': itemSOD[@'Tên sản phẩm'],\n                    'Số lượng': itemSOD[@'Số lượng'],\n                    'Đơn vị': itemSOD[@ID_Unit_Sp].'Đơn vị chuyển đổi-Transfome',\n                    Giá: itemSOD[@'Giá gốc'],\n                    'Giá đã giảm': itemSOD[@Giá],\n                    '% Giảm giá': If(\n                        itemSOD[@'Chiết khấu %'] > 0,\n                        itemSOD[@'Chiết khấu %'],\n                        itemSOD[@'Chiết khấu VNĐ']\n                    ),\n                    'Tổng tiền': With(\n                        {\n                            TotalExVAT: itemSOD[@'Tổng tiền chưa VAT'],\n                            AdjustGTGT: Value(itemSOD[@'Điều chỉnh GTGT Text'])\n                        },\n                        TotalExVAT * (1 + If(\n                            AdjustGTGT <> 0,\n                            AdjustGTGT / 100,\n                            0\n                        ))\n                    ),\n                    VAT: Value(itemSOD[@'Điều chỉnh GTGT Text']),\n                    'Ngày giao': itemSOD[@'Ngày dự kiến giao'],\n                    Ca: If(\n                        itemSOD[@Ca] = 283640000,\n                        \"Ca sáng\",\n                        \"Ca chiều\"\n                    ),\n                    'Ngày giao NM': itemSOD[@'Ngày dự kiến giao'],\n                    GhiChu: itemSOD[@'Ghi chú'],\n                    GTGT: itemSOD[@GTGT],\n                    Chietkhauphantram: itemSOD[@'Chiết khấu %'],\n                    Chietkhautien: itemSOD[@'Chiết khấu VNĐ'],\n                    promotiontext: itemSOD[@'Promotion text'],\n                    PromotionRecord: Promotion_Record,\n                    duyet_gia: mappedApproval,\n                    DKTT: Concat(\n                        Promotion_Record.'Điều khoản thanh toán áp dụng',\n                        Value,\n                        \", \"\n                    ),\n                    Createdon: itemSOD[@'Created On'],\n                    'Phụ phí hoá đơn': itemSOD[@'Phụ phí hoá đơn (%)']\n                }\n            )\n        )\n    );\n    \n);\nClearCollect(\n    SO,\n    ShowColumns(\n        cb_donhang_SO_new.Selected,\n        'Khách hàng text',\n        'Mã Đơn Hàng',\n        Id,\n        'Tên thương mại_text',\n        'Địa chỉ text',\n        'SĐT text',\n        'Ghi chú',\n        'Điều khoản thanh toán',\n        'Created On',\n        Localtext,\n        VAT,\n        'Phụ phí vận chuyển'\n    )\n);\nClearCollect(\n    SOD,\n    ShowColumns(\n        var_SOD,\n        'Tên sản phẩm text',\n        'Ngày giao dự kiến tổng hợp',\n        'Chiết khấu %',\n        'Chiết khấu 2 (%)',\n        'Chiết khấu VNĐ',\n        'Số lượng',\n        'Giá gốc',\n        'Đơn vị đơn hàng',\n        'Điều chỉnh GTGT'\n    )\n);\nUpdateContext({CountR_SOD: CountRows(SOD)});\n//UpdateContext({var_kenhtiepnhan_isSelected: false});\n"
+                                    PressedColor: =RGBA(116, 116, 116, 1)
+                                    SearchFields: =["crdfd_name"]
+                                    SelectMultiple: =false
+                                    SelectionColor: =RGBA(255, 255, 255, 1)
+                                    SelectionFill: =RGBA(116, 192, 252, 1)
+                                    Size: =12
+                                    Tooltip: =
+                                    Width: =280
+                                    X: =307
+                                    Y: =cb_khach_hang_SO_new.Y
+            - RightContainer1:
+                Control: GroupContainer@1.3.0
+                Variant: AutoLayout
+                Properties:
+                  Fill: =RGBA(255, 255, 255, 1)
+                  LayoutDirection: =LayoutDirection.Vertical
+                  RadiusBottomLeft: =8
+                  RadiusBottomRight: =8
+                  RadiusTopLeft: =8
+                  RadiusTopRight: =8
+                Children:
+                  - Container3:
+                      Control: GroupContainer@1.3.0
+                      Variant: ManualLayout
+                      Children:
+                        - TextCanvas1_32:
+                            Control: Text@0.0.51
+                            Properties:
+                              Font: =Font.'Open Sans'
+                              Height: =40
+                              Size: =22
+                              Text: ="Giỏ hàng"
+                              VerticalAlign: =VerticalAlign.Middle
+                              Weight: ='TextCanvas.Weight'.Bold
+                              Width: =225
+                              X: =50
+                              Y: =IconFontAwesome1_14.Y
+                        - IconFontAwesome1_14:
+                            Control: CodeComponent
+                            ComponentName: crdfd_CustomComponent.IconFontAwesome
+                            Properties:
+                              Height: =37
+                              Width: =40
+                              X: =15
+                              Y: =10
+                              iconHtml: |-
+                                ="<i class='fa-solid fa-cart-shopping' style='color: #04a1b3;'></i>"
+                              iconSize: =30
+                        - Table_GioHang:
+                            Control: Table@1.0.278
+                            Properties:
+                              EnableMultipleSelection: ='PowerAppsOneGrid.EnableMultipleSelection'.Disable
+                              Font: =Font.'Open Sans'
+                              FontColor: =RGBA(53, 61, 63, 1)
+                              FontSize: =14
+                              FontWeight: =FontWeight.Normal
+                              HeaderFont: =Font.'Open Sans'
+                              HeaderFontColor: =RGBA(40, 134, 222, 1)
+                              HeaderFontSize: =16
+                              HeaderFontWeight: =FontWeight.Semibold
+                              Height: =274
+                              Items: =Sort(formData_new,STT,SortOrder.Ascending)
+                              NoDataText: ="Giỏ hàng trống"
+                              ReflowBehavior: ='PowerAppsOneGrid.ReflowBehavior'.GridOnly
+                              Width: =Parent.Width - 30
+                              X: =15
+                              Y: =47
+                            Children:
+                              - STT1:
+                                  Control: TableDataField@1.5.0
+                                  Variant: textualColumn
+                                  Properties:
+                                    CanGrow: =false
+                                    FieldDisplayName: ="STT"
+                                    FieldName: ="STT"
+                                    FieldType: ="n"
+                                    Order: =1
+                                    Width: =50
+                              - Tên sản phẩm1:
+                                  Control: TableDataField@1.5.0
+                                  Variant: textualColumn
+                                  Properties:
+                                    CanGrow: =false
+                                    FieldDisplayName: ="Tên sản phẩm"
+                                    FieldName: ="Tên sản phẩm"
+                                    FieldType: ="s"
+                                    Order: =2
+                                    Width: =100
+                              - Đơn vị1:
+                                  Control: TableDataField@1.5.0
+                                  Variant: textualColumn
+                                  IsLocked: true
+                                  Properties:
+                                    FieldDisplayName: ="Đơn vị"
+                                    FieldName: ="Đơn vị"
+                                    FieldType: ="s"
+                                    Order: =3
+                                    Width: =100
+                              - Số lượng1:
+                                  Control: TableDataField@1.5.0
+                                  Variant: textualColumn
+                                  IsLocked: true
+                                  Properties:
+                                    FieldDisplayName: ="Số lượng"
+                                    FieldName: ="Số lượng"
+                                    FieldType: ="n"
+                                    Order: =4
+                                    Width: =100
+                              - VAT1:
+                                  Control: TableDataField@1.5.0
+                                  Variant: textualColumn
+                                  IsLocked: true
+                                  Properties:
+                                    FieldDisplayName: ="VAT"
+                                    FieldName: ="VAT"
+                                    FieldType: ="n"
+                                    Order: =12
+                                    Width: =100
+                              - duyet_gia1:
+                                  Control: TableDataField@1.5.0
+                                  Variant: textualColumn
+                                  IsLocked: true
+                                  Properties:
+                                    FieldDisplayName: ="duyet_gia"
+                                    FieldName: ="duyet_gia"
+                                    FieldType: ="s"
+                                    HeaderText: ="Người duyệt"
+                                    Order: =14
+                                    Width: =100
+                              - Ngày giao1:
+                                  Control: TableDataField@1.5.0
+                                  Variant: textualColumn
+                                  Properties:
+                                    FieldDisplayName: =If(var_Nganh_nghe = "Shop", "Ngày giao", "Ngày giao NM")
+                                    FieldName: =If(var_Nganh_nghe = "Shop", "Ngày giao", "Ngày giao NM")
+                                    FieldType: ="D"
+                                    Order: =14
+                                    Width: =120
+                              - Ca1:
+                                  Control: TableDataField@1.5.0
+                                  Variant: textualColumn
+                                  IsLocked: true
+                                  Properties:
+                                    FieldDisplayName: ="Ca"
+                                    FieldName: ="Ca"
+                                    FieldType: ="s"
+                                    Order: =15
+                                    Width: =100
+                              - '% Giảm giá1':
+                                  Control: TableDataField@1.5.0
+                                  Variant: textualColumn
+                                  IsLocked: true
+                                  Properties:
+                                    FieldDisplayName: ="% Giảm giá"
+                                    FieldName: ="% Giảm giá"
+                                    FieldType: ="n"
+                                    HeaderText: ="Chiết khấu"
+                                    Order: =10
+                                    Width: =100
+                              - Phụ phí hoá đơn1:
+                                  Control: TableDataField@1.5.0
+                                  Variant: textualColumn
+                                  IsLocked: true
+                                  Properties:
+                                    FieldDisplayName: ="Phụ phí hoá đơn"
+                                    FieldName: ="Phụ phí hoá đơn"
+                                    FieldType: ="n"
+                                    Order: =9
+                                    Visible: =cb_donhang_SO_new.Selected.'Loại hóa đơn' = 'Loại hóa đơn (Sale_Orders)'.'Hộ kinh doanh' And cb_donhang_SO_new.Selected.VAT = VAT_choice.'Không VAT'
+                                    Width: =100
+                              - Giá đã giảm1:
+                                  Control: TableDataField@1.5.0
+                                  Variant: textualColumn
+                                  IsLocked: true
+                                  Properties:
+                                    FieldDisplayName: ="Giá đã giảm"
+                                    FieldName: ="Giá đã giảm"
+                                    FieldType: ="n"
+                                    HeaderText: ="Giá sau CK"
+                                    Order: =12
+                                    Width: =100
+                              - Tổng tiền1:
+                                  Control: TableDataField@1.5.0
+                                  Variant: textualColumn
+                                  Properties:
+                                    FieldDisplayName: ="Tổng tiền"
+                                    FieldName: ="Tổng tiền"
+                                    FieldType: ="n"
+                                    Order: =13
+                                    Width: =100
+                              - Kho đáp ứng1:
+                                  Control: TableDataField@1.5.0
+                                  Variant: textualColumn
+                                  IsLocked: true
+                                  Properties:
+                                    FieldDisplayName: ="Kho đáp ứng"
+                                    FieldName: ="Kho đáp ứng"
+                                    FieldType: ="s"
+                                    Order: =15
+                                    Width: =100
+                              - Gia_format2:
+                                  Control: TableDataField@1.5.0
+                                  Variant: textualColumn
+                                  IsLocked: true
+                                  Properties:
+                                    FieldDisplayName: ="Giá"
+                                    FieldName: ="Giá"
+                                    FieldType: ="n"
+                                    HeaderText: ="Giá"
+                                    Order: =5
+                        - Container_total_1:
+                            Control: GroupContainer@1.3.0
+                            Variant: ManualLayout
+                            Properties:
+                              BorderColor: =RGBA(239, 246, 255, 1)
+                              BorderThickness: =0.5
+                              Fill: =RGBA(239, 246, 255, 1)
+                              Height: =161
+                              RadiusBottomLeft: =10
+                              RadiusBottomRight: =10
+                              RadiusTopLeft: =10
+                              RadiusTopRight: =10
+                              Width: =Parent.Width - 30
+                              X: =15
+                              Y: =321
+                            Children:
+                              - TextCanvas_khachhang_18:
+                                  Control: Text@0.0.51
+                                  Properties:
+                                    Font: =Font.'Open Sans'
+                                    FontColor: =RGBA(53, 61, 63, 1)
+                                    Height: =40
+                                    PaddingLeft: =15
+                                    PaddingTop: =5
+                                    Size: =20
+                                    Text: ="Thanh toán"
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    Weight: ='TextCanvas.Weight'.Bold
+                                    Width: =400
+                              - TextCanvas_khachhang_23:
+                                  Control: Text@0.0.51
+                                  Properties:
+                                    Font: =Font.'Open Sans'
+                                    FontColor: =RGBA(53, 61, 63, 1)
+                                    Height: =30
+                                    PaddingLeft: =15
+                                    PaddingTop: =5
+                                    Size: =16
+                                    Text: ="Tổng tiền không VAT:"
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    Weight: ='TextCanvas.Weight'.Semibold
+                                    Width: =200
+                                    Y: =42
+                              - TextCanvas_khachhang_24:
+                                  Control: Text@0.0.51
+                                  Properties:
+                                    Align: ='TextCanvas.Align'.Start
+                                    Font: =Font.'Open Sans'
+                                    FontColor: =RGBA(53, 61, 63, 1)
+                                    Height: =30
+                                    PaddingLeft: =5
+                                    PaddingRight: =10
+                                    PaddingTop: =5
+                                    Size: =16
+                                    Text: =Text(Sum(formData_new,'Giá đã giảm' * 'Số lượng'),"#,### VNĐ")
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    Weight: ='TextCanvas.Weight'.Bold
+                                    Width: =200
+                                    X: =180
+                                    Y: =42
+                              - TextCanvas_khachhang_25:
+                                  Control: Text@0.0.51
+                                  Properties:
+                                    Font: =Font.'Open Sans'
+                                    FontColor: =RGBA(53, 61, 63, 1)
+                                    Height: =30
+                                    PaddingLeft: =15
+                                    PaddingTop: =5
+                                    Size: =16
+                                    Text: |-
+                                      ="Tổng GTGT: "
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    Weight: ='TextCanvas.Weight'.Semibold
+                                    Width: =152
+                                    Y: =72
+                              - TextCanvas_khachhang_26:
+                                  Control: Text@0.0.51
+                                  Properties:
+                                    Align: ='TextCanvas.Align'.Start
+                                    Font: =Font.'Open Sans'
+                                    FontColor: =RGBA(53, 61, 63, 1)
+                                    Height: =30
+                                    PaddingLeft: =5
+                                    PaddingRight: =10
+                                    PaddingTop: =5
+                                    Size: =16
+                                    Text: =Text(Sum(formData_new,GTGT),"#,### VNĐ")
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    Weight: ='TextCanvas.Weight'.Bold
+                                    Width: =200
+                                    X: =108
+                                    Y: =72
+                              - TextCanvas_khachhang_27:
+                                  Control: Text@0.0.51
+                                  Properties:
+                                    Font: =Font.'Open Sans'
+                                    FontColor: =RGBA(51, 82, 183, 1)
+                                    Height: =30
+                                    PaddingBottom: =5
+                                    PaddingLeft: =15
+                                    Size: =18
+                                    Text: |-
+                                      ="Tổng thanh toán: "
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    Weight: ='TextCanvas.Weight'.Bold
+                                    Width: =180
+                                    Y: =117
+                              - Rectangle4_1:
+                                  Control: Rectangle@2.3.0
+                                  Properties:
+                                    Fill: =RGBA(191, 219, 254, 1)
+                                    Height: =1
+                                    Width: =Parent.Width - 30
+                                    X: =Parent.X
+                                    Y: =111
+                              - TextCanvas_khachhang_29:
+                                  Control: Text@0.0.51
+                                  Properties:
+                                    Font: =Font.'Open Sans'
+                                    FontColor: =RGBA(51, 82, 183, 1)
+                                    Height: =30
+                                    PaddingBottom: =5
+                                    PaddingLeft: =5
+                                    Size: =18
+                                    Text: =Text(Sum(formData_new,'Tổng tiền'),"#,### VNĐ")
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    Weight: ='TextCanvas.Weight'.Bold
+                                    Width: =300
+                                    X: =176
+                                    Y: =117
+                        - Button_ThemGioHangSO_1:
+                            Control: Classic/Button@2.2.0
+                            Properties:
+                              BorderColor: =RGBA(16, 185, 129, 1)
+                              DisplayMode: |-
+                                =If(
+                                    CountRows(formData_new) > 0,
+                                    DisplayMode.Edit,
+                                    DisplayMode.Disabled
+                                )
+                              Fill: =RGBA(16,185,129,1)
+                              FontWeight: =FontWeight.Bold
+                              Height: =50
+                              HoverBorderColor: =
+                              HoverFill: =
+                              OnSelect: |
+                                =UpdateContext({record_MaDH_selected: cb_donhang_SO_new.Selected});
+                                If(
+                                   false,//(IsBlank(var_KenhTiepNhan) And !var_kenhtiepnhan_isSelected) And var_selected_khachhang.'Ngành nghề text' = "5. Shop bán lẻ",
+                                    Notify("Vui lòng chọn kênh tiếp nhận",NotificationType.Warning,3000),
+                                    Set(
+                                        khachhang_selected,
+                                        cb_khach_hang_SO_new.Selected
+                                    );
+                                    Set(
+                                        var_check_promotion_SOD,
+                                        IsEmpty(
+                                            Filter(
+                                                formData_new,
+                                                !IsBlank(PromotionRecord)
+                                            )
+                                        )
+                                    );
+                                    If(
+                                        Dropdown_KhoDapUngSO.DisplayMode = DisplayMode.Edit,
+                                        Patch(
+                                            Sale_Orders,
+                                            LookUp(
+                                                Sale_Orders,
+                                                'Mã Đơn Hàng' = record_MaDH_selected.'Mã Đơn Hàng'
+                                            ),
+                                            {'Vị trí kho': Dropdown_KhoDapUngSO.Selected}
+                                        )
+                                    );
+                                    If(
+                                        var_selected_khachhang.'Ngành nghề text' = "5. Shop bán lẻ",
+                                        Patch(
+                                            Sale_Orders,
+                                            record_MaDH_selected,
+                                            {'Kênh tiếp nhận': Dropdown_KenhTiepNhanSO.Selected.Value}
+                                        );
+                                    );
+                                    ForAll(
+                                        formData_new,
+                                        With(
+                                            {
+                                                existingRecord: formData_new[@'Record SOD3'],
+                                                expectedDeliveryDate: If(
+                                                    cb_khach_hang_SO_new.Selected.'Ngành nghề text' = "5. Shop bán lẻ",
+                                                    formData_new[@'Ngày giao'],
+                                                    formData_new[@'Ngày giao NM']
+                                                ),
+                                                mappedVAT: LookUp(
+                                                    Table(
+                                                        {
+                                                            VAT: 10,
+                                                            Value: 'Thuế GTGT'.'10%'
+                                                        },
+                                                        {
+                                                            VAT: 8,
+                                                            Value: 'Thuế GTGT'.'8%'
+                                                        },
+                                                        {
+                                                            VAT: 5,
+                                                            Value: 'Thuế GTGT'.'5%'
+                                                        },
+                                                        {
+                                                            VAT: 0,
+                                                            Value: 'Thuế GTGT'.'0%'
+                                                        }
+                                                    ),
+                                                    VAT = formData_new[@VAT],
+                                                    Value
+                                                ),
+                                                mappedApproval: LookUp(
+                                                    var_table_duyetgia,
+                                                    Name = formData_new[@duyet_gia],
+                                                    Value
+                                                ),
+                                                approvedPriceSUP: If(
+                                                    !IsBlank(formData_new[@id_duyetgiaSUP]),
+                                                    LookUp(
+                                                        'Duyệt giá',
+                                                        Status = 'Status (Duyệt giá)'.Active And ID = formData_new[@id_duyetgiaSUP]
+                                                    )
+                                                )
+                                            },
+                                            Patch(
+                                                'Sale Order Details',
+                                                Coalesce(
+                                                    existingRecord,
+                                                    Defaults('Sale Order Details')
+                                                ),
+                                                {
+                                                    'Mã đơn hàng': record_MaDH_selected,
+                                                    'Tên sản phẩm': formData_new[@'Record sản phẩm'],
+                                                    ID_Unit_Sp: formData_new[@'Record Đơn vị'],
+                                                    'Số lượng': Value(formData_new[@'Số lượng']),
+                                                    Giá: If(
+                                                        var_Nganh_nghe = "Shop",
+                                                        Value(formData_new[@'Giá đã giảm']),
+                                                        Value(formData_new[@Giá])
+                                                    ),
+                                                    'Giá gốc': Value(formData_new[@Giá]),
+                                                    Thuế: Value(formData_new[@GTGT]),
+                                                    'Stt đơn': formData_new[@STT],
+                                                    'Ngày dự kiến giao': expectedDeliveryDate,
+                                                    'Điều chỉnh GTGT': mappedVAT,
+                                                    'Ghi chú': formData_new[@GhiChu],
+                                                    'Đơn hàng gấp': formData_new[@DonhangGap],
+                                                    'Duyệt giá (crdfd_duyetgia)': mappedApproval,
+                                                    'Chiết khấu %': formData_new[@Chietkhauphantram],
+                                                    'Chiết khấu VNĐ': formData_new[@Chietkhautien],
+                                                    'Promotion text': formData_new[@promotiontext],
+                                                    Promotion: formData_new[@PromotionRecord],
+                                                    'Duyệt giá sup': approvedPriceSUP,
+                                                    'Chiết khấu 2 (%)': 0,
+                                                    Ca: If(
+                                                        formData_new[@Ca] = "Ca sáng",
+                                                        'Ca (Sale Order Details)'.'Ca sáng',
+                                                        'Ca (Sale Order Details)'.'Ca chiều'
+                                                    ),
+                                                    'Phụ phí hoá đơn (%)': formData_new[@'Phụ phí hoá đơn']
+                                                }
+                                            )
+                                        )
+                                    );
+                                    Patch(
+                                        Sale_Orders,
+                                        record_MaDH_selected,
+                                        {
+                                            'Số đơn hàng chi tiết': CountRows(formData_new),
+                                            'Số đơn chi tiết có Promotion': CountRows(
+                                                Filter(
+                                                    formData_new,
+                                                    !IsBlank(PromotionRecord) And "Thanh toán sau khi nhận hàng" in DKTT
+                                                )
+                                            )
+                                        }
+                                    );
+                                    Notify(
+                                        "Tạo đơn bán chi tiết thành công!",
+                                        NotificationType.Success,
+                                        2000
+                                    );
+                                    Set(
+                                        Total_Order,
+                                        Sum(
+                                            formData_new,
+                                            'Tổng tiền'
+                                        )
+                                    );
+                                    Set(
+                                        var_table_SP,
+                                        Split(
+                                            Concat(
+                                                ShowColumns(
+                                                    formData_new,
+                                                    'Mã sản phẩm'
+                                                ),
+                                                'Mã sản phẩm',
+                                                ","
+                                            ),
+                                            ","
+                                        )
+                                    );
+                                    Set(
+                                        var_table_NSP,
+                                        Split(
+                                            Concat(
+                                                ShowColumns(
+                                                    formData_new,
+                                                    'Mã nhóm SP'
+                                                ),
+                                                'Mã nhóm SP',
+                                                ","
+                                            ),
+                                            ","
+                                        )
+                                    );
+                                    Set(
+                                        var_count_notIn_Promotions,
+                                        CountRows(
+                                            Filter(
+                                                formData_new As item,
+                                                CountRows(
+                                                    Filter(
+                                                        ListPromotion_Order As PromotionM,
+                                                        PromotionM.'Chiết khấu 2' = 'Chiết khấu 2 (Promotion)'.Yes && (item.'Mã sản phẩm' in PromotionM.Ma_SP || item.'Mã nhóm SP' in PromotionM.Ma_NSP)
+                                                    )
+                                                ) = 0
+                                            )
+                                        )
+                                    );
+                                    Set(
+                                        var_dieukhoanthanhtoan,
+                                        record_MaDH_selected.'Điều khoản thanh toán CAL'
+                                    );
+                                    ClearCollect(
+                                        OrderxPromotion_Order,
+                                        Filter(
+                                            'Orders x Promotion',
+                                            Status = 'Status (Orders x Promotion)'.Active,
+                                            SO.Id = record_MaDH_selected.Id,
+                                            'Type cal' = "Order"
+                                        )
+                                    );
+                                    UpdateContext({showLoading: false});
+                                    UpdateContext({Popup_PromotionOrder: true});
+                                    //UpdateContext({var_kenhtiepnhan_isSelected: false});
+                                    Clear(formData_new);
+                                    Reset(cb_khach_hang_SO_new);
+                                );
+                              PressedBorderColor: =
+                              PressedFill: =RGBA(16, 143, 100, 1)
+                              Size: =14
+                              Text: ="Tạo đơn hàng"
+                              Width: =459
+                              X: =15
+                              Y: =508
+                        - IconFontAwesome_ThemGioHangSO_1:
+                            Control: CodeComponent
+                            ComponentName: crdfd_CustomComponent.IconFontAwesome
+                            Properties:
+                              Height: =26
+                              Width: =41
+                              X: =142
+                              Y: =518
+                              iconHtml: |-
+                                ="<i class='fa-solid fa-check' style='color: #ffffff;'></i>"
+                              iconSize: =30
+                        - Button_ThemGioHangSO_2:
+                            Control: Classic/Button@2.2.0
+                            Properties:
+                              BorderColor: =RGBA(0, 0, 0, 1)
+                              BorderThickness: =0
+                              DisplayMode: |-
+                                =If(
+                                    !IsBlank(Table_GioHang.Selected),
+                                    DisplayMode.Edit,
+                                    DisplayMode.Disabled
+                                )
+                              Fill: =RGBA(184, 26, 28, 1)
+                              FontWeight: =FontWeight.Bold
+                              Height: =50
+                              HoverBorderColor: =
+                              HoverColor: =RGBA(255, 255, 255, 1)
+                              HoverFill: =RGBA(184, 26, 28, 1)
+                              OnSelect: "=UpdateContext({formdata_selected: Table_GioHang.Selected});\nIf(\n    !IsBlank(formdata_selected.'ID đơn hàng'),\n    UpdateContext({ShowPopup_HuyDon: true});\n    Reset(input_lydohuydon);\n    Reset(dr_lydohuy),\n    UpdateContext({ShowPopup_HuyDon: false});\n    RemoveIf(\n        formData_new,\n        STT = formdata_selected.STT\n    );\n    UpdateContext(\n        {\n            data_muakem: Filter(\n                Promotion,\n                (formdata_selected.'Mã sản phẩm' in 'Mã sản phẩm (mua kèm)' || formdata_selected.'Mã nhóm SP' in 'Mã nhóm sp (Mua kèm)') && Status = 'Status (Promotion)'.Active\n            )\n        }\n    );\n    ForAll(\n        data_muakem As data_muakem,\n        If(\n            (CountIf(\n                List_Ma_SP_formdata,\n                Text(Value) in data_muakem.'Mã sản phẩm (mua kèm)'\n            ) = 0 And !IsBlank(data_muakem.'Mã sản phẩm (mua kèm)')) || (CountIf(\n                List_Ma_NSP_formdata,\n                Text(Value) in data_muakem.'Mã nhóm sp (Mua kèm)'\n            ) = 0 And !IsBlank(data_muakem.'Mã nhóm sp (Mua kèm)')),\n            With(\n                {\n                    heSoVAT: If(\n                        cb_donhang_SO_new.Selected.'Loại hóa đơn' = 'Loại hóa đơn (Sale_Orders)'.'Hộ kinh doanh' && cb_donhang_SO_new.Selected.VAT = VAT_choice.'Không VAT',\n                        1.015,\n                        1\n                    )\n                },\n                ForAll(\n                    Filter(\n                        formData_new,\n                        PromotionRecord.ID = data_muakem.ID\n                    ),\n                    Patch(\n                        formData_new,\n                        ThisRecord,\n                        {\n                            PromotionRecord: Blank(),\n                            'Giá đã giảm': ThisRecord.Giá * heSoVAT,\n                            'Tổng tiền': ThisRecord.Giá * heSoVAT * (1 + ThisRecord.VAT),\n                            '% Giảm giá': 0,\n                            Chietkhauphantram: 0,\n                            Chietkhautien: 0\n                        }\n                    );\n                );\n            )\n        )\n    );\n    // Update record collection với giá trị mới với trường hợp cộng dồn\nWith(\n        {\n            value: Sum(\n                Filter(\n                    formData_new,\n                    PromotionRecord.'Promotion type (text)' = formdata_selected.PromotionRecord.'Promotion type (text)' && ThisRecord.PromotionRecord.'Cộng dồn số lượng' = 'Cộng dồn số lượng (Promotion)'.Yes\n                ),\n                'Số lượng'\n            )\n        },\n        UpdateIf(\n            formData_new,\n            ThisRecord.PromotionRecord.'Promotion type (text)' = formdata_selected.PromotionRecord.'Promotion type (text)' && ThisRecord.PromotionRecord.'Cộng dồn số lượng' = 'Cộng dồn số lượng (Promotion)'.Yes,\n            With(\n                {\n                    promoValue: If(\n                        !IsBlank(ThisRecord.PromotionRecord.'Số lượng áp dụng mức 3') && value >= ThisRecord.PromotionRecord.'Số lượng áp dụng mức 3' && (IsBlank(ThisRecord.PromotionRecord.'Điều khoản thanh toán áp dụng mức 3') Or ThisRecord.PromotionRecord.'Điều khoản thanh toán áp dụng mức 3' = var_selected_dieukhoanthanhtoan_choice),\n                        ThisRecord.PromotionRecord.'Value 3',\n                        If(\n                            !IsBlank(ThisRecord.PromotionRecord.'Số lượng áp dụng') && value >= ThisRecord.PromotionRecord.'Số lượng áp dụng' && (IsBlank(ThisRecord.PromotionRecord.'Điều khoản thanh toán áp dụng mức 2') Or ThisRecord.PromotionRecord.'Điều khoản thanh toán áp dụng mức 2' = var_selected_dieukhoanthanhtoan_choice),\n                            ThisRecord.PromotionRecord.'Value 2',\n                            ThisRecord.PromotionRecord.Value\n                        )\n                    ),\n                    Record: ThisRecord\n                },\n                With(\n                    {\n                        PPHD: If(\n                            cb_donhang_SO_new.Selected.'Loại hóa đơn' = 'Loại hóa đơn (Sale_Orders)'.'Hộ kinh doanh' And cb_donhang_SO_new.Selected.VAT = VAT_choice.'Không VAT',\n                            1.015,\n                            1\n                        ),\n                        Gia_da_chietkhau: If(\n                            Record.PromotionRecord.'VNĐ/% Text' = \"VNĐ\",\n                            Record.Giá - promoValue,\n                            Record.Giá * (1 - promoValue / 100)\n                        )\n                    },\n                    {\n                        '% Giảm giá': If(\n                            Record.PromotionRecord.'VNĐ/% Text' = \"%\",\n                            promoValue / 100,\n                            promoValue\n                        ),\n                        'Giá đã giảm': Gia_da_chietkhau * PPHD,\n                        'Tổng tiền': (Record.'Số lượng' * (Gia_da_chietkhau * PPHD)) + Record.VAT,\n                        Chietkhauphantram: If(\n                            Record.PromotionRecord.'VNĐ/% Text' = \"%\" && var_Nganh_nghe = \"Shop\",\n                            promoValue / 100,\n                            0\n                        ),\n                        Chietkhautien: If(\n                            Record.PromotionRecord.'VNĐ/% Text' = \"VNĐ\" && var_Nganh_nghe = \"Shop\",\n                            promoValue,\n                            0\n                        )\n                    }\n                )\n            )\n        );\n        RemoveIf(\n            formData_new,\n            CountIf(\n                List_Ma_SP_formdata,\n                Text(Value) in formdata_selected.PromotionRecord.'Mã sản phẩm (mua kèm)'\n            ) > 0\n        )\n    );\n    If(\n        var_Nganh_nghe = \"Shop\",\n        UpdateIf(\n            Filter(\n                formData_new,\n                'Record sản phẩm'.'Cấp 2 NHSP' = \"Thiết bị nước\" || 'Record sản phẩm'.'Cấp 4' = \"Ống cứng PVC\"\n            ),\n            var_sum_thiet_bi_nuoc < 200000000 || var_sum_ong_cung < 200000000,\n            {\n                'Ngày giao': If(\n                    var_count_thiet_bi_nuoc < 50 || var_sum_ong_cung < 100000000,\n                    DateTimeValue(ngay_giao_SOBG),\n                    If(\n                        var_count_thiet_bi_nuoc >= 50 && var_sum_thiet_bi_nuoc >= 100000000,\n                        DateAdd(\n                            DateTimeValue(ngay_giao_SOBG),\n                            12,\n                            TimeUnit.Hours\n                        ),\n                        DateTimeValue(ngay_giao_SOBG)\n                    )\n                ),\n                Ca: If(\n                    Hour(\n                        If(\n                            var_count_thiet_bi_nuoc < 50 || var_sum_ong_cung < 100000000,\n                            DateTimeValue(ngay_giao_SOBG),\n                            If(\n                                var_count_thiet_bi_nuoc >= 50 && var_sum_thiet_bi_nuoc >= 100000000,\n                                DateAdd(\n                                    DateTimeValue(ngay_giao_SOBG),\n                                    12,\n                                    TimeUnit.Hours\n                                ),\n                                DateTimeValue(ngay_giao_SOBG)\n                            )\n                        )\n                    ) >= 0 && Hour(\n                        If(\n                            var_count_thiet_bi_nuoc < 50 || var_sum_ong_cung < 100000000,\n                            DateTimeValue(ngay_giao_SOBG),\n                            If(\n                                var_count_thiet_bi_nuoc >= 50 && var_sum_thiet_bi_nuoc >= 100000000,\n                                DateAdd(\n                                    DateTimeValue(ngay_giao_SOBG),\n                                    12,\n                                    TimeUnit.Hours\n                                ),\n                                DateTimeValue(ngay_giao_SOBG)\n                            )\n                        )\n                    ) <= 12,\n                    'Ca (SOD báo giá)'.'Ca sáng',\n                    'Ca (SOD báo giá)'.'Ca chiều'\n                )\n            }\n        );\n        UpdateIf(\n            Filter(\n                formData_new,\n                'Record sản phẩm'.'Cấp 2 NHSP' = \"Thiết bị điện\"\n            ),\n            var_sum_thiet_bi_dien < 200000000,\n            {\n                'Ngày giao': DateTimeValue(ngay_giao),\n                Ca: If(\n                    var_Ca,\n                    'Ca (SOD báo giá)'.'Ca sáng',\n                    'Ca (SOD báo giá)'.'Ca chiều'\n                )\n            }\n        );\n        UpdateIf(\n            Filter(\n                formData_new,\n                'Record sản phẩm'.'Cấp 2 NHSP' = \"Vật tư kim khí\"\n            ),\n            var_count_kim_khi < 100,\n            {\n                'Ngày giao': DateAdd(\n                    DateTimeValue(ngay_giao),\n                    0,\n                    TimeUnit.Hours\n                ),\n                Ca: If(\n                    var_Ca,\n                    'Ca (SOD báo giá)'.'Ca sáng',\n                    'Ca (SOD báo giá)'.'Ca chiều'\n                )\n            }\n        );\n    );\n    ClearCollect(\n        formData_new,\n        ForAll(\n            Sequence(\n                CountRows(\n                    Sort(\n                        formData_new,\n                        STT,\n                        SortOrder.Ascending\n                    )\n                )\n            ),\n            Patch(\n                Last(\n                    FirstN(\n                        Sort(\n                            formData_new,\n                            STT,\n                            SortOrder.Ascending\n                        ),\n                        Value\n                    )\n                ),\n                {STT: Value}\n            )\n        )\n    );\n    Notify(\n        \"Cập nhật thành công\",\n        NotificationType.Success,\n        2000\n    );\n    \n);\nClear(TanSuatKho);\nForAll(\n    formData_new As ColData,\n    ForAll(\n        var_filterkho As Kho,\n        If(\n            CountRows(\n                Filter(\n                    'Kho Bình Định',\n                    'Vị trí kho'.'Tên kho' = Kho.'Tên kho' && 'Tên sản phẩm'.'Tên sản phẩm' = ColData.'Tên sản phẩm' && 'Tồn kho lý thuyết - Bỏ mua' >= ColData.'Số lượng'\n                )\n            ) > 0,\n            Collect(\n                TanSuatKho,\n                {\n                    TênSảnPhẩm: ColData.'Tên sản phẩm',\n                    SốLượng: ColData.'Số lượng',\n                    Kho: Kho.'Tên kho'\n                }\n            )\n        )\n    )\n);\nWith(\n    {tempData: formData_new},\n    ForAll(\n        tempData As ColData,\n        Patch(\n            formData_new,\n            LookUp(\n                formData_new,\n                'Tên sản phẩm' = ColData.'Tên sản phẩm'\n            ),\n            {\n                'Kho đáp ứng': LookUp(\n                    TanSuatKho,\n                    TênSảnPhẩm = ColData.'Tên sản phẩm',\n                    Kho\n                )\n            }\n        )\n    )\n);\n"
+                              PressedBorderColor: =
+                              PressedFill: =RGBA(255, 184, 174, 1)
+                              Size: =14
+                              Text: ="Hủy sản phẩm"
+                              Width: =229
+                              X: =486
+                              Y: =508
+                        - IconFontAwesome_ThemGioHangSO_2:
+                            Control: CodeComponent
+                            ComponentName: crdfd_CustomComponent.IconFontAwesome
+                            Properties:
+                              Height: =26
+                              Width: =41
+                              X: =502
+                              Y: =518
+                              iconHtml: |-
+                                ="<i class='fa-solid fa-trash-can' style='color: #ffffff;'></i>"
+                              iconSize: =30
+      - Container Header_1:
+          Control: GroupContainer@1.3.0
+          Variant: ManualLayout
+          Properties:
+            Height: =74
+            Width: =1366
+          Children:
+            - IconFontAwesome1_11:
+                Control: CodeComponent
+                ComponentName: crdfd_CustomComponent.IconFontAwesome
+                Properties:
+                  Height: =59
+                  Width: =31
+                  X: =20
+                  Y: =12
+                  iconHtml: |-
+                    ="<i class='fa-solid fa-store' style='color: #04a1b3;'></i>"
+                  iconSize: =45
+            - IconBell_1:
+                Control: CodeComponent
+                ComponentName: crdfd_CustomComponent.IconFontAwesome
+                Group: Group9_1
+                Properties:
+                  Height: =40
+                  Width: =27
+                  X: =1091
+                  Y: =24
+                  iconHtml: ="<i class='fa-regular fa-bell'></i>"
+                  iconSize: =30
+            - TextNameUser_2:
+                Control: Text@0.0.51
+                Group: Group9_1
+                Properties:
+                  Align: ='TextCanvas.Align'.Start
+                  Font: =Font.'Open Sans'
+                  Height: =73
+                  Size: =20
+                  Text: =User().FullName
+                  VerticalAlign: =VerticalAlign.Middle
+                  Weight: ='TextCanvas.Weight'.Regular
+                  Width: =171
+                  Wrap: =false
+                  X: =1192
+            - Dropdown1_4:
+                Control: Classic/DropDown@2.3.1
+                Properties:
+                  BorderStyle: =BorderStyle.None
+                  BorderThickness: =0
+                  ChevronBackground: =
+                  ChevronHoverBackground: =
+                  Default: ="SO New"
+                  FontWeight: =FontWeight.Bold
+                  Height: =50
+                  HoverBorderColor: =
+                  HoverFill: =
+                  Items: =Screen_Admin
+                  Items.Value: =Screen
+                  OnChange: |-
+                    =Navigate(Dropdown1_4.Selected.Value,ScreenTransition.CoverRight); 
+                    Reset(Dropdown1_4); 
+                    Reset(cb_khach_hang_SO_new);
+                  PressedFill: =
+                  Reset: =
+                  SelectionFill: =RGBA(180, 214, 250, 1)
+                  Size: =22
+                  X: =79
+                  Y: =5
+            - TextNameUser_3:
+                Control: Text@0.0.51
+                Properties:
+                  Align: ='TextCanvas.Align'.Start
+                  Font: =Font.'Open Sans'
+                  Height: =30
+                  PaddingRight: =5
+                  Size: =16
+                  Text: ="V1.0.12"
+                  VerticalAlign: =VerticalAlign.Middle
+                  Weight: ='TextCanvas.Weight'.Regular
+                  Width: =100
+                  Wrap: =false
+                  X: =93
+                  Y: =44
+            - Avatar1_1:
+                Control: Avatar@1.0.40
+                Group: Group9_1
+                Properties:
+                  Appearance: ='Avatar.Appearance'.Brand
+                  Height: =50
+                  Shape: ='Avatar.Shape'.Circular
+                  Width: =50
+                  X: =1130
+                  Y: =11
+      - C_showPopupPromotionOrder_3:
+          Control: GroupContainer@1.3.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =RGBA(189, 189, 189, 0.67)
+            Height: =900
+            Visible: '=Popup_PromotionOrder '
+            Width: =1366
+          Children:
+            - Nền_4:
+                Control: Classic/Button@2.2.0
+                Group: Add promotion Order_2
+                Properties:
+                  DisplayMode: =DisplayMode.View
+                  Fill: =RGBA(255, 255, 255, 0.95)
+                  Height: =234
+                  RadiusBottomLeft: =30
+                  RadiusBottomRight: =30
+                  RadiusTopLeft: =30
+                  RadiusTopRight: =30
+                  Text: =
+                  Visible: =CountIf(OrderxPromotion_Order,true) = 0
+                  Width: =556
+                  X: =387
+                  Y: =267
+            - bt_huy_4:
+                Control: Button@0.0.45
+                Group: Add promotion Order_2
+                Properties:
+                  Appearance: =
+                  BasePaletteColor: =RGBA(189, 178, 176, 1)
+                  BorderRadius: =10
+                  Font: =Font.Arial
+                  FontSize: =16
+                  FontWeight: =FontWeight.Semibold
+                  Height: =40
+                  OnSelect: |-
+                    =UpdateContext({Popup_PromotionOrder:false});
+                    Reset(Combobox_PromotionOrder_3);
+                  Text: ="Huỷ"
+                  Visible: =CountIf(OrderxPromotion_Order,true) = 0
+                  Width: =160
+                  X: =713
+                  Y: =428
+            - Label_lydohuy_7:
+                Control: Label@2.5.1
+                Group: Add promotion Order_2
+                Properties:
+                  FontWeight: =FontWeight.Semibold
+                  Height: =35
+                  Size: =18
+                  Text: ="Promotion Order"
+                  Visible: =CountIf(OrderxPromotion_Order,true) = 0
+                  Width: =500
+                  X: =419
+                  Y: =274
+            - Combobox_PromotionOrder_3:
+                Control: ComboBox@0.0.51
+                Group: Add promotion Order_2
+                Properties:
+                  Font: =Font.Arial
+                  FontSize: =18
+                  FontWeight: =FontWeight.Normal
+                  Height: =49
+                  InputTextPlaceholder: ="Promotion Order"
+                  IsSearchable: =false
+                  Items: =Promotion_Order_Max
+                  OnChange: =
+                  SelectMultiple: =true
+                  Visible: =CountIf(OrderxPromotion_Order,true) = 0
+                  Width: =468
+                  X: =431
+                  Y: =339
+                Children:
+                  - NamePromotion1_3:
+                      Control: ComboBoxDataField@1.5.0
+                      Variant: textualColumn
+                      IsLocked: true
+                      Properties:
+                        FieldDisplayName: ="NamePromotion"
+                        FieldName: ="NamePromotion"
+                        FieldType: ="s"
+                        Order: =1
+            - Timer_Promotion_3:
+                Control: Timer@2.1.0
+                Group: Add promotion Order_2
+                Properties:
+                  AutoPause: =false
+                  DisplayMode: =If(!IsBlank(Combobox_PromotionOrder_3.Selected), DisplayMode.Edit,DisplayMode.Disabled)
+                  FontWeight: =FontWeight.Semibold
+                  OnTimerEnd: |-
+                    =UpdateContext({showLoading: false});
+                    ForAll(
+                        Combobox_PromotionOrder_3.SelectedItems As This,
+                        Patch(
+                            'Orders x Promotion',
+                            Defaults('Orders x Promotion'),
+                            {
+                                Promotion: LookUp(Promotion,ID = This.crdfd_promotionid),
+                                SO: record_MaDH_selected,
+                                Type:"Order",
+                                Loại: If(This.VND_Percent='VNĐ/% (Promotion)'.VNĐ,"Tiền","Phần trăm"),
+                                'Chiết khấu':If(This.VND_Percent='VNĐ/% (Promotion)'.VNĐ,This.ValuePromotion,This.ValuePromotion/100)
+                            }
+                        )
+                    );
+                    Reset(Combobox_PromotionOrder_3);
+                    Notify("Áp dụng thành công",NotificationType.Success,5000);
+                    UpdateContext({Popup_PromotionOrder:false});
+                  OnTimerStart: |-
+                    =UpdateContext({showLoading: true});
+                  RadiusBottomLeft: =15
+                  RadiusBottomRight: =15
+                  RadiusTopLeft: =15
+                  RadiusTopRight: =15
+                  Reset: =true
+                  Size: =14
+                  Start: =true
+                  Text: =If(!IsBlank(Combobox_PromotionOrder_3.Selected) And showLoading ,Text(Time(0, 0, Round((Self.Duration - Self.Value) / 1000, 0)), "mm:ss"), "Xác nhận")
+                  Visible: =CountIf(OrderxPromotion_Order,true) = 0
+                  X: =448
+                  Y: =428
+            - Button_Nền_1:
+                Control: Classic/Button@2.2.0
+                Group: Deactive Promotion Order_1
+                Properties:
+                  BorderThickness: =0
+                  DisplayMode: =DisplayMode.View
+                  Fill: =RGBA(255, 255, 255, 1)
+                  Height: =324
+                  RadiusBottomLeft: =30
+                  RadiusBottomRight: =30
+                  RadiusTopLeft: =30
+                  RadiusTopRight: =30
+                  Visible: =CountIf(OrderxPromotion_Order,true) > 0
+                  Width: =720
+                  X: =327
+                  Y: =232
+            - Xong_1:
+                Control: Button@0.0.45
+                Group: Deactive Promotion Order_1
+                Properties:
+                  BorderRadius: =10
+                  FontSize: =16
+                  Height: =40
+                  OnSelect: |-
+                    =
+                    Clear(OrderxPromotion_Order);
+                  Text: ="Save"
+                  Visible: =CountIf(OrderxPromotion_Order,true) > 0
+                  Width: =160
+                  X: =774
+                  Y: =489
+            - Deactive-Promotion_1:
+                Control: Button@0.0.45
+                Group: Deactive Promotion Order_1
+                Properties:
+                  BasePaletteColor: =RGBA(189, 178, 176, 1)
+                  BorderRadius: =10
+                  FontSize: =16
+                  Height: =40
+                  OnSelect: |
+                    =Patch(
+                        'Orders x Promotion',
+                        PromotiOnder_1.Selected,
+                        {Status: 'Status (Orders x Promotion)'.Inactive}
+                    );
+                    Notify(
+                        "Deactive thành công",
+                        NotificationType.Success,
+                        2000
+                    );
+                    ClearCollect(
+                        OrderxPromotion_Order,
+                        Filter(
+                            'Orders x Promotion',
+                            Status = 'Status (Orders x Promotion)'.Active,
+                            SO.Id = record_MaDH_selected.Id,
+                            'Type cal' = "Order"
+                        )
+                    );
+                  Text: ="Deactive"
+                  Visible: =CountIf(OrderxPromotion_Order,true) > 0
+                  Width: =160
+                  X: =431
+                  Y: =489
+      - C_showPopupHuyDon_1:
+          Control: GroupContainer@1.3.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =RGBA(189, 189, 189, 0.67)
+            Height: =900
+            Visible: =ShowPopup_HuyDon
+            Width: =1366
+          Children:
+            - Button1_1:
+                Control: Classic/Button@2.2.0
+                Group: Group6_1
+                Properties:
+                  DisplayMode: =DisplayMode.View
+                  Fill: =RGBA(255, 255, 255, 0.95)
+                  Height: =234
+                  RadiusBottomLeft: =30
+                  RadiusBottomRight: =30
+                  RadiusTopLeft: =30
+                  RadiusTopRight: =30
+                  Text: =
+                  Width: =556
+                  X: =387
+                  Y: =267
+            - Label_lydohuy_8:
+                Control: Label@2.5.1
+                Group: Group6_1
+                Properties:
+                  Height: =35
+                  Size: =16
+                  Text: ="Lý do huỷ"
+                  Width: =200
+                  X: =426
+                  Y: =310
+            - dr_lydohuy_1:
+                Control: DropDown@0.0.45
+                Group: Group6_1
+                Properties:
+                  Appearance: ='DropdownCanvas.Appearance'.FilledDarker
+                  DefaultSelectedItems: =First(Choices('Lý do chốt đơn (Sale Order Details)'))
+                  FontSize: =16
+                  Height: =40
+                  Items: =Choices('Lý do chốt đơn (Sale Order Details)')
+                  OnChange: =Reset(input_lydohuydon_1)
+                  Required: =true
+                  Width: =465
+                  X: =426
+                  Y: =353
+            - bt_xacnhan_1:
+                Control: Button@0.0.45
+                Group: Group6_1
+                Properties:
+                  BorderRadius: =10
+                  DisplayMode: =If(dr_lydohuy_1.Selected.Value = 'Lý do chốt đơn (Sale Order Details)'.'Lý do khác' And IsBlank(input_lydohuydon_1.Value),DisplayMode.Disabled,DisplayMode.Edit)
+                  Font: =Font.Arial
+                  FontSize: =16
+                  FontWeight: =FontWeight.Semibold
+                  OnSelect: "=If(\n    formdata_selected.'Record SOD3'.'Trạng thái đơn hàng' = 'Trạng thái đơn hàng'.'Đơn hàng đã soạn',\n    Notify(\n        \"Đơn hàng đã soạn không thể chốt đơn\",\n        NotificationType.Error,\n        3000\n    ),\n    UpdateContext({ShowPopup_HuyDon: false});\n    //Update record collection \nRemoveIf(\n        formData_new,\n        STT = formdata_selected.STT\n    );\n    //deactive\nPatch(\n        'Sale Order Details',\n        formdata_selected.'Record SOD3',\n        {\n            Status: 'Status (Sale Order Details)'.Inactive,\n            'Lý do chốt đơn': dr_lydohuy_1.Selected.Value,\n            'Ghi chú - chốt đơn': input_lydohuydon_1.Value\n        }\n    );\n    UpdateContext(\n        {\n            data_muakem: Filter(\n                Promotion,\n                (formdata_selected.'Mã sản phẩm' in 'Mã sản phẩm (mua kèm)' || formdata_selected.'Mã nhóm SP' in 'Mã nhóm sp (Mua kèm)') && Status = 'Status (Promotion)'.Active\n            )\n        }\n    );\n    ForAll(\n        data_muakem As data_muakem,\n        If(\n            (CountIf(\n                List_Ma_SP_formdata,\n                Text(Value) in data_muakem.'Mã sản phẩm (mua kèm)'\n            ) = 0 And !IsBlank(data_muakem.'Mã sản phẩm (mua kèm)')) || (CountIf(\n                List_Ma_NSP_formdata,\n                Text(Value) in data_muakem.'Mã nhóm sp (Mua kèm)'\n            ) = 0 And !IsBlank(data_muakem.'Mã nhóm sp (Mua kèm)')),\n            ForAll(\n                Filter(\n                    formData_new,\n                    PromotionRecord.ID = data_muakem.ID\n                ),\n                Patch(\n                    formData_new,\n                    ThisRecord,\n                    {\n                        PromotionRecord: Blank(),\n                        'Giá đã giảm': ThisRecord.Giá,\n                        'Tổng tiền': ThisRecord.Giá + (ThisRecord.Giá * ThisRecord.VAT),\n                        '% Giảm giá': 0,\n                        Chietkhauphantram: 0,\n                        Chietkhautien: 0\n                    }\n                );\n            );\n        )\n    );\n    // Update record collection với giá trị mới với trường hợp cộng dồn\nWith(\n        {\n            value: Sum(\n                Filter(\n                    formData_new,\n                    PromotionRecord.'Promotion type (text)' = formdata_selected.PromotionRecord.'Promotion type (text)' && ThisRecord.PromotionRecord.'Cộng dồn số lượng' = 'Cộng dồn số lượng (Promotion)'.Yes\n                ),\n                'Số lượng'\n            )\n        },\n        UpdateIf(\n            formData_new,\n            ThisRecord.PromotionRecord.'Promotion type (text)' = formdata_selected.PromotionRecord.'Promotion type (text)' && ThisRecord.PromotionRecord.'Cộng dồn số lượng' = 'Cộng dồn số lượng (Promotion)'.Yes,\n            With(\n                {\n                    promoValue: If(\n                        !IsBlank(ThisRecord.PromotionRecord.'Số lượng áp dụng mức 3') && value >= ThisRecord.PromotionRecord.'Số lượng áp dụng mức 3' && (IsBlank(ThisRecord.PromotionRecord.'Điều khoản thanh toán áp dụng mức 3') Or ThisRecord.PromotionRecord.'Điều khoản thanh toán áp dụng mức 3' = var_selected_dieukhoanthanhtoan_choice),\n                        ThisRecord.PromotionRecord.'Value 3',\n                        If(\n                            !IsBlank(ThisRecord.PromotionRecord.'Số lượng áp dụng') && value >= ThisRecord.PromotionRecord.'Số lượng áp dụng' && (IsBlank(ThisRecord.PromotionRecord.'Điều khoản thanh toán áp dụng mức 2') Or ThisRecord.PromotionRecord.'Điều khoản thanh toán áp dụng mức 2' = var_selected_dieukhoanthanhtoan_choice),\n                            ThisRecord.PromotionRecord.'Value 2',\n                            ThisRecord.PromotionRecord.Value\n                        )\n                    ),\n                    Record: ThisRecord\n                },\n                With(\n                    {\n                        PPHD: If(\n                            cb_donhang_SO_new.Selected.'Loại hóa đơn' = 'Loại hóa đơn (Sale_Orders)'.'Hộ kinh doanh' And cb_donhang_SO_new.Selected.VAT = VAT_choice.'Không VAT',\n                            1.015,\n                            1\n                        ),\n                        Gia_da_chietkhau: If(\n                            Record.PromotionRecord.'VNĐ/% Text' = \"VNĐ\",\n                            Record.Giá - promoValue,\n                            Record.Giá * (1 - promoValue / 100)\n                        )\n                    },\n                    {\n                        '% Giảm giá': If(\n                            Record.PromotionRecord.'VNĐ/% Text' = \"%\",\n                            promoValue / 100,\n                            promoValue\n                        ),\n                        'Giá đã giảm': Gia_da_chietkhau * PPHD,\n                        'Tổng tiền': (Record.'Số lượng' * (Gia_da_chietkhau * PPHD)) + Record.VAT,\n                        Chietkhauphantram: If(\n                            Record.PromotionRecord.'VNĐ/% Text' = \"%\" && var_Nganh_nghe = \"Shop\",\n                            promoValue / 100,\n                            0\n                        ),\n                        Chietkhautien: If(\n                            Record.PromotionRecord.'VNĐ/% Text' = \"VNĐ\" && var_Nganh_nghe = \"Shop\",\n                            promoValue,\n                            0\n                        )\n                    }\n                )\n            )\n        )\n    );\n    ClearCollect(\n        formData_new,\n        ForAll(\n            Sequence(\n                CountRows(\n                    Sort(\n                        formData_new,\n                        STT,\n                        SortOrder.Ascending\n                    )\n                )\n            ),\n            Patch(\n                Last(\n                    FirstN(\n                        Sort(\n                            formData_new,\n                            STT,\n                            SortOrder.Ascending\n                        ),\n                        Value\n                    )\n                ),\n                {STT: Value}\n            )\n        )\n    );\n    //Lưu dataverse với giá mới\nForAll(\n        formData_new,\n        Patch(\n            'Sale Order Details',\n            formData_new[@'Record SOD3'],\n            {\n                Giá: If(\n                    var_Nganh_nghe = \"Shop\",\n                    formData_new[@'Giá đã giảm'],\n                    formData_new[@Giá]\n                ),\n                //'Giá gốc': Value(formData_new[@Giá]),\n                'Stt đơn': formData_new[@STT],\n                'Chiết khấu %': formData_new[@Chietkhauphantram],\n                'Chiết khấu VNĐ': formData_new[@Chietkhautien]\n            }\n        )\n    );\n    Notify(\n        \"Cập nhật thành công\",\n        NotificationType.Success,\n        2000\n    );\n    Clear(TanSuatKho);\n    ForAll(\n        formData_new As ColData,\n        ForAll(\n            var_filterkho As Kho,\n            If(\n                CountRows(\n                    Filter(\n                        'Kho Bình Định',\n                        'Vị trí kho'.'Tên kho' = Kho.'Tên kho' && 'Tên sản phẩm'.'Tên sản phẩm' = ColData.'Tên sản phẩm' && 'Tồn kho lý thuyết - Bỏ mua' >= ColData.'Số lượng'\n                    )\n                ) > 0,\n                Collect(\n                    TanSuatKho,\n                    {\n                        TênSảnPhẩm: ColData.'Tên sản phẩm',\n                        SốLượng: ColData.'Số lượng',\n                        Kho: Kho.'Tên kho'\n                    }\n                )\n            )\n        )\n    );\n    With(\n        {tempData: formData_new},\n        ForAll(\n            tempData As ColData,\n            Patch(\n                formData_new,\n                LookUp(\n                    formData_new,\n                    'Tên sản phẩm' = ColData.'Tên sản phẩm'\n                ),\n                {\n                    'Kho đáp ứng': LookUp(\n                        TanSuatKho,\n                        TênSảnPhẩm = ColData.'Tên sản phẩm',\n                        Kho\n                    )\n                }\n            )\n        )\n    );\n    Reset(dr_lydohuy_1);\n    \n)"
+                  Text: ="Xác nhận"
+                  Width: =126
+                  X: '=472 '
+                  Y: =449
+            - bt_huy_5:
+                Control: Button@0.0.45
+                Group: Group6_1
+                Properties:
+                  Appearance: =
+                  BasePaletteColor: =RGBA(189, 178, 176, 1)
+                  BorderRadius: =10
+                  Font: =Font.Arial
+                  FontSize: =16
+                  FontWeight: =FontWeight.Semibold
+                  OnSelect: |-
+                    =UpdateContext({ShowPopup_HuyDon:false});
+                    Reset(dr_lydohuy_1);
+                    Reset(input_lydohuydon_1);
+                  Text: ="Huỷ"
+                  Width: =126
+                  X: =726
+                  Y: =449
+            - input_lydohuydon_1:
+                Control: TextInput@0.0.54
+                Group: Group6_1
+                Properties:
+                  FontSize: =16
+                  Height: =40
+                  Placeholder: ="Mô tả lý do"
+                  TriggerOutput: ='TextInputCanvas.TriggerOutput'.Keypress
+                  Visible: =If(dr_lydohuy_1.Selected.Value = 191920007,true,false)
+                  Width: =465
+                  X: =426
+                  Y: =400
+            - Label_lydohuy_9:
+                Control: Label@2.5.1
+                Group: Group6_1
+                Properties:
+                  FontWeight: =FontWeight.Semibold
+                  Height: =35
+                  Size: =18
+                  Text: =formdata_selected.'Tên sản phẩm'
+                  Width: =500
+                  X: =419
+                  Y: =274
+      - PromotiOnder_1:
+          Control: DataTable@1.0.3
+          Properties:
+            Fill: =RGBA(255, 255, 255, 1)
+            HeadingFill: =RGBA(4, 161, 179, 1)
+            Height: =213
+            Items: =OrderxPromotion_Order
+            Visible: =CountIf(OrderxPromotion_Order,true) > 0
+            Width: =690
+            X: =342
+            Y: =246
+          Children:
+            - crdfd_promotiontext_Column2_1:
+                Control: DataTableColumn@1.0.1
+                Variant: Textual
+                IsLocked: true
+                Properties:
+                  FieldDisplayName: ="Promotion"
+                  FieldName: ="crdfd_promotiontext"
+                  Order: =1
+                  Text: =ThisItem.'Promotion text'
+            - crdfd_chieckhau_Column2_1:
+                Control: DataTableColumn@1.0.1
+                Variant: Textual
+                IsLocked: true
+                Properties:
+                  FieldDisplayName: ="Chiết khấu"
+                  FieldName: ="crdfd_chieckhau"
+                  Order: =2
+                  Text: =ThisItem.'Chiết khấu cal'
+            - crdfd_loaical_Column2_1:
+                Control: DataTableColumn@1.0.1
+                Variant: Textual
+                IsLocked: true
+                Properties:
+                  FieldDisplayName: ="Loại"
+                  FieldName: ="crdfd_loaical"
+                  Order: =3
+                  Text: =ThisItem.'Loại cal'

@@ -1,0 +1,114 @@
+[
+  {
+    "CdsFCBContext": "{\"FileType\":true,\"ImageExternalStorage\":true}",
+    "EntitySetName": "cr44a_tonkhoketoans",
+    "IsHidden": false,
+    "IsSampleData": false,
+    "IsWritable": true,
+    "LogicalName": "cr44a_tonkhoketoan",
+    "MaxGetRowsCount": 2000,
+    "Name": "Tồn kho kế toáns",
+    "NativeCDSDataSourceInfoNameMapping": {
+      "_ownerid_value": "Owner",
+      "cr1bb_auky": "Đầu kỳ ",
+      "cr1bb_banhangnhap": "Bán hàng trả lại",
+      "cr1bb_banhangxuat": "Bán hàng",
+      "cr1bb_conlaibo": "BO chưa giao/dở dang",
+      "cr1bb_conlaiso": "SO chưa giao/dở dang",
+      "cr1bb_donvi": "Đơn vị",
+      "cr1bb_kgcnhap": "KGC - nhập",
+      "cr1bb_kgcxuat": "KGC - xuất",
+      "cr1bb_masanpham": "Mã sản phẩm",
+      "cr1bb_muahangnhap": "Mua hàng",
+      "cr1bb_muahangxuat": "Mua hàng trả lại",
+      "cr1bb_tenthuongmaitext": "Tên thương mại text",
+      "cr44a_name": "Mã tồn kho",
+      "cr44a_Sanpham": "Sản phẩm",
+      "cr44a_Tenthuongmai": "Tên thương mại",
+      "cr44a_tonkhoketoan_AsyncOperations": "System Jobs",
+      "cr44a_tonkhoketoan_BulkDeleteFailures": "Bulk Delete Failures",
+      "cr44a_tonkhoketoan_DuplicateBaseRecord": "Duplicate Records (cr44a_tonkhoketoan_DuplicateBaseRecord)",
+      "cr44a_tonkhoketoan_DuplicateMatchingRecord": "Duplicate Records (cr44a_tonkhoketoan_DuplicateMatchingRecord)",
+      "cr44a_tonkhoketoan_MailboxTrackingFolders": "Mailbox Auto Tracking Folders",
+      "cr44a_tonkhoketoan_PrincipalObjectAttributeAccesses": "Field Sharing",
+      "cr44a_tonkhoketoan_ProcessSession": "Process Sessions",
+      "cr44a_tonkhoketoan_SyncErrors": "Sync Errors",
+      "cr44a_tonkhoketoanid": "Tồn kho kế toán",
+      "cr44a_tonlythuyet": "Tồn lý thuyết",
+      "cr44a_tonthucte": "Tồn thực tế",
+      "createdby": "Created By",
+      "createdon": "Created On",
+      "createdonbehalfby": "Created By (Delegate)",
+      "importsequencenumber": "Import Sequence Number",
+      "modifiedby": "Modified By",
+      "modifiedon": "Modified On",
+      "modifiedonbehalfby": "Modified By (Delegate)",
+      "overriddencreatedon": "Record Created On",
+      "owningbusinessunit": "Owning Business Unit",
+      "owningteam": "Owning Team",
+      "owninguser": "Owning User",
+      "statecode": "Status",
+      "statuscode": "Status Reason",
+      "timezoneruleversionnumber": "Time Zone Rule Version Number",
+      "utcconversiontimezonecode": "UTC Conversion Time Zone Code",
+      "versionnumber": "Version Number"
+    },
+    "PreferredName": "Tồn kho kế toáns",
+    "Type": "NativeCDSDataSourceInfo"
+  },
+  {
+    "DisplayName": "Tồn kho kế toáns (Views)",
+    "Name": "_cr44a_tonkhoketoan_views",
+    "RelatedEntityName": "Tồn kho kế toáns",
+    "TrimmedViewName": true,
+    "Type": "ViewInfo",
+    "ViewInfoNameMapping": {
+      "5e5acf15-3d45-4176-94c1-a6a0ba043454": "Tồn kho kế toán Advanced Find View",
+      "80226043-516c-f011-b4cc-000d3aa129b6": "Tồn kho kế toán - full",
+      "9cdcd3f0-5566-4139-83ac-b187ca05b940": "Tồn kho kế toán Lookup View",
+      "9d3ee326-aa32-4c83-b7ea-e9789c3d8e92": "Inactive Tồn kho kế toáns",
+      "cab1d50a-9129-48d4-842d-492145596bbb": "Tồn kho kế toán",
+      "d828b63d-5f2a-42e6-9153-93e8f4453808": "Tồn kho kế toán Associated View"
+    }
+  },
+  {
+    "DisplayName": "Status (Tồn kho kế toáns)",
+    "Name": "cr44a_tonkhoketoan_statecode",
+    "OptionSetInfoNameMapping": {
+      "0": "Active",
+      "1": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statecode",
+        "OptionSetReferenceEntityName": "Tồn kho kế toáns"
+      }
+    },
+    "OptionSetTypeKey": "StateType",
+    "RelatedColumnInvariantName": "statecode",
+    "RelatedEntityName": "Tồn kho kế toáns",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status Reason (Tồn kho kế toáns)",
+    "Name": "cr44a_tonkhoketoan_statuscode",
+    "OptionSetInfoNameMapping": {
+      "1": "Active",
+      "2": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statuscode",
+        "OptionSetReferenceEntityName": "Tồn kho kế toáns"
+      }
+    },
+    "OptionSetTypeKey": "StatusType",
+    "RelatedColumnInvariantName": "statuscode",
+    "RelatedEntityName": "Tồn kho kế toáns",
+    "Type": "OptionSetInfo"
+  }
+]

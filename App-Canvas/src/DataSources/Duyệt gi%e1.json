@@ -1,0 +1,141 @@
+[
+  {
+    "CdsFCBContext": "{\"FileType\":true,\"ImageExternalStorage\":true}",
+    "EntitySetName": "crdfd_duyetgias",
+    "IsHidden": false,
+    "IsSampleData": false,
+    "IsWritable": true,
+    "LogicalName": "crdfd_duyetgia",
+    "MaxGetRowsCount": 2000,
+    "Name": "Duyệt giá",
+    "NativeCDSDataSourceInfoNameMapping": {
+      "_ownerid_value": "Owner",
+      "crdfd_duyetgia_AsyncOperations": "System Jobs",
+      "crdfd_duyetgia_BulkDeleteFailures": "Bulk Delete Failures",
+      "crdfd_duyetgia_DuplicateBaseRecord": "Duplicate Records (crdfd_duyetgia_DuplicateBaseRecord)",
+      "crdfd_duyetgia_DuplicateMatchingRecord": "Duplicate Records (crdfd_duyetgia_DuplicateMatchingRecord)",
+      "crdfd_duyetgia_MailboxTrackingFolders": "Mailbox Auto Tracking Folders",
+      "crdfd_duyetgia_PrincipalObjectAttributeAccesses": "Field Sharing",
+      "crdfd_duyetgia_ProcessSession": "Process Sessions",
+      "crdfd_duyetgia_SyncErrors": "Sync Errors",
+      "crdfd_duyetgiaid": "ID",
+      "crdfd_giaapung": "Giá đáp ứng",
+      "crdfd_giaexuat": "Giá đề xuất",
+      "crdfd_Khachhang": "Khách hàng",
+      "crdfd_khachhangtext": "Khách hàng text",
+      "crdfd_mailnguoitao": "Mail người tạo",
+      "crdfd_managerduyet": "Manager duyệt",
+      "crdfd_Maonhangchitiet": "Mã đơn hàng chi tiết",
+      "crdfd_maonhangcttext": "Mã đơn hàng CT text",
+      "crdfd_name": "Mã duyệt",
+      "crdfd_ngaygiaoapung": "Ngày giao đáp ứng",
+      "crdfd_ngaygiaomongmuon": "Ngày giao mong muốn",
+      "crdfd_Nguoiduyet": "Người duyệt",
+      "crdfd_onvi": "Đơn vị",
+      "crdfd_saleorderdetail_Duyetgiasup_crdfd_duyetgia": "Sale Order Details",
+      "crdfd_Sanpham": "Sản phẩm",
+      "crdfd_sodbaogia_Duyetgiasup_crdfd_duyetgia": "SOD báo giá",
+      "crdfd_soluong": "Số lượng",
+      "crdfd_soluongapung": "Số lượng đáp ứng",
+      "crdfd_thuonghieu": "Thương hiệu",
+      "crdfd_tonkholythuyet": "Tồn kho lý thuyết",
+      "crdfd_tonkhothucte": "Tồn kho thực tế",
+      "createdby": "Created By",
+      "createdon": "Created On",
+      "createdonbehalfby": "Created By (Delegate)",
+      "importsequencenumber": "Import Sequence Number",
+      "modifiedby": "Modified By",
+      "modifiedon": "Modified On",
+      "modifiedonbehalfby": "Modified By (Delegate)",
+      "overriddencreatedon": "Record Created On",
+      "owningbusinessunit": "Owning Business Unit",
+      "owningteam": "Owning Team",
+      "owninguser": "Owning User",
+      "statecode": "Status",
+      "statuscode": "Status Reason",
+      "timezoneruleversionnumber": "Time Zone Rule Version Number",
+      "utcconversiontimezonecode": "UTC Conversion Time Zone Code",
+      "versionnumber": "Version Number"
+    },
+    "PreferredName": "Duyệt giá",
+    "Type": "NativeCDSDataSourceInfo"
+  },
+  {
+    "DisplayName": "Duyệt giá (Views)",
+    "Name": "_crdfd_duyetgia_views",
+    "RelatedEntityName": "Duyệt giá",
+    "TrimmedViewName": true,
+    "Type": "ViewInfo",
+    "ViewInfoNameMapping": {
+      "417e317d-3f93-ef11-8a69-00224856ee7d": "Duyệt giá (đã duyệt chưa có đơn)",
+      "427f87d4-3f93-ef11-8a69-6045bd20487b": "Duyệt giá (từ chối)",
+      "6b28ee1a-7857-49bf-b959-b674c6bd586f": "Duyệt giá (chưa duyệt)",
+      "7d02611e-b0cc-4e0a-a3e0-34203694d2cb": "Duyệt giá Associated View",
+      "82afd160-4ae3-4352-a9fd-713635e39cd0": "Duyệt giá Advanced Find View",
+      "8e5a8319-f32a-42b7-bf12-466334f02661": "Inactive Duyệt giá",
+      "bb0a1a2b-9eed-4ee9-b25e-94963eec9eee": "Duyệt giá Lookup View",
+      "decdbd63-9695-ef11-8a69-000d3aa09b3d": "Duyệt giá (đã duyệt có đơn)"
+    }
+  },
+  {
+    "DisplayName": "Manager duyệt (Duyệt giá)",
+    "Name": "crdfd_duyetgia_crdfd_managerduyet",
+    "OptionSetInfoNameMapping": {
+      "191920000": "Chưa duyệt",
+      "191920001": "Đã duyệt",
+      "191920002": "Từ chối"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_managerduyet",
+        "OptionSetReferenceEntityName": "Duyệt giá"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "crdfd_managerduyet",
+    "RelatedEntityName": "Duyệt giá",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status (Duyệt giá)",
+    "Name": "crdfd_duyetgia_statecode",
+    "OptionSetInfoNameMapping": {
+      "0": "Active",
+      "1": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statecode",
+        "OptionSetReferenceEntityName": "Duyệt giá"
+      }
+    },
+    "OptionSetTypeKey": "StateType",
+    "RelatedColumnInvariantName": "statecode",
+    "RelatedEntityName": "Duyệt giá",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status Reason (Duyệt giá)",
+    "Name": "crdfd_duyetgia_statuscode",
+    "OptionSetInfoNameMapping": {
+      "1": "Active",
+      "2": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statuscode",
+        "OptionSetReferenceEntityName": "Duyệt giá"
+      }
+    },
+    "OptionSetTypeKey": "StatusType",
+    "RelatedColumnInvariantName": "statuscode",
+    "RelatedEntityName": "Duyệt giá",
+    "Type": "OptionSetInfo"
+  }
+]

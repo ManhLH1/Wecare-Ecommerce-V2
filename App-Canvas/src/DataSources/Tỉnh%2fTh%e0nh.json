@@ -1,0 +1,171 @@
+[
+  {
+    "CdsFCBContext": "{\"FileType\":true,\"ImageExternalStorage\":true}",
+    "EntitySetName": "crdfd_tinhthanhs",
+    "IsHidden": false,
+    "IsSampleData": false,
+    "IsWritable": true,
+    "LogicalName": "crdfd_tinhthanh",
+    "MaxGetRowsCount": 2000,
+    "Name": "Tỉnh/Thành",
+    "NativeCDSDataSourceInfoNameMapping": {
+      "_ownerid_value": "Owner",
+      "cr1bb_cashflowtype_Tinhthanh_crdfd_tinhthanh": "Cash flow types",
+      "cr1bb_cosales": "Có sales",
+      "cr1bb_crdfd_chuoicungung_NoiNCCNPPaiphuonglayha": "Chuỗi cung ứngs (cr1bb_crdfd_chuoicungung_NoiNCCNPPaiphuonglayha)",
+      "cr1bb_crdfd_chuoicungung_Noisanxuatchinh_crdfd_": "Chuỗi cung ứngs (cr1bb_crdfd_chuoicungung_Noisanxuatchinh_crdfd_)",
+      "cr1bb_crdfd_scentity_Province_crdfd_tinhthanh": "SC entitie",
+      "cr1bb_keytinhthanh": "Mã Tên Tỉnh",
+      "cr1bb_Khobanau": "Kho ban đầu",
+      "cr1bb_Leader": "Leader",
+      "cr1bb_mailsupervisor": "Mail supervisor",
+      "cr1bb_Manager": "Manager",
+      "cr1bb_Supervisor": "Supervisor",
+      "cr1bb_tuyengiaohang_Tinhthanh_crdfd_tinhthanh": "Tuyến giao hàngs",
+      "cr1bb_vitrituyendung_iaiemlamviec_crdfd_tinhthanh": "Vị trí tuyển dụngs",
+      "cr1bb_vungmien": "Vùng miền",
+      "cr44a_cr1bb_cashflowdetail_Tinhthanh_crdfd_tinhthanh": "Cash flow details",
+      "crdfd_crdfd_customer_Tinhthanh_crdfd_tinhthanh": "Customers",
+      "crdfd_crdfd_employee_TinhThanh_crdfd_tinhthanh": "Employees",
+      "crdfd_crdfd_oituongkpi_Tinhthanh_crdfd_tinhthan": "KPI > Đối tượng > Tần suấts",
+      "crdfd_crdfd_quanhuyen_Tinhthanh_crdfd_tinhthanh": "Quận/Huyện",
+      "crdfd_leadtimelocal": "Lead time - local",
+      "crdfd_matinhthanh": "Mã Tỉnh/Thành",
+      "crdfd_name": "Tên Tỉnh/Thành",
+      "crdfd_onvivanchuyen_Tuyen_giao_hang_crdfd_tinht": "Đơn vị vận chuyển",
+      "crdfd_phieuangky_iaiemcongtac_crdfd_tinhthanh": "Phiếu đăng ký",
+      "crdfd_room_Location_crdfd_tinhthanh": "Rooms",
+      "crdfd_Sale_admin": "Sale Admin",
+      "crdfd_supplier_Location_crdfd_tinhthanh": "Suppliers (crdfd_supplier_Location_crdfd_tinhthanh)",
+      "crdfd_supplier_tinh_thanh_crdfd_tinhthanh": "Suppliers (crdfd_supplier_tinh_thanh_crdfd_tinhthanh)",
+      "crdfd_tasks_Tinhthanh_crdfd_tinhthanh": "Tasks_",
+      "crdfd_thongtinungvien_iaiemlamviec_crdfd_tinhthanh": "Thông tin ứng viêns",
+      "crdfd_tinhthanh_AsyncOperations": "System Jobs",
+      "crdfd_tinhthanh_BulkDeleteFailures": "Bulk Delete Failures",
+      "crdfd_tinhthanh_DuplicateBaseRecord": "Duplicate Records (crdfd_tinhthanh_DuplicateBaseRecord)",
+      "crdfd_tinhthanh_DuplicateMatchingRecord": "Duplicate Records (crdfd_tinhthanh_DuplicateMatchingRecord)",
+      "crdfd_tinhthanh_MailboxTrackingFolders": "Mailbox Auto Tracking Folders",
+      "crdfd_tinhthanh_PrincipalObjectAttributeAccesses": "Field Sharing",
+      "crdfd_tinhthanh_ProcessSession": "Process Sessions",
+      "crdfd_tinhthanh_SyncErrors": "Sync Errors",
+      "crdfd_tinhthanhid": "ID",
+      "crdfd_tnghpitng_Tinhthanh_crdfd_tinhthanh": "Tổng hợp đối tượngs",
+      "crdfd_tuyenxtinhthanh_Tinhthanh_crdfd_tinhthanh": "Tuyến x Tỉnh Thànhs",
+      "crdfd_yeucautuyendung_iaiem_crdfd_tinhthanh": "Yêu cầu tuyển dụngs",
+      "createdby": "Created By",
+      "createdon": "Created On",
+      "createdonbehalfby": "Created By (Delegate)",
+      "importsequencenumber": "Import Sequence Number",
+      "modifiedby": "Modified By",
+      "modifiedon": "Modified On",
+      "modifiedonbehalfby": "Modified By (Delegate)",
+      "new_crdfd_event_details_Tinhthanh_crdfd_tinhthanh": "Event Details",
+      "new_vungmienfx": "Vùng miền fx",
+      "overriddencreatedon": "Record Created On",
+      "owningbusinessunit": "Owning Business Unit",
+      "owningteam": "Owning Team",
+      "owninguser": "Owning User",
+      "statecode": "Status",
+      "statuscode": "Status Reason",
+      "timezoneruleversionnumber": "Time Zone Rule Version Number",
+      "utcconversiontimezonecode": "UTC Conversion Time Zone Code",
+      "versionnumber": "Version Number"
+    },
+    "PreferredName": "Tỉnh/Thành",
+    "Type": "NativeCDSDataSourceInfo"
+  },
+  {
+    "DisplayName": "Tỉnh/Thành (Views)",
+    "Name": "_crdfd_tinhthanh_views",
+    "RelatedEntityName": "Tỉnh/Thành",
+    "TrimmedViewName": true,
+    "Type": "ViewInfo",
+    "ViewInfoNameMapping": {
+      "2f71ddd1-7d98-4371-9018-1723695b5000": "Tỉnh/Thành",
+      "6a7d4ddf-537d-4b45-8867-792f410d3eba": "Tỉnh/Thành Advanced Find View",
+      "9a26c4bc-3c4d-46b4-a88c-d88f58274d52": "Tỉnh/Thành Associated View",
+      "d0a85580-1396-4f7c-858e-0ab670447ccd": "Tỉnh/Thành Lookup View",
+      "df86b911-527c-4b0f-bf57-97748db662a0": "Inactive Tỉnh/Thành"
+    }
+  },
+  {
+    "DisplayName": "Có sales (Tỉnh/Thành)",
+    "Name": "cr1bb_crdfd_tinhthanh_cr1bb_cosales",
+    "OptionSetInfoNameMapping": {
+      "0": "No",
+      "1": "Yes"
+    },
+    "OptionSetIsBooleanValued": true,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_cosales",
+        "OptionSetReferenceEntityName": "Tỉnh/Thành"
+      }
+    },
+    "OptionSetTypeKey": "BooleanType",
+    "RelatedColumnInvariantName": "cr1bb_cosales",
+    "RelatedEntityName": "Tỉnh/Thành",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Vùng miền (Tỉnh/Thành)",
+    "Name": "cr1bb_crdfd_tinhthanh_cr1bb_vungmien",
+    "OptionSetInfoNameMapping": {
+      "283640000": "Miền Trung",
+      "283640001": "Miền Nam"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_vungmien",
+        "OptionSetReferenceEntityName": "Tỉnh/Thành"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_vungmien",
+    "RelatedEntityName": "Tỉnh/Thành",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status (Tỉnh/Thành)",
+    "Name": "crdfd_tinhthanh_statecode",
+    "OptionSetInfoNameMapping": {
+      "0": "Active",
+      "1": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statecode",
+        "OptionSetReferenceEntityName": "Tỉnh/Thành"
+      }
+    },
+    "OptionSetTypeKey": "StateType",
+    "RelatedColumnInvariantName": "statecode",
+    "RelatedEntityName": "Tỉnh/Thành",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status Reason (Tỉnh/Thành)",
+    "Name": "crdfd_tinhthanh_statuscode",
+    "OptionSetInfoNameMapping": {
+      "1": "Active",
+      "2": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statuscode",
+        "OptionSetReferenceEntityName": "Tỉnh/Thành"
+      }
+    },
+    "OptionSetTypeKey": "StatusType",
+    "RelatedColumnInvariantName": "statuscode",
+    "RelatedEntityName": "Tỉnh/Thành",
+    "Type": "OptionSetInfo"
+  }
+]

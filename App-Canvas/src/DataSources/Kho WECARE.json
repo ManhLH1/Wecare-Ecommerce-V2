@@ -1,0 +1,125 @@
+[
+  {
+    "CdsFCBContext": "{\"FileType\":true,\"ImageExternalStorage\":true}",
+    "EntitySetName": "crdfd_khowecares",
+    "IsHidden": false,
+    "IsSampleData": false,
+    "IsWritable": true,
+    "LogicalName": "crdfd_khowecare",
+    "MaxGetRowsCount": 2000,
+    "Name": "Kho WECARE",
+    "NativeCDSDataSourceInfoNameMapping": {
+      "_ownerid_value": "Owner",
+      "cr1bb_congcudungcu_Vitrikho_crdfd_khowecare": "Công cụ dụng cụ",
+      "cr1bb_crdfd_buyorders_Vitrikho_crdfd_khowecare": "BuyOrders",
+      "cr1bb_crdfd_hangduloichuanhapkho_Vitrikho_crdfd_khowecare": "Hàng dư lỗi chưa nhập khos",
+      "cr1bb_crdfd_ketangkho_Vitrikho_crdfd_khowecare": "Kệ, tầng kho",
+      "cr1bb_crdfd_kiemkhoqr_Vitrikho_crdfd_khowecare": "Kiểm kho",
+      "cr1bb_crdfd_onvivanchuyen_Vitrikho_crdfd_khowecare": "Đơn vị vận chuyển",
+      "cr1bb_crdfd_sale_order_Vitrikho_crdfd_khowecare": "Sale_Orders",
+      "cr1bb_crdfd_sobaogia_Vitrikho_crdfd_khowecare": "SO báo giá",
+      "cr1bb_crdfd_specialevent_Vitrikho_crdfd_khowecare": "Special events",
+      "cr1bb_crdfd_tinhthanh_Khobanau_crdfd_khowecare": "Tỉnh/Thành",
+      "cr1bb_skhuvuc_Vitrikho_crdfd_khowecare": "Khu vựcs",
+      "cr1bb_tuyengiaohang_Khogiaohang_crdfd_khowecare": "Tuyến giao hàngs",
+      "cr1bb_type": "Type",
+      "cr44a_inventoryweshop_Vitrikho_crdfd_khowecare": "Inventory Weshops",
+      "crdfd_chuyenkho_Khoden_crdfd_khowecare": "Chuyển khos (crdfd_chuyenkho_Khoden_crdfd_khowecare)",
+      "crdfd_chuyenkho_Khodi_crdfd_khowecare": "Chuyển khos (crdfd_chuyenkho_Khodi_crdfd_khowecare)",
+      "crdfd_iachi": "Địa chỉ",
+      "crdfd_inventorybinhdinh_Vitrikho_crdfd_khowecare": "Inventory Binh Dinhs",
+      "crdfd_kehoachsoanhang_Khosoanhang_crdfd_khowecare": "Kế hoạch soạn hàng",
+      "crdfd_kho_binh_dinh_Vitrikho_crdfd_khowecare": "Kho Bình Định",
+      "crdfd_khowecare_AsyncOperations": "System Jobs",
+      "crdfd_khowecare_BulkDeleteFailures": "Bulk Delete Failures",
+      "crdfd_khowecare_DuplicateBaseRecord": "Duplicate Records (crdfd_khowecare_DuplicateBaseRecord)",
+      "crdfd_khowecare_DuplicateMatchingRecord": "Duplicate Records (crdfd_khowecare_DuplicateMatchingRecord)",
+      "crdfd_khowecare_MailboxTrackingFolders": "Mailbox Auto Tracking Folders",
+      "crdfd_khowecare_PrincipalObjectAttributeAccesses": "Field Sharing",
+      "crdfd_khowecare_ProcessSession": "Process Sessions",
+      "crdfd_khowecare_SyncErrors": "Sync Errors",
+      "crdfd_khowecareid": "ID",
+      "crdfd_lotxquanhuyen_Khochuyenhang_crdfd_khowecare": "Lô x Quận huyện (crdfd_lotxquanhuyen_Khochuyenhang_crdfd_khowecare)",
+      "crdfd_lotxquanhuyen_Khosoanhang_crdfd_khowecare": "Lô x Quận huyện (crdfd_lotxquanhuyen_Khosoanhang_crdfd_khowecare)",
+      "crdfd_makho": "Mã kho",
+      "crdfd_name": "Tên kho",
+      "crdfd_scentity_Warehouselocation_crdfd_khowecare": "SC entitie",
+      "crdfd_sourcing_opportunity_Warehouse_crdfd_khowecare": "Sourcing opportunities",
+      "crdfd_supplier_Warehouse_crdfd_khowecare": "Suppliers",
+      "createdby": "Created By",
+      "createdon": "Created On",
+      "createdonbehalfby": "Created By (Delegate)",
+      "importsequencenumber": "Import Sequence Number",
+      "modifiedby": "Modified By",
+      "modifiedon": "Modified On",
+      "modifiedonbehalfby": "Modified By (Delegate)",
+      "overriddencreatedon": "Record Created On",
+      "owningbusinessunit": "Owning Business Unit",
+      "owningteam": "Owning Team",
+      "owninguser": "Owning User",
+      "statecode": "Status",
+      "statuscode": "Status Reason",
+      "timezoneruleversionnumber": "Time Zone Rule Version Number",
+      "utcconversiontimezonecode": "UTC Conversion Time Zone Code",
+      "versionnumber": "Version Number",
+      "wc001_crdfd_customer_VItrikho_crdfd_khowecare": "Customers"
+    },
+    "PreferredName": "Kho WECARE",
+    "Type": "NativeCDSDataSourceInfo"
+  },
+  {
+    "DisplayName": "Kho WECARE (Views)",
+    "Name": "_crdfd_khowecare_views",
+    "RelatedEntityName": "Kho WECARE",
+    "TrimmedViewName": true,
+    "Type": "ViewInfo",
+    "ViewInfoNameMapping": {
+      "1a7f5cbe-7cbf-446d-b9ba-a88e1bd33fa8": "Kho WECARE Lookup View",
+      "3937da90-1e6c-4e07-87dc-232a0b338fb6": "Kho WECARE",
+      "3de571be-5357-4ab6-a867-1ff170f1fbd5": "Inactive Kho WECARE",
+      "4d83a532-8c0f-f011-9989-6045bd213118": "Kho wecare_lookup view",
+      "54e119a9-5c8c-4518-8227-228088aa5dbc": "Kho WECARE Associated View",
+      "7e1d7a92-3071-415d-83b4-52a2191b4d1e": "Kho WECARE Advanced Find View"
+    }
+  },
+  {
+    "DisplayName": "Status (Kho WECARE)",
+    "Name": "crdfd_khowecare_statecode",
+    "OptionSetInfoNameMapping": {
+      "0": "Active",
+      "1": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statecode",
+        "OptionSetReferenceEntityName": "Kho WECARE"
+      }
+    },
+    "OptionSetTypeKey": "StateType",
+    "RelatedColumnInvariantName": "statecode",
+    "RelatedEntityName": "Kho WECARE",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status Reason (Kho WECARE)",
+    "Name": "crdfd_khowecare_statuscode",
+    "OptionSetInfoNameMapping": {
+      "1": "Active",
+      "2": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statuscode",
+        "OptionSetReferenceEntityName": "Kho WECARE"
+      }
+    },
+    "OptionSetTypeKey": "StatusType",
+    "RelatedColumnInvariantName": "statuscode",
+    "RelatedEntityName": "Kho WECARE",
+    "Type": "OptionSetInfo"
+  }
+]

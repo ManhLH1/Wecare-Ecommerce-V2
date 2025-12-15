@@ -1,0 +1,166 @@
+[
+  {
+    "CdsFCBContext": "{\"FileType\":true,\"ImageExternalStorage\":true}",
+    "EntitySetName": "crdfd_quanhuyens",
+    "IsHidden": false,
+    "IsSampleData": false,
+    "IsWritable": true,
+    "LogicalName": "crdfd_quanhuyen",
+    "MaxGetRowsCount": 2000,
+    "Name": "Quận/Huyện",
+    "NativeCDSDataSourceInfoNameMapping": {
+      "_ownerid_value": "Owner",
+      "cr1bb_capbac": "Cấp bậc",
+      "cr1bb_crdfd_oituongkpi_Quanhuyen_crdfd_quanhuye": "KPI > Đối tượng > Tần suấts",
+      "cr1bb_crdfd_scentity_District_crdfd_quanhuyen": "SC entitie",
+      "cr1bb_giacuockienxuat_Quanhuyen_crdfd_quanhuyen": "Giá cước  kiện xuấts",
+      "cr1bb_hesothoigianchamsoc": "Hệ số thời gian chăm sóc",
+      "cr1bb_key_auto": "Key_Auto",
+      "cr1bb_leadtimekhuvuc": "Lead time khu vực",
+      "cr1bb_leadtimetheoca": "Lead time theo ca",
+      "cr1bb_matinhthanh": "Mã tỉnh thành",
+      "cr1bb_saleonlinemail": "Sale online mail",
+      "cr1bb_Salesonline": "Sales online",
+      "cr1bb_Salesquanhe": "Sales quan hệ",
+      "cr1bb_taikhoanomicall": "Tài khoản Omicall",
+      "cr1bb_tinhchatthitruong": "Tính chất thị trường",
+      "crdfd_crdfd_customer_Quanhuyen_crdfd_quanhuyen": "Customers",
+      "crdfd_doithuxquanhuyen_Quanhuyenhoatong_crdfd_q": "Đối thủ x Quận huyệns",
+      "crdfd_lotxquanhuyen_Quanhuyen_crdfd_quanhuyen": "Lô x Quận huyện",
+      "crdfd_manhanviensalesonline": "Mã nhân viên sales online",
+      "crdfd_name": "Tên quận/huyện",
+      "crdfd_quanhuyen_AsyncOperations": "System Jobs",
+      "crdfd_quanhuyen_BulkDeleteFailures": "Bulk Delete Failures",
+      "crdfd_quanhuyen_DuplicateBaseRecord": "Duplicate Records (crdfd_quanhuyen_DuplicateBaseRecord)",
+      "crdfd_quanhuyen_DuplicateMatchingRecord": "Duplicate Records (crdfd_quanhuyen_DuplicateMatchingRecord)",
+      "crdfd_quanhuyen_MailboxTrackingFolders": "Mailbox Auto Tracking Folders",
+      "crdfd_quanhuyen_PrincipalObjectAttributeAccesses": "Field Sharing",
+      "crdfd_quanhuyen_ProcessSession": "Process Sessions",
+      "crdfd_quanhuyen_SyncErrors": "Sync Errors",
+      "crdfd_quanhuyenid": "ID",
+      "crdfd_salesonlinecal": "Sales online CAL",
+      "crdfd_tasks_Quanhuyen_crdfd_quanhuyen": "Tasks_",
+      "crdfd_Tinhthanh": "Tỉnh/thành",
+      "createdby": "Created By",
+      "createdon": "Created On",
+      "createdonbehalfby": "Created By (Delegate)",
+      "importsequencenumber": "Import Sequence Number",
+      "modifiedby": "Modified By",
+      "modifiedon": "Modified On",
+      "modifiedonbehalfby": "Modified By (Delegate)",
+      "new_crdfd_event_details_Quanhuyen_crdfd_quanhuyen": "Event Details",
+      "overriddencreatedon": "Record Created On",
+      "owningbusinessunit": "Owning Business Unit",
+      "owningteam": "Owning Team",
+      "owninguser": "Owning User",
+      "statecode": "Status",
+      "statuscode": "Status Reason",
+      "timezoneruleversionnumber": "Time Zone Rule Version Number",
+      "utcconversiontimezonecode": "UTC Conversion Time Zone Code",
+      "versionnumber": "Version Number"
+    },
+    "PreferredName": "Quận/Huyện",
+    "Type": "NativeCDSDataSourceInfo"
+  },
+  {
+    "DisplayName": "Quận/Huyện (Views)",
+    "Name": "_crdfd_quanhuyen_views",
+    "RelatedEntityName": "Quận/Huyện",
+    "TrimmedViewName": true,
+    "Type": "ViewInfo",
+    "ViewInfoNameMapping": {
+      "07841d75-b4c2-442d-ab8f-1550b43076b4": "Quận/Huyện Advanced Find View",
+      "47376494-bf94-4f92-84d3-090d913a1ad2": "Inactive Quận/Huyện",
+      "5bd3a181-74e4-4e08-8c2d-885fd01cb638": "Quận/Huyện",
+      "7060c10a-91dd-4e3d-b072-d82ee9a6d53b": "Quận/Huyện Lookup",
+      "db741cd1-dfa5-4913-bf31-78fad498ad0a": "Quận/Huyện Associated View"
+    }
+  },
+  {
+    "DisplayName": "Cấp bậc quận huyện",
+    "Name": "cr1bb_capbacquanhuyen",
+    "OptionSetInfoNameMapping": {
+      "283640000": "Thành phố loại 1",
+      "283640001": "Thành phố loại 2",
+      "283640002": "Thành phố loại 3",
+      "283640003": "Thành phố loại 4",
+      "283640004": "Thị xã loại 1",
+      "283640005": "Thị xã loại 2",
+      "283640006": "Huyện loại 1",
+      "283640007": "Huyện loại 2",
+      "283640008": "Huyện loại 3"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_capbac",
+        "OptionSetReferenceEntityName": "Quận/Huyện"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_capbac",
+    "RelatedEntityName": "Quận/Huyện",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Tính chất thị trường",
+    "Name": "cr1bb_tinhchatthitruong",
+    "OptionSetInfoNameMapping": {
+      "283640000": "Thị trường cũ",
+      "283640001": "Thị trường mới"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_tinhchatthitruong",
+        "OptionSetReferenceEntityName": "Quận/Huyện"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_tinhchatthitruong",
+    "RelatedEntityName": "Quận/Huyện",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status (Quận/Huyện)",
+    "Name": "crdfd_quanhuyen_statecode",
+    "OptionSetInfoNameMapping": {
+      "0": "Active",
+      "1": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statecode",
+        "OptionSetReferenceEntityName": "Quận/Huyện"
+      }
+    },
+    "OptionSetTypeKey": "StateType",
+    "RelatedColumnInvariantName": "statecode",
+    "RelatedEntityName": "Quận/Huyện",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status Reason (Quận/Huyện)",
+    "Name": "crdfd_quanhuyen_statuscode",
+    "OptionSetInfoNameMapping": {
+      "1": "Active",
+      "2": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statuscode",
+        "OptionSetReferenceEntityName": "Quận/Huyện"
+      }
+    },
+    "OptionSetTypeKey": "StatusType",
+    "RelatedColumnInvariantName": "statuscode",
+    "RelatedEntityName": "Quận/Huyện",
+    "Type": "OptionSetInfo"
+  }
+]

@@ -1,0 +1,538 @@
+[
+  {
+    "CdsFCBContext": "{\"FileType\":true,\"ImageExternalStorage\":true}",
+    "EntitySetName": "crdfd_sale_orders",
+    "IsHidden": false,
+    "IsSampleData": false,
+    "IsWritable": true,
+    "LogicalName": "crdfd_sale_order",
+    "MaxGetRowsCount": 2000,
+    "Name": "Sale_Orders",
+    "NativeCDSDataSourceInfoNameMapping": {
+      "_ownerid_value": "Owner",
+      "cr1bb_Chinhanhkhachhang": "Chi nhánh KH",
+      "cr1bb_chinhanhkhtext": "Chi nhánh KH - Text",
+      "cr1bb_cr1bb_saleapp_saleorder_Maonhang_crdfd_sa": "SaleApp_SaleOrders",
+      "cr1bb_cr44a_chungtunghiepvukhac_SO_crdfd_sale_order": "Chứng từ nghiệp vụ khác",
+      "cr1bb_cr44a_chungtunghiepvukhacchitiet_SO_crdfd_sale_order": "Chứng từ nghiệp vụ khác-Chi tiết",
+      "cr1bb_DataLockUnlock": "Data Lock/Unlock",
+      "cr1bb_fromdate": "From date",
+      "cr1bb_hinhthucgiaohang": "Hình Thức Giao Hàng",
+      "cr1bb_ieukhoanthanhtoan": "Điều khoản thanh toán CAL",
+      "cr1bb_kenhtiepnhan": "Kênh tiếp nhận",
+      "cr1bb_key_so": "Key_SO",
+      "cr1bb_loaihoaon": "Loại hóa đơn",
+      "cr1bb_masothue": "Mã số thuế",
+      "cr1bb_onathangso": "Đơn đặt hàng SO",
+      "cr1bb_ongboso": "Đồng bộ SO",
+      "cr1bb_solangiaohang": "Số lần giao hàng",
+      "cr1bb_songayuocno": "Số ngày được nợ",
+      "cr1bb_statuslockunlock": "Status lock/unlock",
+      "cr1bb_todate": "To date",
+      "cr1bb_trangthaigiaonhan1text": "Trạng thái giao nhận 1 Text",
+      "cr1bb_trangthaigiaonhantext": "Trạng thái giao nhận text",
+      "cr1bb_vattext": "VAT text",
+      "cr1bb_Vitrikho": "Vị trí kho",
+      "cr1bb_vitrikhotext": "Vị trí kho text",
+      "cr1bb_xuathoaon": "Xuất hóa đơn",
+      "cr3b9_chiphi_vanchuyen": "Phụ phí vận chuyển",
+      "crdfd_activedata": "Active data",
+      "crdfd_capkh": "Cấp KH",
+      "crdfd_capnhatnhacno": "Cập nhật thanh toán",
+      "crdfd_checkdata": "Check data",
+      "crdfd_chieckhau": "Chiết khấu %",
+      "crdfd_chieckhau_date": "Chiếc khấu % (Last Updated On)",
+      "crdfd_chieckhau_state": "Chiếc khấu % (State)",
+      "crdfd_chieckhauvn": "Chiết khấu VNĐ",
+      "crdfd_chieckhauvn_date": "Chiếc khấu VNĐ (Last Updated On)",
+      "crdfd_chieckhauvn_state": "Chiếc khấu VNĐ (State)",
+      "crdfd_chinhanhso": "Chi nhánh",
+      "crdfd_chitietdontre_donban_crdfd_sale_order": "Chi tiết đơn trễ",
+      "crdfd_congno2": "Công nợ",
+      "crdfd_crdfd_specialorder_onban_crdfd_sale_order": "Special Orders",
+      "crdfd_dashboardsoonchuaxuat": "Dashboard - Số đơn chưa xuất",
+      "crdfd_dataedited": "Data edited",
+      "crdfd_dieu_khoan_thanh_toan": "Điều khoản thanh toán",
+      "crdfd_duyet_dktt": "Duyệt điều khoản thanh toán",
+      "crdfd_duyetchiphivanchuyen": "Duyệt chi phí vận chuyển",
+      "crdfd_duyeton": "Duyệt đơn",
+      "crdfd_ghichukh": "Ghi chú KH",
+      "crdfd_giamgias": "Giảm giá",
+      "crdfd_giamgias_base": "Giảm giá (Base)",
+      "crdfd_giatrivat": "Giá trị VAT",
+      "crdfd_giatrivat_base": "Giá trị VAT (Base)",
+      "crdfd_gtgt": "GTGT old",
+      "crdfd_gtgt_base": "GTGT (Base)",
+      "crdfd_gtgt_date": "GTGT old (Last Updated On)",
+      "crdfd_gtgt_state": "GTGT old (State)",
+      "crdfd_gtgtnew": "GTGT",
+      "crdfd_iachitext": "Địa chỉ text",
+      "crdfd_Khachhang": "Khách hàng",
+      "crdfd_khachhangtext": "Khách hàng text",
+      "crdfd_khoxacnhan": "Kho xác nhận",
+      "crdfd_loai_don_hang": "Loại đơn hàng",
+      "crdfd_local": "Local",
+      "crdfd_localtext": "Localtext",
+      "crdfd_mailnhanviensales": "Mail nhân viên sales",
+      "crdfd_makhachhang": "Mã khách hàng",
+      "crdfd_name": "Mã Đơn Hàng",
+      "crdfd_nganhnghe": "Ngành nghề",
+      "crdfd_ngay_yeu_cau_tao_don": "Ngày yêu cầu tạo đơn",
+      "crdfd_ngaygiaodukien": "Ngày giao dự kiến",
+      "crdfd_ngaygiaothucte": "Ngày giao thực tế",
+      "crdfd_ngayhachtoan": "Ngày hạch toán",
+      "crdfd_ngaytaoonhang": "Ngày tạo đơn hàng",
+      "crdfd_ngayxacnhanthanhtoan": "Ngày xác nhận thanh toán",
+      "crdfd_Nguoitao": "Người tạo",
+      "crdfd_nguoixacnhanthanhtoan": "Người xác nhận thanh toán",
+      "crdfd_Nhanvienbanhang": "Nhân viên sales",
+      "crdfd_nhanviensalestext": "Nhân viên sales text",
+      "crdfd_notes": "Ghi chú",
+      "crdfd_oaid": "OA ID",
+      "crdfd_onathang": "Đơn đặt hàng",
+      "crdfd_onthieuu": "Đơn Thiếu/Đủ",
+      "crdfd_ordersxpromotion_SO_crdfd_sale_order": "Orders x Promotion",
+      "crdfd_orderupdate": "Thông tin đơn hàng",
+      "crdfd_paymentmethod": "Phương thức thanh toán",
+      "crdfd_Phaplykhachhang": "Pháp lý khách hàng",
+      "crdfd_phuongthucthanhtoan2": "Phương thức thanh toán 2",
+      "crdfd_phuongthucthanhtoantext": "Phương thức thanh toán text",
+      "crdfd_quanhuyen": "Quận huyện",
+      "crdfd_receiveinfo": "Thông tin giao nhận",
+      "crdfd_sale_order_AsyncOperations": "System Jobs",
+      "crdfd_sale_order_BulkDeleteFailures": "Bulk Delete Failures",
+      "crdfd_sale_order_DuplicateBaseRecord": "Duplicate Records (crdfd_sale_order_DuplicateBaseRecord)",
+      "crdfd_sale_order_DuplicateMatchingRecord": "Duplicate Records (crdfd_sale_order_DuplicateMatchingRecord)",
+      "crdfd_sale_order_FileAttachments": "FileAttachments",
+      "crdfd_sale_order_MailboxTrackingFolders": "Mailbox Auto Tracking Folders",
+      "crdfd_sale_order_PrincipalObjectAttributeAccesses": "Field Sharing",
+      "crdfd_sale_order_ProcessSession": "Process Sessions",
+      "crdfd_sale_order_SOmuakem_crdfd_sale_order": "Sale_Orders",
+      "crdfd_sale_order_SyncErrors": "Sync Errors",
+      "crdfd_sale_orderid": "Id",
+      "crdfd_salecaltinhthanh": "Tỉnh/thành",
+      "crdfd_saleonline": "Sale Online",
+      "crdfd_SaleOrderDetail_SOcode_crdfd_Sale_O": "Sale Order Details",
+      "crdfd_Service_request": "Service request",
+      "crdfd_so_auto": "SO_auto",
+      "crdfd_so_code": "SO_code",
+      "crdfd_SObaogia": "SO báo giá",
+      "crdfd_sodonchitietcopromotion": "Số đơn chi tiết có Promotion",
+      "crdfd_SOmuakem": "SO mua kèm",
+      "crdfd_soonagiao2": "Số đơn đã giao",
+      "crdfd_soonagiaotext2": "Số đơn đã giao old",
+      "crdfd_soonchitietgiaododang": "Số đơn chi tiết giao dở dang",
+      "crdfd_soonhangchitiet": "Số đơn hàng chi tiết old",
+      "crdfd_soonhangchitiet_date": "Số đơn hàng chi tiết old (Last Updated On)",
+      "crdfd_soonhangchitiet_state": "Số đơn hàng chi tiết old (State)",
+      "crdfd_soonhangchitiet2": "Số đơn hàng chi tiết",
+      "crdfd_soonxuatu": "Dashboard - Số đơn xuất đủ hàng",
+      "crdfd_sotienathanhtoan2": "Số tiền đã thanh toán",
+      "crdfd_statustext": "Status Text",
+      "crdfd_sttext": "SĐT text",
+      "crdfd_tenonhang": "Tên đơn hàng",
+      "crdfd_Tenthuongmai": "Tên thương mại",
+      "crdfd_tenthuongmai_text": "Tên thương mại_text",
+      "crdfd_thanhtoantruockhinhanhang": "Xác nhận thanh toán",
+      "crdfd_tienchieckhau": "Tiền chiết khấu",
+      "crdfd_tongtien": "Tổng tiền",
+      "crdfd_tongtien_base": "Tổng tiền (Base)",
+      "crdfd_tongtienkhongvat": "Tổng tiền không VAT old",
+      "crdfd_tongtienkhongvat_base": "Tổng tiền không VAT (Base)",
+      "crdfd_tongtienkhongvat_date": "Tổng tiền không VAT old (Last Updated On)",
+      "crdfd_tongtienkhongvat_state": "Tổng tiền không VAT old (State)",
+      "crdfd_tongtienkhongvat2": "Tổng tiền không VAT 2",
+      "crdfd_tongtienkhongvatnew": "Tổng tiền không VAT",
+      "crdfd_trangthaigiaonhan1": "Trạng thái giao nhận 1",
+      "crdfd_trangthaigiaonhan1new": "Trạng thái giao nhận 1 New",
+      "crdfd_trangthaigiaonhan2": "Trạng thái giao nhận 2",
+      "crdfd_trangthaivatnewtext": "Trạng thái VAT new text",
+      "crdfd_trangthaivattext": "Trạng thái VAT text",
+      "crdfd_trangthaixuatkho": "Trạng thái xuất kho",
+      "crdfd_vatstatus": "VAT",
+      "crdfd_vitrikho": "Vị trí kho fx",
+      "crdfd_wecareprocessqueue_SO_crdfd_sale_order": "Process queue",
+      "crdfd_yearngaytaoonhang": "Year - Ngày tạo đơn hàng",
+      "createdby": "Created By",
+      "createdon": "Created On",
+      "createdonbehalfby": "Created By (Delegate)",
+      "exchangerate": "Exchange Rate",
+      "importsequencenumber": "Import Sequence Number",
+      "modifiedby": "Modified By",
+      "modifiedon": "Modified On",
+      "modifiedonbehalfby": "Modified By (Delegate)",
+      "overriddencreatedon": "Record Created On",
+      "owningbusinessunit": "Owning Business Unit",
+      "owningteam": "Owning Team",
+      "owninguser": "Owning User",
+      "statecode": "Status",
+      "statuscode": "Status Reason",
+      "timezoneruleversionnumber": "Time Zone Rule Version Number",
+      "transactioncurrencyid": "Tiền tệ",
+      "utcconversiontimezonecode": "UTC Conversion Time Zone Code",
+      "versionnumber": "Version Number"
+    },
+    "PreferredName": "Sale_Orders",
+    "Type": "NativeCDSDataSourceInfo"
+  },
+  {
+    "DisplayName": "Sale_Orders (Views)",
+    "Name": "_crdfd_sale_order_views",
+    "RelatedEntityName": "Sale_Orders",
+    "TrimmedViewName": true,
+    "Type": "ViewInfo",
+    "ViewInfoNameMapping": {
+      "093a7917-dedb-ec11-bb3c-00224815baa5": "Đơn hàng bán-full",
+      "0e59fb1e-e209-4a6a-a3c5-c75d72c73fbd": "Đơn hàng bán",
+      "289b1174-5997-ef11-8a69-6045bd1b73a9": "subview - Tasks",
+      "67720d0a-af6c-4782-b78e-28dfc0355abc": "Sale Order Advanced Find View",
+      "7358bd58-149a-ec11-b400-000d3a850512": "Inactive Đơn hàng bán",
+      "aba3b47e-a334-ed11-9db1-000d3a856e52": "Đơn hàng bán lẻ",
+      "cf37b904-6b33-471d-8cb7-08776c619078": "Sale Order Associated View",
+      "e2b7e0fd-d352-ee11-be6e-6045bd1f9e3b": "Đã xác nhận thanh toán",
+      "f8789729-6263-4d4e-aaba-247a36804128": "Sale Order Lookup View",
+      "f87d64e2-2a42-ee11-bdf3-000d3a08d197": "Xác nhận thanh toán trước khi nhận hàng",
+      "fd74db2b-7392-ef11-8a6a-000d3aa17b83": "Xác nhận thanh toán sau khi nhận hàng"
+    }
+  },
+  {
+    "DisplayName": "Loại hóa đơn (Sale_Orders)",
+    "Name": "cr1bb_crdfd_sale_order_cr1bb_loaihoaon",
+    "OptionSetInfoNameMapping": {
+      "283640000": "VAT (Công ty)",
+      "283640001": "VAT (Khách không lấy)",
+      "283640002": "Hộ kinh doanh",
+      "283640003": "Không xuất hóa đơn"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_loaihoaon",
+        "OptionSetReferenceEntityName": "Sale_Orders"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_loaihoaon",
+    "RelatedEntityName": "Sale_Orders",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Đồng bộ SO (Sale_Orders)",
+    "Name": "cr1bb_crdfd_sale_order_cr1bb_ongboso",
+    "OptionSetInfoNameMapping": {
+      "0": "No",
+      "1": "Yes"
+    },
+    "OptionSetIsBooleanValued": true,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_ongboso",
+        "OptionSetReferenceEntityName": "Sale_Orders"
+      }
+    },
+    "OptionSetTypeKey": "BooleanType",
+    "RelatedColumnInvariantName": "cr1bb_ongboso",
+    "RelatedEntityName": "Sale_Orders",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Xuất hóa đơn (Sale_Orders)",
+    "Name": "cr1bb_crdfd_sale_order_cr1bb_xuathoaon",
+    "OptionSetInfoNameMapping": {
+      "0": "No",
+      "1": "Yes"
+    },
+    "OptionSetIsBooleanValued": true,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_xuathoaon",
+        "OptionSetReferenceEntityName": "Sale_Orders"
+      }
+    },
+    "OptionSetTypeKey": "BooleanType",
+    "RelatedColumnInvariantName": "cr1bb_xuathoaon",
+    "RelatedEntityName": "Sale_Orders",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "HT_giaohang",
+    "Name": "cr1bb_ht_giaohang",
+    "OptionSetInfoNameMapping": {
+      "283640000": "Giao 1 lần",
+      "283640001": "Giao theo tiến độ"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_hinhthucgiaohang",
+        "OptionSetReferenceEntityName": "Sale_Orders"
+      },
+      "OptionSetReferenceItem1": {
+        "OptionSetReferenceColumnName": "cr1bb_hinhthucgiaohang",
+        "OptionSetReferenceEntityName": "Đặt hàng SOS"
+      },
+      "OptionSetReferenceItem2": {
+        "OptionSetReferenceColumnName": "cr1bb_hinhthucgiaohang",
+        "OptionSetReferenceEntityName": "SO báo giá"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_hinhthucgiaohang",
+    "RelatedEntityName": "Sale_Orders",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Kênh tiếp nhận",
+    "Name": "cr1bb_kenhtiepnhan",
+    "OptionSetInfoNameMapping": {
+      "283640000": "Hotline",
+      "283640001": "Online",
+      "283640002": "Offline",
+      "283640003": "Website"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_kenhtiepnhan",
+        "OptionSetReferenceEntityName": "Sale_Orders"
+      },
+      "OptionSetReferenceItem1": {
+        "OptionSetReferenceColumnName": "cr1bb_kenhtiepnhanso",
+        "OptionSetReferenceEntityName": "Đặt hàng SOS"
+      },
+      "OptionSetReferenceItem2": {
+        "OptionSetReferenceColumnName": "cr1bb_kenhtiepnhansobg",
+        "OptionSetReferenceEntityName": "SO báo giá"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_kenhtiepnhan",
+    "RelatedEntityName": "Sale_Orders",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Trạng thái duyệt - choice",
+    "Name": "cr1bb_trangthaiduyeton",
+    "OptionSetInfoNameMapping": {
+      "283640000": "Đã duyệt",
+      "283640001": "Chưa duyệt",
+      "283640002": "Từ chối duyệt"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_duyetchiphivanchuyen",
+        "OptionSetReferenceEntityName": "Sale_Orders"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "crdfd_duyetchiphivanchuyen",
+    "RelatedEntityName": "Sale_Orders",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "local",
+    "Name": "crdfd_local",
+    "OptionSetInfoNameMapping": {
+      "191920000": "Quy Nhơn",
+      "191920001": "Sài Gòn",
+      "191920002": "Khánh Hòa"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_chinhanhso",
+        "OptionSetReferenceEntityName": "Sale_Orders"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "crdfd_chinhanhso",
+    "RelatedEntityName": "Sale_Orders",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Phương thức thanh toán 2",
+    "Name": "crdfd_phuongthucthanhtoan2",
+    "OptionSetInfoNameMapping": {
+      "191920000": "Thanh toán sau khi nhận hàng",
+      "191920001": "Thanh toán 2 lần vào ngày 10 và 25",
+      "191920002": "Thanh toán vào ngày 5 hàng tháng",
+      "191920003": "Công nợ",
+      "191920004": "Đơn hàng mẫu",
+      "191920005": "Hàng khuyến mãi",
+      "191920006": "Thanh toán trước khi nhận hàng"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_phuongthucthanhtoan2",
+        "OptionSetReferenceEntityName": "Sale_Orders"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "crdfd_phuongthucthanhtoan2",
+    "RelatedEntityName": "Sale_Orders",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Active data (Sale_Orders)",
+    "Name": "crdfd_sale_order_crdfd_activedata",
+    "OptionSetInfoNameMapping": {
+      "0": "Active",
+      "1": "Deactivate"
+    },
+    "OptionSetIsBooleanValued": true,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_activedata",
+        "OptionSetReferenceEntityName": "Sale_Orders"
+      }
+    },
+    "OptionSetTypeKey": "BooleanType",
+    "RelatedColumnInvariantName": "crdfd_activedata",
+    "RelatedEntityName": "Sale_Orders",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Data edited (Sale_Orders)",
+    "Name": "crdfd_sale_order_crdfd_dataedited",
+    "OptionSetInfoNameMapping": {
+      "0": "Original",
+      "1": "Edited"
+    },
+    "OptionSetIsBooleanValued": true,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_dataedited",
+        "OptionSetReferenceEntityName": "Sale_Orders"
+      }
+    },
+    "OptionSetTypeKey": "BooleanType",
+    "RelatedColumnInvariantName": "crdfd_dataedited",
+    "RelatedEntityName": "Sale_Orders",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Kho xác nhận (Sale_Orders)",
+    "Name": "crdfd_sale_order_crdfd_khoxacnhan",
+    "OptionSetInfoNameMapping": {
+      "0": "Chưa xác nhận",
+      "1": "Đã xác nhận"
+    },
+    "OptionSetIsBooleanValued": true,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_khoxacnhan",
+        "OptionSetReferenceEntityName": "Sale_Orders"
+      }
+    },
+    "OptionSetTypeKey": "BooleanType",
+    "RelatedColumnInvariantName": "crdfd_khoxacnhan",
+    "RelatedEntityName": "Sale_Orders",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Loại đơn hàng (Sale_Orders)",
+    "Name": "crdfd_sale_order_crdfd_loai_don_hang",
+    "OptionSetInfoNameMapping": {
+      "191920000": "Đơn bán",
+      "191920001": "Đơn hàng mẫu",
+      "191920002": "Đơn hàng khuyến mãi",
+      "191920003": "Đơn hàng thanh lý",
+      "191920004": "Đơn hàng tiêu huỷ",
+      "191920005": "Đơn dùng nội bộ",
+      "283640001": "Đơn xử lý vấn đề"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_loai_don_hang",
+        "OptionSetReferenceEntityName": "Sale_Orders"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "crdfd_loai_don_hang",
+    "RelatedEntityName": "Sale_Orders",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status (Sale_Orders)",
+    "Name": "crdfd_sale_order_statecode",
+    "OptionSetInfoNameMapping": {
+      "0": "Active",
+      "1": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statecode",
+        "OptionSetReferenceEntityName": "Sale_Orders"
+      }
+    },
+    "OptionSetTypeKey": "StateType",
+    "RelatedColumnInvariantName": "statecode",
+    "RelatedEntityName": "Sale_Orders",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status Reason (Sale_Orders)",
+    "Name": "crdfd_sale_order_statuscode",
+    "OptionSetInfoNameMapping": {
+      "1": "Active",
+      "2": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statuscode",
+        "OptionSetReferenceEntityName": "Sale_Orders"
+      }
+    },
+    "OptionSetTypeKey": "StatusType",
+    "RelatedColumnInvariantName": "statuscode",
+    "RelatedEntityName": "Sale_Orders",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "VAT_choice",
+    "Name": "crdfd_vat",
+    "OptionSetInfoNameMapping": {
+      "191920000": "Có VAT",
+      "191920001": "Không VAT"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_vatstatus",
+        "OptionSetReferenceEntityName": "Sale_Orders"
+      },
+      "OptionSetReferenceItem1": {
+        "OptionSetReferenceColumnName": "crdfd_vat",
+        "OptionSetReferenceEntityName": "Đặt hàng SOS"
+      },
+      "OptionSetReferenceItem2": {
+        "OptionSetReferenceColumnName": "crdfd_vat",
+        "OptionSetReferenceEntityName": "SO báo giá"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "crdfd_vatstatus",
+    "RelatedEntityName": "Sale_Orders",
+    "Type": "OptionSetInfo"
+  }
+]

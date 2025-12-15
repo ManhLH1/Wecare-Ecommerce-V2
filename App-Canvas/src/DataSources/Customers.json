@@ -1,0 +1,1120 @@
+[
+  {
+    "CdsFCBContext": "{\"FileType\":true,\"ImageExternalStorage\":true}",
+    "EntitySetName": "crdfd_customers",
+    "IsHidden": false,
+    "IsSampleData": false,
+    "IsWritable": true,
+    "LogicalName": "crdfd_customer",
+    "MaxGetRowsCount": 2000,
+    "Name": "Customers",
+    "NativeCDSDataSourceInfoNameMapping": {
+      "_ownerid_value": "Owner",
+      "{Attachments}": "Attachments",
+      "cr1bb_actinh": "Đặc tính",
+      "cr1bb_actinhkhac": "Đặc tính khác",
+      "cr1bb_athamtrong60ngay": "Đã thăm",
+      "cr1bb_Chinhsachcongno": "Chính sách công nợ",
+      "cr1bb_chkdchuamua2thang": "CHKD chưa mua 2 tháng",
+      "cr1bb_chkdchuamua6thang": "CHKD chưa mua 6 tháng",
+      "cr1bb_cohoiphattrientieptheo": "Cơ hội phát triển tiếp theo",
+      "cr1bb_congnocu": "Công nợ cũ",
+      "cr1bb_congnokhachhang_Khachhang_crdfd_customer": "Công nợ khách hàngs",
+      "cr1bb_congnonen": "Công nợ nền",
+      "cr1bb_congnongaytruoc": "Công nợ ngày trước",
+      "cr1bb_congnotran": "Công nợ trần",
+      "cr1bb_cr1bb_chinhanhkhachhang_Khachhang_crdfd_c": "Chi nhánh khách hàngs",
+      "cr1bb_cr1bb_cohoikinhdoanh_cha_Khachhang_crdfd_": "Cơ hội kinh doanh",
+      "cr1bb_cr1bb_dashboard_theodoitiendo_Khachhang_c": "Dashboard_Theo dõi tiến độ",
+      "cr1bb_cr1bb_groupkh_Khachhang_crdfd_customer": "Group - KH",
+      "cr1bb_cr1bb_phuongthuclienhe_Khachhang_crdfd_cu": "Phương thức liên hệ",
+      "cr1bb_cr1bb_qualitycustomer_Khachhang_crdfd_cus": "Quality customers",
+      "cr1bb_cr1bb_quanlythanhtoan_Khachhang_crdfd_cus": "Quản lý thanh toáns",
+      "cr1bb_cr1bb_salesapp_congnokh_Khachhang_crdfd_c": "SalesApp_Cong_no_KH",
+      "cr1bb_cr1bb_zalozns_Khachhang_crdfd_customer": "Zalo ZNS",
+      "cr1bb_cr44a_khachhanghopnhat_Khachhang_crdfd_customer": "Khách hàng hợp nhấts",
+      "cr1bb_crdfd_athangso_Khachhang_crdfd_customer": "Đặt hàng SO",
+      "cr1bb_crdfd_Customergroup_crdfd_Customer_crdfd_": "Customer groups",
+      "cr1bb_crdfd_salesapp_pivot_Khachhang_crdfd_customer": "SalesApp_Pivot",
+      "cr1bb_crdfd_tnghpitng_Khachhang_crdfd_customer": "Tổng hợp đối tượngs",
+      "cr1bb_customerstatus": "Customer status",
+      "cr1bb_danhsachkienxuat_Khachhang_crdfd_customer": "Danh sách kiện xuấts",
+      "cr1bb_donvivanchuyen": "Đơn vị vận chuyển",
+      "cr1bb_followoa": "Follow OA",
+      "cr1bb_giaobuhangsailech_Tenkhachhang_crdfd_customer": "Giao bù hàng sai lệches",
+      "cr1bb_groupzalo": "Group zalo",
+      "cr1bb_hancongnonen": "Hạn công nợ nền",
+      "cr1bb_hanmuccongnonen": "Hạn mức công nợ nền",
+      "cr1bb_hanmuccongnotran": "Hạn mức công nợ trần",
+      "cr1bb_hethongngunggiaodich": "Hệ thống ngừng giao dịch",
+      "cr1bb_idmoi": "ID mới",
+      "cr1bb_idomi": "ID Omi",
+      "cr1bb_iemhcuakh": "Điểm HĐ của KH",
+      "cr1bb_ieukhoanthanhtoan": "Điều khoản thanh toán",
+      "cr1bb_khunggioexuat": "Khung giờ đề xuất",
+      "cr1bb_last_order_date": "Last_order_date",
+      "cr1bb_linkpromotion": "Link promotion",
+      "cr1bb_loaicuahang": "Loại cửa hàng",
+      "cr1bb_loaicuahangtext": "Loại cửa hàng text",
+      "cr1bb_manhanviencongno": "Mã nhân viên công nợ",
+      "cr1bb_manv": "Mã NV",
+      "cr1bb_masothuehokinhdoanh": "Mã số thuế hộ kinh doanh",
+      "cr1bb_motanguoiaidien": "Mô tả người đại diện",
+      "cr1bb_nganhchuluc": "Ngành chủ lực",
+      "cr1bb_nganhnghemoi": "Ngành nghề",
+      "cr1bb_nganhphu": "Ngành phụ",
+      "cr1bb_ngaytham_gannhat": "Ngày thăm gần nhất",
+      "cr1bb_ngunggiaodich": "Ngừng giao dịch",
+      "cr1bb_Nhanviencongno": "Nhân viên công nợ",
+      "cr1bb_nhanviencongnotext": "Nhân viên công nợ(text)",
+      "cr1bb_nhanviensaletext": "Nhân viên sale (text)",
+      "cr1bb_oamessege": "OA messege",
+      "cr1bb_phanloai": "Phân loại",
+      "cr1bb_phaplykhachhang_Khachhang_crdfd_customer": "Pháp lý khách hàngs",
+      "cr1bb_phuongthucthanhtoan": "Phương thức thanh toán",
+      "cr1bb_songayuocno": "Số ngày được nợ",
+      "cr1bb_soonhang": "Số đơn hàng",
+      "cr1bb_soonhang_date": "Số đơn hàng (Last Updated On)",
+      "cr1bb_soonhang_state": "Số đơn hàng (State)",
+      "cr1bb_sptiemnangaconfirm": "SP tiềm năng (đã confirm)",
+      "cr1bb_sptiemnangaskip": "SP tiềm năng (đã skip)",
+      "cr1bb_sptiemnangtieptheo": "SP tiềm năng (tiếp theo)",
+      "cr1bb_Supervisor": "Supervisor",
+      "cr1bb_thongtinchungbanau": "Thông tin chung ban đầu",
+      "cr1bb_tiemnangbanau": "Tiềm năng ban đầu",
+      "cr1bb_tinhthanh": "Tỉnh/thành CAL",
+      "cr1bb_toao": "Tọa độ",
+      "cr1bb_trangthaizalo": "Trạng thái Zalo",
+      "cr1bb_tuyenxkhachhang_Khachhang_crdfd_customer": "Tuyến x khách hàngs",
+      "cr1bb_userngunggiaodich": "User ngừng giao dịch",
+      "cr1bb_vitrikhophu": "Vị trí kho phụ",
+      "cr3b9_chkdchuamua": "CHKD chưa mua",
+      "cr3b9_Nguoi_xacminh_toado": "Người xác minh tọa độ",
+      "cr44a_cr44a_banhang2_KhachhangLK_crdfd_customer": "Bán hàngs",
+      "cr44a_cr44a_chungtubanhangaccounting2_Khachhang": "Chứng từ bán hàng - Accounting 2S",
+      "cr44a_cr44a_hoaon_Tenoituong_crdfd_customer": "Hóa Đơn báns",
+      "cr44a_cr44a_nhacno_Khachhang_crdfd_customer": "Nhắc nợ KH",
+      "cr44a_cr44a_tiengui2_oituongthu_crdfd_customer": "Tiền gửis",
+      "cr44a_cr44a_tienguichitiet_oituongthu_crdfd_cus": "Tiền gửi - chi tiếts",
+      "cr44a_cr44a_tienmat2_KhachhangLK_crdfd_customer": "Tiền mặts (cr44a_cr44a_tienmat2_KhachhangLK_crdfd_customer)",
+      "cr44a_cr44a_tienmat2_oituongthu_crdfd_customer": "Tiền mặts (cr44a_cr44a_tienmat2_oituongthu_crdfd_customer)",
+      "cr44a_cr44a_tienmatchitiet_oituongthuLK_crdfd_c": "Tiền mặt - chi tiếts",
+      "cr44a_emailnguoinhanhoaon": "Email người nhận hoá đơn",
+      "cr44a_makhachhang": "Mã khách hàng",
+      "cr44a_st": "Điện thoại",
+      "crdfd_address": "Địa chỉ",
+      "crdfd_avatar": "Avatar",
+      "crdfd_avatarid": "crdfd_AvatarId",
+      "crdfd_avatarurl": "Avatar url",
+      "crdfd_capkh": "Cấp KH",
+      "crdfd_capkhtext": "Cấp KH text",
+      "crdfd_checkdata": "Check data",
+      "crdfd_chkd_da_khoi_tao": "CHKD đã khởi tạo",
+      "crdfd_chkd_daban_60ngay": "CHKD đã bán (60 ngày)",
+      "crdfd_congnoquahan": "Công nợ quá hạn",
+      "crdfd_congnoxau": "Công nợ xấu",
+      "crdfd_contact": "Người liên hệ",
+      "crdfd_count_checkin": "Count_checkin",
+      "crdfd_cr1bb_notes_customer_Khachhang_crdfd_cust": "Notes_Customer",
+      "crdfd_cr44a_baogia_oituong_crdfd_customer": "Báo giá",
+      "crdfd_crdfd_baogiachitiet_oituong_crdfd_custome": "Báo giá - chi tiết",
+      "crdfd_crdfd_capnhatkhachhang_Khachhang_crdfd_cu": "Cập nhật khách hàng",
+      "crdfd_crdfd_chkd_daban": "CHKD đã bán",
+      "crdfd_crdfd_oituongkpi_Khachhang_crdfd_customer": "KPI > Đối tượng > Tần suấts",
+      "crdfd_customer_ActivityPointers": "Activities",
+      "crdfd_customer_adx_alertsubscriptions": "Alert Subscriptions",
+      "crdfd_customer_adx_inviteredemptions": "Invite Redemptions",
+      "crdfd_customer_adx_portalcomments": "Portal Comments",
+      "crdfd_customer_Annotations": "Notes",
+      "crdfd_customer_Appointments": "Appointments",
+      "crdfd_customer_AsyncOperations": "System Jobs",
+      "crdfd_customer_BulkDeleteFailures": "Bulk Delete Failures",
+      "crdfd_customer_chats": "Teams chats",
+      "crdfd_customer_DuplicateBaseRecord": "Duplicate Records (crdfd_customer_DuplicateBaseRecord)",
+      "crdfd_customer_DuplicateMatchingRecord": "Duplicate Records (crdfd_customer_DuplicateMatchingRecord)",
+      "crdfd_customer_Emails": "Email Messages",
+      "crdfd_customer_Faxes": "Faxes",
+      "crdfd_customer_Letters": "Letters",
+      "crdfd_customer_MailboxTrackingFolders": "Mailbox Auto Tracking Folders",
+      "crdfd_customer_msfp_alerts": "Customer Voice alert",
+      "crdfd_customer_msfp_surveyinvites": "Customer Voice survey invites",
+      "crdfd_customer_msfp_surveyresponses": "Customer Voice survey responses",
+      "crdfd_customer_PhoneCalls": "Phone Calls",
+      "crdfd_customer_PrincipalObjectAttributeAccesses": "Field Sharing",
+      "crdfd_customer_ProcessSession": "Process Sessions",
+      "crdfd_customer_RecurringAppointmentMasters": "Recurring Appointments",
+      "crdfd_customer_SyncErrors": "Sync Errors",
+      "crdfd_customer_Tasks": "Tasks",
+      "crdfd_customerid": "CustomerID",
+      "crdfd_customerpreferencedetails_Khachhang_crdfd": "Customer preference details",
+      "crdfd_customerxproductgroups_Customer_crdfd_cus": "Customer x Product groups",
+      "crdfd_customerxprofilestatusxtasktype_Customer_": "Customer x Profile status x Task types",
+      "crdfd_customerxvantai_Customer_crdfd_customer": "Customer x Vận tải",
+      "crdfd_da_tham_60ngay": "Đã thăm (60 ngày)",
+      "crdfd_danhxunglienhe": "Danh xưng liên hệ",
+      "crdfd_data_chkd": "data_CHKD",
+      "crdfd_doithuxkhachhang_Khachhang_crdfd_customer": "Đối thủ x Khách hàngs",
+      "crdfd_dophu_60ngay": "Độ phủ (60 ngày)",
+      "crdfd_duyetgia_Khachhang_crdfd_customer": "Duyệt giá",
+      "crdfd_eventinstance_Khachhang_crdfd_customer": "Event instances",
+      "crdfd_ghichu": "Ghi chú",
+      "crdfd_ghichukhachhang_Tenkhachhang_crdfd_customer": "Ghi chú khách hàng",
+      "crdfd_hinh_anh_xac_minh_toa_do": "Hình ảnh xác minh tọa độ",
+      "crdfd_hinh_anh_xac_minh_toa_doid": "crdfd_Hinh_anh_xac_minh_toa_doId",
+      "crdfd_iemkhdoanhsonhomsp": "Điểm KH (doanh số, nhóm sp)",
+      "crdfd_ieukhoanthanhtoan": "Điều khoản thanh toán text",
+      "crdfd_incongno": "In công nợ",
+      "crdfd_interaction_Khach_hang_crdfd_customer": "Interaction",
+      "crdfd_issueupdates_Khachhang_crdfd_customer": "Issue updates",
+      "crdfd_json_phan_hang_chu_ky_hien_tai": "Json phân hạng (chu kỳ hiện tại)",
+      "crdfd_json_phan_hang_chu_ky_truoc": "Json phân hạng (chu kỳ trước)",
+      "crdfd_json_promotioncustomer": "JSON - Promotion Customer",
+      "crdfd_keyquanhuyen": "Key quận huyện",
+      "crdfd_khongtinhtonkho": "Không tính tồn kho",
+      "crdfd_lastinteractiondate": "Last interaction date",
+      "crdfd_lich_su_cskh": "Lịch sử CSKH (6 tháng)",
+      "crdfd_lienhezalo": "Liên hệ Zalo",
+      "crdfd_loaioituong": "Loại đối tượng",
+      "crdfd_local": "local user",
+      "crdfd_localtext": "Local ",
+      "crdfd_location_temp": "location_temp",
+      "crdfd_macu": "Mã cũ",
+      "crdfd_misa_code": "Misa_code",
+      "crdfd_misa_name": "Tên pháp lý",
+      "crdfd_mst": "MST",
+      "crdfd_multiimages_Khachhang_crdfd_customer": "Multi-image",
+      "crdfd_name": "Customer name",
+      "crdfd_nganhnghe": "Ngành nghề chi tiết",
+      "crdfd_nganhnghetext": "Ngành nghề text",
+      "crdfd_ngay_sinh": "Ngày sinh",
+      "crdfd_ngaydukientham": "Ngày dự kiến thăm",
+      "crdfd_nguoixacnhankhct": "Người xác nhận KHCT",
+      "crdfd_nha_xe": "Nhà xe",
+      "crdfd_Nhaxe": "Nhà xe LK",
+      "crdfd_nhomspcanphattrien": "Nhóm SP cần phát triền",
+      "crdfd_oaid": "OA ID",
+      "crdfd_onvivanchuyenxcustomer_Khachhang_crdfd_customer": "Đơn vị vận chuyển x Customers",
+      "crdfd_order_request_Khach_hang_crdfd_customer": "Service Requests",
+      "crdfd_phone2": "Điện thoại 2",
+      "crdfd_promotionjson": "Promotion json mã nhóm SP",
+      "crdfd_promotionjsontennhomsp": "Promotion json tên nhóm SP",
+      "crdfd_promotionnspmoi": "Promotion NSP mới",
+      "crdfd_Quality_Khachhang_crdfd_Customer": "Qualities",
+      "crdfd_Quanhuyen": "Quận huyện",
+      "crdfd_quanhuyencal": "Quận huyện CAL",
+      "crdfd_revenue": "Revenue",
+      "crdfd_Sale_Order_Khachhang_crdfd_Customer": "Sale_Orders",
+      "crdfd_salemail": "Sale - mail",
+      "crdfd_Salename": "Sale name",
+      "crdfd_saleonline": "Sale online",
+      "crdfd_sanpham_daban_60ngay": "Số SP đã bán (60 ngày)",
+      "crdfd_sobaogia_Khachhang_crdfd_customer": "SO báo giá",
+      "crdfd_sodh_60ngay": "Số DH (60 ngày)",
+      "crdfd_sotiencongno": "Số tiền công nợ",
+      "crdfd_sp_2thang_chuamua": "SP 2 tháng chưa mua",
+      "crdfd_sp_da_mua": "SP đã mua",
+      "crdfd_summarycustomer": "Summary",
+      "crdfd_supervisormail": "Supervisor - mail",
+      "crdfd_tamngungkhuyenmai": "Tạm ngừng khuyến mãi",
+      "crdfd_task_action_Khachhang_crdfd_customer": "Task action",
+      "crdfd_tasks_Khach_hang_crdfd_customer": "Tasks_",
+      "crdfd_Tenthuongmai": "Tên thương mại",
+      "crdfd_tindung": "Tín dụng",
+      "crdfd_Tinhthanh": "Tỉnh thành",
+      "crdfd_toaoxacminh": "Tọa độ xác minh",
+      "crdfd_tong_tien_60ngay": "Tổng tiền (60 ngày)",
+      "crdfd_trangthaicskh": "Trạng thái CSKH",
+      "crdfd_trangthaighetham": "Trạng thái ghé thăm",
+      "crdfd_trangthaikh": "Trạng thái KH",
+      "crdfd_trangthaikh_lienketcal": "Trạng thái KH_Liên kết cal",
+      "crdfd_trangthaikh_tangtruong": "Trạng thái KH_Tăng trưởng",
+      "crdfd_trangthaikhtext": "Trạng thái KH text",
+      "crdfd_urlsupabase": "URL supabase",
+      "crdfd_vantai_Khachhang_crdfd_customer": "Vận tải",
+      "crdfd_verifychkd": "Verify CHKD",
+      "crdfd_wecare_rewards": "Wecare Rewards",
+      "crdfd_xacnhanthanhtoanonline": "Xác nhận thanh toán online_",
+      "crdfd_xacnhanvitrigiaohang": "Xác nhận vị trí giao hàng",
+      "createdby": "Created By",
+      "createdon": "Created On",
+      "createdonbehalfby": "Created By (Delegate)",
+      "importsequencenumber": "Import Sequence Number",
+      "modifiedby": "Modified By",
+      "modifiedon": "Modified On",
+      "modifiedonbehalfby": "Modified By (Delegate)",
+      "new_crdfd_event_details_Khachhang_crdfd_custo": "Event Details",
+      "overriddencreatedon": "Record Created On",
+      "owningbusinessunit": "Owning Business Unit",
+      "owningteam": "Owning Team",
+      "owninguser": "Owning User",
+      "statecode": "Status",
+      "statuscode": "Status Reason",
+      "timezoneruleversionnumber": "Time Zone Rule Version Number",
+      "utcconversiontimezonecode": "UTC Conversion Time Zone Code",
+      "versionnumber": "Version Number",
+      "wc001_crdfd_customerxpromotion_Customer_crdfd_c": "Customer x Promotion",
+      "wc001_trangthaikh_lienket": "Trạng thái KH_Liên kết",
+      "wc001_trangthaikh_tiemnang": "Trạng thái KH_Tiềm năng",
+      "wc001_trangthaikh_tindung": "Trạng thái KH_Tín dụng",
+      "wc001_trangthaikhachhangjson": "JSON - audit",
+      "wc001_VItrikho": "Vị trí kho"
+    },
+    "PreferredName": "Customers",
+    "Type": "NativeCDSDataSourceInfo"
+  },
+  {
+    "DisplayName": "Customers (Views)",
+    "Name": "_crdfd_customer_views",
+    "RelatedEntityName": "Customers",
+    "TrimmedViewName": true,
+    "Type": "ViewInfo",
+    "ViewInfoNameMapping": {
+      "293ec2da-0235-ee11-bdf4-6045bd1e46ec": "Khách hàng - Accounting",
+      "30c20dd9-4814-f011-998a-6045bd1cb61e": "Subgrid - Thông tin khách hàng Tỉnh/Thành",
+      "695b65c1-c879-ec11-8d21-002248164a88": "customer lookup Local",
+      "6d9c9aae-e506-4dcb-bf5f-339bcb4bde4c": "Customer Lookup View",
+      "703c56d3-2c84-4cb0-87d0-32e3f66ef8b2": "Inactive Customers",
+      "80962a09-6117-41cc-9ec5-67a824409291": "Khách hàng - old",
+      "8969449a-4c96-ee11-be37-000d3aa3f249": "Customer Lookup View KT",
+      "8c071b7a-59f8-424c-adc6-0db25c0861d3": "Thông tin khách hàng",
+      "9ce54505-6756-ed11-9562-000d3a856e52": "Khách hàng full",
+      "a426d62b-d6eb-4bd6-bda9-f3fc520b5805": "Customer Advanced Find View",
+      "aae2ae85-e4ef-ee11-904b-00224856a1cc": "Khách hàng - Sales",
+      "c81c02c1-3ae7-ee11-904c-000d3aa00fac": "Issue KH lookup",
+      "d6f97368-541d-4de5-9384-cfbe8954c722": "Customer Associated View",
+      "dd208326-9d3a-ef11-a316-6045bd218a04": "Customer lookup view_vận tải",
+      "f2a6b58a-dcae-4e11-8dfd-32f5de581898": "Customer Lookup View 2"
+    }
+  },
+  {
+    "DisplayName": "Đặc tính khách hàng",
+    "Name": "cr1bb_actinhkhachhang",
+    "OptionSetInfoNameMapping": {
+      "283640000": "Hợp tác tốt - Tài chính tốt",
+      "283640001": "Hợp tác tốt - Tài chính chưa ổn định",
+      "283640002": "Bất hợp tác"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_actinh",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_actinh",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Cơ hội phát triển tiếp theo (Customers)",
+    "Name": "cr1bb_crdfd_customer_cr1bb_cohoiphattrientieptheo",
+    "OptionSetInfoNameMapping": {
+      "283640000": "Cao",
+      "283640001": "Trung bình",
+      "283640002": "Thấp",
+      "283640003": "Rất thấp"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_cohoiphattrientieptheo",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_cohoiphattrientieptheo",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Công nợ nền (Customers)",
+    "Name": "cr1bb_crdfd_customer_cr1bb_congnonen",
+    "OptionSetInfoNameMapping": {
+      "0": "No",
+      "1": "Yes"
+    },
+    "OptionSetIsBooleanValued": true,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_congnonen",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "BooleanType",
+    "RelatedColumnInvariantName": "cr1bb_congnonen",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Công nợ trần (Customers)",
+    "Name": "cr1bb_crdfd_customer_cr1bb_congnotran",
+    "OptionSetInfoNameMapping": {
+      "0": "No",
+      "1": "Yes"
+    },
+    "OptionSetIsBooleanValued": true,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_congnotran",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "BooleanType",
+    "RelatedColumnInvariantName": "cr1bb_congnotran",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Hệ thống ngừng giao dịch (Customers)",
+    "Name": "cr1bb_crdfd_customer_cr1bb_hethongngunggiaodich",
+    "OptionSetInfoNameMapping": {
+      "283640000": "Khóa do vượt công nợ trần",
+      "283640001": "Khóa do chưa thanh toán về nền",
+      "283640002": "Khóa do chưa thanh toán online",
+      "283640003": "Khóa do quá hạn thanh toán"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_hethongngunggiaodich",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_hethongngunggiaodich",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Ngừng giao dịch (Customers)",
+    "Name": "cr1bb_crdfd_customer_cr1bb_ngunggiaodich",
+    "OptionSetInfoNameMapping": {
+      "283640000": "Khóa do chưa chuyển khoản",
+      "283640001": "Khóa do nợ xấu",
+      "283640002": "Khóa do vượt công nợ trần",
+      "283640003": "Khóa do chưa thanh toán về nền",
+      "283640004": "Khóa do chưa thanh toán online",
+      "283640005": "Khóa do quá hạn thanh toán",
+      "283640006": "Admin khóa"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_ngunggiaodich",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_ngunggiaodich",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "OA messege (Customers)",
+    "Name": "cr1bb_crdfd_customer_cr1bb_oamessege",
+    "OptionSetInfoNameMapping": {
+      "0": "Chưa có",
+      "1": "Có"
+    },
+    "OptionSetIsBooleanValued": true,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_oamessege",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "BooleanType",
+    "RelatedColumnInvariantName": "cr1bb_oamessege",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "User ngừng giao dịch (Customers)",
+    "Name": "cr1bb_crdfd_customer_cr1bb_userngunggiaodich",
+    "OptionSetInfoNameMapping": {
+      "283640001": "Khóa do nợ xấu",
+      "283640002": "Admin khóa"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_userngunggiaodich",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_userngunggiaodich",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Vị trí kho phụ (Customers)",
+    "Name": "cr1bb_crdfd_customer_cr1bb_vitrikhophu",
+    "OptionSetInfoNameMapping": {
+      "283640000": "Kho Bình Định",
+      "283640001": "Kho Khánh Hòa",
+      "283640002": "Kho Tp. Hồ Chí Minh"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_vitrikhophu",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "MultiSelectPicklistType",
+    "RelatedColumnInvariantName": "cr1bb_vitrikhophu",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Customer status",
+    "Name": "cr1bb_customerstatus",
+    "OptionSetInfoNameMapping": {
+      "283640000": "1. Liên kết_Cao",
+      "283640001": "2. Liên kết_Trung bình",
+      "283640002": "3. Liên kết_Thấp",
+      "283640003": "4. Liên kết_Dừng",
+      "283640004": "5. Liên kết_Không"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_customerstatus",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_customerstatus",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Khung giờ đề xuất",
+    "Name": "cr1bb_khunggioexuat",
+    "OptionSetInfoNameMapping": {
+      "283640000": "6:00 AM - 8:00 AM",
+      "283640001": "8:00 AM - 10:00 AM",
+      "283640002": "10:00 AM - 12:00 PM",
+      "283640003": "12:00 PM - 14:00 PM",
+      "283640004": "14:00 PM - 16:00 PM",
+      "283640005": "16:00 PM - 18:00 PM",
+      "283640006": "18:00 PM - 21:00 PM"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_khunggioexuat",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "MultiSelectPicklistType",
+    "RelatedColumnInvariantName": "cr1bb_khunggioexuat",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Điều khoản thanh toán - choice",
+    "Name": "cr1bb_loaicongnophaithu",
+    "OptionSetInfoNameMapping": {
+      "0": "Thanh toán sau khi nhận hàng",
+      "14": "Thanh toán 2 lần vào ngày 10 và 25",
+      "191920001": "Công nợ 20 ngày",
+      "283640000": "Tiền mặt",
+      "283640001": "Công nợ 7 ngày",
+      "283640002": "Công nợ 30 ngày",
+      "283640003": "Công nợ 45 ngày",
+      "283640004": "Công nợ 60 ngày",
+      "283640005": "Thanh toán trước khi nhận hàng",
+      "30": "Thanh toán vào ngày 5 hàng tháng"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_ieukhoanthanhtoan",
+        "OptionSetReferenceEntityName": "Customers"
+      },
+      "OptionSetReferenceItem1": {
+        "OptionSetReferenceColumnName": "crdfd_dieu_khoan_thanh_toan",
+        "OptionSetReferenceEntityName": "Sale_Orders"
+      },
+      "OptionSetReferenceItem2": {
+        "OptionSetReferenceColumnName": "crdfd_dieukhoanthanhtoan",
+        "OptionSetReferenceEntityName": "Đặt hàng SOS"
+      },
+      "OptionSetReferenceItem3": {
+        "OptionSetReferenceColumnName": "cr1bb_ieukhoanthanhtoanapdungmuc3",
+        "OptionSetReferenceEntityName": "Promotion"
+      },
+      "OptionSetReferenceItem4": {
+        "OptionSetReferenceColumnName": "cr3b9_dieukhoanthanhtoanapdungmuc2",
+        "OptionSetReferenceEntityName": "Promotion"
+      },
+      "OptionSetReferenceItem5": {
+        "OptionSetReferenceColumnName": "cr1bb_ieukhoanthanhtoanapdung",
+        "OptionSetReferenceEntityName": "Promotion"
+      },
+      "OptionSetReferenceItem6": {
+        "OptionSetReferenceColumnName": "crdfd_ieukhoanthanhtoan",
+        "OptionSetReferenceEntityName": "SO báo giá"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_ieukhoanthanhtoan",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "ngành hàng",
+    "Name": "cr1bb_nganhhang",
+    "OptionSetInfoNameMapping": {
+      "283640000": "Kim khí và phụ kiện",
+      "283640001": "Ngành điện",
+      "283640002": "Ngành nước"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_nganhchuluc",
+        "OptionSetReferenceEntityName": "Customers"
+      },
+      "OptionSetReferenceItem1": {
+        "OptionSetReferenceColumnName": "cr1bb_nganhphu",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_nganhchuluc",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Loại cửa hàng - choice",
+    "Name": "cr1bb_nganhnghechitiet2",
+    "OptionSetInfoNameMapping": {
+      "191920001": "Nhà máy tôn",
+      "283640000": "Cửa hàng tổng hợp",
+      "283640002": "Cửa hàng điện nước",
+      "283640003": "Cửa hàng phụ tùng",
+      "283640004": "Cửa hàng vật liệu xây dựng",
+      "283640005": "Cửa hàng sắt thép",
+      "283640006": "Cửa hàng nông cơ",
+      "283640007": "Cửa hàng bãi ghe",
+      "283640008": "Nhà máy gỗ",
+      "283640009": "Wicker",
+      "283640010": "Xây dựng",
+      "283640011": "Thi công nội thất",
+      "283640012": "Thương mại"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_loaicuahang",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_loaicuahang",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Ngành nghề mới",
+    "Name": "cr1bb_nganhnghemoi",
+    "OptionSetInfoNameMapping": {
+      "283640000": "Nhà máy",
+      "283640001": "Shop"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_nganhnghemoi",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_nganhnghemoi",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Phân loại KH_NCC",
+    "Name": "cr1bb_phanloaikh_ncc",
+    "OptionSetInfoNameMapping": {
+      "283640000": "Trong nước",
+      "283640001": "Ngoài nước",
+      "283640002": "Nội bộ",
+      "283640003": "Dịch vụ",
+      "283640004": "Ngân hàng, BH...",
+      "283640005": "Vãng lai",
+      "283640006": "Nhân viên",
+      "283640007": "Khác"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_phanloai",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_phanloai",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Phương thức thanh toán KT",
+    "Name": "cr1bb_phuongthucthanhtoankt",
+    "OptionSetInfoNameMapping": {
+      "283640000": "Thanh toán online",
+      "283640001": "Không thanh toán onlie",
+      "283640002": "Sales chuyển khoản",
+      "283640003": "Sales/Shipper nộp tiền mặt"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_phuongthucthanhtoan",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_phuongthucthanhtoan",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Tiềm năng",
+    "Name": "cr1bb_tiemnang",
+    "OptionSetInfoNameMapping": {
+      "283640000": "TN Input - Rất lớn",
+      "283640001": "TN Input - Lớn",
+      "283640002": "TN Input - TB",
+      "283640003": "TN Input - Nhỏ",
+      "283640004": "TN Input - Rất nhỏ"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_tiemnangbanau",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_tiemnangbanau",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Trạng thái CSKH - choice",
+    "Name": "cr1bb_trangthaicskhchoice",
+    "OptionSetInfoNameMapping": {
+      "283640000": "Chăm sóc và mở rộng CHKD",
+      "283640001": "Chăm sóc định kỳ",
+      "283640002": "Ngừng chăm sóc"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_trangthaicskh",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "crdfd_trangthaicskh",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Cấp KH",
+    "Name": "crdfd_capkh",
+    "OptionSetInfoNameMapping": {
+      "191920000": "KH cấp 1",
+      "191920001": "KH cấp 2",
+      "191920002": "KH cấp 3"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_capkh",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "crdfd_capkh",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "In công nợ (Customers)",
+    "Name": "crdfd_customer_crdfd_incongno",
+    "OptionSetInfoNameMapping": {
+      "0": "Không",
+      "1": "Có"
+    },
+    "OptionSetIsBooleanValued": true,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_incongno",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "BooleanType",
+    "RelatedColumnInvariantName": "crdfd_incongno",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Tạm ngừng khuyến mãi (Customers)",
+    "Name": "crdfd_customer_crdfd_tamngungkhuyenmai",
+    "OptionSetInfoNameMapping": {
+      "0": "No",
+      "1": "Yes"
+    },
+    "OptionSetIsBooleanValued": true,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_tamngungkhuyenmai",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "BooleanType",
+    "RelatedColumnInvariantName": "crdfd_tamngungkhuyenmai",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Trạng thái KH (Customers)",
+    "Name": "crdfd_customer_crdfd_trangthaikh",
+    "OptionSetInfoNameMapping": {
+      "191920000": "Khách hàng tạo mới",
+      "191920001": "Khách hàng chính thức",
+      "191920002": "Khách hàng ngừng đi thăm",
+      "283640001": "Khách hàng ảo"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_trangthaikh",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "crdfd_trangthaikh",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Xác nhận thanh toán online_ (Customers)",
+    "Name": "crdfd_customer_crdfd_xacnhanthanhtoanonline",
+    "OptionSetInfoNameMapping": {
+      "0": "No",
+      "1": "Yes"
+    },
+    "OptionSetIsBooleanValued": true,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_xacnhanthanhtoanonline",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "BooleanType",
+    "RelatedColumnInvariantName": "crdfd_xacnhanthanhtoanonline",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Xác nhận vị trí giao hàng (Customers)",
+    "Name": "crdfd_customer_crdfd_xacnhanvitrigiaohang",
+    "OptionSetInfoNameMapping": {
+      "0": "No",
+      "1": "Yes"
+    },
+    "OptionSetIsBooleanValued": true,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_xacnhanvitrigiaohang",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "BooleanType",
+    "RelatedColumnInvariantName": "crdfd_xacnhanvitrigiaohang",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status (Customers)",
+    "Name": "crdfd_customer_statecode",
+    "OptionSetInfoNameMapping": {
+      "0": "Active",
+      "1": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statecode",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "StateType",
+    "RelatedColumnInvariantName": "statecode",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status Reason (Customers)",
+    "Name": "crdfd_customer_statuscode",
+    "OptionSetInfoNameMapping": {
+      "1": "Active",
+      "2": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statuscode",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "StatusType",
+    "RelatedColumnInvariantName": "statuscode",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Danh xưng",
+    "Name": "crdfd_danhxung",
+    "OptionSetInfoNameMapping": {
+      "191920000": "Anh",
+      "191920001": "Chị",
+      "191920002": "Cô",
+      "191920003": "Chú",
+      "191920004": "Ông",
+      "191920005": "Bà",
+      "191920006": "Bác",
+      "191920007": "Em",
+      "191920008": "Cháu",
+      "191920009": "Bạn",
+      "191920010": "Con"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_danhxunglienhe",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "crdfd_danhxunglienhe",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Không tính tồn kho",
+    "Name": "crdfd_khongtinhtonkho",
+    "OptionSetInfoNameMapping": {
+      "191920000": "1"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_khongtinhtonkho",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "crdfd_khongtinhtonkho",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Loại đối tượng - KH",
+    "Name": "crdfd_loaioituongkh",
+    "OptionSetInfoNameMapping": {
+      "191920000": "Khách hàng",
+      "191920001": "Nhân viên",
+      "191920002": "Khác"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_loaioituong",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "crdfd_loaioituong",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Ngành nghề choice",
+    "Name": "crdfd_nganhnghe",
+    "OptionSetInfoNameMapping": {
+      "191920000": "1. Nhà máy gỗ",
+      "191920001": "2. Wicker",
+      "191920002": "3. Xây dựng",
+      "191920003": "4. Thi công nội thất",
+      "191920004": "5. Shop bán lẻ",
+      "191920006": "6. Sản xuất khác",
+      "191920008": "7. CTV",
+      "191920009": "8. Công ty thương mại"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_nganhnghe",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "crdfd_nganhnghe",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status Liên kết - choice",
+    "Name": "crdfd_statuslk",
+    "OptionSetInfoNameMapping": {
+      "191920000": "Liên kết_Cao",
+      "191920001": "Liên kết_Trung bình",
+      "191920002": "Liên kết_Thấp",
+      "191920003": "Liên kết_Không",
+      "283640001": "Liên kết_Dừng (2 tháng)"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "wc001_trangthaikh_lienket",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "wc001_trangthaikh_lienket",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status tăng trưởng",
+    "Name": "crdfd_statustangtruong",
+    "OptionSetInfoNameMapping": {
+      "191920000": "Tăng trưởng_Giảm",
+      "191920001": "Tăng trưởng_Tăng",
+      "191920002": "Tăng trưởng_Không",
+      "191920003": "Chưa xác định"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_trangthaikh_tangtruong",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "crdfd_trangthaikh_tangtruong",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status tiềm năng - choice",
+    "Name": "crdfd_statustiemnangphattrien",
+    "OptionSetInfoNameMapping": {
+      "191920000": "TN Cao",
+      "191920001": "TN Trung bình",
+      "191920002": "TN Thấp",
+      "499890001": "TN Chưa xác định"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "wc001_trangthaikh_tiemnang",
+        "OptionSetReferenceEntityName": "Customers"
+      },
+      "OptionSetReferenceItem1": {
+        "OptionSetReferenceColumnName": "cr1bb_tiemnangnhom",
+        "OptionSetReferenceEntityName": "Product groups"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "wc001_trangthaikh_tiemnang",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Tín dụng",
+    "Name": "crdfd_tindung",
+    "OptionSetInfoNameMapping": {
+      "191920000": "Tốt",
+      "191920001": "Trung Bình",
+      "191920002": "Xấu"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_tindung",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "crdfd_tindung",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status Credit - choice",
+    "Name": "wc001_statuscreditchoice",
+    "OptionSetInfoNameMapping": {
+      "499890000": "Credit_Nợ xấu",
+      "499890001": "Credit_Trung bình",
+      "499890002": "Credit_Tốt",
+      "499890003": "Credit_Chưa xác định"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "wc001_trangthaikh_tindung",
+        "OptionSetReferenceEntityName": "Customers"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "wc001_trangthaikh_tindung",
+    "RelatedEntityName": "Customers",
+    "Type": "OptionSetInfo"
+  }
+]

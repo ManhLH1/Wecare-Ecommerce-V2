@@ -1,0 +1,116 @@
+[
+  {
+    "CdsFCBContext": "{\"FileType\":true,\"ImageExternalStorage\":true}",
+    "EntitySetName": "crdfd_sobaogiaxpromotions",
+    "IsHidden": false,
+    "IsSampleData": false,
+    "IsWritable": true,
+    "LogicalName": "crdfd_sobaogiaxpromotion",
+    "MaxGetRowsCount": 2000,
+    "Name": "SO báo giá x Promotion",
+    "NativeCDSDataSourceInfoNameMapping": {
+      "_ownerid_value": "Owner",
+      "crdfd_chietkhau": "Chiết khấu",
+      "crdfd_chietkhaucal": "Chiết khấu cal",
+      "crdfd_loai": "Loại",
+      "crdfd_loaical": "Loại cal",
+      "crdfd_manhomsp": "Mã nhóm sp",
+      "crdfd_masanpham_multiple": "Mã sản phẩm_multiple",
+      "crdfd_multiple_manhomsp": "Multiple_mã nhóm sp",
+      "crdfd_multiple_tennhomsp": "Multiple_tên nhóm sp",
+      "crdfd_name": "Key",
+      "crdfd_ngayduyet": "Ngày duyệt",
+      "crdfd_Nguoiduyet": "Người duyệt",
+      "crdfd_Promotion": "Promotion",
+      "crdfd_promotiontext": "Promotion text",
+      "crdfd_SObaogia": "SO báo giá",
+      "crdfd_sobaogiatext": "SO báo giá text",
+      "crdfd_sobaogiaxpromotion_AsyncOperations": "System Jobs",
+      "crdfd_sobaogiaxpromotion_BulkDeleteFailures": "Bulk Delete Failures",
+      "crdfd_sobaogiaxpromotion_MailboxTrackingFolders": "Mailbox Auto Tracking Folders",
+      "crdfd_sobaogiaxpromotion_PrincipalObjectAttributeAccesses": "Field Sharing",
+      "crdfd_sobaogiaxpromotion_ProcessSession": "Process Sessions",
+      "crdfd_sobaogiaxpromotion_SyncErrors": "Sync Errors",
+      "crdfd_sobaogiaxpromotionid": "ID",
+      "crdfd_songaytaoenhientai": "Số ngày tạo đến hiện tại",
+      "crdfd_tensanpham_multiple": "Tên sản phẩm_multiple",
+      "crdfd_type": "Type",
+      "crdfd_typecal": "Type cal",
+      "createdby": "Created By",
+      "createdon": "Created On",
+      "createdonbehalfby": "Created By (Delegate)",
+      "importsequencenumber": "Import Sequence Number",
+      "modifiedby": "Modified By",
+      "modifiedon": "Modified On",
+      "modifiedonbehalfby": "Modified By (Delegate)",
+      "overriddencreatedon": "Record Created On",
+      "owningbusinessunit": "Owning Business Unit",
+      "owningteam": "Owning Team",
+      "owninguser": "Owning User",
+      "statecode": "Status",
+      "statuscode": "Status Reason",
+      "timezoneruleversionnumber": "Time Zone Rule Version Number",
+      "utcconversiontimezonecode": "UTC Conversion Time Zone Code",
+      "versionnumber": "Version Number"
+    },
+    "PreferredName": "SO báo giá x Promotion",
+    "Type": "NativeCDSDataSourceInfo"
+  },
+  {
+    "DisplayName": "SO báo giá x Promotion (Views)",
+    "Name": "_crdfd_sobaogiaxpromotion_views",
+    "RelatedEntityName": "SO báo giá x Promotion",
+    "TrimmedViewName": true,
+    "Type": "ViewInfo",
+    "ViewInfoNameMapping": {
+      "100c88bd-4ca5-4a88-86f7-de69afed9ae9": "Inactive SO báo giá x Promotion",
+      "2beb1a5c-9136-4ce0-a2fc-1c3fffda183f": "SO báo giá x Promotion Lookup View",
+      "61a004f1-ddb1-ef11-b8e8-6045bd1f3796": "Chờ duyệt",
+      "b529de06-deb1-ef11-b8e8-6045bd208527": "Đã duyệt",
+      "b5bd3e1a-c402-436a-987e-87b5272faab4": "SO báo giá x Promotion Advanced Find View",
+      "cd2e8eb2-2cea-4e66-ae95-dd2f299aae60": "SO báo giá x Promotion Associated View",
+      "d85d742a-3eb1-ef11-b8e8-000d3ac7003b": "Lookup view SO báo giá",
+      "d86a67cc-f951-4e92-b454-42e03da66700": "SO báo giá x Promotion"
+    }
+  },
+  {
+    "DisplayName": "Status (SO báo giá x Promotion)",
+    "Name": "crdfd_sobaogiaxpromotion_statecode",
+    "OptionSetInfoNameMapping": {
+      "0": "Active",
+      "1": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statecode",
+        "OptionSetReferenceEntityName": "SO báo giá x Promotion"
+      }
+    },
+    "OptionSetTypeKey": "StateType",
+    "RelatedColumnInvariantName": "statecode",
+    "RelatedEntityName": "SO báo giá x Promotion",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status Reason (SO báo giá x Promotion)",
+    "Name": "crdfd_sobaogiaxpromotion_statuscode",
+    "OptionSetInfoNameMapping": {
+      "1": "Active",
+      "2": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statuscode",
+        "OptionSetReferenceEntityName": "SO báo giá x Promotion"
+      }
+    },
+    "OptionSetTypeKey": "StatusType",
+    "RelatedColumnInvariantName": "statuscode",
+    "RelatedEntityName": "SO báo giá x Promotion",
+    "Type": "OptionSetInfo"
+  }
+]

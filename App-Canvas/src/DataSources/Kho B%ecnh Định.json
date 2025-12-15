@@ -1,0 +1,277 @@
+[
+  {
+    "CdsFCBContext": "{\"FileType\":true,\"ImageExternalStorage\":true}",
+    "EntitySetName": "crdfd_kho_binh_dinhs",
+    "IsHidden": false,
+    "IsSampleData": false,
+    "IsWritable": true,
+    "LogicalName": "crdfd_kho_binh_dinh",
+    "MaxGetRowsCount": 2000,
+    "Name": "Kho Bình Định",
+    "NativeCDSDataSourceInfoNameMapping": {
+      "_ownerid_value": "Owner",
+      "cr1bb_action": "Action",
+      "cr1bb_balance": "Balance",
+      "cr1bb_chuachaytaikholocal": "Chữa cháy tại kho local",
+      "cr1bb_crdfd_kho_Binh_Dinh_crdfd_kho_Binh_Dinh_c": "Special events",
+      "cr1bb_crdfd_xulyhangloi_KhoBinhinh_crdfd_kho_binh_dinh": "Xử lý hàng lỗi",
+      "cr1bb_dev1": "dev1",
+      "cr1bb_diemruirolechkho": "Điểm rủi ro lệch kho",
+      "cr1bb_hangkimkhi": "Hàng Kim Khí",
+      "cr1bb_hangsanxuat": "Hàng sản xuất",
+      "cr1bb_huongxuly": "Hướng xử lý",
+      "cr1bb_id_kho_masp": "ID_Kho_Mã SP",
+      "cr1bb_iemsailech": "Điểm sai lệch",
+      "cr1bb_Maonvisp": "Mã đơn vị sp",
+      "cr1bb_maxstockday": "Max stock day",
+      "cr1bb_maxstocktest": "Maxstocktest",
+      "cr1bb_minstockday": "Min stock day",
+      "cr1bb_minstocktest": "Minstocktest",
+      "cr1bb_Nhanvienmuahang": "NV mua hàng",
+      "cr1bb_oitac": "Đối tác",
+      "cr1bb_onvihang": "Đơn vị hàng",
+      "cr1bb_orderneeded": "Order Needed",
+      "cr1bb_phanloaihang": "Phân loại hàng",
+      "cr1bb_promotionsensitivity": "Promotion Sensitivity",
+      "cr1bb_Sanphamsauxi": "Sản phẩm sau xi",
+      "cr1bb_slhangloisaukiem": "Tồn hàng lỗi",
+      "cr1bb_soluongxuly": "Số lượng xử lý",
+      "cr1bb_stockdeactivate": "Stock Deactivate",
+      "cr1bb_suggeststockmanual": "Suggest Stock (manual)",
+      "cr1bb_suggesttobuytest": "Suggest to buy (Test)",
+      "cr1bb_test_maxstock_hangsx": "Test_MaxStock_HangSX",
+      "cr1bb_test_minstock_hangconlai": "Test_MinStock_HangConLai",
+      "cr1bb_tongtonkho": "Tổng tồn kho",
+      "cr1bb_tonkhadung": "Tồn khả dụng",
+      "cr1bb_tonkholythuyetbomua": "Tồn kho lý thuyết - Bỏ mua",
+      "cr1bb_trangthaixuly": "Trạng thái xử lý",
+      "crdfd_athangbo_Sanphamtheokho_crdfd_kho_binh_dinh": "Đặt hàng BO",
+      "crdfd_code": "Code",
+      "crdfd_confidentlevel": "Confident level cal",
+      "crdfd_confidentlevelfx": "Confident Level",
+      "crdfd_crdfd_products_KhoBinhinh_crdfd_kho_binh_": "products (crdfd_crdfd_products_KhoBinhinh_crdfd_kho_binh_)",
+      "crdfd_datafrrom": "Data frrom",
+      "crdfd_forecast30ngay": "Forecast 30 ngày",
+      "crdfd_forecast7ngay": "Forecast 7 ngày",
+      "crdfd_InventoryBD": "InventoryBD",
+      "crdfd_kbd_auto": "KBD_Auto",
+      "crdfd_ke_hoach_hang_ve": "Kế hoạch hàng về",
+      "crdfd_ke_hoach_soan_hang": "Kế hoạch soạn hàng",
+      "crdfd_kho_binh_dinh_AsyncOperations": "System Jobs",
+      "crdfd_kho_binh_dinh_BulkDeleteFailures": "Bulk Delete Failures",
+      "crdfd_kho_binh_dinh_MailboxTrackingFolders": "Mailbox Auto Tracking Folders",
+      "crdfd_kho_binh_dinh_PrincipalObjectAttributeAccesses": "Field Sharing",
+      "crdfd_kho_binh_dinh_ProcessSession": "Process Sessions",
+      "crdfd_kho_binh_dinh_SyncErrors": "Sync Errors",
+      "crdfd_kho_binh_dinhid": "ID",
+      "crdfd_masp": "Mã SP",
+      "crdfd_maxstocknew": "Max stock",
+      "crdfd_minstocknew": "Min stock",
+      "crdfd_nhanviencungung2": "Nhân viên cung ứng",
+      "crdfd_nhomsp": "Nhóm SP",
+      "crdfd_nhomspcap1": "Nhóm sp cấp 1",
+      "crdfd_notes": "Notes",
+      "crdfd_nvmuahanghcm": "NV mua hàng HCM",
+      "crdfd_NVmuahangurgent": "NV mua hàng urgent",
+      "crdfd_onvi": "Đơn vị",
+      "crdfd_productid": "Name",
+      "crdfd_products_Kho_Tp_HoChiMinh_crdfd_kho_binh_dinh": "products (crdfd_products_Kho_Tp_HoChiMinh_crdfd_kho_binh_dinh)",
+      "crdfd_products_KhoKhanhHoa_crdfd_kho_binh_dinh": "products (crdfd_products_KhoKhanhHoa_crdfd_kho_binh_dinh)",
+      "crdfd_purchaseplandetail_Kho_crdfd_kho_binh_dinh": "Purchase plan detail",
+      "crdfd_soluong30ngay": "Số lượng 30 ngày",
+      "crdfd_soluong30ngaytieptheo": "Số lượng 30 ngày tiếp theo",
+      "crdfd_soonhang30ngay": "Số đơn hàng 30 ngày",
+      "crdfd_soonhanglaplai90ngay": "Số đơn hàng lặp lại 90 ngày",
+      "crdfd_soonsod": "Số đơn SOD",
+      "crdfd_sptonkhochinhxac": "SP tồn kho chính xác",
+      "crdfd_stockstatusnew": "Stock status",
+      "crdfd_suggesttobuynew": "Suggest to buy",
+      "crdfd_Tensanphamlookup": "Tên sản phẩm",
+      "crdfd_tensptext": "Tên SP",
+      "crdfd_ton_kho_theo_ke_hoach": "Tồn kho theo kế hoạch",
+      "crdfd_tonkholythuyet": "Tồn kho lý thuyết",
+      "crdfd_tonkhothucte": "Tồn hàng đạt",
+      "crdfd_urgent": "Urgent",
+      "crdfd_Vitrikho": "Vị trí kho",
+      "crdfd_vitrikhofx": "Vị trí kho fx",
+      "createdby": "Created By",
+      "createdon": "Created On",
+      "createdonbehalfby": "Created By (Delegate)",
+      "importsequencenumber": "Import Sequence Number",
+      "modifiedby": "Modified By",
+      "modifiedon": "Modified On",
+      "modifiedonbehalfby": "Modified By (Delegate)",
+      "overriddencreatedon": "Record Created On",
+      "owningbusinessunit": "Owning Business Unit",
+      "owningteam": "Owning Team",
+      "owninguser": "Owning User",
+      "statecode": "Status",
+      "statuscode": "Status Reason",
+      "timezoneruleversionnumber": "Time Zone Rule Version Number",
+      "utcconversiontimezonecode": "UTC Conversion Time Zone Code",
+      "versionnumber": "Version Number"
+    },
+    "PreferredName": "Kho Bình Định",
+    "Type": "NativeCDSDataSourceInfo"
+  },
+  {
+    "DisplayName": "Kho Bình Định (Views)",
+    "Name": "_crdfd_kho_binh_dinh_views",
+    "RelatedEntityName": "Kho Bình Định",
+    "TrimmedViewName": true,
+    "Type": "ViewInfo",
+    "ViewInfoNameMapping": {
+      "4cab206f-998a-42c5-8d66-96a46530c31c": "kho_Binh_Dinh Advanced Find View",
+      "6cb9a757-2d2e-459a-8d03-3b41f0f3d9ae": "Inactive",
+      "848e4c5d-688e-ed11-81ad-00224859398c": "SP tồn kho không chính xác",
+      "8ecd6f15-87e2-48f8-a2b8-345e64b27d55": "kho_Binh_Dinh Associated View",
+      "963154f4-0b38-4f8d-b493-8152d9e0365d": "kho_Binh_Dinh Lookup View",
+      "cc405d31-4e29-f011-8c4e-00224856d252": "Kho Tp. Hồ Chí Minh",
+      "f50238c4-46bc-ef11-a72f-6045bd1eb704": "Kho Khánh Hoà",
+      "f8a53f2d-b2c8-ef11-a72f-6045bd1eb351": "Kho Bình Định",
+      "ff39c606-b0dd-47a0-b2ea-158d8c3e1a48": "Kho"
+    }
+  },
+  {
+    "DisplayName": "Chữa cháy tại kho local (Kho Bình Định)",
+    "Name": "cr1bb_crdfd_kho_binh_dinh_cr1bb_chuachaytaikholocal",
+    "OptionSetInfoNameMapping": {
+      "0": "No",
+      "1": "Yes"
+    },
+    "OptionSetIsBooleanValued": true,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_chuachaytaikholocal",
+        "OptionSetReferenceEntityName": "Kho Bình Định"
+      }
+    },
+    "OptionSetTypeKey": "BooleanType",
+    "RelatedColumnInvariantName": "cr1bb_chuachaytaikholocal",
+    "RelatedEntityName": "Kho Bình Định",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Huongxulyhangloi",
+    "Name": "cr1bb_huongxulyhangloi",
+    "OptionSetInfoNameMapping": {
+      "283640000": "Xuất trả NCC",
+      "283640001": "Trả về kho",
+      "283640002": "Xi lại hoặc nhúng keo",
+      "283640003": "Thanh lý"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_huongxuly",
+        "OptionSetReferenceEntityName": "Kho Bình Định"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_huongxuly",
+    "RelatedEntityName": "Kho Bình Định",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Phanloaihang",
+    "Name": "cr1bb_phanloaihang",
+    "OptionSetInfoNameMapping": {
+      "283640000": "Hàng lỗi",
+      "283640001": "Đơn hàng xi"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_phanloaihang",
+        "OptionSetReferenceEntityName": "Kho Bình Định"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_phanloaihang",
+    "RelatedEntityName": "Kho Bình Định",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Trangthaixuly",
+    "Name": "cr1bb_trangthaixuly",
+    "OptionSetInfoNameMapping": {
+      "283640000": "Đã xử lý",
+      "283640001": "Chưa xử lý",
+      "283640002": "Dang dở"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_trangthaixuly",
+        "OptionSetReferenceEntityName": "Kho Bình Định"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_trangthaixuly",
+    "RelatedEntityName": "Kho Bình Định",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "SP tồn kho chính xác (Kho Bình Định)",
+    "Name": "crdfd_kho_binh_dinh_crdfd_sptonkhochinhxac",
+    "OptionSetInfoNameMapping": {
+      "191920000": "Không chính xác"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_sptonkhochinhxac",
+        "OptionSetReferenceEntityName": "Kho Bình Định"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "crdfd_sptonkhochinhxac",
+    "RelatedEntityName": "Kho Bình Định",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status (Kho Bình Định)",
+    "Name": "crdfd_kho_binh_dinh_statecode",
+    "OptionSetInfoNameMapping": {
+      "0": "Active",
+      "1": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statecode",
+        "OptionSetReferenceEntityName": "Kho Bình Định"
+      }
+    },
+    "OptionSetTypeKey": "StateType",
+    "RelatedColumnInvariantName": "statecode",
+    "RelatedEntityName": "Kho Bình Định",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status Reason (Kho Bình Định)",
+    "Name": "crdfd_kho_binh_dinh_statuscode",
+    "OptionSetInfoNameMapping": {
+      "1": "Active",
+      "2": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statuscode",
+        "OptionSetReferenceEntityName": "Kho Bình Định"
+      }
+    },
+    "OptionSetTypeKey": "StatusType",
+    "RelatedColumnInvariantName": "statuscode",
+    "RelatedEntityName": "Kho Bình Định",
+    "Type": "OptionSetInfo"
+  }
+]

@@ -1,0 +1,3578 @@
+Screen_SO_tam As screen:
+    ContentLanguage: =""
+    Fill: =Color.White
+    LoadingSpinnerColor: =App.Theme.Colors.Primary
+    OnHidden: =Set(is_Screen_SO_Tmp,false);
+    OnVisible: =Set(is_Screen_SO_Tmp,true);
+
+    "'Container Main' As groupContainer.horizontalAutoLayoutContainer":
+        DropShadow: =DropShadow.Light
+        Height: =694
+        LayoutDirection: =LayoutDirection.Vertical
+        LayoutMode: =LayoutMode.Auto
+        LayoutOverflowY: =LayoutOverflow.Scroll
+        RadiusBottomLeft: =4
+        RadiusBottomRight: =4
+        RadiusTopLeft: =4
+        RadiusTopRight: =4
+        Width: =1366
+        Y: =74
+        ZIndex: =1
+
+        "'Container Body' As groupContainer.manualLayoutContainer":
+            AlignInContainer: =AlignInContainer.Center
+            DropShadow: =DropShadow.Bold
+            Fill: =RGBA(250, 250, 250, 1)
+            FillPortions: =0
+            Height: =Container_Chitietdonhang.Height + Container_Chitietdonhang.Y + 100
+            LayoutMaxHeight: =
+            LayoutMaxWidth: =
+            LayoutMinHeight: =Container_Chitietdonhang.Height + Container_Chitietdonhang.Y + 200
+            LayoutMinWidth: =250
+            RadiusBottomLeft: =4
+            RadiusBottomRight: =4
+            RadiusTopLeft: =4
+            RadiusTopRight: =4
+            Width: =Parent.Width
+            ZIndex: =1
+
+            Container_Chitietdonhang As groupContainer.manualLayoutContainer:
+                DropShadow: =DropShadow.Regular
+                Fill: =RGBA(255, 255, 255, 1)
+                Height: =Button_tu_choi_don_tam.Y + Button_tu_choi_don_tam.Height + 20
+                RadiusBottomLeft: =20
+                RadiusBottomRight: =20
+                RadiusTopLeft: =20
+                RadiusTopRight: =20
+                Visible: =CountRows(Dropdown_kho.SelectedItems) > 0 And CountRows(Dropdown_DKTT.SelectedItems) > 0 And Len(TextInput_TenDonHang.Value) > 1 And CountRows(cb_donhang_tam.SelectedItems) > 0 And Len(TextInput_GhiChu.Value) > 0 And CountRows(Dropdown_LDH.SelectedItems) > 0 And CountRows(Dropdown_KenhTiepNhan.SelectedItems) > 0
+                Width: =1327
+                X: =25
+                Y: =Container_Cauhinhdonhang.Height + Container_Cauhinhdonhang.Y + 20
+                ZIndex: =1
+
+                TextCanvas1_3 As Text:
+                    Align: ="Start"
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =40
+                    Size: =22
+                    TabIndex: =0
+                    Text: |-
+                        ="Chi tiết đơn hàng: "
+                    Tooltip: =""
+                    VerticalAlign: =VerticalAlign.Middle
+                    Visible: =true
+                    Weight: ='TextCanvas.Weight'.Bold
+                    Width: =230
+                    Wrap: =true
+                    X: =95
+                    Y: =Container_Chitietdonhang.X
+                    ZIndex: =1
+
+                IconFontAwesome1_2 As IconFontAwesome:
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Height: =37
+                    iconHtml: |-
+                        ="<i class='fa-solid fa-list-check' style='color: #04a1b3;'></i>"
+                    iconSize: =30
+                    OnChange: =false
+                    TabIndex: =0
+                    Tooltip: ="IconFontAwesome description"
+                    Visible: =true
+                    Width: =40
+                    X: =50
+                    Y: =Container_Chitietdonhang.X
+                    ZIndex: =2
+
+                "'TextCanvas_cảnh báo' As Text":
+                    Align: ='TextCanvas.Align'.Justify
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =25
+                    Size: =18
+                    TabIndex: =0
+                    Text: ="Vui lòng kiểm tra thông tin đơn hàng trước khi duyệt"
+                    Tooltip: =""
+                    VerticalAlign: =VerticalAlign.Top
+                    Visible: =true
+                    Weight: ='TextCanvas.Weight'.Medium
+                    Width: =900
+                    Wrap: =true
+                    X: =IconFontAwesome1_2.X
+                    Y: =TextCanvas1_3.Height + TextCanvas1_3.Y
+                    ZIndex: =3
+
+                TextCanvas1_5 As Text:
+                    Align: ="Start"
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =40
+                    Size: =18
+                    TabIndex: =0
+                    Text: |-
+                        ="Trạng thái: "
+                    Tooltip: =""
+                    VerticalAlign: =VerticalAlign.Middle
+                    Visible: =true
+                    Weight: ='TextCanvas.Weight'.Medium
+                    Width: =124
+                    Wrap: =true
+                    X: =1032
+                    Y: =TextCanvas1_3.Y+10
+                    ZIndex: =4
+
+                Button3 As button:
+                    BorderColor: =
+                    BorderThickness: =0
+                    Color: =App.Theme.Colors.PrimaryForeground
+                    DisabledBorderColor: =RGBA(244, 244, 244, 1)
+                    DisabledColor: =RGBA(166, 166, 166, 1)
+                    DisabledFill: =RGBA(244, 244, 244, 1)
+                    DisplayMode: =DisplayMode.View
+                    Fill: =RGBA(245, 158, 11, 1)
+                    Font: =App.Theme.Font
+                    FontWeight: =FontWeight.Semibold
+                    Height: =35
+                    HoverBorderColor: =App.Theme.Colors.Darker10
+                    HoverColor: =App.Theme.Colors.PrimaryForeground
+                    HoverFill: =App.Theme.Colors.Darker10
+                    OnSelect: =
+                    PressedBorderColor: =App.Theme.Colors.Darker40
+                    PressedColor: =Self.Color
+                    PressedFill: =App.Theme.Colors.Darker40
+                    RadiusBottomLeft: =40
+                    RadiusBottomRight: =40
+                    RadiusTopLeft: =40
+                    RadiusTopRight: =40
+                    Size: =15
+                    Text: ="Chờ duyệt"
+                    Width: =146
+                    X: =1141
+                    Y: =TextCanvas1_3.Y+10
+                    ZIndex: =5
+
+                TextCanvas1_6 As Text:
+                    Align: ="Start"
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =RGBA(4, 161, 179, 1)
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =40
+                    Size: =22
+                    TabIndex: =0
+                    Text: =cb_donhang_tam.Selected.Value
+                    Tooltip: =""
+                    VerticalAlign: =VerticalAlign.Middle
+                    Visible: =true
+                    Weight: ='TextCanvas.Weight'.Bold
+                    Width: =700
+                    Wrap: =false
+                    X: =301
+                    Y: =Container_Chitietdonhang.X
+                    ZIndex: =6
+
+                Button4 As button:
+                    BorderColor: =App.Theme.Colors.Primary
+                    Color: =App.Theme.Colors.PrimaryForeground
+                    DisabledBorderColor: =RGBA(244, 244, 244, 1)
+                    DisabledColor: =RGBA(166, 166, 166, 1)
+                    DisabledFill: =RGBA(244, 244, 244, 1)
+                    DisplayMode: =DisplayMode.View
+                    Fill: =RGBA(238,242,255,1)
+                    Font: =App.Theme.Font
+                    FontWeight: =FontWeight.Semibold
+                    Height: =75
+                    HoverBorderColor: =App.Theme.Colors.Darker10
+                    HoverColor: =App.Theme.Colors.PrimaryForeground
+                    HoverFill: =App.Theme.Colors.Darker10
+                    PressedBorderColor: =App.Theme.Colors.Darker40
+                    PressedColor: =Self.Color
+                    PressedFill: =App.Theme.Colors.Darker40
+                    RadiusBottomLeft: =20
+                    RadiusBottomRight: =20
+                    RadiusTopLeft: =20
+                    RadiusTopRight: =20
+                    Size: =15
+                    Text: =
+                    Width: =1247
+                    X: =40
+                    Y: ='TextCanvas_cảnh báo'.Height + 'TextCanvas_cảnh báo'.Y + 15
+                    ZIndex: =7
+
+                TextCanvas1_7 As Text:
+                    Align: ='TextCanvas.Align'.Justify
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =RGBA(4, 161, 179, 1)
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =25
+                    Size: =18
+                    TabIndex: =0
+                    Text: ="Khách hàng"
+                    Tooltip: =""
+                    VerticalAlign: =VerticalAlign.Top
+                    Visible: =true
+                    Weight: ='TextCanvas.Weight'.Semibold
+                    Width: =200
+                    Wrap: =true
+                    X: =64
+                    Y: ='TextCanvas_cảnh báo'.Height + 'TextCanvas_cảnh báo'.Y + 27
+                    ZIndex: =8
+
+                TextCanvas1_8 As Text:
+                    Align: ='TextCanvas.Align'.Justify
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =RGBA(4, 161, 179, 1)
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =25
+                    Size: =18
+                    TabIndex: =0
+                    Text: ="Ngày tạo"
+                    Tooltip: =""
+                    VerticalAlign: =VerticalAlign.Top
+                    Visible: =true
+                    Weight: ='TextCanvas.Weight'.Semibold
+                    Width: =200
+                    Wrap: =true
+                    X: =673
+                    Y: ='TextCanvas_cảnh báo'.Height + 'TextCanvas_cảnh báo'.Y + 27
+                    ZIndex: =9
+
+                TextCanvas1_9 As Text:
+                    Align: ='TextCanvas.Align'.Justify
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =RGBA(4, 161, 179, 1)
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =25
+                    Size: =18
+                    TabIndex: =0
+                    Text: ="Tổng giá trị"
+                    Tooltip: =""
+                    VerticalAlign: =VerticalAlign.Top
+                    Visible: =true
+                    Weight: ='TextCanvas.Weight'.Semibold
+                    Width: =200
+                    Wrap: =true
+                    X: =937
+                    Y: ='TextCanvas_cảnh báo'.Height + 'TextCanvas_cảnh báo'.Y + 27
+                    ZIndex: =10
+
+                TextCanvas1_10 As Text:
+                    Align: ='TextCanvas.Align'.Justify
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =RGBA(0, 0, 0, 1)
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =30
+                    Size: =20
+                    TabIndex: =0
+                    Text: =cb_khach_hang_tam.Selected.'Customer name'
+                    Tooltip: =""
+                    VerticalAlign: =VerticalAlign.Top
+                    Visible: =true
+                    Weight: ='TextCanvas.Weight'.Semibold
+                    Width: =570
+                    Wrap: =false
+                    X: =64
+                    Y: =TextCanvas1_7.Height + TextCanvas1_7.Y 
+                    ZIndex: =11
+
+                TextCanvas1_11 As Text:
+                    Align: ='TextCanvas.Align'.Justify
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =RGBA(0, 0, 0, 1)
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =30
+                    Size: =20
+                    TabIndex: =0
+                    Text: =Text(Lk_donhangtam.'Created On',"dd/mm/yyyy")
+                    Tooltip: =""
+                    VerticalAlign: =VerticalAlign.Top
+                    Visible: =true
+                    Weight: ='TextCanvas.Weight'.Semibold
+                    Width: =200
+                    Wrap: =true
+                    X: =TextCanvas1_8.X
+                    Y: =TextCanvas1_7.Height + TextCanvas1_7.Y 
+                    ZIndex: =12
+
+                TextCanvas1_12 As Text:
+                    Align: ='TextCanvas.Align'.Justify
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =RGBA(4, 161, 179, 1)
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =30
+                    Size: =20
+                    TabIndex: =0
+                    Text: |-
+                        =Text(Sum(Gallery_donhang.AllItems,Value(TextCanvas_TongTien.Text)),"#,### VNĐ")
+                    Tooltip: =""
+                    VerticalAlign: =VerticalAlign.Top
+                    Visible: =true
+                    Weight: ='TextCanvas.Weight'.Semibold
+                    Width: =298
+                    Wrap: =true
+                    X: =937
+                    Y: =TextCanvas1_7.Height + TextCanvas1_7.Y 
+                    ZIndex: =13
+
+                Button4_1 As button:
+                    BorderColor: =App.Theme.Colors.Primary
+                    Color: =App.Theme.Colors.PrimaryForeground
+                    DisabledBorderColor: =RGBA(244, 244, 244, 1)
+                    DisabledColor: =RGBA(166, 166, 166, 1)
+                    DisabledFill: =RGBA(244, 244, 244, 1)
+                    DisplayMode: =DisplayMode.View
+                    Fill: =RGBA(238,242,255,1)
+                    Font: =App.Theme.Font
+                    FontWeight: =FontWeight.Semibold
+                    Height: =174
+                    HoverBorderColor: =App.Theme.Colors.Darker10
+                    HoverColor: =App.Theme.Colors.PrimaryForeground
+                    HoverFill: =App.Theme.Colors.Darker10
+                    PressedBorderColor: =App.Theme.Colors.Darker40
+                    PressedColor: =Self.Color
+                    PressedFill: =App.Theme.Colors.Darker40
+                    RadiusBottomLeft: =20
+                    RadiusBottomRight: =20
+                    RadiusTopLeft: =20
+                    RadiusTopRight: =20
+                    Size: =15
+                    Text: =
+                    Visible: =var_selected_donhangtam > 0
+                    Width: =1247
+                    X: =40
+                    Y: =Gallery_donhang.Height + Gallery_donhang.Y + 10
+                    ZIndex: =14
+
+                TextCanvas1_13 As Text:
+                    Align: ='TextCanvas.Align'.Justify
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =RGBA(53, 61, 63, 1)
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =36
+                    Size: =22
+                    TabIndex: =0
+                    Text: ="Sản phẩm đã chọn"
+                    Tooltip: =""
+                    VerticalAlign: =VerticalAlign.Top
+                    Visible: =var_selected_donhangtam > 0
+                    Weight: ='TextCanvas.Weight'.Bold
+                    Width: =272
+                    Wrap: =true
+                    X: =111
+                    Y: =IconFontAwesome1_3.Y
+                    ZIndex: =15
+
+                IconFontAwesome1_3 As IconFontAwesome:
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Height: =37
+                    iconHtml: |-
+                        ="<i class='fa-solid fa-cart-shopping' style='color: #04a1b3;'></i>"
+                    iconSize: =30
+                    OnChange: =false
+                    TabIndex: =0
+                    Tooltip: ="IconFontAwesome description"
+                    Visible: =var_selected_donhangtam > 0
+                    Width: =40
+                    X: =64
+                    Y: =Button4_1.Y + 20
+                    ZIndex: =16
+
+                Container_soluong As groupContainer.manualLayoutContainer:
+                    DropShadow: =DropShadow.Light
+                    Fill: =RGBA(255, 255, 255, 1)
+                    Height: =80
+                    RadiusBottomLeft: =10
+                    RadiusBottomRight: =10
+                    RadiusTopLeft: =10
+                    RadiusTopRight: =10
+                    Visible: =var_selected_donhangtam > 0
+                    Width: =355
+                    X: =65
+                    Y: =TextCanvas1_13.Height +TextCanvas1_13.Y + 10
+                    ZIndex: =17
+
+                    TextCanvas1_14 As Text:
+                        Align: ='TextCanvas.Align'.Justify
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =Font.'Open Sans'
+                        FontColor: =RGBA(4, 161, 179, 1)
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =25
+                        Size: =18
+                        TabIndex: =0
+                        Text: |-
+                            ="Số lượng sản phẩm: "
+                        Tooltip: =""
+                        VerticalAlign: =VerticalAlign.Top
+                        Visible: =true
+                        Weight: ='TextCanvas.Weight'.Semibold
+                        Width: =300
+                        Wrap: =true
+                        X: =8
+                        Y: =5
+                        ZIndex: =1
+
+                    IconFontAwesome1_4 As IconFontAwesome:
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Height: =37
+                        iconHtml: |-
+                            ="<i class='fa-solid fa-box' style='color: #04a1b3;'></i>"
+                        iconSize: =30
+                        OnChange: =false
+                        TabIndex: =0
+                        Tooltip: ="IconFontAwesome description"
+                        Visible: =true
+                        Width: =40
+                        X: =24
+                        Y: =37
+                        ZIndex: =2
+
+                    TextCanvas1_15 As Text:
+                        Align: ='TextCanvas.Align'.Justify
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =Font.'Open Sans'
+                        FontColor: =RGBA(0, 0, 0, 1)
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =40
+                        Size: =22
+                        TabIndex: =0
+                        Text: =var_selected_donhangtam
+                        Tooltip: =""
+                        VerticalAlign: =VerticalAlign.Top
+                        Visible: =true
+                        Weight: ='TextCanvas.Weight'.Bold
+                        Width: =280
+                        Wrap: =false
+                        X: =64
+                        Y: =37
+                        ZIndex: =3
+
+                Container_tongtienhang As groupContainer.manualLayoutContainer:
+                    DropShadow: =DropShadow.Light
+                    Fill: =RGBA(255, 255, 255, 1)
+                    Height: =80
+                    RadiusBottomLeft: =10
+                    RadiusBottomRight: =10
+                    RadiusTopLeft: =10
+                    RadiusTopRight: =10
+                    Visible: =var_selected_donhangtam > 0
+                    Width: =355
+                    X: =487
+                    Y: =Container_soluong.Y
+                    ZIndex: =18
+
+                    TextCanvas1_16 As Text:
+                        Align: ='TextCanvas.Align'.Justify
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =Font.'Open Sans'
+                        FontColor: =RGBA(4, 161, 179, 1)
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =25
+                        Size: =18
+                        TabIndex: =0
+                        Text: |-
+                            ="Tổng tiền không VAT: "
+                        Tooltip: =""
+                        VerticalAlign: =VerticalAlign.Top
+                        Visible: =true
+                        Weight: ='TextCanvas.Weight'.Semibold
+                        Width: =300
+                        Wrap: =true
+                        X: =8
+                        Y: =5
+                        ZIndex: =1
+
+                    IconFontAwesome1_5 As IconFontAwesome:
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Height: =37
+                        iconHtml: |-
+                            ="<i class='fa-solid fa-file-invoice' style='color: #04a1b3;'></i>"
+                        iconSize: =30
+                        OnChange: =false
+                        TabIndex: =0
+                        Tooltip: ="IconFontAwesome description"
+                        Visible: =true
+                        Width: =40
+                        X: =24
+                        Y: =37
+                        ZIndex: =2
+
+                    TextCanvas1_17 As Text:
+                        Align: ='TextCanvas.Align'.Justify
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =Font.'Open Sans'
+                        FontColor: =RGBA(0, 0, 0, 1)
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =40
+                        Size: =22
+                        TabIndex: =0
+                        Text: |-
+                            =Text(Sum(Filter(List_SO_tam,SelectedSP = true),P_GiaSauCK),"#,### VNĐ")
+                        Tooltip: =""
+                        VerticalAlign: =VerticalAlign.Top
+                        Visible: =true
+                        Weight: ='TextCanvas.Weight'.Bold
+                        Width: =280
+                        Wrap: =false
+                        X: =64
+                        Y: =37
+                        ZIndex: =3
+
+                Container_Tongthanhtoan As groupContainer.manualLayoutContainer:
+                    DropShadow: =DropShadow.Light
+                    Fill: =RGBA(255, 255, 255, 1)
+                    Height: =80
+                    RadiusBottomLeft: =10
+                    RadiusBottomRight: =10
+                    RadiusTopLeft: =10
+                    RadiusTopRight: =10
+                    Visible: =var_selected_donhangtam > 0
+                    Width: =355
+                    X: =895
+                    Y: =Container_soluong.Y
+                    ZIndex: =19
+
+                    TextCanvas1_18 As Text:
+                        Align: ='TextCanvas.Align'.Justify
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =Font.'Open Sans'
+                        FontColor: =RGBA(4, 161, 179, 1)
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =25
+                        Size: =18
+                        TabIndex: =0
+                        Text: ="Tổng thanh toán"
+                        Tooltip: =""
+                        VerticalAlign: =VerticalAlign.Top
+                        Visible: =true
+                        Weight: ='TextCanvas.Weight'.Semibold
+                        Width: =300
+                        Wrap: =true
+                        X: =8
+                        Y: =5
+                        ZIndex: =1
+
+                    IconFontAwesome1_6 As IconFontAwesome:
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Height: =37
+                        iconHtml: |-
+                            ="<i class='fa-solid fa-money-bill-wave' style='color: #04a1b3;'></i>"
+                        iconSize: =30
+                        OnChange: =false
+                        TabIndex: =0
+                        Tooltip: ="IconFontAwesome description"
+                        Visible: =true
+                        Width: =40
+                        X: =24
+                        Y: =37
+                        ZIndex: =2
+
+                    TextCanvas1_19 As Text:
+                        Align: ='TextCanvas.Align'.Justify
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =Font.'Open Sans'
+                        FontColor: =RGBA(4, 161, 179, 1)
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =40
+                        Size: =22
+                        TabIndex: =0
+                        Text: |-
+                            =Text(Sum(Filter(List_SO_tam,SelectedSP = true),P_ThanhTien),"#,### VNĐ")
+                        Tooltip: =""
+                        VerticalAlign: =VerticalAlign.Top
+                        Visible: =true
+                        Weight: ='TextCanvas.Weight'.Bold
+                        Width: =280
+                        Wrap: =false
+                        X: =71
+                        Y: =37
+                        ZIndex: =3
+
+                Button_duyet_don_tam As button:
+                    BorderColor: =RGBA(16, 185, 129, 1)
+                    Color: =App.Theme.Colors.PrimaryForeground
+                    DisabledBorderColor: =RGBA(244, 244, 244, 1)
+                    DisabledColor: =RGBA(166, 166, 166, 1)
+                    DisabledFill: =RGBA(244, 244, 244, 1)
+                    Fill: =RGBA(16,185,129,1)
+                    Font: =App.Theme.Font
+                    FontWeight: =FontWeight.Bold
+                    Height: =50
+                    HoverBorderColor: =App.Theme.Colors.Darker10
+                    HoverColor: =App.Theme.Colors.PrimaryForeground
+                    HoverFill: =App.Theme.Colors.Darker20
+                    OnSelect: |-
+                        =With(
+                            {
+                                khachHang: cb_khach_hang_tam.Selected,
+                                trangThaiKH: cb_khach_hang_tam.Selected.'Trạng thái KH text',
+                                ngungGiaoDich: cb_khach_hang_tam.Selected.'Ngừng giao dịch',
+                                soItems: Filter(
+                                    Gallery_donhang.AllItems,
+                                    SelectedSP = true
+                                ),
+                                Cb_donhang: cb_donhang_tam.Selected
+                            },
+                            If(
+                                trangThaiKH = "Khách hàng tạo mới",
+                                Notify(
+                                    "Không tạo SO được vì " & trangThaiKH & "!!",
+                                    NotificationType.Error,
+                                    3000
+                                ),
+                                If(
+                                    !IsBlank(ngungGiaoDich),
+                                    Notify(
+                                        "Không tạo SO được vì khách hàng " & ngungGiaoDich & "!!",
+                                        NotificationType.Error,
+                                        3000
+                                    ),
+                                    If(
+                                        CountRows(soItems) > 0,
+                                        With(
+                                            {
+                                                recordSO: Patch(
+                                                    Sale_Orders,
+                                                    Defaults(Sale_Orders),
+                                                    {
+                                                        'Khách hàng': khachHang,
+                                                        'Điều khoản thanh toán': Dropdown_DKTT.Selected.Value,
+                                                        VAT: Dropdown_VAT.Selected.Value,
+                                                        'Loại đơn hàng': Dropdown_LDH.Selected.Value,
+                                                        'Loại hóa đơn': Dropdown_LoaiHoaDon.Selected.Value,
+                                                        'Tên đơn hàng': TextInput_TenDonHang.Value,
+                                                        'Hình Thức Giao Hàng': If(
+                                                            Lk_donhangtam.'Hình thức giao hàng' = 283640000,
+                                                            HT_giaohang.'Giao 1 lần',
+                                                            HT_giaohang.'Giao theo tiến độ'
+                                                        ),
+                                                        'Ghi chú': TextInput_GhiChu.Value,
+                                                        //'Đơn đặt hàng SO': 'dp_MaSO tạm'.Selected.Value,
+                                                        'Tên thương mại': Dropdown_TenThuongMai.Selected,
+                                                        'Vị trí kho': Dropdown_kho.Selected,
+                                                        'Kênh tiếp nhận': Dropdown_KenhTiepNhan.Selected.Value,
+                                                        'Nhân viên sales': khachHang.'Sale name'
+                                                    }
+                                                )
+                                            },
+                                            ForAll(
+                                                Sequence(CountRows(soItems)),
+                                                With(
+                                                    {
+                                                        currentRow: Last(
+                                                            FirstN(
+                                                                soItems,
+                                                                Value
+                                                            )
+                                                        )
+                                                    },
+                                                    Patch(
+                                                        'Sale Order Details',
+                                                        Defaults('Sale Order Details'),
+                                                        {
+                                                            'Mã đơn hàng': recordSO,
+                                                            'Tên sản phẩm': currentRow.'Sản phẩm',
+                                                            ID_Unit_Sp: currentRow.'Đơn vị',
+                                                            'Số lượng': Value(currentRow.'Số lượng'),
+                                                            Giá: Value(currentRow.TextCanvas_GiaSauCK.Text),
+                                                            'Giá gốc': Value(currentRow.TextCanvas_GiaGoc.Text),
+                                                            'Stt đơn': Value,
+                                                            'Ngày dự kiến giao': DateValue(currentRow.DatePickerCanvas2.SelectedDate),
+                                                            Thuế: Value(currentRow.TextCanvas_GTGTSP.Text),
+                                                            'Điều chỉnh GTGT': DropdownCanvas2.Selected.Value,
+                                                            //'Ghi chú': currentRow.'txt_GhiChu_SO tạm'.Text,
+                                                            'Duyệt giá (crdfd_duyetgia)': Switch(
+                                                                currentRow.DropdownNguoiDuyetGia.Selected.Value,
+                                                                "Bùi Tuấn Dũng",
+                                                                'Duyệt giá (Sale Order Details)'.'Bùi Tuấn Dũng',
+                                                                "Lê Sinh Thông",
+                                                                'Duyệt giá (Sale Order Details)'.'Lê Sinh Thông',
+                                                                "Lê Thị Ngọc Anh",
+                                                                'Duyệt giá (Sale Order Details)'.'Lê Thị Ngọc Anh',
+                                                                "Nguyễn Quốc Chinh",
+                                                                'Duyệt giá (Sale Order Details)'.'Nguyễn Quốc Chinh',
+                                                                "Huỳnh Minh Trung",
+                                                                'Duyệt giá (Sale Order Details)'.'Huỳnh Minh Trung',
+                                                                "Bùi Thị Mỹ Trang",
+                                                                'Duyệt giá (Sale Order Details)'.'Bùi Thị Mỹ Trang',
+                                                                "Hà Bông",
+                                                                'Duyệt giá (Sale Order Details)'.'Hà Bông'
+                                                            ),
+                                                            //'Đơn hàng gấp': currentRow.Checkbox_DHgap.Value,
+                                                            'Chiết khấu %': If(
+                                                                currentRow.'Đơn vị chiết khấu' = "%",
+                                                                currentRow.'Chiết khấu' / 100,
+                                                                0
+                                                            ),
+                                                            'Chiết khấu VNĐ': If(
+                                                                currentRow.'Đơn vị chiết khấu' = "VNĐ",
+                                                                currentRow.'Chiết khấu',
+                                                                0
+                                                            ),
+                                                            Promotion: currentRow.Promotion,
+                                                            'Chiết khấu 2 (%)': 0,
+                                                            Ca: currentRow.DropdownCanvas_Ca.Selected.Value,
+                                                            'Phụ phí hoá đơn (%)': If(
+                                                                Dropdown_LoaiHoaDon.Selected.Value = 'Loại hóa đơn (Sale_Orders)'.'Hộ kinh doanh' And Dropdown_VAT.Selected.Value = VAT_choice.'Không VAT' And var_Nganh_nghe = "Shop",
+                                                                0.015,
+                                                                0
+                                                            ),
+                                                            'Ghi chú': currentRow.TextInputCanvas_GhiChu.Value
+                                                        }
+                                                    );
+                                                )
+                                            );
+                                            UpdateContext({Create_recordSO: recordSO});
+                                            ForAll(
+                                                soItems As L_SoItem,
+                                                Patch(
+                                                    'Đặt hàng SOS',
+                                                    LookUp(
+                                                        'Đặt hàng SOS',
+                                                        ID = L_SoItem.ID
+                                                    ),
+                                                    {'Trạng thái đơn hàng': 'Trạng thái đơn hàng (Đặt hàng SOS)'.'Đã xác nhận'}
+                                                )
+                                            );
+                                        );
+                                        Notify(
+                                            "Chuyển đơn đặt hàng --> SO thành công !",
+                                            NotificationType.Success,
+                                            2000
+                                        );
+                                        Set(
+                                            khachhang_selected,
+                                            cb_khach_hang_tam.Selected
+                                        );
+                                        Set(
+                                            var_check_promotion_SOD,
+                                            IsEmpty(
+                                                Filter(
+                                                    List_SO_tam,
+                                                    SelectedSP = true,
+                                                    !IsBlank(Promotion)
+                                                )
+                                            )
+                                        );
+                                        Set(
+                                            Total_Order,
+                                            Sum(
+                                                Filter(
+                                                    List_SO_tam,
+                                                    SelectedSP = true
+                                                ),
+                                                P_ThanhTien
+                                            )
+                                        );
+                                        Set(
+                                            var_table_SP,
+                                            Split(
+                                                Concat(
+                                                    ShowColumns(
+                                                        Filter(
+                                                            List_SO_tam,
+                                                            SelectedSP = true
+                                                        ),
+                                                        'Mã sản phẩm'
+                                                    ),
+                                                    crdfd_masanpham,
+                                                    ","
+                                                ),
+                                                ","
+                                            )
+                                        );
+                                        Set(
+                                            var_table_NSP,
+                                            Split(
+                                                Concat(
+                                                    ShowColumns(
+                                                        Filter(
+                                                            List_SO_tam,
+                                                            SelectedSP = true
+                                                        ),
+                                                        'Mã nhóm sản phẩm'
+                                                    ),
+                                                    crdfd_manhomsanpham,
+                                                    ","
+                                                ),
+                                                ","
+                                            )
+                                        );
+                                        Set(
+                                            var_count_notIn_Promotions,
+                                            CountRows(
+                                                Filter(
+                                                    Filter(
+                                                        Gallery_donhang.AllItems,
+                                                        SelectedSP = true
+                                                    ) As item,
+                                                    CountRows(
+                                                        Filter(
+                                                            ListPromotion_Order As PromotionM,
+                                                            PromotionM.'Chiết khấu 2' = 'Chiết khấu 2 (Promotion)'.Yes && (item.'Mã sản phẩm' in PromotionM.Ma_SP || item.'Mã nhóm sản phẩm' in PromotionM.Ma_NSP)
+                                                        )
+                                                    ) = 0
+                                                )
+                                            )
+                                        );
+                                        Set(
+                                            var_dieukhoanthanhtoan,
+                                            Text(Dropdown_DKTT.Selected.Value)
+                                        );
+                                        UpdateContext({Popup_PromotionOrder: true});
+                                        Reset(cb_khach_hang_tam);
+                                        Reset(cb_donhang_tam);
+                                        Reset(TextInput_TenDonHang);
+                                        Reset(TextInput_GhiChu);
+                                    )
+                                )
+                            )
+                        )
+                    PressedBorderColor: =App.Theme.Colors.Darker40
+                    PressedColor: =Self.Color
+                    PressedFill: =App.Theme.Colors.Darker40
+                    Size: =14
+                    Text: ="Duyệt đơn hàng đã chọn"
+                    Visible: =var_selected_donhangtam > 0
+                    Width: =350
+                    X: =40
+                    Y: =Button4_1.Y + Button4_1.Height + 20
+                    ZIndex: =20
+
+                IconFontAwesome1_7 As IconFontAwesome:
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Height: =26
+                    iconHtml: |-
+                        ="<i class='fa-solid fa-check' style='color: #ffffff;'></i>"
+                    iconSize: =30
+                    OnChange: =false
+                    TabIndex: =0
+                    Tooltip: ="IconFontAwesome description"
+                    Visible: =var_selected_donhangtam > 0
+                    Width: =35
+                    X: =60
+                    Y: =Button_duyet_don_tam.Y + 10
+                    ZIndex: =21
+
+                Button_tu_choi_don_tam As button:
+                    BorderColor: =RGBA(189, 49, 51, 1)
+                    BorderThickness: =1
+                    Color: =App.Theme.Colors.PrimaryForeground
+                    DisabledBorderColor: =RGBA(244, 244, 244, 1)
+                    DisabledColor: =RGBA(166, 166, 166, 1)
+                    DisabledFill: =RGBA(244, 244, 244, 1)
+                    DisplayMode: |-
+                        =If(
+                            CountRows(
+                                Filter(
+                                    List_SO_tam,
+                                    SelectedSP = true
+                                )
+                            ) > 0,
+                            DisplayMode.Edit,
+                            DisplayMode.Disabled
+                        )
+                    Fill: =RGBA(189, 49, 51, 1)
+                    Font: =App.Theme.Font
+                    FontWeight: =FontWeight.Bold
+                    Height: =50
+                    HoverBorderColor: =RGBA(189, 49, 51, 0.5)
+                    HoverColor: =App.Theme.Colors.PrimaryForeground
+                    HoverFill: =RGBA(255, 184, 174, 1)
+                    OnSelect: |-
+                        =
+                        If(
+                            CountRows(
+                                Filter(
+                                    List_SO_tam,
+                                    SelectedSP = true
+                                )
+                            ) > 0,
+                            With(
+                                {
+                                    selectedItems: Filter(
+                                        List_SO_tam,
+                                        SelectedSP = true
+                                    )
+                                },
+                                // Patch trước
+                                ForAll(
+                                    selectedItems As recorDH,
+                                    Patch(
+                                        'Đặt hàng SOS',
+                                        LookUp(
+                                            'Đặt hàng SOS',
+                                            ID = recorDH.ID
+                                        ),
+                                        {'Trạng thái đơn hàng': 'Trạng thái đơn hàng (Đặt hàng SOS)'.'Hủy đơn hàng'}
+                                    )
+                                );
+                                // Rồi Remove sau
+                        Remove(
+                                    List_SO_tam,
+                                    selectedItems
+                                )
+                            );
+                            Notify(
+                                "Từ chối thành công",
+                                NotificationType.Success,
+                                3000
+                            ),
+                            Notify(
+                                "Vui lòng chọn sản phẩm để từ chối",
+                                NotificationType.Warning,
+                                3000
+                            )
+                        )
+                    PressedBorderColor: =App.Theme.Colors.Darker40
+                    PressedColor: =Self.Color
+                    PressedFill: =App.Theme.Colors.Darker40
+                    Size: =14
+                    Text: ="Từ chối đơn hàng"
+                    Width: =300
+                    X: =If(var_selected_donhangtam > 0, Button_duyet_don_tam.Width + Button_duyet_don_tam.X + 30,67)
+                    Y: =If(var_selected_donhangtam > 0, Button_duyet_don_tam.Y,Gallery_donhang.Height + Gallery_donhang.Y + 20)
+                    ZIndex: =22
+
+                IconFontAwesome1_8 As IconFontAwesome:
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Height: =26
+                    iconHtml: |-
+                        ="<i class='fa-solid fa-xmark' style='color: #ffffff;'></i>"
+                    iconSize: =30
+                    OnChange: =false
+                    TabIndex: =0
+                    Tooltip: ="IconFontAwesome description"
+                    Visible: =true
+                    Width: =35
+                    X: =Button_tu_choi_don_tam.X + 20
+                    Y: =Button_tu_choi_don_tam.Y + 10
+                    ZIndex: =23
+
+                Button_in_don_hang_tam As button:
+                    BorderColor: =RGBA(106, 122, 127, 1)
+                    BorderThickness: =1
+                    Color: =App.Theme.Colors.PrimaryForeground
+                    DisabledBorderColor: =RGBA(244, 244, 244, 1)
+                    DisabledColor: =RGBA(166, 166, 166, 1)
+                    DisabledFill: =RGBA(244, 244, 244, 1)
+                    Fill: =RGBA(106, 122, 127, 1)
+                    Font: =App.Theme.Font
+                    FontWeight: =FontWeight.Bold
+                    Height: =50
+                    HoverBorderColor: =App.Theme.Colors.Darker10
+                    HoverColor: =App.Theme.Colors.PrimaryForeground
+                    HoverFill: =RGBA(214, 221, 224, 1)
+                    OnSelect: =Notify("Coming Soon",NotificationType.Information,2000)
+                    PressedBorderColor: =App.Theme.Colors.Darker40
+                    PressedColor: =Self.Color
+                    PressedFill: =App.Theme.Colors.Darker40
+                    Size: =14
+                    Text: ="In đơn hàng"
+                    Width: =270
+                    X: =Button_tu_choi_don_tam.Width + Button_tu_choi_don_tam.X + 30
+                    Y: =Button_tu_choi_don_tam.Y
+                    ZIndex: =24
+
+                IconFontAwesome1_9 As IconFontAwesome:
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Height: =26
+                    iconHtml: |-
+                        ="<i class='fa-solid fa-print' style='color: #ffffff;'></i>"
+                    iconSize: =30
+                    OnChange: =false
+                    TabIndex: =0
+                    Tooltip: ="IconFontAwesome description"
+                    Visible: =true
+                    Width: =35
+                    X: =Button_in_don_hang_tam.X  +20
+                    Y: =Button_in_don_hang_tam.Y + 10
+                    ZIndex: =25
+
+                Gallery_donhang As gallery.variableTemplateHeightGallery:
+                    '#CopilotOverlayLabel': ="Filtered"
+                    BorderColor: =RGBA(214, 221, 224, 1)
+                    BorderThickness: =1
+                    DelayItemLoading: =true
+                    Fill: =RGBA(255, 255, 255, 1)
+                    Height: =Min(CountIf(List_SO_tam,true) * 90, 370)
+                    Items: =List_SO_tam
+                    Layout: =Layout.Vertical
+                    LoadingSpinner: =LoadingSpinner.Data
+                    OnSelect: =
+                    ShowNavigation: =true
+                    TemplatePadding: =4
+                    TemplateSize: =85
+                    Width: =1247
+                    X: =40
+                    Y: =256
+                    ZIndex: =26
+
+                    CheckboxCanvas1 As Checkbox:
+                        AccessibleLabel: =""
+                        BasePaletteColor: =RGBA(4, 161, 179, 1)
+                        CheckboxSize: =18
+                        Checked: =ThisItem.SelectedSP
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Font: =""
+                        FontColor: =
+                        FontItalic: =false
+                        FontSize: =0
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        FontWeight: =""
+                        Height: =50
+                        Label: =
+                        OnCheck: |-
+                            =UpdateIf(
+                                List_SO_tam,
+                                ID = ThisItem.ID,
+                                {
+                                    SelectedSP: true,
+                                    P_ThanhTien: Value(TextCanvas_TongTien.Text),
+                                    P_GiaSauCK: Value(TextCanvas_GiaSauCK.Text)
+                                }
+                            )
+                        OnSelect: =Select(Parent)
+                        OnUncheck: |-
+                            =UpdateIf(
+                                List_SO_tam,
+                                ID = ThisItem.ID,
+                                {
+                                    SelectedSP: false,
+                                    P_ThanhTien: 0,
+                                    P_GiaSauCK: 0
+                                }
+                            )
+                        TabIndex: =0
+                        Tooltip: =""
+                        Visible: =true
+                        Width: =46
+                        X: =0
+                        Y: =25
+                        ZIndex: =2
+
+                    TextCanvas1 As Text:
+                        Align: ="Start"
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =""
+                        FontColor: =
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =35
+                        PaddingBottom: =5
+                        PaddingRight: =5
+                        PaddingTop: =5
+                        Size: =16
+                        TabIndex: =0
+                        Text: =ThisItem.'Sản phẩm text'
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =true
+                        Weight: ="Regular"
+                        Width: =230
+                        Wrap: =false
+                        X: =46
+                        Y: =0
+                        ZIndex: =3
+
+                    TextCanvas1_20 As Text:
+                        Align: ="Start"
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =""
+                        FontColor: =
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =35
+                        PaddingBottom: =5
+                        PaddingRight: =5
+                        PaddingTop: =5
+                        Size: =16
+                        TabIndex: =0
+                        Text: =ThisItem.'Đơn vị CAL'
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =true
+                        Weight: ="Regular"
+                        Width: =60
+                        Wrap: =false
+                        X: =296
+                        Y: =0
+                        ZIndex: =4
+
+                    TextCanvas_SL As Text:
+                        Align: ='TextCanvas.Align'.Center
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderRadius: =10
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =""
+                        FontColor: =
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =35
+                        PaddingBottom: =5
+                        PaddingRight: =5
+                        PaddingTop: =5
+                        Size: =16
+                        TabIndex: =0
+                        Text: =ThisItem.'Số lượng'
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =true
+                        Weight: ="Regular"
+                        Width: =56
+                        Wrap: =false
+                        X: =358
+                        Y: =0
+                        ZIndex: =5
+
+                    TextCanvas_ChietKhau As Text:
+                        Align: ="Start"
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =""
+                        FontColor: =
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =35
+                        PaddingBottom: =5
+                        PaddingRight: =5
+                        PaddingTop: =5
+                        Size: =16
+                        TabIndex: =0
+                        Text: |-
+                            =Switch(
+                                ThisItem.'Đơn vị chiết khấu',
+                                "VNĐ",
+                                Text(
+                                    ThisItem.'Chiết khấu',
+                                    "#,###"
+                                ),
+                                "%",
+                                (ThisItem.'Chiết khấu' & "%"),
+                                "0"
+                            )
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =true
+                        Weight: ="Regular"
+                        Width: =70
+                        Wrap: =false
+                        X: =513
+                        Y: =0
+                        ZIndex: =6
+
+                    TextCanvas_GiaSauCK As Text:
+                        Align: ="Start"
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =""
+                        FontColor: =
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =35
+                        PaddingBottom: =5
+                        PaddingRight: =5
+                        PaddingTop: =5
+                        Size: =16
+                        TabIndex: =0
+                        Text: |-
+                            =Text(
+                                Value(
+                                    If(
+                                        Dropdown_LoaiHoaDon.Selected.Value = 'Loại hóa đơn (Sale_Orders)'.'Hộ kinh doanh' && Dropdown_VAT.Selected.Value = VAT_choice.'Không VAT' && var_Nganh_nghe = "Shop",
+                                        If(
+                                            ThisItem.'Đơn vị chiết khấu' = "VNĐ",
+                                            Value(TextCanvas_GiaGoc.Text) - ThisItem.'Chiết khấu',
+                                            Value(TextCanvas_GiaGoc.Text) * (1 - ThisItem.'Chiết khấu' / 100)
+                                        ) * 1.015,
+                                        If(
+                                            ThisItem.'Đơn vị chiết khấu' = "VNĐ",
+                                            Value(TextCanvas_GiaGoc.Text) - ThisItem.'Chiết khấu',
+                                            Value(TextCanvas_GiaGoc.Text) * (1 - ThisItem.'Chiết khấu' / 100)
+                                        )
+                                    )
+                                ),
+                                "#,###"
+                            )
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =true
+                        Weight: ="Regular"
+                        Width: =100
+                        Wrap: =false
+                        X: =583
+                        Y: =0
+                        ZIndex: =7
+
+                    TextCanvas1_25 As Text:
+                        Align: ="Start"
+                        AutoHeight: =true
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =""
+                        FontColor: =RGBA(217, 7, 7, 1)
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =35
+                        PaddingBottom: =5
+                        PaddingRight: =5
+                        PaddingTop: =0
+                        Size: =12
+                        TabIndex: =0
+                        Text: |-
+                            ="Giảm: " & Text(
+                                If(
+                                    ThisItem.'Đơn vị chiết khấu' = "%",
+                                    Value(TextCanvas_GiaGoc.Text) * (ThisItem.'Chiết khấu' / 100)
+                                ),
+                                "#,### đ"
+                            ) 
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: |-
+                            =If(
+                                ThisItem.'Đơn vị chiết khấu' = "%",
+                                true,
+                                false
+                            )
+                        Weight: ="Regular"
+                        Width: =170
+                        Wrap: =true
+                        X: =513
+                        Y: =35
+                        ZIndex: =8
+
+                    TextCanvas_TongTien As Text:
+                        Align: ="Start"
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =""
+                        FontColor: =
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =35
+                        PaddingBottom: =5
+                        PaddingRight: =5
+                        PaddingTop: =5
+                        Size: =16
+                        TabIndex: =0
+                        Text: |-
+                            =With(
+                                {
+                                    value_GTGT: Switch(
+                                        DropdownCanvas2.Selected.Value,
+                                        'Thuế GTGT'.'0%',
+                                        1,
+                                        'Thuế GTGT'.'10%',
+                                        1.10,
+                                        'Thuế GTGT'.'5%',
+                                        1.05,
+                                        'Thuế GTGT'.'8%',
+                                        1.08
+                                    )
+                                },
+                                Text(
+                                    Value(TextCanvas_SL.Text) * Value(TextCanvas_GiaSauCK.Text) * value_GTGT,
+                                    "#,###"
+                                )
+                            )
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =true
+                        Weight: ="Regular"
+                        Width: =100
+                        Wrap: =false
+                        X: =743
+                        Y: =0
+                        ZIndex: =9
+
+                    DropdownNguoiDuyetGia As Dropdown.pcfdataset:
+                        AccessibleLabel: =""
+                        Appearance: ='DropdownCanvas.Appearance'.Outline
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        FontSize: =16
+                        Height: =35
+                        Items: |-
+                            =If(
+                                IsBlank(ThisItem.'Người duyệt giá'),
+                                [
+                                    "",
+                                    "Bùi Tuấn Dũng",
+                                    "Lê Sinh Thông",
+                                    "Lê Thị Ngọc Anh",
+                                    "Nguyễn Quốc Chinh",
+                                    "Huỳnh Minh Trung",
+                                    "Bùi Thị Mỹ Trang",
+                                    "Hà Bông"
+                                ],
+                                [ThisItem.'Người duyệt giá']
+                            )
+                        OnChange: =false
+                        PaddingLeft: =5
+                        Required: =false
+                        TabIndex: =0
+                        Tooltip: =""
+                        ValidationState: ="None"
+                        Visible: =true
+                        Width: =80
+                        X: =843
+                        Y: =0
+                        ZIndex: =10
+
+                        Value2 As PowerApps_CoreControls_DropdownCanvasTemplate_dataField.textualColumn:
+                            FieldDisplayName: ="Value"
+                            FieldName: ="Value"
+                            FieldType: ="s"
+                            Order: =1
+                            Type: ="s"
+                            ZIndex: =1
+
+                    TextCanvas1_28 As Text:
+                        Align: ="Start"
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =""
+                        FontColor: =RGBA(53, 61, 63, 1)
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =25
+                        PaddingBottom: =5
+                        PaddingRight: =5
+                        PaddingTop: =0
+                        Size: =12
+                        TabIndex: =0
+                        Text: |-
+                            ="Leadtime sản phẩm: " & ThisItem.'Sản phẩm'.'Lead time' & " ngày"
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =true
+                        Weight: ="Regular"
+                        Width: =398
+                        Wrap: =false
+                        X: =46
+                        Y: =35
+                        ZIndex: =11
+
+                    TextCanvas1_29 As Text:
+                        Align: ="Start"
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =""
+                        FontColor: =RGBA(53, 61, 63, 1)
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =25
+                        PaddingBottom: =5
+                        PaddingRight: =5
+                        PaddingTop: =0
+                        Size: =12
+                        TabIndex: =0
+                        Text: |-
+                            ="Tồn kho (bộ mua): "  & Coalesce(
+                                LookUp(
+                                    'Kho Bình Định',
+                                    'Vị trí kho'.'Mã kho' = Dropdown_kho.Selected.'Mã kho' &&
+                                    'Tên sản phẩm'.'Tên sản phẩm' = ThisItem.'Sản phẩm'.'Tên sản phẩm',
+                                    'Tồn kho lý thuyết - Bỏ mua'
+                                ),
+                                0
+                            ) & " " & ThisItem.'Sản phẩm'.'Đơn vị chuẩn text'
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =true
+                        Weight: ="Regular"
+                        Width: =398
+                        Wrap: =false
+                        X: =46
+                        Y: =60
+                        ZIndex: =12
+
+                    "TextInputCanvas_GhiChu As 'Text input'":
+                        AccessibleLabel: =""
+                        Align: =""
+                        Appearance: ='TextInputCanvas.Appearance'.Outline
+                        BasePaletteColor: =
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =""
+                        FontColor: =
+                        FontItalic: =false
+                        FontSize: =12
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        FontWeight: =""
+                        Height: =35
+                        MaxLength: =-1
+                        Mode: ="SingleLine"
+                        OnChange: =false
+                        Placeholder: =""
+                        Required: =false
+                        TabIndex: =0
+                        Tooltip: =""
+                        TriggerOutput: ="FocusOut"
+                        Type: ="Text"
+                        ValidationState: ="None"
+                        Value: =""
+                        Visible: =true
+                        Width: =120
+                        X: =923
+                        Y: =0
+                        ZIndex: =13
+
+                    "DatePickerCanvas2 As 'Date picker'":
+                        AccessibleLabel: =""
+                        Appearance: ='DatePickerCanvas.Appearance'.Outline
+                        BasePaletteColor: =
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DateTimeZone: ='DatePickerCanvas.DateTimeZone'.Local
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =""
+                        FontColor: =
+                        FontItalic: =false
+                        FontSize: =12
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        FontWeight: =""
+                        Format: ="d/m/yyyy"//'DatePickerCanvas.Format'.Short
+                        Height: =35
+                        IsEditable: =false
+                        OnChange: |-
+                            =If(
+                                DateValue(DatePickerCanvas2.SelectedDate) < DateValue(ngay_giao),
+                                Notify("Ngày giao dự kiến không hợp lệ!!!", NotificationType.Warning, 1000);
+                                Reset(DatePickerCanvas2)
+                            );
+                        Placeholder: ="Select a date..."
+                        Required: =false
+                        SelectedDate: =ThisItem.NgayGiao
+                        StartOfWeek: ="Sunday"
+                        TabIndex: =0
+                        Tooltip: =""
+                        ValidationState: ="None"
+                        Visible: =true
+                        Width: =100
+                        X: =1043
+                        Y: =1
+                        ZIndex: =14
+
+                    DropdownCanvas2 As Dropdown.pcfdataset:
+                        AccessibleLabel: =""
+                        Appearance: ='DropdownCanvas.Appearance'.Outline
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DefaultSelectedItems: |
+                            =With(
+                                {
+                                    gtgtValue: ThisItem.'Sản phẩm'.GTGT,
+                                    isVATIncluded: Dropdown_VAT.Selected.Value = VAT_choice.'Có VAT',
+                                    isPriceIncludesVAT: ThisItem.'Sản phẩm'.'Bản chất giá phát ra' = 'Bản chất giá phát ra (products)'.'Giá đã bao gồm VAT( VAT hỗ trợ)'
+                                },
+                                If(
+                                    isVATIncluded,
+                                    Switch(
+                                        gtgtValue,
+                                        'GTGT (products)'.'10%', LookUp(Choices('Thuế GTGT'), Value = 'Thuế GTGT'.'10%'),
+                                        'GTGT (products)'.'8%', LookUp(Choices('Thuế GTGT'), Value = 'Thuế GTGT'.'8%'),
+                                        'GTGT (products)'.'5%', LookUp(Choices('Thuế GTGT'), Value = 'Thuế GTGT'.'5%'),
+                                        LookUp(Choices('Thuế GTGT'), Value = 'Thuế GTGT'.'0%')
+                                    ),
+                                    LookUp(Choices('Thuế GTGT'), Value = 'Thuế GTGT'.'0%')
+                                )
+                            )
+                        DisplayMode: =DisplayMode.View
+                        FontSize: =0
+                        Height: =32
+                        Items: =Choices('Thuế GTGT')
+                        OnChange: =false
+                        Required: =false
+                        TabIndex: =0
+                        Tooltip: =""
+                        ValidationState: ="None"
+                        Visible: =true
+                        Width: =60
+                        X: =683
+                        Y: =0
+                        ZIndex: =15
+
+                    TextCanvas_GTGTSP As Text:
+                        Align: ="Start"
+                        AutoHeight: =true
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =""
+                        FontColor: =RGBA(79, 90, 94, 1)
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =35
+                        PaddingBottom: =5
+                        PaddingRight: =5
+                        PaddingTop: =0
+                        Size: =12
+                        TabIndex: =0
+                        Text: |-
+                            =With(
+                                {
+                                    Value_GTGT: Switch(
+                                        DropdownCanvas2.Selected.Value,
+                                        'Thuế GTGT'.'0%',
+                                        0,
+                                        'Thuế GTGT'.'10%',
+                                        0.10,
+                                        'Thuế GTGT'.'5%',
+                                        0.05,
+                                        'Thuế GTGT'.'8%',
+                                        0.08
+                                    )
+                                },
+                                Text(
+                                    Value(TextCanvas_GiaSauCK.Text) * Value_GTGT,
+                                    "#,###"
+                                )
+                            )
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =Dropdown_VAT.Selected.Value = VAT_choice.'Có VAT'
+                        Weight: ="Regular"
+                        Width: =200
+                        Wrap: =true
+                        X: =771
+                        Y: =35
+                        ZIndex: =16
+
+                    TextCanvas1_34 As Text:
+                        Align: ="Start"
+                        AutoHeight: =true
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =""
+                        FontColor: =RGBA(79, 90, 94, 1)
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =35
+                        PaddingBottom: =5
+                        PaddingRight: =5
+                        PaddingTop: =0
+                        Size: =12
+                        TabIndex: =0
+                        Text: |-
+                            ="GTGT: + "
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =Dropdown_VAT.Selected.Value = VAT_choice.'Có VAT'
+                        Weight: ="Regular"
+                        Width: =50
+                        Wrap: =true
+                        X: =728
+                        Y: =35
+                        ZIndex: =17
+
+                    TextCanvas1_35 As Text:
+                        Align: ="Start"
+                        AutoHeight: =true
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =""
+                        FontColor: =RGBA(217, 7, 7, 1)
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =30
+                        PaddingBottom: =5
+                        PaddingRight: =5
+                        PaddingTop: =0
+                        Size: =12
+                        TabIndex: =0
+                        Text: |-
+                            =If(
+                                Dropdown_LoaiHoaDon.Selected.Value = 'Loại hóa đơn (Sale_Orders)'.'Hộ kinh doanh' And Dropdown_VAT.Selected.Value = VAT_choice.'Không VAT' And var_Nganh_nghe = "Shop",
+                                "PPHĐ: + " & Text(
+                                    Value(TextCanvas_GiaSauCK.Text) * 0.015,
+                                    "#,### đ"
+                                )
+                            )
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =Dropdown_LoaiHoaDon.Selected.Value = 'Loại hóa đơn (Sale_Orders)'.'Hộ kinh doanh' And Dropdown_VAT.Selected.Value = VAT_choice.'Không VAT' And var_Nganh_nghe = "Shop"
+                        Weight: ="Regular"
+                        Width: =170
+                        Wrap: =true
+                        X: =514
+                        Y: =50
+                        ZIndex: =18
+
+                    DropdownCanvas_Ca As Dropdown.pcfdataset:
+                        AccessibleLabel: =""
+                        Appearance: ='DropdownCanvas.Appearance'.Outline
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DefaultSelectedItems: =[ThisItem.CaSP]
+                        DisplayMode: =DisplayMode.Edit
+                        FontSize: =0
+                        Height: =35
+                        Items: =Choices('Ca (Sale Order Details)')
+                        OnChange: =false
+                        Required: =false
+                        TabIndex: =0
+                        Tooltip: =""
+                        ValidationState: ="None"
+                        Visible: =true
+                        Width: =90
+                        X: =1143
+                        Y: =1
+                        ZIndex: =19
+
+                    TextCanvas_GiaGoc As label:
+                        BorderColor: =App.Theme.Colors.Darker40
+                        Color: =RGBA(0, 0, 0, 1)
+                        DisabledColor: =RGBA(166, 166, 166, 1)
+                        Font: =App.Theme.Font
+                        Height: =35
+                        OnSelect: =Select(Parent)
+                        Size: =12
+                        Text: |-
+                            =Text(
+                                Value(
+                                    Switch(
+                                        true,
+                                                // ✅ Que hàn đặc biệt
+                                        ThisItem.'Sản phẩm'.'Bản chất giá phát ra' = 'Bản chất giá phát ra (products)'.'Giá đã bao gồm VAT( VAT hỗ trợ)' && Dropdown_VAT.Selected.Value = VAT_choice.'Có VAT',
+                                        ThisItem.BGCT.'Giá không VAT',
+                                        ThisItem.'Sản phẩm'.'Bản chất giá phát ra' = 'Bản chất giá phát ra (products)'.'Giá đã bao gồm VAT( VAT hỗ trợ)' && Dropdown_VAT.Selected.Value = VAT_choice.'Không VAT',
+                                        ThisItem.BGCT.Giá,
+                                                // ✅ Các trường hợp khác theo bản chất
+                                        ThisItem.'Sản phẩm'.'Bản chất giá phát ra' = 'Bản chất giá phát ra (products)'.'Giá đã bao gồm VAT',
+                                        If(
+                                            Dropdown_VAT.Selected.Value = VAT_choice.'Có VAT',
+                                            ThisItem.BGCT.'Giá không VAT',
+                                            ThisItem.BGCT.Giá
+                                        ),
+                                        ThisItem.'Sản phẩm'.'Bản chất giá phát ra' = 'Bản chất giá phát ra (products)'.'Giá chưa bao gồm VAT',
+                                        ThisItem.BGCT.'Giá không VAT',
+                                                // ✅ Mặc định
+                                        ThisItem.BGCT.Giá
+                                    )
+                                ),
+                                "#,###"
+                            )
+                        Width: =100
+                        X: =414
+                        ZIndex: =20
+
+                    Rectangle2 As rectangle:
+                        BorderColor: =App.Theme.Colors.Darker40
+                        BorderStyle: =BorderStyle.None
+                        DisplayMode: =DisplayMode.View
+                        Fill: =RGBA(214, 221, 224, 1)
+                        Height: =1
+                        OnSelect: =Select(Parent)
+                        Width: =1239
+                        Y: =80
+                        ZIndex: =21
+
+                Container2 As groupContainer.manualLayoutContainer:
+                    DropShadow: =DropShadow.Light
+                    Fill: =RGBA(214, 221, 224, 0.23)
+                    Height: =50
+                    RadiusBottomLeft: =10
+                    RadiusBottomRight: =10
+                    RadiusTopLeft: =10
+                    RadiusTopRight: =10
+                    Width: =1247
+                    X: =40
+                    Y: =196
+                    ZIndex: =27
+
+                    TextCanvas3_1 As Text:
+                        Align: ='TextCanvas.Align'.Start
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =Font.'Open Sans'
+                        FontColor: =
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =50
+                        PaddingBottom: =0
+                        PaddingLeft: =5
+                        PaddingRight: =5
+                        PaddingTop: =15
+                        Size: =12
+                        TabIndex: =0
+                        Text: ="Sản phẩm"
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =true
+                        Weight: ='TextCanvas.Weight'.Regular
+                        Width: =250
+                        Wrap: =true
+                        X: =46
+                        Y: =0
+                        ZIndex: =1
+
+                    TextCanvas3_2 As Text:
+                        Align: ='TextCanvas.Align'.Start
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =Font.'Open Sans'
+                        FontColor: =
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =50
+                        PaddingBottom: =0
+                        PaddingLeft: =5
+                        PaddingRight: =5
+                        PaddingTop: =15
+                        Size: =12
+                        TabIndex: =0
+                        Text: ="Đơn vị"
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =true
+                        Weight: ='TextCanvas.Weight'.Regular
+                        Width: =60
+                        Wrap: =true
+                        X: =296
+                        Y: =0
+                        ZIndex: =2
+
+                    TextCanvas3_3 As Text:
+                        Align: ='TextCanvas.Align'.Start
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =Font.'Open Sans'
+                        FontColor: =
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =50
+                        PaddingBottom: =0
+                        PaddingLeft: =5
+                        PaddingRight: =5
+                        PaddingTop: =15
+                        Size: =12
+                        TabIndex: =0
+                        Text: ="Số lượng"
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =true
+                        Weight: ='TextCanvas.Weight'.Regular
+                        Width: =56
+                        Wrap: =false
+                        X: =358
+                        Y: =0
+                        ZIndex: =3
+
+                    TextCanvas3_4 As Text:
+                        Align: ='TextCanvas.Align'.Start
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =Font.'Open Sans'
+                        FontColor: =
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =50
+                        PaddingBottom: =0
+                        PaddingLeft: =5
+                        PaddingRight: =5
+                        PaddingTop: =15
+                        Size: =12
+                        TabIndex: =0
+                        Text: ="Giá gốc"
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =true
+                        Weight: ='TextCanvas.Weight'.Regular
+                        Width: =100
+                        Wrap: =false
+                        X: =414
+                        Y: =0
+                        ZIndex: =4
+
+                    TextCanvas3_5 As Text:
+                        Align: ='TextCanvas.Align'.Start
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =Font.'Open Sans'
+                        FontColor: =
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =50
+                        PaddingBottom: =0
+                        PaddingLeft: =5
+                        PaddingRight: =5
+                        PaddingTop: =15
+                        Size: =12
+                        TabIndex: =0
+                        Text: ="Chiết khấu"
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =true
+                        Weight: ='TextCanvas.Weight'.Regular
+                        Width: =70
+                        Wrap: =false
+                        X: =513
+                        Y: =0
+                        ZIndex: =5
+
+                    TextCanvas3_6 As Text:
+                        Align: ='TextCanvas.Align'.Start
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =Font.'Open Sans'
+                        FontColor: =
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =50
+                        PaddingBottom: =0
+                        PaddingLeft: =5
+                        PaddingRight: =5
+                        PaddingTop: =15
+                        Size: =12
+                        TabIndex: =0
+                        Text: ="Giá sau CK"
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =true
+                        Weight: ='TextCanvas.Weight'.Regular
+                        Width: =100
+                        Wrap: =false
+                        X: =583
+                        Y: =0
+                        ZIndex: =6
+
+                    TextCanvas3_7 As Text:
+                        Align: ='TextCanvas.Align'.Start
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =Font.'Open Sans'
+                        FontColor: =
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =50
+                        PaddingBottom: =0
+                        PaddingLeft: =5
+                        PaddingRight: =5
+                        PaddingTop: =15
+                        Size: =12
+                        TabIndex: =0
+                        Text: ="VAT"
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =true
+                        Weight: ='TextCanvas.Weight'.Regular
+                        Width: =60
+                        Wrap: =false
+                        X: =683
+                        Y: =0
+                        ZIndex: =7
+
+                    TextCanvas3_8 As Text:
+                        Align: ='TextCanvas.Align'.Start
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =Font.'Open Sans'
+                        FontColor: =
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =50
+                        PaddingBottom: =0
+                        PaddingLeft: =5
+                        PaddingRight: =5
+                        PaddingTop: =15
+                        Size: =12
+                        TabIndex: =0
+                        Text: ="Tổng tiền"
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =true
+                        Weight: ='TextCanvas.Weight'.Regular
+                        Width: =100
+                        Wrap: =false
+                        X: =743
+                        Y: =0
+                        ZIndex: =8
+
+                    TextCanvas3_9 As Text:
+                        Align: ='TextCanvas.Align'.Start
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =Font.'Open Sans'
+                        FontColor: =
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =50
+                        PaddingBottom: =0
+                        PaddingLeft: =5
+                        PaddingRight: =5
+                        PaddingTop: =15
+                        Size: =12
+                        TabIndex: =0
+                        Text: ="Người duyệt"
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =true
+                        Weight: ='TextCanvas.Weight'.Regular
+                        Width: =80
+                        Wrap: =false
+                        X: =843
+                        Y: =0
+                        ZIndex: =9
+
+                    TextCanvas3_10 As Text:
+                        Align: ='TextCanvas.Align'.Start
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =Font.'Open Sans'
+                        FontColor: =
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =50
+                        PaddingBottom: =0
+                        PaddingLeft: =5
+                        PaddingRight: =5
+                        PaddingTop: =15
+                        Size: =12
+                        TabIndex: =0
+                        Text: ="Ghi chú"
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =true
+                        Weight: ='TextCanvas.Weight'.Regular
+                        Width: =120
+                        Wrap: =false
+                        X: =923
+                        Y: =0
+                        ZIndex: =10
+
+                    TextCanvas3_11 As Text:
+                        Align: ='TextCanvas.Align'.Start
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =Font.'Open Sans'
+                        FontColor: =
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =50
+                        PaddingBottom: =0
+                        PaddingLeft: =5
+                        PaddingRight: =5
+                        PaddingTop: =15
+                        Size: =12
+                        TabIndex: =0
+                        Text: ="Ngày giao"
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =true
+                        Weight: ='TextCanvas.Weight'.Regular
+                        Width: =100
+                        Wrap: =false
+                        X: =1043
+                        Y: =0
+                        ZIndex: =11
+
+                    TextCanvas3_12 As Text:
+                        Align: ='TextCanvas.Align'.Start
+                        AutoHeight: =false
+                        BorderColor: =
+                        BorderStyle: =""
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Fill: =
+                        Font: =Font.'Open Sans'
+                        FontColor: =
+                        FontItalic: =false
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        Height: =50
+                        PaddingBottom: =0
+                        PaddingLeft: =5
+                        PaddingRight: =5
+                        PaddingTop: =15
+                        Size: =12
+                        TabIndex: =0
+                        Text: ="Ca"
+                        Tooltip: =""
+                        VerticalAlign: =""
+                        Visible: =true
+                        Weight: ='TextCanvas.Weight'.Regular
+                        Width: =90
+                        Wrap: =false
+                        X: =1143
+                        Y: =0
+                        ZIndex: =12
+
+                    CheckboxCanvas1_1 As Checkbox:
+                        AccessibleLabel: =""
+                        BasePaletteColor: =RGBA(4, 161, 179, 1)
+                        CheckboxSize: =18
+                        Checked: =CountIf(List_SO_tam,SelectedSP = true) = CountIf(List_SO_tam,true) And CountIf(List_SO_tam,true) > 0
+                        ContentLanguage: =""
+                        DisplayMode: =DisplayMode.Edit
+                        Font: =""
+                        FontColor: =
+                        FontItalic: =false
+                        FontSize: =0
+                        FontStrikethrough: =false
+                        FontUnderline: =false
+                        FontWeight: =""
+                        Height: =50
+                        Label: =
+                        OnCheck: |-
+                            =///UpdateIf(List_SO_tam,true,{SelectedSP:false})
+                            ForAll(
+                                Gallery_donhang.AllItems As l_SOtmp,
+                                Patch(
+                                    List_SO_tam,
+                                    LookUp(
+                                        List_SO_tam,
+                                        ID = l_SOtmp[@ID]
+                                    ),
+                                    {
+                                        SelectedSP: true,
+                                        P_ThanhTien: Value(l_SOtmp[@TextCanvas_TongTien].Text),
+                                        P_GiaSauCK: Value(l_SOtmp[@TextCanvas_GiaSauCK].Text)
+                                    }
+                                )
+                            )
+                        OnSelect: =
+                        OnUncheck: |-
+                            =///UpdateIf(List_SO_tam,true,{SelectedSP:false})
+                            ForAll(
+                                Gallery_donhang.AllItems As l_SOtmp,
+                                Patch(
+                                    List_SO_tam,
+                                    LookUp(
+                                        List_SO_tam,
+                                        ID = l_SOtmp[@ID]
+                                    ),
+                                    {
+                                        SelectedSP: false,
+                                        P_ThanhTien: Value(l_SOtmp[@TextCanvas_TongTien].Text),
+                                        P_GiaSauCK: Value(l_SOtmp[@TextCanvas_GiaSauCK].Text)
+                                    }
+                                )
+                            )
+                        TabIndex: =0
+                        Tooltip: =""
+                        Visible: =true
+                        Width: =50
+                        X: =3
+                        Y: =0
+                        ZIndex: =13
+
+            Container_Cauhinhdonhang As groupContainer.manualLayoutContainer:
+                DropShadow: =DropShadow.Regular
+                Fill: =RGBA(255, 255, 255, 1)
+                Height: =227
+                RadiusBottomLeft: =20
+                RadiusBottomRight: =20
+                RadiusTopLeft: =20
+                RadiusTopRight: =20
+                Visible: =CountRows(cb_donhang_tam.SelectedItems) > 0
+                Width: =1327
+                X: =25
+                Y: =Container_Locdonhang.Y + Container_Locdonhang.Height + 20
+                ZIndex: =2
+
+                TextCanvas1_4 As Text:
+                    Align: ="Start"
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =40
+                    Size: =22
+                    TabIndex: =0
+                    Text: ="Cấu hình đơn hàng"
+                    Tooltip: =""
+                    VerticalAlign: =VerticalAlign.Middle
+                    Visible: =true
+                    Weight: ='TextCanvas.Weight'.Bold
+                    Width: =500
+                    Wrap: =true
+                    X: =88
+                    Y: =IconFontAwesome1_10.Y
+                    ZIndex: =1
+
+                IconFontAwesome1_10 As IconFontAwesome:
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Height: =37
+                    iconHtml: |-
+                        ="<i class='fa-solid fa-gear' style='color: #04a1b3;'></i>"
+                    iconSize: =30
+                    OnChange: =false
+                    TabIndex: =0
+                    Tooltip: ="IconFontAwesome description"
+                    Visible: =true
+                    Width: =40
+                    X: =43
+                    Y: =17
+                    ZIndex: =2
+
+                "TextInput_TenDonHang As 'Text input'":
+                    AccessibleLabel: =""
+                    Align: =""
+                    Appearance: ="FilledDarker"
+                    BasePaletteColor: =
+                    BorderColor: =If(Len(TextInput_TenDonHang.Value)>0,RGBA(214, 221, 224, 1), RGBA(224, 80, 92,1))
+                    BorderRadius: =10
+                    BorderStyle: =BorderStyle.Solid
+                    BorderThickness: =1
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =RGBA(255, 255, 255, 1)
+                    Font: =Font.'Open Sans'
+                    FontColor: =
+                    FontItalic: =false
+                    FontSize: =18
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    FontWeight: =FontWeight.Normal
+                    Height: =40
+                    MaxLength: =-1
+                    Mode: ="SingleLine"
+                    OnChange: =false
+                    Placeholder: ="Tên đơn hàng"
+                    Required: =false
+                    TabIndex: =0
+                    Tooltip: =""
+                    TriggerOutput: ='TextInputCanvas.TriggerOutput'.Keypress
+                    Type: ="Text"
+                    ValidationState: ="None"
+                    Value: =""
+                    Visible: =true
+                    Width: =270
+                    X: =43
+                    Y: =TextCanvas2.Height + TextCanvas2.Y
+                    ZIndex: =3
+
+                TextCanvas2 As Text:
+                    Align: ="Start"
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =30
+                    Size: =16
+                    TabIndex: =0
+                    Text: ="Tên đơn hàng (*)"
+                    Tooltip: =""
+                    VerticalAlign: =""
+                    Visible: =true
+                    Weight: ="Regular"
+                    Width: =TextInput_TenDonHang.Width
+                    Wrap: =true
+                    X: =43
+                    Y: =TextCanvas1_4.Height + TextCanvas1_4.Y
+                    ZIndex: =4
+
+                TextCanvas2_1 As Text:
+                    Align: ="Start"
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =30
+                    Size: =16
+                    TabIndex: =0
+                    Text: ="Điều khoản thanh toán" 
+                    Tooltip: =""
+                    VerticalAlign: =""
+                    Visible: =true
+                    Weight: ="Regular"
+                    Width: =Dropdown_DKTT.Width
+                    Wrap: =true
+                    X: =TextCanvas2.Width + TextCanvas2.X + 30
+                    Y: =TextCanvas2.Y
+                    ZIndex: =5
+
+                Dropdown_DKTT As Dropdown.pcfdataset:
+                    AccessibleLabel: =""
+                    Appearance: ='DropdownCanvas.Appearance'.FilledLighter
+                    BorderColor: =RGBA(214, 221, 224, 1)
+                    BorderRadius: =10
+                    BorderStyle: =BorderStyle.Solid
+                    BorderThickness: =1
+                    ContentLanguage: =""
+                    DefaultSelectedItems: =LookUp(Choices('Điều khoản thanh toán - choice'), Value = Lk_donhangtam.'Điều khoản thanh toán')
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =RGBA(255, 255, 255, 1)
+                    FontSize: =18
+                    Height: =40
+                    Items: =Choices('Điều khoản thanh toán - choice')
+                    OnChange: =false
+                    Required: =false
+                    TabIndex: =0
+                    Tooltip: =""
+                    ValidationState: ="None"
+                    Visible: =true
+                    Width: =300
+                    X: =TextCanvas2_1.X
+                    Y: =TextInput_TenDonHang.Y
+                    ZIndex: =6
+
+                    Value1 As PowerApps_CoreControls_DropdownCanvasTemplate_dataField.textualColumn:
+                        FieldDisplayName: ="Value"
+                        FieldName: ="Value"
+                        FieldType: ="l"
+                        Order: =1
+                        Type: ="s"
+                        ZIndex: =1
+
+                TextCanvas2_2 As Text:
+                    Align: ="Start"
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =30
+                    Size: =16
+                    TabIndex: =0
+                    Text: ="Loại đơn hàng (*)"
+                    Tooltip: =""
+                    VerticalAlign: =""
+                    Visible: =true
+                    Weight: ="Regular"
+                    Width: =Dropdown_LDH.Width
+                    Wrap: =true
+                    X: =TextCanvas2_1.Width +TextCanvas2_1.X + 30
+                    Y: =TextCanvas2.Y
+                    ZIndex: =7
+
+                Dropdown_LDH As Dropdown.pcfdataset:
+                    AccessibleLabel: =""
+                    Appearance: ='DropdownCanvas.Appearance'.FilledLighter
+                    BorderColor: =If(Len(Dropdown_LDH.Selected.Value)>0,RGBA(214, 221, 224, 1), RGBA(224, 80, 92,1))
+                    BorderRadius: =10
+                    BorderStyle: =BorderStyle.Solid
+                    BorderThickness: =1
+                    ContentLanguage: =""
+                    DefaultSelectedItems: =
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =RGBA(255, 255, 255, 1)
+                    FontSize: =18
+                    Height: =40
+                    Items: =Choices('Loại đơn hàng (Sale_Orders)')
+                    OnChange: =false
+                    Required: =false
+                    TabIndex: =0
+                    Tooltip: =""
+                    ValidationState: ="None"
+                    Visible: =true
+                    Width: =300
+                    X: =TextCanvas2_2.X
+                    Y: =TextInput_TenDonHang.Y
+                    ZIndex: =8
+
+                    Value4 As PowerApps_CoreControls_DropdownCanvasTemplate_dataField.textualColumn:
+                        FieldDisplayName: ="Value"
+                        FieldName: ="Value"
+                        FieldType: ="l"
+                        Order: =1
+                        Type: ="s"
+                        ZIndex: =1
+
+                TextCanvas_vat As Text:
+                    Align: ="Start"
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =30
+                    Size: =16
+                    TabIndex: =0
+                    Text: ="VAT"
+                    Tooltip: =""
+                    VerticalAlign: =""
+                    Visible: =true
+                    Weight: ="Regular"
+                    Width: =Dropdown_VAT.Width
+                    Wrap: =true
+                    X: =TextCanvas2.X
+                    Y: =TextInput_TenDonHang.Height + TextInput_TenDonHang.Y + 10
+                    ZIndex: =9
+
+                Dropdown_VAT As Dropdown.pcfdataset:
+                    AccessibleLabel: =""
+                    Appearance: ='DropdownCanvas.Appearance'.FilledLighter
+                    BorderColor: =RGBA(214, 221, 224, 1)
+                    BorderRadius: =10
+                    BorderStyle: =BorderStyle.Solid
+                    BorderThickness: =1
+                    ContentLanguage: =""
+                    DefaultSelectedItems: =LookUp(Choices(VAT_choice), Value = Lk_donhangtam.VAT)
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =RGBA(255, 255, 255, 1)
+                    FontSize: =18
+                    Height: =40
+                    Items: =Choices(VAT_choice)
+                    OnChange: |-
+                        =Reset(Dropdown_LoaiHoaDon);
+                        UpdateIf(List_SO_tam,true,{SelectedSP:false})
+                    Required: =false
+                    TabIndex: =0
+                    Tooltip: =""
+                    ValidationState: ="None"
+                    Visible: =true
+                    Width: =150
+                    X: =TextCanvas_vat.X
+                    Y: =TextCanvas_vat.Height + TextCanvas_vat.Y
+                    ZIndex: =10
+
+                    Value3 As PowerApps_CoreControls_DropdownCanvasTemplate_dataField.textualColumn:
+                        FieldDisplayName: ="Value"
+                        FieldName: ="Value"
+                        FieldType: ="l"
+                        Order: =1
+                        Type: ="s"
+                        ZIndex: =1
+
+                Dropdown_TenThuongMai As Dropdown.pcfdataset:
+                    AccessibleLabel: =""
+                    Appearance: ='DropdownCanvas.Appearance'.FilledLighter
+                    BorderColor: =RGBA(214, 221, 224, 1)
+                    BorderRadius: =10
+                    BorderStyle: =BorderStyle.Solid
+                    BorderThickness: =1
+                    ContentLanguage: =""
+                    DefaultSelectedItems: |-
+                        =LookUp(
+                            'Công ty',
+                            ID = If(
+                                Dropdown_VAT.Selected.Value = VAT_choice.'Có VAT',
+                                GUID("8f603736-b718-ef11-840a-000d3aa00fac"), //Wecare
+                                GUID("6872ed50-b718-ef11-840a-000d3aa00fac") //Weshop
+                            )
+                        )
+                    DisplayMode: =DisplayMode.View
+                    Fill: =RGBA(255, 255, 255, 1)
+                    FontSize: =18
+                    Height: =40
+                    Items: |-
+                        =
+                        Filter('Công ty',Status = 'Status (Công ty)'.Active)
+                    OnChange: =false
+                    Required: =false
+                    TabIndex: =0
+                    Tooltip: =""
+                    ValidationState: ="None"
+                    Visible: =true
+                    Width: =150
+                    X: =TextCanvas_tenthuongmai.X
+                    Y: =TextCanvas_tenthuongmai.Height + TextCanvas_tenthuongmai.Y
+                    ZIndex: =11
+
+                    "'Tên công ty1' As PowerApps_CoreControls_DropdownCanvasTemplate_dataField.textualColumn":
+                        FieldDisplayName: ="Tên công ty"
+                        FieldName: ="cr1bb_name"
+                        FieldType: ="s"
+                        Order: =1
+                        Type: ="s"
+                        ZIndex: =1
+
+                TextCanvas_tenthuongmai As Text:
+                    Align: ="Start"
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =30
+                    Size: =16
+                    TabIndex: =0
+                    Text: ="Tên thương mại"
+                    Tooltip: =""
+                    VerticalAlign: =""
+                    Visible: =true
+                    Weight: ="Regular"
+                    Width: =Dropdown_VAT.Width
+                    Wrap: =true
+                    X: =TextCanvas_vat.X + TextCanvas_vat.Width + 30
+                    Y: =TextInput_TenDonHang.Height + TextInput_TenDonHang.Y + 10
+                    ZIndex: =12
+
+                TextCanvas_xuathoadon As Text:
+                    Align: ="Start"
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =30
+                    Size: =16
+                    TabIndex: =0
+                    Text: ="Loại hóa đơn"
+                    Tooltip: =""
+                    VerticalAlign: =""
+                    Visible: =Dropdown_VAT.Selected.Value = VAT_choice.'Không VAT'
+                    Weight: ="Regular"
+                    Width: =Dropdown_LoaiHoaDon.Width
+                    Wrap: =true
+                    X: =TextCanvas_tenthuongmai.Width + TextCanvas_tenthuongmai.X + 30
+                    Y: =137
+                    ZIndex: =13
+
+                "TextInput_GhiChu As 'Text input'":
+                    AccessibleLabel: =""
+                    Align: =""
+                    Appearance: ="FilledDarker"
+                    BasePaletteColor: =
+                    BorderColor: =If(Len(TextInput_GhiChu.Value)>0,RGBA(214, 221, 224, 1), RGBA(224, 80, 92,1))
+                    BorderRadius: =10
+                    BorderStyle: =BorderStyle.Solid
+                    BorderThickness: =1
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =RGBA(255, 255, 255, 1)
+                    Font: =Font.'Open Sans'
+                    FontColor: =
+                    FontItalic: =false
+                    FontSize: =18
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    FontWeight: =FontWeight.Normal
+                    Height: =40
+                    MaxLength: =-1
+                    Mode: ="SingleLine"
+                    OnChange: =false
+                    Placeholder: ="Nhập ghi chú..."
+                    Required: =false
+                    TabIndex: =0
+                    Tooltip: =""
+                    TriggerOutput: ='TextInputCanvas.TriggerOutput'.Keypress
+                    Type: ="Text"
+                    ValidationState: ="None"
+                    Value: =""
+                    Visible: =true
+                    Width: =300
+                    X: =TextCanvas_ghichu.X
+                    Y: =TextCanvas_ghichu.Height + TextCanvas_ghichu.Y
+                    ZIndex: =14
+
+                TextCanvas_ghichu As Text:
+                    Align: ="Start"
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =30
+                    Size: =16
+                    TabIndex: =0
+                    Text: ="Ghi chú (*)"
+                    Tooltip: =""
+                    VerticalAlign: =""
+                    Visible: =true
+                    Weight: ="Regular"
+                    Width: =TextInput_GhiChu.Width
+                    Wrap: =true
+                    X: =TextCanvas2_2.Width +TextCanvas2_2.X + 30
+                    Y: =57
+                    ZIndex: =15
+
+                Dropdown_LoaiHoaDon As Dropdown.pcfdataset:
+                    AccessibleLabel: =""
+                    Appearance: ='DropdownCanvas.Appearance'.Outline
+                    BorderColor: =RGBA(214, 221, 224, 1)
+                    BorderRadius: =10
+                    BorderStyle: =BorderStyle.Solid
+                    BorderThickness: =1
+                    ContentLanguage: =""
+                    DefaultSelectedItems: =LookUp(Choices('Loại hóa đơn (Sale_Orders)'),Value = 'Loại hóa đơn (Sale_Orders)'.'Không xuất hóa đơn')
+                    DisplayMode: =DisplayMode.Edit
+                    FontSize: =18
+                    Height: =40
+                    Items: =Choices('Loại hóa đơn (Sale_Orders)')
+                    OnChange: |-
+                        =UpdateIf(List_SO_tam,true,{SelectedSP:false})
+                    Required: =false
+                    TabIndex: =0
+                    Tooltip: =""
+                    ValidationState: ="None"
+                    Visible: =TextCanvas_xuathoadon.Visible
+                    Width: =150
+                    X: =TextCanvas_xuathoadon.X
+                    Y: =167
+                    ZIndex: =16
+
+                TextCanvas2_4 As Text:
+                    Align: ="Start"
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =30
+                    Size: =16
+                    TabIndex: =0
+                    Text: ="Kho"
+                    Tooltip: =""
+                    VerticalAlign: =""
+                    Visible: =true
+                    Weight: ="Regular"
+                    Width: =Dropdown_kho.Width
+                    Wrap: =true
+                    X: |-
+                        =If(
+                            Dropdown_VAT.Selected.Value <> VAT_choice.'Có VAT',
+                            TextCanvas_xuathoadon.Width + TextCanvas_xuathoadon.X + 30,
+                            TextCanvas_tenthuongmai.Width + TextCanvas_tenthuongmai.X + 30
+                        )
+                    Y: =137
+                    ZIndex: =17
+
+                Dropdown_kho As Dropdown.pcfdataset:
+                    AccessibleLabel: =""
+                    Appearance: ='DropdownCanvas.Appearance'.FilledLighter
+                    BorderColor: =RGBA(214, 221, 224, 1)
+                    BorderRadius: =10
+                    BorderStyle: =BorderStyle.Solid
+                    BorderThickness: =1
+                    ContentLanguage: =""
+                    DefaultSelectedItems: =cb_khach_hang_tam.Selected.'Vị trí kho'
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =RGBA(255, 255, 255, 1)
+                    FontSize: =18
+                    Height: =40
+                    Items: =var_filterkho
+                    OnChange: =false
+                    Required: =false
+                    TabIndex: =0
+                    Tooltip: =""
+                    ValidationState: ="None"
+                    Visible: =true
+                    Width: =200
+                    X: =TextCanvas2_4.X
+                    Y: =167
+                    ZIndex: =18
+
+                    crdfd_name1_2 As PowerApps_CoreControls_DropdownCanvasTemplate_dataField.textualColumn:
+                        FieldDisplayName: ="crdfd_name"
+                        FieldName: ="crdfd_name"
+                        FieldType: ="s"
+                        Order: =1
+                        Type: ="s"
+                        ZIndex: =1
+
+                TextCanvas2_5 As Text:
+                    Align: ="Start"
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =30
+                    Size: =16
+                    TabIndex: =0
+                    Text: ="Kênh tiếp nhận"
+                    Tooltip: =""
+                    VerticalAlign: =""
+                    Visible: =true
+                    Weight: ="Regular"
+                    Width: =Dropdown_KenhTiepNhan.Width
+                    Wrap: =true
+                    X: =TextCanvas2_4.Width + TextCanvas2_4.X + 30
+                    Y: =137
+                    ZIndex: =19
+
+                Dropdown_KenhTiepNhan As Dropdown.pcfdataset:
+                    AccessibleLabel: =""
+                    Appearance: ='DropdownCanvas.Appearance'.FilledLighter
+                    BorderColor: =RGBA(214, 221, 224, 1)
+                    BorderRadius: =10
+                    BorderStyle: =BorderStyle.Solid
+                    BorderThickness: =1
+                    ContentLanguage: =""
+                    DefaultSelectedItems: =LookUp(Choices('Kênh tiếp nhận'), Value = Lk_donhangtam.'Kênh tiếp nhận SO')
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =RGBA(255, 255, 255, 1)
+                    FontSize: =18
+                    Height: =40
+                    Items: =Choices(Sale_Orders.'Kênh tiếp nhận')
+                    OnChange: =false
+                    Required: =false
+                    TabIndex: =0
+                    Tooltip: =""
+                    ValidationState: ="None"
+                    Visible: =true
+                    Width: =200
+                    X: =TextCanvas2_4.Width + TextCanvas2_4.X + 30
+                    Y: =167
+                    ZIndex: =20
+
+                    Value5 As PowerApps_CoreControls_DropdownCanvasTemplate_dataField.textualColumn:
+                        FieldDisplayName: ="Value"
+                        FieldName: ="Value"
+                        FieldType: ="l"
+                        Order: =1
+                        Type: ="s"
+                        ZIndex: =1
+
+            Container_Locdonhang As groupContainer.manualLayoutContainer:
+                DropShadow: =DropShadow.Regular
+                Fill: =RGBA(255, 255, 255, 1)
+                Height: =cb_khach_hang_tam.Height + cb_khach_hang_tam.Y +20
+                RadiusBottomLeft: =20
+                RadiusBottomRight: =20
+                RadiusTopLeft: =20
+                RadiusTopRight: =20
+                Width: =1327
+                X: =25
+                Y: =17
+                ZIndex: =3
+
+                TextCanvas1_2 As Text:
+                    Align: ="Start"
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =40
+                    Size: =22
+                    TabIndex: =0
+                    Text: ="Lọc đơn hàng"
+                    Tooltip: =""
+                    VerticalAlign: =VerticalAlign.Middle
+                    Visible: =true
+                    Weight: ='TextCanvas.Weight'.Bold
+                    Width: =225
+                    Wrap: =true
+                    X: =85
+                    Y: =IconFontAwesome1_1.Y
+                    ZIndex: =1
+
+                IconFontAwesome1_1 As IconFontAwesome:
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Height: =37
+                    iconHtml: |-
+                        ="<i class='fa-solid fa-filter' style='color: #04a1b3;'></i>"
+                    iconSize: =30
+                    OnChange: =false
+                    TabIndex: =0
+                    Tooltip: ="IconFontAwesome description"
+                    Visible: =true
+                    Width: =40
+                    X: =40
+                    Y: =17
+                    ZIndex: =2
+
+                TextCanvas_khachhang As Text:
+                    Align: ="Start"
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =35
+                    Size: =16
+                    TabIndex: =0
+                    Text: ="Chọn khách hàng"
+                    Tooltip: =""
+                    VerticalAlign: =VerticalAlign.Middle
+                    Visible: =true
+                    Weight: ='TextCanvas.Weight'.Medium
+                    Width: =225
+                    Wrap: =true
+                    X: =40
+                    Y: =TextCanvas1_2.Height+TextCanvas1_2.Y
+                    ZIndex: =3
+
+                TextCanvas_khachhang_1 As Text:
+                    Align: ="Start"
+                    AutoHeight: =false
+                    BorderColor: =
+                    BorderStyle: =""
+                    ContentLanguage: =""
+                    DisplayMode: =DisplayMode.Edit
+                    Fill: =
+                    Font: =Font.'Open Sans'
+                    FontColor: =
+                    FontItalic: =false
+                    FontStrikethrough: =false
+                    FontUnderline: =false
+                    Height: =35
+                    Size: =16
+                    TabIndex: =0
+                    Text: ="Chọn mã đơn hàng"
+                    Tooltip: =""
+                    VerticalAlign: =VerticalAlign.Middle
+                    Visible: =true
+                    Weight: ='TextCanvas.Weight'.Medium
+                    Width: =225
+                    Wrap: =true
+                    X: =667
+                    Y: =TextCanvas_khachhang.Y
+                    ZIndex: =4
+
+                cb_khach_hang_tam As combobox:
+                    AccessibleLabel: =
+                    BorderColor: =RGBA(202, 202, 202, 1)
+                    ChevronBackground: =RGBA(255, 255, 255, 1)
+                    ChevronDisabledBackground: =RGBA(166, 166, 166, 1)
+                    ChevronDisabledFill: =RGBA(244, 244, 244, 1)
+                    ChevronFill: =RGBA(0, 0, 0, 1)
+                    ChevronHoverBackground: =RGBA(0, 0, 0, 1)
+                    ChevronHoverFill: =RGBA(255, 255, 255, 1)
+                    Color: =RGBA(77, 77, 77, 1)
+                    DisabledBorderColor: =RGBA(166, 166, 166, 1)
+                    DisabledColor: =RGBA(166, 166, 166, 1)
+                    DisabledFill: =RGBA(244, 244, 244, 1)
+                    DisplayFields: =["crdfd_name"]
+                    Height: =32
+                    HoverColor: =RGBA(0, 0, 0, 1)
+                    HoverFill: =RGBA(255, 255, 255, 1)
+                    InputTextPlaceholder: ="Chọn khách hàng"
+                    Items: =List_Customer
+                    OnChange: =
+                    PressedColor: =RGBA(116, 116, 116, 1)
+                    PressedFill: =App.Theme.Colors.Darker30
+                    SearchFields: =["crdfd_name"]
+                    SearchItems: =Search(List_Customer,cb_khach_hang_tam.SearchText,'Customer name')
+                    SelectionFill: =RGBA(116, 192, 252, 1)
+                    SelectMultiple: =false
+                    Size: =12
+                    Tooltip: =
+                    Width: =610
+                    X: =40
+                    Y: =TextCanvas_khachhang.Height + TextCanvas_khachhang.Y
+                    ZIndex: =5
+
+                cb_donhang_tam As combobox:
+                    AccessibleLabel: =
+                    BorderColor: =RGBA(202, 202, 202, 1)
+                    ChevronBackground: =RGBA(255, 255, 255, 1)
+                    ChevronDisabledBackground: =RGBA(166, 166, 166, 1)
+                    ChevronDisabledFill: =RGBA(244, 244, 244, 1)
+                    ChevronFill: =RGBA(0, 0, 0, 1)
+                    ChevronHoverBackground: =RGBA(0, 0, 0, 1)
+                    ChevronHoverFill: =RGBA(255, 255, 255, 1)
+                    Color: =RGBA(77, 77, 77, 1)
+                    DefaultSelectedItems: =First(Distinct(var_dhSOTam, 'Mã SO'))
+                    DisabledBorderColor: =RGBA(166, 166, 166, 1)
+                    DisabledColor: =RGBA(166, 166, 166, 1)
+                    DisabledFill: =RGBA(244, 244, 244, 1)
+                    DisplayFields: =["Value"]
+                    Height: =32
+                    HoverColor: =RGBA(0, 0, 0, 1)
+                    HoverFill: =RGBA(255, 255, 255, 1)
+                    InputTextPlaceholder: ="Chọn mã đơn hàng"
+                    IsSearchable: =false
+                    Items: =Distinct(var_dhSOTam, 'Mã SO')
+                    OnChange: |
+                        =ClearCollect(
+                            List_SO_tam,
+                            AddColumns(
+                                Sort(
+                                    Filter(
+                                        'Đặt hàng SOS',
+                                        Status = 'Status (Đặt hàng SOS)'.Active,
+                                        'Mã SO' = cb_donhang_tam.Selected.Value,
+                                        'Trạng thái đơn hàng' = 'Trạng thái đơn hàng (Đặt hàng SOS)'.'Chờ xác nhận',
+                                        ('Trạng thái duyệt giá' = "Đã xác nhận" || IsBlank('Trạng thái duyệt giá')),
+                                        IsBlank(Var_check_duyetgia)
+                                    ),
+                                    'Created On',
+                                    SortOrder.Descending
+                                ),
+                                SelectedSP,
+                                false,
+                                'Phụ phí hoá đơn',
+                                0,
+                                P_ThanhTien,
+                                0,
+                                P_GiaSauCK,
+                                0,
+                                NgayGiao,
+                                DateAdd(
+                                    Now(),
+                                    var_leadtime_quanhuyen * 12,
+                                    TimeUnit.Hours
+                                ),
+                                CaSP,
+                                If(var_Ca, 'Ca (Sale Order Details)'.'Ca sáng', 'Ca (Sale Order Details)'.'Ca chiều')
+                            )
+                        );
+                    PressedColor: =RGBA(116, 116, 116, 1)
+                    PressedFill: =App.Theme.Colors.Darker30
+                    SearchFields: =["Value"]
+                    SearchItems: =[]
+                    SelectionFill: =RGBA(116, 192, 252, 1)
+                    SelectMultiple: =false
+                    Size: =12
+                    Tooltip: =
+                    Width: =610
+                    X: =667
+                    Y: =cb_khach_hang_tam.Y
+                    ZIndex: =6
+
+    "'Container Header' As groupContainer.manualLayoutContainer":
+        DropShadow: =DropShadow.Light
+        Height: =74
+        RadiusBottomLeft: =4
+        RadiusBottomRight: =4
+        RadiusTopLeft: =4
+        RadiusTopRight: =4
+        Width: =1366
+        ZIndex: =2
+
+        Group9 As group:
+            Height: =5
+            minimumHeight: =5
+            minimumWidth: =5
+            Visible: =true
+            Width: =5
+            X: =0
+            Y: =0
+            ZIndex: =0
+
+            IconBell As IconFontAwesome:
+                ContentLanguage: =""
+                DisplayMode: =DisplayMode.Edit
+                Height: =40
+                iconHtml: ="<i class='fa-regular fa-bell'></i>"
+                iconSize: =30
+                OnChange: =false
+                TabIndex: =0
+                Tooltip: ="IconFontAwesome description"
+                Visible: =true
+                Width: =27
+                X: =1091
+                Y: =24
+                ZIndex: =2
+
+            TextNameUser As Text:
+                Align: ='TextCanvas.Align'.Start
+                AutoHeight: =false
+                BorderColor: =
+                BorderStyle: =""
+                ContentLanguage: =""
+                DisplayMode: =DisplayMode.Edit
+                Fill: =
+                Font: =Font.'Open Sans'
+                FontColor: =
+                FontItalic: =false
+                FontStrikethrough: =false
+                FontUnderline: =false
+                Height: =73
+                Size: =20
+                TabIndex: =0
+                Text: =User().FullName
+                Tooltip: =""
+                VerticalAlign: =VerticalAlign.Middle
+                Visible: =true
+                Weight: ='TextCanvas.Weight'.Regular
+                Width: =171
+                Wrap: =false
+                X: =1192
+                Y: =0
+                ZIndex: =3
+
+            Avatar1 As Avatar:
+                AccessibleLabel: =""
+                Appearance: ='Avatar.Appearance'.Brand
+                Badge: ="Available"
+                BasePaletteColor: =
+                ContentLanguage: =""
+                DisplayMode: =DisplayMode.Edit
+                Font: =""
+                FontColor: =
+                FontItalic: =false
+                FontSize: =0
+                FontStrikethrough: =false
+                FontUnderline: =false
+                FontWeight: =""
+                Height: =50
+                Image: =User().Image
+                Name: =User().FullName
+                OutOfOffice: =false
+                Shape: ='Avatar.Shape'.Circular
+                TabIndex: =0
+                Tooltip: =""
+                Visible: =true
+                Width: =50
+                X: =1130
+                Y: =11
+                ZIndex: =6
+
+        IconFontAwesome1 As IconFontAwesome:
+            ContentLanguage: =""
+            DisplayMode: =DisplayMode.Edit
+            Height: =59
+            iconHtml: |-
+                ="<i class='fa-solid fa-cart-shopping' style='color: #04a1b3;'></i>"
+            iconSize: =45
+            OnChange: =false
+            TabIndex: =0
+            Tooltip: ="IconFontAwesome description"
+            Visible: =true
+            Width: =31
+            X: =20
+            Y: =12
+            ZIndex: =1
+
+        Dropdown1 As dropdown:
+            BorderColor: =App.Theme.Colors.Darker40
+            BorderStyle: =BorderStyle.None
+            BorderThickness: =0
+            ChevronBackground: =
+            ChevronDisabledBackground: =RGBA(166, 166, 166, 1)
+            ChevronDisabledFill: =RGBA(244, 244, 244, 1)
+            ChevronFill: =App.Theme.Colors.PrimaryForeground
+            ChevronHoverBackground: =
+            ChevronHoverFill: =App.Theme.Colors.PrimaryForeground
+            Default: ="Duyệt đơn hàng"
+            DisabledBorderColor: =RGBA(166, 166, 166, 1)
+            DisabledColor: =RGBA(166, 166, 166, 1)
+            DisabledFill: =RGBA(244, 244, 244, 1)
+            Font: =App.Theme.Font
+            FontWeight: =FontWeight.Bold
+            Height: =50
+            HoverBorderColor: =
+            HoverColor: =RGBA(0, 0, 0, 1)
+            HoverFill: =
+            Items: =Screen_Admin
+            OnChange: |-
+                =Navigate(Dropdown1.Selected.Value,ScreenTransition.CoverRight);
+                Reset(Dropdown1)
+            PressedColor: =App.Theme.Colors.PrimaryForeground
+            PressedFill: =
+            SelectionColor: =App.Theme.Colors.PrimaryForeground
+            SelectionFill: =RGBA(180, 214, 250, 1)
+            Size: =22
+            X: =79
+            Y: =5
+            ZIndex: =4
+
+        TextNameUser_1 As Text:
+            Align: ='TextCanvas.Align'.Start
+            AutoHeight: =false
+            BorderColor: =
+            BorderStyle: =""
+            ContentLanguage: =""
+            DisplayMode: =DisplayMode.Edit
+            Fill: =
+            Font: =Font.'Open Sans'
+            FontColor: =
+            FontItalic: =false
+            FontStrikethrough: =false
+            FontUnderline: =false
+            Height: =30
+            PaddingRight: =5
+            Size: =16
+            TabIndex: =0
+            Text: ="V1.0.5"
+            Tooltip: =""
+            VerticalAlign: =VerticalAlign.Middle
+            Visible: =true
+            Weight: ='TextCanvas.Weight'.Regular
+            Width: =100
+            Wrap: =false
+            X: =93
+            Y: =44
+            ZIndex: =5
+
+    C_showPopupPromotionOrder_2 As groupContainer.manualLayoutContainer:
+        DropShadow: =DropShadow.Light
+        Fill: =RGBA(189, 189, 189, 0.67)
+        Height: =768
+        RadiusBottomLeft: =4
+        RadiusBottomRight: =4
+        RadiusTopLeft: =4
+        RadiusTopRight: =4
+        Visible: =Popup_PromotionOrder
+        Width: =1366
+        ZIndex: =3
+
+        "'Add promotion Order_1' As group":
+            Height: =5
+            minimumHeight: =5
+            minimumWidth: =5
+            Visible: =true
+            Width: =5
+            X: =0
+            Y: =0
+            ZIndex: =0
+
+            Nền_3 As button:
+                BorderColor: =App.Theme.Colors.Primary
+                Color: =App.Theme.Colors.PrimaryForeground
+                DisabledBorderColor: =RGBA(244, 244, 244, 1)
+                DisabledColor: =RGBA(166, 166, 166, 1)
+                DisabledFill: =RGBA(244, 244, 244, 1)
+                DisplayMode: =DisplayMode.View
+                Fill: =RGBA(255, 255, 255, 0.95)
+                Font: =App.Theme.Font
+                FontWeight: =FontWeight.Semibold
+                Height: =234
+                HoverBorderColor: =App.Theme.Colors.Darker10
+                HoverColor: =App.Theme.Colors.PrimaryForeground
+                HoverFill: =App.Theme.Colors.Darker10
+                PressedBorderColor: =App.Theme.Colors.Darker40
+                PressedColor: =Self.Color
+                PressedFill: =App.Theme.Colors.Darker40
+                RadiusBottomLeft: =30
+                RadiusBottomRight: =30
+                RadiusTopLeft: =30
+                RadiusTopRight: =30
+                Size: =15
+                Text: =
+                Visible: =CountIf(OrderxPromotion_Order,true) = 0
+                Width: =556
+                X: =387
+                Y: =267
+                ZIndex: =1
+
+            bt_huy_3 As Button:
+                AcceptsFocus: =true
+                AccessibleLabel: =""
+                Align: =""
+                Appearance: =
+                BasePaletteColor: =RGBA(189, 178, 176, 1)
+                BorderColor: =
+                BorderRadius: =10
+                BorderStyle: =""
+                ContentLanguage: =""
+                DisplayMode: =DisplayMode.Edit
+                Font: =Font.Arial
+                FontColor: =
+                FontItalic: =false
+                FontSize: =16
+                FontStrikethrough: =false
+                FontUnderline: =false
+                FontWeight: =FontWeight.Semibold
+                Height: =40
+                Icon: =""
+                IconRotation: =0
+                IconStyle: ="Outline"
+                Layout: ="Icon before"
+                OnSelect: |-
+                    =UpdateContext({Popup_PromotionOrder:false});
+                    Reset(Combobox_PromotionOrder_2);
+                TabIndex: =0
+                Text: ="Huỷ"
+                Tooltip: =""
+                VerticalAlign: =""
+                Visible: =CountIf(OrderxPromotion_Order,true) = 0
+                Width: =160
+                X: =713
+                Y: =428
+                ZIndex: =2
+
+            Label_lydohuy_6 As label:
+                BorderColor: =App.Theme.Colors.Darker40
+                Color: =RGBA(0, 0, 0, 1)
+                DisabledColor: =RGBA(166, 166, 166, 1)
+                Font: =App.Theme.Font
+                FontWeight: =FontWeight.Semibold
+                Height: =35
+                Size: =18
+                Text: ="Promotion Order"
+                Visible: =CountIf(OrderxPromotion_Order,true) = 0
+                Width: =500
+                X: =419
+                Y: =274
+                ZIndex: =3
+
+            Combobox_PromotionOrder_2 As Combobox.pcfdataset:
+                AccessibleLabel: =""
+                Appearance: ="FilledDarker"
+                BasePaletteColor: =
+                BorderStyle: =""
+                ContentLanguage: =""
+                DisplayMode: =DisplayMode.Edit
+                Font: =Font.Arial
+                FontItalic: =false
+                FontSize: =18
+                FontStrikethrough: =false
+                FontUnderline: =false
+                FontWeight: =FontWeight.Normal
+                Height: =49
+                InputTextPlaceholder: ="Promotion Order"
+                IsSearchable: =false
+                Items: |-
+                    =Filter(
+                        Sort(
+                            AddColumns(
+                                Filter(
+                                    Filter(
+                                        ListFilterPromotion,
+                                        crdfd_type = "Order"
+                                    ),
+                                    (cr1bb_chietkhau2 <> 'Chiết khấu 2 (Promotion)'.Yes || ((!IsBlank(
+                                        First(
+                                            Filter(
+                                                var_table_SP,
+                                                Text(Value) in crdfd_masanpham_multiple
+                                            )
+                                        )
+                                    ) || !IsBlank(
+                                        First(
+                                            Filter(
+                                                var_table_NSP,
+                                                Text(Value) in cr1bb_manhomsp_multiple
+                                            )
+                                        )
+                                    )))) && statecode = 'Status (Promotion)'.Active && (IsBlank(
+                                        Concat(
+                                            cr1bb_ieukhoanthanhtoanapdung,
+                                            Value,
+                                            ", "
+                                        )
+                                    ) || var_dieukhoanthanhtoan in Concat(
+                                        cr1bb_ieukhoanthanhtoanapdung,
+                                        Value,
+                                        ", "
+                                    ) && (!IsBlank(
+                                        First(
+                                            Filter(
+                                                var_table_SP,
+                                                Text(Value) in crdfd_masanpham_multiple
+                                            )
+                                        )
+                                    ) || !IsBlank(
+                                        First(
+                                            Filter(
+                                                var_table_NSP,
+                                                Text(Value) in cr1bb_manhomsp_multiple
+                                            )
+                                        )
+                                    ))) && (crdfd_name <> "Voucher sinh nhật" || var_sinhnhat) && (crdfd_name <> "Giảm giá đặc biệt_Khách hàng 3 tháng đặt lại hàng" || (var_last_order_date && var_check_promotion_SOD)) And (IsBlank(cr1bb_tongtienapdung) Or Total_Order >= cr1bb_tongtienapdung)
+                                ),
+                                NamePromotion,
+                                crdfd_name,
+                                ValuePromotion,
+                                crdfd_value,
+                                VND_Percent,
+                                crdfd_vn,
+                                DKTT,
+                                Concat(
+                                    cr1bb_ieukhoanthanhtoanapdung,
+                                    Value,
+                                    ", "
+                                ),
+                                Ma_SP,
+                                crdfd_masanpham_multiple,
+                                Ma_NSP,
+                                cr1bb_manhomsp_multiple,
+                                'Chiết khấu 2',
+                                cr1bb_chietkhau2
+                            ),
+                            NamePromotion,
+                            SortOrder.Ascending
+                        ),
+                        ('Chiết khấu 2' = 'Chiết khấu 2 (Promotion)'.No Or IsBlank('Chiết khấu 2')) Or ('Chiết khấu 2' = 'Chiết khấu 2 (Promotion)'.Yes And var_count_notIn_Promotions > 0)
+                    )
+                MultiValueDelimiter: =", "
+                OnChange: =
+                Required: =false
+                SelectMultiple: =true
+                TabIndex: =0
+                Tooltip: =""
+                TriggerOutput: ="Keypress"
+                ValidationState: ="None"
+                Visible: =CountIf(OrderxPromotion_Order,true) = 0
+                Width: =468
+                X: =431
+                Y: =339
+                ZIndex: =4
+
+                NamePromotion1_2 As PowerApps_CoreControls_ComboboxCanvasTemplate_dataField.textualColumn:
+                    FieldDisplayName: ="NamePromotion"
+                    FieldName: ="NamePromotion"
+                    FieldType: ="s"
+                    Order: =1
+                    Type: ="s"
+                    ZIndex: =1
+
+            Timer_Promotion_2 As timer:
+                AutoPause: =false
+                BorderColor: =App.Theme.Colors.Primary
+                Color: =App.Theme.Colors.PrimaryForeground
+                DisabledBorderColor: =RGBA(244, 244, 244, 1)
+                DisabledColor: =RGBA(166, 166, 166, 1)
+                DisabledFill: =RGBA(244, 244, 244, 1)
+                DisplayMode: =If(!IsBlank(Combobox_PromotionOrder_2.Selected), DisplayMode.Edit,DisplayMode.Disabled)
+                Fill: =App.Theme.Colors.Primary
+                Font: =App.Theme.Font
+                FontWeight: =FontWeight.Semibold
+                HoverBorderColor: =App.Theme.Colors.Darker10
+                HoverColor: =App.Theme.Colors.PrimaryForeground
+                HoverFill: =App.Theme.Colors.Darker10
+                OnTimerEnd: |-
+                    =UpdateContext({showLoading: false});
+                    ForAll(
+                        Combobox_PromotionOrder_2.SelectedItems As This,
+                        Patch(
+                            'Orders x Promotion',
+                            Defaults('Orders x Promotion'),
+                            {
+                                Promotion: LookUp(Promotion,ID = This.crdfd_promotionid),
+                                SO: Create_recordSO,
+                                Type:"Order",
+                                Loại: If(This.VND_Percent='VNĐ/% (Promotion)'.VNĐ,"Tiền","Phần trăm"),
+                                'Chiết khấu':If(This.VND_Percent='VNĐ/% (Promotion)'.VNĐ,This.ValuePromotion,This.ValuePromotion/100)
+                            }
+                        )
+                    );
+                    Reset(Combobox_PromotionOrder_2);
+                    Notify("Áp dụng thành công",NotificationType.Success,5000);
+                    UpdateContext({Popup_PromotionOrder:false});
+                OnTimerStart: |-
+                    =UpdateContext({showLoading: true});
+                PressedBorderColor: =App.Theme.Colors.Darker40
+                PressedColor: =Self.Color
+                PressedFill: =App.Theme.Colors.Darker40
+                RadiusBottomLeft: =15
+                RadiusBottomRight: =15
+                RadiusTopLeft: =15
+                RadiusTopRight: =15
+                Reset: =true
+                Size: =14
+                Start: =true
+                Text: |-
+                    =If(!IsBlank(Combobox_PromotionOrder_2.Selected) And showLoading ,Text(Time(0, 0, Round((Self.Duration - Self.Value) / 1000, 0)), "mm:ss"), "Xác nhận")
+                Visible: =CountIf(OrderxPromotion_Order,true) = 0
+                X: =448
+                Y: =428
+                ZIndex: =5
+
