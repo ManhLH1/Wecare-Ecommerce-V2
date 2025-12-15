@@ -4,6 +4,14 @@ import { useState, useEffect } from 'react';
 import Dropdown from './Dropdown';
 import { useProducts, useUnits, useWarehouses } from '../_hooks/useDropdownData';
 
+// Map option set value of crdfd_gtgt/crdfd_gtgtnew to VAT percentage
+const VAT_OPTION_MAP: Record<number, number> = {
+  191920000: 0,  // 0%
+  191920001: 5,  // 5%
+  191920002: 8,  // 8%
+  191920003: 10, // 10%
+};
+
 interface ProductEntryFormProps {
   product: string;
   setProduct: (value: string) => void;
@@ -95,6 +103,11 @@ export default function ProductEntryForm({
       const found = products.find((p) => p.crdfd_name === product);
       if (found) {
         setProductId(found.crdfd_productsid);
+        const gtgtVal = found.crdfd_gtgt_option ?? found.crdfd_gtgt;
+        const vatFromOption = gtgtVal !== undefined ? VAT_OPTION_MAP[gtgtVal] : undefined;
+        if (vatFromOption !== undefined) {
+          handleVatChange(vatFromOption);
+        }
       }
     }
   }, [product, productId, products]);
@@ -147,13 +160,15 @@ export default function ProductEntryForm({
     setTotalAmount(subtotal + newVat);
   };
 
+  const productLabel = vatPercent === 0 ? 'Sản phẩm không VAT' : 'Sản phẩm có VAT';
+
   return (
     <div className="admin-app-section">
       <h3 className="admin-app-section-title">Thông tin sản phẩm</h3>
       {/* Product Entry Row */}
       <div className="admin-app-form-row">
         <div className="admin-app-field-group">
-          <label className="admin-app-label">Sản phẩm không VAT</label>
+          <label className="admin-app-label">{productLabel}</label>
           <Dropdown
             options={products.map((p) => ({
               value: p.crdfd_productsid,
@@ -167,6 +182,12 @@ export default function ProductEntryForm({
               // Get product code from selected product
               const selectedProduct = products.find((p) => p.crdfd_productsid === value);
               setSelectedProductCode(selectedProduct?.crdfd_masanpham);
+              // Apply VAT percent based on crdfd_gtgt option set
+              const vatOptionValue = (option?.crdfd_gtgt_option ?? option?.crdfd_gtgt) as number | undefined;
+              const vatFromOption = vatOptionValue !== undefined ? VAT_OPTION_MAP[Number(vatOptionValue)] : undefined;
+              if (vatFromOption !== undefined) {
+                handleVatChange(vatFromOption);
+              }
               // Reset unit when product changes
               setUnitId('');
               setUnit('');

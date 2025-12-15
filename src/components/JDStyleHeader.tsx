@@ -51,6 +51,7 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
   
   // Category menu state
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
+  const [isDesktop, setIsDesktop] = useState<boolean>(true);
   const [categoryHierarchy, setCategoryHierarchy] = useState<any>(null);
   const [categoryGroups, setCategoryGroups] = useState<any[]>([]);
   const [loadingCategory, setLoadingCategory] = useState(true);
@@ -304,6 +305,24 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
     
     checkCameraSupport();
   }, []);
+
+  // Detect desktop viewport (used for future behaviors)
+  useEffect(() => {
+    const updateViewport = () => {
+      if (typeof window === "undefined") return;
+      setIsDesktop(window.innerWidth >= 1024); // lg breakpoint
+    };
+    updateViewport();
+    window.addEventListener("resize", updateViewport);
+    return () => window.removeEventListener("resize", updateViewport);
+  }, []);
+
+  // Close category menu on mobile resize; keep user-driven state on desktop
+  useEffect(() => {
+    if (!isDesktop) {
+      setShowCategoryMenu(false);
+    }
+  }, [isDesktop]);
 
   // Fetch category data
   useEffect(() => {
@@ -758,7 +777,7 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
       </div>
 
       {/* Sub Header - Danh mục sản phẩm - Giống sieuthihaiminh.vn */}
-      <div className="w-full bg-slate-800 border-b border-slate-700">
+      <div className="w-full border-b" style={{ backgroundColor: '#236E84' }}>
         <div className="w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12">
           <div className="flex items-center">
             {/* Nút Danh mục sản phẩm - Style giống sieuthihaiminh.vn */}
@@ -778,7 +797,10 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
 
               {/* Dropdown Menu - Style giống sieuthihaiminh.vn */}
               {showCategoryMenu && (
-                <div className="absolute top-full left-0 mt-0 z-50 bg-white rounded-b-lg shadow-2xl border border-gray-200 overflow-hidden" style={{ minWidth: '800px', maxWidth: '1200px', maxHeight: '600px' }}>
+                <div
+                  className="absolute top-full left-0 mt-0 z-50 bg-white rounded-b-lg shadow-2xl border border-gray-200 overflow-hidden"
+                  style={{ maxHeight: '600px' }}
+                >
                   <CategoryMenu
                     categoryHierarchy={categoryHierarchy}
                     categoryGroups={categoryGroups}

@@ -80,9 +80,9 @@ interface JDStyleCategorySidebarProps {
 const getSubcategories = (categoryId: string, categoryHierarchy: any) => {
   if (!categoryHierarchy?.byLevel?.["2"]) return [];
   
+  // Giữ nguyên thứ tự từ API (đã sắp xếp theo CSV)
   return categoryHierarchy.byLevel["2"]
-    .filter((item: any) => item._crdfd_nhomsanphamcha_value === categoryId)
-    .sort((a: any, b: any) => (b.productCount || 0) - (a.productCount || 0));
+    .filter((item: any) => item._crdfd_nhomsanphamcha_value === categoryId);
 };
 
 
@@ -515,13 +515,7 @@ const JDStyleCategorySidebar: React.FC<JDStyleCategorySidebarProps> = ({
                     totalProducts
                   };
                 })
-                .sort((a, b) => {
-                  // Sắp xếp theo tổng số sản phẩm giảm dần, sau đó theo số subcategory
-                  if (b.totalProducts !== a.totalProducts) {
-                    return b.totalProducts - a.totalProducts;
-                  }
-                  return b.totalSubcategories - a.totalSubcategories;
-                })
+                // Giữ nguyên thứ tự từ API (đã sắp xếp theo CSV), chỉ lấy top 10
                 .slice(0, 10)
                 .map((group, idx) => (
                 <div

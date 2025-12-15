@@ -16,6 +16,8 @@ export interface Product {
   crdfd_fullname?: string;
   crdfd_masanpham?: string;
   crdfd_unitname?: string;
+  crdfd_gtgt?: number;
+  crdfd_gtgt_option?: number;
 }
 
 export interface Unit {
@@ -28,6 +30,8 @@ export interface SaleOrder {
   crdfd_name: string;
   crdfd_so_code?: string;
   crdfd_so_auto?: string;
+  cr1bb_vattext?: string;
+  crdfd_vat?: number;
 }
 
 export interface Warehouse {

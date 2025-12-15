@@ -54,7 +54,7 @@ export default async function handler(
     // Filter: Active data = Active (0 = false = Active)
     filter += ` and crdfd_activedata eq false`;
 
-    const columns = "crdfd_sale_orderid,crdfd_name,crdfd_so_code,crdfd_so_auto";
+    const columns = "crdfd_sale_orderid,crdfd_name,crdfd_so_code,crdfd_so_auto,cr1bb_vattext,cr1bb_vattext";
     // Sort by Created On (createdon) descending as per Power BI logic
     const query = `$select=${columns}&$filter=${encodeURIComponent(
       filter
@@ -78,6 +78,7 @@ export default async function handler(
         crdfd_name: item.crdfd_name || "",
         crdfd_so_code: item.crdfd_so_code || "",
         crdfd_so_auto: item.crdfd_so_auto || "",
+        cr1bb_vattext: item.cr1bb_vattext || "",
       };
     });
 

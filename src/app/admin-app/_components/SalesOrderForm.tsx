@@ -50,6 +50,20 @@ export default function SalesOrderForm() {
   const [note, setNote] = useState('');
   const [productList, setProductList] = useState<ProductItem[]>([]);
 
+  // Helper to derive VAT text from SO record
+  const getVatLabelText = (so: any) => {
+    if (!so) return '';
+    const vatTextFromCrm = (so.cr1bb_vattext || '').trim();
+    if (vatTextFromCrm) return vatTextFromCrm;
+    if (so.crdfd_vat === 191920000) return 'Có VAT';
+    if (so.crdfd_vat === 191920001) return 'Không VAT';
+    return '';
+  };
+
+  const selectedSo = saleOrders.find((so) => so.crdfd_sale_orderid === soId);
+  const selectedVatText = getVatLabelText(selectedSo);
+  const soLabelText = selectedVatText ? `Sales Order (SO) - ${selectedVatText}` : 'Sales Order (SO)';
+
   const handleAddProduct = () => {
     if (!product || quantity <= 0) return;
 
@@ -171,13 +185,19 @@ export default function SalesOrderForm() {
             </div>
 
             <div className="admin-app-field-group admin-app-field-group-large">
-              <label className="admin-app-label">Sales Order (SO)</label>
+              <label className="admin-app-label">{soLabelText}</label>
               <Dropdown
-                options={saleOrders.map((so) => ({
-                  value: so.crdfd_sale_orderid,
-                  label: so.crdfd_name || so.crdfd_so_code || so.crdfd_so_auto || 'SO không tên',
-                  ...so,
-                }))}
+                options={saleOrders.map((so) => {
+                  const baseLabel = so.crdfd_name || so.crdfd_so_code || so.crdfd_so_auto || 'SO không tên';
+                  const vatLabelText = getVatLabelText(so) || 'Không VAT';
+                  const label = `${baseLabel} - ${vatLabelText}`;
+                  return {
+                    value: so.crdfd_sale_orderid,
+                    label,
+                    vatLabelText,
+                    ...so,
+                  };
+                })}
                 value={soId}
                 onChange={(value, option) => {
                   setSoId(value);

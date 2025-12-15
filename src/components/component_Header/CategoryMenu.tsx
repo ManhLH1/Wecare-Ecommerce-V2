@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   FaBoxOpen,
   FaFlask,
@@ -36,16 +36,48 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
     new Set()
   );
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [showRightPanel, setShowRightPanel] = useState<boolean>(false);
+  const hidePanelTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Auto-select first category when data loads
-  useEffect(() => {
-    if (categoryGroups && categoryGroups.length > 0 && !selectedMainCategory) {
-      const sortedCategories = categoryGroups
-        .slice()
-        .sort((a, b) => (b.productCount || 0) - (a.productCount || 0));
-      setSelectedMainCategory(sortedCategories[0]);
+  // Filter categories: only keep ones that have products and subcategories with products
+  const findCategoryNode = useCallback(
+    (categoryId: string, nodes: any[]): any | null => {
+      for (const node of nodes) {
+        if (node.crdfd_productgroupid === categoryId) return node;
+        if (node.children && node.children.length > 0) {
+          const found = findCategoryNode(categoryId, node.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    },
+    []
+  );
+
+  const filteredCategories = useMemo(() => {
+    if (!categoryHierarchy?.hierarchy) return categoryGroups || [];
+    const roots: any[] = [];
+    for (const cat of categoryGroups || []) {
+      const node = findCategoryNode(cat.crdfd_productgroupid, categoryHierarchy.hierarchy);
+      if (!node) continue;
+      const lv2WithProducts = (node.children || []).filter(
+        (lv2: any) =>
+          (lv2.productCount || 0) > 0 ||
+          (lv2.children || []).some((lv3: any) => (lv3.productCount || 0) > 0)
+      );
+      if ((cat.productCount || 0) > 0 && lv2WithProducts.length > 0) {
+        roots.push(cat);
+      }
     }
-  }, [categoryGroups, selectedMainCategory]);
+    return roots;
+  }, [categoryGroups, categoryHierarchy, findCategoryNode]);
+
+  // Auto-select first category when data loads (giữ nguyên thứ tự từ API - đã sắp xếp theo CSV)
+  useEffect(() => {
+    if (filteredCategories && filteredCategories.length > 0 && !selectedMainCategory) {
+      setSelectedMainCategory(filteredCategories[0]);
+    }
+  }, [filteredCategories, selectedMainCategory]);
 
   // Scroll to specific category section
   const scrollToCategory = useCallback((categoryId: string) => {
@@ -160,6 +192,26 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
       }
     };
   }, []);
+  
+  // Clear hide timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hidePanelTimeoutRef.current) clearTimeout(hidePanelTimeoutRef.current);
+    };
+  }, []);
+
+  // Auto-close dropdown on scroll (desktop) to mimic sieuthihaiminh.vn panel
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (isMobile || !isOpen) return;
+
+    const handleScrollClose = () => {
+      onClose?.();
+    };
+
+    window.addEventListener("scroll", handleScrollClose, { passive: true });
+    return () => window.removeEventListener("scroll", handleScrollClose);
+  }, [isMobile, isOpen, onClose]);
 
   // Hàm icon cho từng nhóm
   const getIcon = (groupName: string) => {
@@ -181,37 +233,95 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
     }
   };
 
-  // Lấy subcategories cho category được chọn
+  // Lấy subcategories (LV2) cho category được chọn từ hierarchy, lọc sản phẩm > 0
   const getSubCategories = (categoryId: string) => {
-    if (!categoryHierarchy?.byLevel?.["2"]) return [];
-    return categoryHierarchy.byLevel["2"]
-      .filter((item: any) => item._crdfd_nhomsanphamcha_value === categoryId)
-      .sort((a: any, b: any) => (b.productCount || 0) - (a.productCount || 0));
+    if (!categoryHierarchy?.hierarchy) return [];
+
+    const findCategory = (categories: any[]): any => {
+      for (const cat of categories) {
+        if (cat.crdfd_productgroupid === categoryId) return cat;
+        if (cat.children && cat.children.length > 0) {
+          const found = findCategory(cat.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const category = findCategory(categoryHierarchy.hierarchy);
+    const children = category?.children || [];
+    return children
+      .filter(
+        (lv2: any) =>
+          (lv2.productCount || 0) > 0 ||
+          (lv2.children || []).some((lv3: any) => (lv3.productCount || 0) > 0)
+      )
+      .map((lv2: any) => ({
+        ...lv2,
+        children: (lv2.children || []).filter((lv3: any) => (lv3.productCount || 0) > 0),
+      }));
   };
 
-  // Lấy tất cả subcategories theo từng nhóm chính
+  // Lấy tất cả subcategories (LV2 và LV3) theo từng nhóm chính
   const getAllSubCategoriesGrouped = () => {
-    if (!categoryHierarchy?.byLevel?.["2"]) return [];
-
-    const sortedCategories = categoryGroups
-      .slice()
-      .sort((a, b) => (b.productCount || 0) - (a.productCount || 0));
-
-    return sortedCategories
-      .map((category) => ({
-        mainCategory: category,
-        subCategories: getSubCategories(category.crdfd_productgroupid),
-      }))
-      .filter((group) => group.subCategories.length > 0);
+    // Ưu tiên sử dụng hierarchy nếu có (hỗ trợ 3 level)
+    if (categoryHierarchy?.hierarchy) {
+      return filteredCategories
+        .map((category) => {
+          const categoryInHierarchy = categoryHierarchy.hierarchy.find(
+            (cat: any) => cat.crdfd_productgroupid === category.crdfd_productgroupid
+          );
+          
+          return {
+            mainCategory: category,
+            subCategories: getSubCategories(category.crdfd_productgroupid),
+          };
+        })
+        .filter((group) => group.subCategories.length > 0);
+    }
+    
+    // Fallback: sử dụng byLevel (chỉ hỗ trợ 2 level)
+    if (categoryHierarchy?.byLevel?.["2"]) {
+      return filteredCategories
+        .map((category) => ({
+          mainCategory: category,
+          subCategories: getSubCategories(category.crdfd_productgroupid),
+        }))
+        .filter((group) => group.subCategories.length > 0);
+    }
+    
+    return [];
   };
 
-  // Tính tổng số lượng sản phẩm từ tất cả danh mục con
+  // Tính tổng số lượng sản phẩm từ tất cả danh mục con (LV2 và LV3)
   const getTotalProductCountFromSubCategories = () => {
-    if (!categoryHierarchy?.byLevel?.["2"]) return 0;
+    if (!categoryHierarchy) return 0;
     
-    return categoryHierarchy.byLevel["2"].reduce((total: number, subCategory: any) => {
-      return total + (subCategory.productCount || 0);
-    }, 0);
+    // Sử dụng hierarchy nếu có
+    if (categoryHierarchy.hierarchy) {
+      let total = 0;
+      const countProducts = (categories: any[]) => {
+        categories.forEach((cat: any) => {
+          if (cat.level && cat.level > 1) {
+            total += cat.productCount || 0;
+          }
+          if (cat.children && cat.children.length > 0) {
+            countProducts(cat.children);
+          }
+        });
+      };
+      countProducts(categoryHierarchy.hierarchy);
+      return total;
+    }
+    
+    // Fallback: sử dụng byLevel
+    if (categoryHierarchy.byLevel?.["2"]) {
+      return categoryHierarchy.byLevel["2"].reduce((total: number, subCategory: any) => {
+        return total + (subCategory.productCount || 0);
+      }, 0);
+    }
+    
+    return 0;
   };
 
   // Mobile version - moved after all hooks
@@ -232,6 +342,7 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
   const handleCategoryClick = (category: any) => {
     // console.log('Clicking category:', category.crdfd_productname, category.crdfd_productgroupid);
     setSelectedMainCategory(category);
+    setShowRightPanel(true);
 
     // Add a small delay to ensure state update
     setTimeout(() => {
@@ -252,6 +363,36 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
     });
   };
 
+  const handleCategoryHover = (category: any) => {
+    if (hidePanelTimeoutRef.current) {
+      clearTimeout(hidePanelTimeoutRef.current);
+    }
+    setShowRightPanel(true);
+    setSelectedMainCategory(category);
+  };
+
+  const handleMouseLeavePanel = () => {
+    if (hidePanelTimeoutRef.current) {
+      clearTimeout(hidePanelTimeoutRef.current);
+    }
+    hidePanelTimeoutRef.current = setTimeout(() => {
+      setShowRightPanel(false);
+    }, 120);
+  };
+
+  // Giữ nguyên thứ tự từ API (đã sắp xếp theo CSV) và đã lọc
+  const sortedCategories = filteredCategories;
+
+  // Chỉ hiển thị danh mục đang chọn để tránh scroll dài
+  const allSubCategoriesGrouped = useMemo(() => {
+    if (!selectedMainCategory) return [];
+    const group = getAllSubCategoriesGrouped().find(
+      (g) => g.mainCategory.crdfd_productgroupid === selectedMainCategory.crdfd_productgroupid
+    );
+    return group ? [group] : [];
+  }, [selectedMainCategory, getAllSubCategoriesGrouped]);
+  const totalProductCountFromSubCategories = getTotalProductCountFromSubCategories();
+
   if (loadingCategory) {
     return (
       <div className="w-[800px] h-[400px] bg-white rounded-lg shadow-xl border flex items-center justify-center">
@@ -260,30 +401,27 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
     );
   }
 
-  const sortedCategories = categoryGroups
-    .slice()
-    .sort((a, b) => (b.productCount || 0) - (a.productCount || 0));
-
-  const allSubCategoriesGrouped = getAllSubCategoriesGrouped();
-  const totalProductCountFromSubCategories = getTotalProductCountFromSubCategories();
+  const collapsedWidth = 280;
+  const expandedWidth = 1100;
 
   return (
     <div
-      className="w-[calc(100vw-2rem)] min-w-[800px] max-w-[1200px] bg-white rounded-b-lg overflow-hidden"
+      className="bg-white rounded-b-lg overflow-hidden transition-all duration-200"
       style={{
         scrollbarWidth: "none",
         msOverflowStyle: "none",
         left: "clamp(0vw, 0rem, 0px)",
+        width: showRightPanel ? `${expandedWidth}px` : `${collapsedWidth}px`,
+        minWidth: showRightPanel ? `${expandedWidth}px` : `${collapsedWidth}px`,
+        maxWidth: showRightPanel ? `${expandedWidth}px` : `${collapsedWidth}px`,
       }}
+      onMouseLeave={handleMouseLeavePanel}
     >
-      <div className="flex h-[600px]">
+      <div className="flex">
         {/* Left Panel - Main Categories - Style giống sieuthihaiminh.vn */}
-        <div className="w-[280px] bg-gray-50 border-r border-gray-200 overflow-y-auto">
-          <div className="p-3">
-            <h3 className="text-sm font-bold text-gray-900 px-3 py-3 border-b-2 border-gray-300 mb-2">
-              Danh mục sản phẩm
-            </h3>
-            <ul className="mt-1">
+        <div className="w-[280px] bg-gray-50 border-r border-gray-200">
+          <div>
+            <ul className="mt-1 p-2">
               {sortedCategories.map((group, idx) => (
                 <li key={group.crdfd_productgroupid || idx} className="mb-0.5">
                   <button
@@ -294,6 +432,7 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
                         : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                     }`}
                     onClick={() => handleCategoryClick(group)}
+                    onMouseEnter={() => handleCategoryHover(group)}
                   >
                     <span className={`flex items-center justify-center w-7 h-7 rounded-md mr-3 transition-colors ${
                       selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
@@ -333,10 +472,16 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
           </div>
         </div>
 
-        {/* Right Panel - Subcategories - Style giống sieuthihaiminh.vn */}
-      <div ref={rightPanelRef} className="flex-1 bg-white overflow-y-auto max-w-[calc(100%-280px)]">
+        {/* Right Panel - Subcategories - Chỉ hiện khi hover */}
+        {showRightPanel && (
+          <div
+            ref={rightPanelRef}
+            className="flex-1 bg-white max-w-[calc(100%-280px)]"
+            onMouseEnter={() => setShowRightPanel(true)}
+            onMouseLeave={handleMouseLeavePanel}
+          >
           {allSubCategoriesGrouped.length > 0 ? (
-            <div className="p-5 max-w-full">
+            <div className="p-6 max-w-full">
               {allSubCategoriesGrouped.map(
           ({ mainCategory, subCategories }) => (
             <div
@@ -346,133 +491,42 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
                 categoryRefs.current[mainCategory.crdfd_productgroupid] =
             el;
               }}
-              className="mb-10"
+              className="mb-6"
             >
-              {/* Category Header - Style giống sieuthihaiminh.vn */}
-              <div
-                className={`flex items-center mb-5 pb-3 border-b-2 transition-all duration-200 ${
-            selectedMainCategory?.crdfd_productgroupid ===
-            mainCategory.crdfd_productgroupid
-              ? "border-amber-500 bg-amber-50 rounded-lg p-4 -m-4 mb-2"
-              : "border-gray-200"
-                }`}
-              >
-                <span className={`flex items-center justify-center w-10 h-10 rounded-lg mr-3 flex-shrink-0 ${
-                  selectedMainCategory?.crdfd_productgroupid === mainCategory.crdfd_productgroupid
-                    ? "bg-amber-100"
-                    : "bg-gray-100"
-                }`}>
-            <span className={`text-base ${
-              selectedMainCategory?.crdfd_productgroupid === mainCategory.crdfd_productgroupid
-                ? "text-amber-600"
-                : "text-gray-600"
-            }`}>
-              {getIcon(mainCategory.crdfd_productname)}
-            </span>
-                </span>
-                <h3
-            className={`text-lg font-bold transition-colors truncate ${
-              selectedMainCategory?.crdfd_productgroupid ===
-              mainCategory.crdfd_productgroupid
-                ? "text-amber-700"
-                : "text-gray-900"
-            }`}
-                >
-            {mainCategory.crdfd_productname}
-                </h3>
-                <span className={`ml-auto text-sm flex-shrink-0 ${
-                  selectedMainCategory?.crdfd_productgroupid === mainCategory.crdfd_productgroupid
-                    ? "text-amber-600"
-                    : "text-gray-500"
-                }`}>
-            {subCategories.length} danh mục con
-                </span>
-              </div>
+              {/* Subcategories - LV2 và LV3 - Hiển thị theo dạng columns như hình */}
+              <div className="grid grid-cols-4 gap-8">
+                {subCategories.map((lv2Item: any) => {
+                  const lv3Items = lv2Item.children || [];
+                  
+                  return (
+                    <div key={lv2Item.crdfd_productgroupid} className="flex flex-col">
+                      {/* LV2 Header - Bold text, clickable */}
+                      <button
+                        onClick={() => onCategorySelect(lv2Item)}
+                        className="text-left mb-2 group"
+                      >
+                        <h4 className="text-sm font-bold text-gray-900 group-hover:text-amber-600 transition-colors leading-tight">
+                          {lv2Item.crdfd_productname}
+                        </h4>
+                      </button>
 
-              {/* Subcategories Grid - Style giống sieuthihaiminh.vn */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 max-w-full">
-                {(() => {
-            const maxItemsToShow = 12;
-            const isExpanded = expandedCategories.has(
-              mainCategory.crdfd_productgroupid
-            );
-            const itemsToShow = isExpanded
-              ? subCategories
-              : subCategories.slice(0, maxItemsToShow);
-            const hasMore = subCategories.length > maxItemsToShow;
-
-            return (
-              <>
-                {itemsToShow.map((item: any) => (
-                  <button
-              key={item.crdfd_productgroupid}
-              onClick={() => onCategorySelect(item)}
-              className="flex flex-col items-center p-3 rounded-lg hover:bg-amber-50 transition-all duration-200 text-center group w-full max-w-[180px] mx-auto border border-transparent hover:border-amber-200"
-                  >
-              {/* Product Image - Style giống sieuthihaiminh.vn */}
-              <div className="w-20 h-20 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg mb-3 flex items-center justify-center group-hover:from-amber-50 group-hover:to-amber-100 transition-all overflow-hidden flex-shrink-0 shadow-sm group-hover:shadow-md">
-                <span className="text-gray-500 group-hover:text-amber-600 text-xl">
-                  {item.crdfd_image_url ? (
-                    <img
-                src={item.crdfd_image_url}
-                alt={item.crdfd_productname}
-                className="w-full h-full object-cover rounded-lg transition-transform duration-300 ease-in-out group-hover:scale-110"
-                    />
-                  ) : (
-                    getIcon(item.crdfd_productname)
-                  )}
-                </span>
-              </div>
-
-              {/* Product Name - Style giống sieuthihaiminh.vn */}
-              <h4 className="text-sm font-semibold text-gray-800 group-hover:text-amber-700 leading-tight line-clamp-2 mb-1 break-words">
-                {item.crdfd_productname}
-              </h4>
-
-              {/* Product Count */}
-              {item.productCount !== undefined &&
-                item.productCount > 0 && (
-                  <p className="text-xs text-gray-500 group-hover:text-amber-600">
-                    {item.productCount} sản phẩm
-                  </p>
-                )}
-                  </button>
-                ))}
-
-                {/* View All / Show Less Button - Style giống sieuthihaiminh.vn */}
-                {hasMore && (
-                  <button
-              onClick={() =>
-                toggleExpandCategory(
-                  mainCategory.crdfd_productgroupid
-                )
-              }
-              className="flex flex-col items-center justify-center p-3 rounded-lg border-2 border-dashed border-gray-300 hover:border-amber-400 hover:bg-amber-50 transition-all duration-200 text-center group w-full max-w-[180px] mx-auto"
-                  >
-              <div className="w-20 h-20 rounded-lg mb-3 flex items-center justify-center bg-gray-50 group-hover:bg-amber-100 transition-all flex-shrink-0 shadow-sm group-hover:shadow-md">
-                <span className="text-gray-400 group-hover:text-amber-600 text-xl">
-                  <FaChevronRight
-                    className={`transform transition-transform duration-200 ${
-                isExpanded ? "rotate-270" : "rotate-90"
-                    }`}
-                  />
-                </span>
-              </div>
-              <h4 className="text-sm font-semibold text-gray-700 group-hover:text-amber-700 leading-tight">
-                {isExpanded ? "Thu gọn" : "Xem tất cả"}
-              </h4>
-              <p className="text-xs text-gray-500 group-hover:text-amber-600">
-                {isExpanded
-                  ? "Ẩn bớt"
-                  : `+${
-                subCategories.length - maxItemsToShow
-                    } danh mục`}
-              </p>
-                  </button>
-                )}
-              </>
-            );
-                })()}
+                      {/* LV3 Items - Simple text links, always visible */}
+                      {lv3Items.length > 0 ? (
+                        <div className="flex flex-col space-y-0.5">
+                          {lv3Items.map((lv3Item: any) => (
+                            <button
+                              key={lv3Item.crdfd_productgroupid}
+                              onClick={() => onCategorySelect(lv3Item)}
+                              className="text-left text-sm text-gray-600 hover:text-amber-600 transition-colors py-1 leading-relaxed"
+                            >
+                              {lv3Item.crdfd_productname}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )
@@ -487,17 +541,28 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* Footer - Style giống sieuthihaiminh.vn */}
+      {showRightPanel && (
       <div className="bg-gray-50 border-t-2 border-gray-200 px-5 py-3">
         <div className="flex items-center justify-between">
           <span className="text-xs text-gray-600 font-medium">
             Tổng cộng <strong className="text-gray-900">{sortedCategories.length}</strong> danh mục chính •{" "}
-            <strong className="text-gray-900">{allSubCategoriesGrouped.reduce(
-              (total, group) => total + group.subCategories.length,
-              0
-            )}</strong>{" "}
+            <strong className="text-gray-900">{(() => {
+              let lv2Count = 0;
+              let lv3Count = 0;
+              allSubCategoriesGrouped.forEach(group => {
+                group.subCategories.forEach((lv2: any) => {
+                  lv2Count++;
+                  if (lv2.children) {
+                    lv3Count += lv2.children.length;
+                  }
+                });
+              });
+              return `${lv2Count} LV2${lv3Count > 0 ? ` • ${lv3Count} LV3` : ''}`;
+            })()}</strong>{" "}
             danh mục con • <strong className="text-gray-900">{totalProductCountFromSubCategories.toLocaleString()}</strong> sản phẩm
           </span>
           <button
@@ -513,6 +578,7 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
           </button>
         </div>
       </div>
+      )}
     </div>
   );
 };

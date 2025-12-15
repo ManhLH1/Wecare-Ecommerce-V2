@@ -33,7 +33,6 @@ import ShortcutSection from "@/components/ShortcutSection";
 import HeroSection from "@/components/HeroSection";
 import UnifiedHeaderHero from "@/components/UnifiedHeaderHero";
 import JDStyleHeader from "@/components/JDStyleHeader";
-import JDStyleCategorySidebar from "@/components/JDStyleCategorySidebar";
 import JDStyleMainContent from "@/components/JDStyleMainContent";
 import axios from "axios";
 import { fetchWithCache } from "@/utils/cache";
@@ -1009,18 +1008,7 @@ const HomeContent = () => {
         {/* Main Layout */}
         <div className="max-w-7xl mx-auto px-0 py-6" style={{ paddingTop: '150px' }}>
           <div className="flex flex-col lg:flex-row gap-6">
-            {/* Category Sidebar - Hidden on mobile */}
-            <div className="hidden lg:block">
-              <JDStyleCategorySidebar
-                categoryGroups={categoryGroups}
-                categoryHierarchy={categoryHierarchy}
-                loadingCategory={loadingCategory}
-                onCategorySelect={handleCategorySelect}
-                getIcon={getIcon}
-              />
-            </div>
-
-            {/* Main Content */}
+            {/* Main Content - full width */}
             <JDStyleMainContent
               categoryGroups={categoryGroups}
               onCategorySelect={handleCategorySelect}

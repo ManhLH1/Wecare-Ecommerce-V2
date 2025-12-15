@@ -141,6 +141,125 @@ interface ProductGroup {
   productCount?: number;
 }
 
+// ======= Category Order Mapping from CSV =======
+// Thứ tự danh mục cấp 1 theo CSV
+const LEVEL1_CATEGORY_ORDER: string[] = [
+  "Công tác, Ổ cắm",
+  "Dây, cáp điện",
+  "Điện gia dụng",
+  "Năng lượng tái tạo",
+  "Ống luồn và phụ kiện",
+  "Thiết bị chiếu sáng",
+  "Thiết bị đóng cắt",
+  "Thiết bị điện khác"
+];
+
+// Thứ tự danh mục cấp 2 theo CSV, nhóm theo parent
+const LEVEL2_CATEGORY_ORDER: { [parentName: string]: string[] } = {
+  "Công tác, Ổ cắm": [
+    "Bảng điện, phụ kiện",
+    "Công tắc",
+    "Công tắc, ổ cắm",
+    "Ổ cắm",
+    "Phích cắm"
+  ],
+  "Dây, cáp điện": [
+    "Dây, cáp điện"
+  ],
+  "Điện gia dụng": [
+    "Điện gia dụng",
+    "Linh kiện thay thế quạt"
+  ],
+  "Năng lượng tái tạo": [],
+  "Ống luồn và phụ kiện": [
+    "Hộp nối dây",
+    "Ống luồn và phụ kiện",
+    "Phụ kiện ống luồn"
+  ],
+  "Thiết bị chiếu sáng": [
+    "Đèn chiếu sáng",
+    "Đèn LED",
+    "Đuôi đèn",
+    "Thiết bị chiếu sáng"
+  ],
+  "Thiết bị đóng cắt": [
+    "Bộ chuyển nguồn",
+    "Thiết bị đóng cắt"
+  ],
+  "Thiết bị điện khác": [
+    "Thiết bị điện khác"
+  ]
+};
+
+// Hàm normalize tên để so sánh (loại bỏ dấu, lowercase, trim)
+const normalizeName = (name: string): string => {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "d")
+    .trim();
+};
+
+// Hàm tìm index trong order array (so sánh linh hoạt)
+const getCategoryOrder = (categoryName: string, orderArray: string[]): number => {
+  const normalizedName = normalizeName(categoryName);
+  
+  for (let i = 0; i < orderArray.length; i++) {
+    const normalizedOrderName = normalizeName(orderArray[i]);
+    // So sánh chính xác hoặc một phần
+    if (normalizedName === normalizedOrderName || 
+        normalizedName.includes(normalizedOrderName) ||
+        normalizedOrderName.includes(normalizedName)) {
+      return i;
+    }
+  }
+  
+  // Nếu không tìm thấy, trả về số lớn để đặt ở cuối
+  return 9999;
+};
+
+// Hàm sắp xếp danh mục cấp 1
+const sortLevel1Categories = (categories: ProductGroup[]): ProductGroup[] => {
+  return categories.slice().sort((a, b) => {
+    const orderA = getCategoryOrder(a.crdfd_productname, LEVEL1_CATEGORY_ORDER);
+    const orderB = getCategoryOrder(b.crdfd_productname, LEVEL1_CATEGORY_ORDER);
+    
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+    
+    // Nếu cùng thứ tự hoặc không tìm thấy, sắp xếp theo tên
+    return a.crdfd_productname.localeCompare(b.crdfd_productname, 'vi');
+  });
+};
+
+// Hàm sắp xếp danh mục cấp 2 theo parent
+const sortLevel2Categories = (categories: ProductGroup[], parentName: string): ProductGroup[] => {
+  const orderArray = LEVEL2_CATEGORY_ORDER[parentName] || [];
+  
+  return categories.slice().sort((a, b) => {
+    const orderA = getCategoryOrder(a.crdfd_productname, orderArray);
+    const orderB = getCategoryOrder(b.crdfd_productname, orderArray);
+    
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+    
+    // Nếu cùng thứ tự hoặc không tìm thấy, sắp xếp theo tên
+    return a.crdfd_productname.localeCompare(b.crdfd_productname, 'vi');
+  });
+};
+
+// Hàm sắp xếp danh mục cấp 3 theo parent (level 2)
+const sortLevel3Categories = (categories: ProductGroup[], parentName: string): ProductGroup[] => {
+  // Level 3 có thể không có trong CSV order, sắp xếp theo tên
+  return categories.slice().sort((a, b) => {
+    return a.crdfd_productname.localeCompare(b.crdfd_productname, 'vi');
+  });
+};
+
 // Build hierarchical structure
 const buildHierarchy = (productGroups: ProductGroup[]): ProductGroup[] => {
   const groupMap = new Map<string, ProductGroup>();
@@ -197,7 +316,31 @@ const buildHierarchy = (productGroups: ProductGroup[]): ProductGroup[] => {
   // Calculate totals for all root nodes
   rootGroups.forEach(calculateTotals);
 
-  return rootGroups;
+  // Sắp xếp root groups (level 1) theo thứ tự CSV
+  const sortedRootGroups = sortLevel1Categories(rootGroups);
+
+  // Sắp xếp children (level 2 và level 3) của mỗi root group theo thứ tự CSV
+  const sortChildren = (node: ProductGroup) => {
+    if (node.children && node.children.length > 0) {
+      // Xác định level của node để sắp xếp đúng
+      const nodeLevel = node.level || 1;
+      
+      if (nodeLevel === 1) {
+        // Sắp xếp level 2 theo CSV order
+        node.children = sortLevel2Categories(node.children, node.crdfd_productname);
+      } else if (nodeLevel === 2) {
+        // Sắp xếp level 3 theo tên (hoặc có thể thêm CSV order sau)
+        node.children = sortLevel3Categories(node.children, node.crdfd_productname);
+      }
+      
+      // Đệ quy sắp xếp children của children (level 3+)
+      node.children.forEach(sortChildren);
+    }
+  };
+
+  sortedRootGroups.forEach(sortChildren);
+
+  return sortedRootGroups;
 };
 
 // Get flat array of groups with their levels
@@ -273,8 +416,22 @@ const getProductGroupHierarchyLeftpanel = async (req: NextApiRequest, res: NextA
     // Get flat list with levels
     const flatHierarchy = getFlatHierarchy(hierarchy);
     
-    // Group by levels
+    // Group by levels - giữ nguyên thứ tự từ flatHierarchy (đã được sắp xếp)
     const groupsByLevel: {[key: number]: ProductGroup[]} = {};
+    
+    // Tạo map từ ID sang parent name để sắp xếp level 2
+    const idToParentNameMap = new Map<string, string>();
+    hierarchy.forEach(rootGroup => {
+      const mapChildren = (node: ProductGroup, parentName: string) => {
+        if (node.children) {
+          node.children.forEach(child => {
+            idToParentNameMap.set(child.crdfd_productgroupid, parentName);
+            mapChildren(child, parentName);
+          });
+        }
+      };
+      mapChildren(rootGroup, rootGroup.crdfd_productname);
+    });
     
     flatHierarchy.forEach(group => {
       const level = group.level || 1;
@@ -283,6 +440,42 @@ const getProductGroupHierarchyLeftpanel = async (req: NextApiRequest, res: NextA
       }
       groupsByLevel[level].push(group);
     });
+
+    // Sắp xếp lại level 2 theo thứ tự parent và CSV order
+    if (groupsByLevel[2]) {
+      // Nhóm level 2 theo parent name
+      const groupedByParent: { [parentName: string]: ProductGroup[] } = {};
+      groupsByLevel[2].forEach(group => {
+        const parentName = idToParentNameMap.get(group.crdfd_productgroupid) || 'Unknown';
+        if (!groupedByParent[parentName]) {
+          groupedByParent[parentName] = [];
+        }
+        groupedByParent[parentName].push(group);
+      });
+
+      // Sắp xếp lại level 2 theo thứ tự parent (theo level 1 order) và CSV order
+      const sortedLevel2: ProductGroup[] = [];
+      
+      // Duyệt theo thứ tự level 1 (đã được sắp xếp)
+      if (groupsByLevel[1]) {
+        groupsByLevel[1].forEach(parentGroup => {
+          const parentName = parentGroup.crdfd_productname;
+          if (groupedByParent[parentName]) {
+            const sortedChildren = sortLevel2Categories(groupedByParent[parentName], parentName);
+            sortedLevel2.push(...sortedChildren);
+          }
+        });
+      }
+      
+      // Thêm các items không có parent trong order (nếu có)
+      groupsByLevel[2].forEach(group => {
+        if (!sortedLevel2.find(g => g.crdfd_productgroupid === group.crdfd_productgroupid)) {
+          sortedLevel2.push(group);
+        }
+      });
+      
+      groupsByLevel[2] = sortedLevel2;
+    }
     
     // Create the response object
     const result = {
