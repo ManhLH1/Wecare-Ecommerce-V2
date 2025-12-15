@@ -1007,7 +1007,7 @@ const HomeContent = () => {
         />
 
         {/* Main Layout */}
-        <div className="max-w-7xl mx-auto px-0 py-6" style={{ paddingTop: '140px' }}>
+        <div className="max-w-7xl mx-auto px-0 py-6" style={{ paddingTop: '150px' }}>
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Category Sidebar - Hidden on mobile */}
             <div className="hidden lg:block">

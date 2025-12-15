@@ -269,53 +269,63 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
 
   return (
     <div
-      className="w-[calc(100vw-2rem)] min-w-[800px] max-w-[1600px] bg-white rounded-lg overflow-hidden"
+      className="w-[calc(100vw-2rem)] min-w-[800px] max-w-[1200px] bg-white rounded-b-lg overflow-hidden"
       style={{
         scrollbarWidth: "none",
         msOverflowStyle: "none",
         left: "clamp(0vw, 0rem, 0px)",
       }}
     >
-      <div className="flex h-[550px]">
-        {/* Left Panel - Main Categories */}
-        <div className="w-[300px] bg-gray-50 border-r border-gray-200 overflow-y-auto">
-          <div className="p-2">
-            <h3 className="text-sm font-semibold text-gray-800 px-3 py-2 border-b border-gray-200">
+      <div className="flex h-[600px]">
+        {/* Left Panel - Main Categories - Style giống sieuthihaiminh.vn */}
+        <div className="w-[280px] bg-gray-50 border-r border-gray-200 overflow-y-auto">
+          <div className="p-3">
+            <h3 className="text-sm font-bold text-gray-900 px-3 py-3 border-b-2 border-gray-300 mb-2">
               Danh mục sản phẩm
             </h3>
-            <ul className="mt-2">
+            <ul className="mt-1">
               {sortedCategories.map((group, idx) => (
-                <li key={group.crdfd_productgroupid || idx} className="mb-1">
+                <li key={group.crdfd_productgroupid || idx} className="mb-0.5">
                   <button
-                    className={`flex items-center w-full px-3 py-2 text-sm font-medium transition-all duration-200 rounded-md group ${
+                    className={`flex items-center w-full px-3 py-2.5 text-sm font-medium transition-all duration-200 rounded-md group ${
                       selectedMainCategory?.crdfd_productgroupid ===
                       group.crdfd_productgroupid
-                        ? "bg-blue-50 text-[#049DBF] border-l-3 border-[#049DBF]"
-                        : "text-gray-700 hover:bg-gray-100"
+                        ? "bg-amber-50 text-amber-700 border-l-4 border-amber-500 shadow-sm"
+                        : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                     }`}
                     onClick={() => handleCategoryClick(group)}
-                    // onMouseEnter={() => setHoveredCategory(group)}
-                    // onMouseLeave={() => setHoveredCategory(null)}
                   >
-                    <span className="flex items-center justify-center w-6 h-6 rounded-md bg-white mr-3 group-hover:shadow-sm">
-                      <span className="text-[#049DBF] text-sm">
+                    <span className={`flex items-center justify-center w-7 h-7 rounded-md mr-3 transition-colors ${
+                      selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
+                        ? "bg-amber-100"
+                        : "bg-white group-hover:bg-gray-50"
+                    }`}>
+                      <span className={`text-sm ${
+                        selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
+                          ? "text-amber-600"
+                          : "text-gray-600"
+                      }`}>
                         {getIcon(group.crdfd_productname)}
                       </span>
                     </span>
-                    <span className="flex-1 text-left truncate">
+                    <span className="flex-1 text-left truncate font-medium">
                       {group.crdfd_productname}
                     </span>
                     {group.productCount !== undefined &&
                       group.productCount > 0 && (
-                        <span className="text-xs text-gray-400 ml-2">
+                        <span className={`text-xs ml-2 ${
+                          selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
+                            ? "text-amber-600"
+                            : "text-gray-400"
+                        }`}>
                           ({group.productCount})
                         </span>
                       )}
-                    {/* <FaChevronRight className={`w-3 h-3 ml-2 transition-transform duration-200 ${
-                      (hoveredCategory || selectedMainCategory)?.crdfd_productgroupid === group.crdfd_productgroupid
-                        ? 'text-orange-500 transform rotate-90'
+                    <FaChevronRight className={`w-3 h-3 ml-2 transition-transform duration-200 ${
+                      selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
+                        ? 'text-amber-600 transform rotate-90'
                         : 'text-gray-400'
-                    }`} /> */}
+                    }`} />
                   </button>
                 </li>
               ))}
@@ -323,10 +333,10 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
           </div>
         </div>
 
-        {/* Right Panel - Subcategories */}
-      <div ref={rightPanelRef} className="flex-1 bg-white overflow-y-auto max-w-[calc(100%-300px)]">
+        {/* Right Panel - Subcategories - Style giống sieuthihaiminh.vn */}
+      <div ref={rightPanelRef} className="flex-1 bg-white overflow-y-auto max-w-[calc(100%-280px)]">
           {allSubCategoriesGrouped.length > 0 ? (
-            <div className="p-4 max-w-full">
+            <div className="p-5 max-w-full">
               {allSubCategoriesGrouped.map(
           ({ mainCategory, subCategories }) => (
             <div
@@ -336,41 +346,53 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
                 categoryRefs.current[mainCategory.crdfd_productgroupid] =
             el;
               }}
-              className="mb-8"
+              className="mb-10"
             >
-              {/* Category Header */}
+              {/* Category Header - Style giống sieuthihaiminh.vn */}
               <div
-                className={`flex items-center mb-4 pb-3 border-b transition-all duration-200 ${
+                className={`flex items-center mb-5 pb-3 border-b-2 transition-all duration-200 ${
             selectedMainCategory?.crdfd_productgroupid ===
             mainCategory.crdfd_productgroupid
-              ? "border-[#049DBF] bg-blue-50 rounded-lg p-3 -m-3 mb-1"
+              ? "border-amber-500 bg-amber-50 rounded-lg p-4 -m-4 mb-2"
               : "border-gray-200"
                 }`}
               >
-                <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 mr-3 flex-shrink-0">
-            <span className="text-[#049DBF]">
+                <span className={`flex items-center justify-center w-10 h-10 rounded-lg mr-3 flex-shrink-0 ${
+                  selectedMainCategory?.crdfd_productgroupid === mainCategory.crdfd_productgroupid
+                    ? "bg-amber-100"
+                    : "bg-gray-100"
+                }`}>
+            <span className={`text-base ${
+              selectedMainCategory?.crdfd_productgroupid === mainCategory.crdfd_productgroupid
+                ? "text-amber-600"
+                : "text-gray-600"
+            }`}>
               {getIcon(mainCategory.crdfd_productname)}
             </span>
                 </span>
                 <h3
-            className={`text-lg font-semibold transition-colors truncate ${
+            className={`text-lg font-bold transition-colors truncate ${
               selectedMainCategory?.crdfd_productgroupid ===
               mainCategory.crdfd_productgroupid
-                ? "text-[#049DBF]"
-                : "text-gray-800"
+                ? "text-amber-700"
+                : "text-gray-900"
             }`}
                 >
             {mainCategory.crdfd_productname}
                 </h3>
-                <span className="ml-auto text-sm text-gray-500 flex-shrink-0">
+                <span className={`ml-auto text-sm flex-shrink-0 ${
+                  selectedMainCategory?.crdfd_productgroupid === mainCategory.crdfd_productgroupid
+                    ? "text-amber-600"
+                    : "text-gray-500"
+                }`}>
             {subCategories.length} danh mục con
                 </span>
               </div>
 
-              {/* Subcategories Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 max-w-full">
+              {/* Subcategories Grid - Style giống sieuthihaiminh.vn */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 max-w-full">
                 {(() => {
-            const maxItemsToShow = 11;
+            const maxItemsToShow = 12;
             const isExpanded = expandedCategories.has(
               mainCategory.crdfd_productgroupid
             );
@@ -385,16 +407,16 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
                   <button
               key={item.crdfd_productgroupid}
               onClick={() => onCategorySelect(item)}
-              className="flex flex-col items-center p-3 rounded-lg hover:bg-blue-50 transition-all duration-200 text-center group w-full max-w-[200px] mx-auto"
+              className="flex flex-col items-center p-3 rounded-lg hover:bg-amber-50 transition-all duration-200 text-center group w-full max-w-[180px] mx-auto border border-transparent hover:border-amber-200"
                   >
-              {/* Product Image */}
-              <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mb-2 flex items-center justify-center group-hover:from-blue-100 group-hover:to-blue-200 transition-all overflow-hidden flex-shrink-0">
-                <span className="text-gray-400 group-hover:text-[#049DBF] text-lg">
+              {/* Product Image - Style giống sieuthihaiminh.vn */}
+              <div className="w-20 h-20 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg mb-3 flex items-center justify-center group-hover:from-amber-50 group-hover:to-amber-100 transition-all overflow-hidden flex-shrink-0 shadow-sm group-hover:shadow-md">
+                <span className="text-gray-500 group-hover:text-amber-600 text-xl">
                   {item.crdfd_image_url ? (
                     <img
                 src={item.crdfd_image_url}
                 alt={item.crdfd_productname}
-                className="w-full h-full object-cover rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110"
+                className="w-full h-full object-cover rounded-lg transition-transform duration-300 ease-in-out group-hover:scale-110"
                     />
                   ) : (
                     getIcon(item.crdfd_productname)
@@ -402,22 +424,22 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
                 </span>
               </div>
 
-              {/* Product Name */}
-              <h4 className="text-sm font-medium text-gray-700 group-hover:text-[#049DBF] leading-tight line-clamp-2 mb-1 break-words">
+              {/* Product Name - Style giống sieuthihaiminh.vn */}
+              <h4 className="text-sm font-semibold text-gray-800 group-hover:text-amber-700 leading-tight line-clamp-2 mb-1 break-words">
                 {item.crdfd_productname}
               </h4>
 
               {/* Product Count */}
               {item.productCount !== undefined &&
                 item.productCount > 0 && (
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-gray-500 group-hover:text-amber-600">
                     {item.productCount} sản phẩm
                   </p>
                 )}
                   </button>
                 ))}
 
-                {/* View All / Show Less Button */}
+                {/* View All / Show Less Button - Style giống sieuthihaiminh.vn */}
                 {hasMore && (
                   <button
               onClick={() =>
@@ -425,10 +447,10 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
                   mainCategory.crdfd_productgroupid
                 )
               }
-              className="flex flex-col items-center justify-center p-3 rounded-lg border-2 border-dashed border-gray-300 hover:border-[#049DBF] hover:bg-blue-50 transition-all duration-200 text-center group w-full max-w-[200px] mx-auto"
+              className="flex flex-col items-center justify-center p-3 rounded-lg border-2 border-dashed border-gray-300 hover:border-amber-400 hover:bg-amber-50 transition-all duration-200 text-center group w-full max-w-[180px] mx-auto"
                   >
-              <div className="w-16 h-16 rounded-lg mb-2 flex items-center justify-center bg-gray-50 group-hover:bg-blue-100 transition-all flex-shrink-0">
-                <span className="text-gray-400 group-hover:text-[#049DBF] text-lg">
+              <div className="w-20 h-20 rounded-lg mb-3 flex items-center justify-center bg-gray-50 group-hover:bg-amber-100 transition-all flex-shrink-0 shadow-sm group-hover:shadow-md">
+                <span className="text-gray-400 group-hover:text-amber-600 text-xl">
                   <FaChevronRight
                     className={`transform transition-transform duration-200 ${
                 isExpanded ? "rotate-270" : "rotate-90"
@@ -436,15 +458,15 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
                   />
                 </span>
               </div>
-              <h4 className="text-sm font-medium text-gray-600 group-hover:text-[#049DBF] leading-tight">
-                {isExpanded ? "Show Less" : "View All"}
+              <h4 className="text-sm font-semibold text-gray-700 group-hover:text-amber-700 leading-tight">
+                {isExpanded ? "Thu gọn" : "Xem tất cả"}
               </h4>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-500 group-hover:text-amber-600">
                 {isExpanded
-                  ? "Collapse"
+                  ? "Ẩn bớt"
                   : `+${
                 subCategories.length - maxItemsToShow
-                    } more`}
+                    } danh mục`}
               </p>
                   </button>
                 )}
@@ -467,16 +489,16 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="bg-gray-50 border-t border-gray-200 px-4 py-3">
+      {/* Footer - Style giống sieuthihaiminh.vn */}
+      <div className="bg-gray-50 border-t-2 border-gray-200 px-5 py-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-gray-500">
-            Tổng cộng {sortedCategories.length} danh mục chính •{" "}
-            {allSubCategoriesGrouped.reduce(
+          <span className="text-xs text-gray-600 font-medium">
+            Tổng cộng <strong className="text-gray-900">{sortedCategories.length}</strong> danh mục chính •{" "}
+            <strong className="text-gray-900">{allSubCategoriesGrouped.reduce(
               (total, group) => total + group.subCategories.length,
               0
-            )}{" "}
-            danh mục con • {totalProductCountFromSubCategories.toLocaleString()} sản phẩm
+            )}</strong>{" "}
+            danh mục con • <strong className="text-gray-900">{totalProductCountFromSubCategories.toLocaleString()}</strong> sản phẩm
           </span>
           <button
             onClick={() =>
@@ -485,7 +507,7 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
                 crdfd_productname: "Tất cả sản phẩm",
               })
             }
-            className="text-xs text-[#049DBF] hover:text-blue-800 font-medium"
+            className="text-xs text-amber-600 hover:text-amber-700 font-semibold hover:underline transition-all duration-200"
           >
             Xem tất cả sản phẩm →
           </button>
