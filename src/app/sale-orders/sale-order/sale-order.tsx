@@ -420,7 +420,7 @@ const SaleOrder: React.FC<SaleOrderProps> = ({
                   htmlFor="orderSelect"
                   className="block mb-2 text-sm font-medium text-gray-700"
                 >
-                  {isOrderWithVAT ? "Đơn hàng Có VAT" : "Đơn hàng"}:
+                  {isOrderWithVAT ? "Đơn hàng Có VAT" : "Đơn hàng Không VAT"}:
                 </label>
                 {loadingOrders ? (
                   <div className="px-3 py-2 border border-gray-300 rounded-lg">

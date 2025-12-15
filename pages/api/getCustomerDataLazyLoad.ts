@@ -47,7 +47,8 @@ async function fetchWithRetry(url: string, config: any, retries = 2) {
 const fetchCustomerGroupData = async (customerId: string, token: string) => {
   const table = "cr1bb_groupkhs";
   const columns = "_cr1bb_khachhang_value,_cr1bb_nhomkhachhang_value,cr1bb_tenkh,cr1bb_tennhomkh";
-  const filter = `_cr1bb_khachhang_value eq ${customerId}`;
+  // GUID trong OData filter cần có dấu nháy đơn
+  const filter = `_cr1bb_khachhang_value eq '${customerId}'`;
   const query = `$select=${columns}&$filter=${encodeURIComponent(filter)}`;
 
   try {
@@ -84,6 +85,11 @@ const fetchCustomerGroupData = async (customerId: string, token: string) => {
 
 const getCustomerDataLazyLoad = async (req: NextApiRequest, res: NextApiResponse) => {
   try {
+    // Log incoming request để debug
+    console.log('getCustomerDataLazyLoad - Incoming request query:', JSON.stringify(req.query, null, 2));
+    console.log('getCustomerDataLazyLoad - Request method:', req.method);
+    console.log('getCustomerDataLazyLoad - Request URL:', req.url);
+    
     const customerId = req.query.customerId;
     const saleName = req.query.saleName;
     const search = req.query.search;
@@ -91,83 +97,136 @@ const getCustomerDataLazyLoad = async (req: NextApiRequest, res: NextApiResponse
     const pageSize = parseInt(req.query.pageSize as string) || 10;
     const skip = (page - 1) * pageSize;
     
+    console.log('getCustomerDataLazyLoad - Parsed params:', {
+      customerId,
+      saleName,
+      search,
+      page,
+      pageSize
+    });
+    
     // Validate customerId
     if (!customerId) {
+      console.error('getCustomerDataLazyLoad - Missing customerId');
       return res.status(400).json({ error: "Customer ID is required" });
     }
 
     // Ensure customerId is a string
     const customerIdStr = Array.isArray(customerId)
       ? customerId[0]
-      : customerId;
+      : String(customerId || '');
 
-    if (!customerIdStr) {
-      return res.status(400).json({ error: "Invalid Customer ID format" });
+    console.log('getCustomerDataLazyLoad - customerIdStr after processing:', customerIdStr);
+
+    // Kiểm tra nếu customerId là null, undefined, hoặc chuỗi "null"
+    if (!customerIdStr || customerIdStr.trim() === '' || customerIdStr === 'null' || customerIdStr === 'undefined') {
+      console.error('getCustomerDataLazyLoad - Invalid customerIdStr:', customerIdStr);
+      return res.status(400).json({ 
+        error: "Customer ID is required", 
+        message: "Customer ID cannot be null or undefined. Please ensure you are logged in.",
+        received: customerId 
+      });
     }
 
     let allResults: customer[] = [];
 
     const customerTable = "crdfd_customers";
     const debtTable = "cr44a_nhacnos";
+    // Thêm các trường cần thiết cho trường hợp customerIdStr.length <= 12
     const customerColumns =
-      "crdfd_saleonline,crdfd_name,_crdfd_salename_value,crdfd_customerid";
+      "crdfd_saleonline,crdfd_saledirect,crdfd_name,_crdfd_salename_value,crdfd_customerid,cr1bb_sptiemnangaconfirm,cr44a_st,crdfd_phone2,crdfd_address,cr44a_emailnguoinhanhoaon,crdfd_mst,cr1bb_ngunggiaodich,cr44a_makhachhang,crdfd_json_phan_hang_chu_ky_hien_tai,crdfd_json_phan_hang_chu_ky_truoc";
     const debtColumns =
       "cr1bb_hancongnonen,cr1bb_hanmuccongnonen,cr1bb_congnohomnay,cr1bb_congnoquahan,cr1bb_congnochuatoihan,createdon,cr1bb_ngaynhacno,cr1bb_ngaythongbao,cr1bb_tongcongno,cr44a_trangthainhacno,cr1bb_ieukhoanthanhtoan";
     let filter = "statecode eq 0 ";
     
     // Ensure saleName is a string and decode it
-    const saleNameStr = Array.isArray(saleName) ? saleName[0] : saleName;
-    const searchStr = Array.isArray(search) ? search[0] : search;
+    const saleNameStr = Array.isArray(saleName) ? saleName[0] : (saleName ? String(saleName) : undefined);
+    const searchStr = Array.isArray(search) ? search[0] : (search ? String(search) : undefined);
+    
+    console.log('getCustomerDataLazyLoad - saleNameStr (before decode):', saleNameStr);
+    console.log('getCustomerDataLazyLoad - searchStr:', searchStr);
     
     // Decode saleName if it's URL encoded
-    let decodedSaleName = saleNameStr;
+    let decodedSaleName: string | undefined = saleNameStr;
     try {
-      decodedSaleName = saleNameStr ? decodeURIComponent(saleNameStr) : saleNameStr;
+      if (saleNameStr && saleNameStr !== 'undefined' && saleNameStr !== 'null' && saleNameStr.trim() !== '') {
+        decodedSaleName = decodeURIComponent(saleNameStr);
+        console.log('getCustomerDataLazyLoad - decodedSaleName:', decodedSaleName);
+      } else {
+        decodedSaleName = undefined;
+      }
     } catch (e) {
-      // If decoding fails, use original string
-      decodedSaleName = saleNameStr;
+      console.error('getCustomerDataLazyLoad - Error decoding saleName:', e);
+      // If decoding fails, use original string if it exists
+      decodedSaleName = (saleNameStr && saleNameStr !== 'undefined' && saleNameStr !== 'null') ? saleNameStr : undefined;
     }
     
     // Kiểm tra xem customerIdStr có phải là GUID không
     const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerIdStr);
     
     // Nếu có saleName, tìm khách hàng của sale đó
-    if (decodedSaleName && decodedSaleName !== 'undefined') {
-      // Tìm theo tên sale (crdfd_saleonline) HOẶC theo id nhân viên sale (_crdfd_salename_value)
-      // _crdfd_salename_value là GUID, cần so sánh không có dấu nháy
-      const orBySaleOwner = isGuid
-        ? `or _crdfd_salename_value eq ${customerIdStr}`
-        : "";
-      
+    if (decodedSaleName) {
       // Escape single quotes in the sale name
       const escapedSaleName = decodedSaleName.replace(/'/g, "''");
-      filter += ` and ((crdfd_saleonline eq '${escapedSaleName}') ${orBySaleOwner})`;
+      
+      // Nếu customerId là GUID, ưu tiên tìm theo _crdfd_salename_value
+      if (isGuid) {
+        // Tìm theo GUID của nhân viên sale HOẶC theo tên sale (crdfd_saleonline/crdfd_saledirect)
+        // GUID trong OData filter cần có dấu nháy đơn
+        filter += ` and (_crdfd_salename_value eq '${customerIdStr}' or crdfd_saleonline eq '${escapedSaleName}' or crdfd_saledirect eq '${escapedSaleName}')`;
+      } else {
+        // Tìm theo tên sale (crdfd_saleonline) HOẶC crdfd_saledirect
+        filter += ` and (crdfd_saleonline eq '${escapedSaleName}' or crdfd_saledirect eq '${escapedSaleName}')`;
+      }
     }
     else if (isGuid) {
-      // Nếu là GUID nhưng không có saleName, không thể tìm được
-      return res.status(400).json({ error: "Sale name is required when customerId is a GUID" });
+      // Nếu là GUID, tìm trực tiếp theo _crdfd_salename_value (GUID của nhân viên sale)
+      // GUID trong OData filter cần có dấu nháy đơn
+      filter += ` and _crdfd_salename_value eq '${customerIdStr}'`;
     } else if (customerIdStr.length > 12) {
       // Nếu không phải GUID nhưng dài > 12, có thể là tên sale
-      // Cho phép lọc theo tên sale hoặc _crdfd_salename_value bằng customerIdStr nếu phù hợp
-      filter += ` and (crdfd_saleonline eq '${customerIdStr}')`;
+      // Cho phép lọc theo tên sale (online hoặc direct)
+      const escapedCustomerId = customerIdStr.replace(/'/g, "''");
+      filter += ` and (crdfd_saleonline eq '${escapedCustomerId}' or crdfd_saledirect eq '${escapedCustomerId}')`;
     } else {
       // Tìm theo số điện thoại
-      filter += ` and (cr44a_st eq '${customerIdStr}' or crdfd_phone2 eq '${customerIdStr}')`;
+      const escapedPhone = customerIdStr.replace(/'/g, "''");
+      filter += ` and (cr44a_st eq '${escapedPhone}' or crdfd_phone2 eq '${escapedPhone}')`;
     }
-    
-    // Thêm logging để debug filter
     
     // Add search filter if provided
-    if (searchStr && searchStr.trim() !== '') {
-      filter += ` and contains(crdfd_name, '${searchStr}')`;
+    if (searchStr && searchStr.trim() !== '' && searchStr !== 'undefined' && searchStr !== 'null') {
+      const escapedSearch = searchStr.replace(/'/g, "''");
+      filter += ` and contains(crdfd_name, '${escapedSearch}')`;
     }
     
+    // Log để debug
+    console.log('getCustomerDataLazyLoad - customerIdStr:', customerIdStr);
+    console.log('getCustomerDataLazyLoad - decodedSaleName:', decodedSaleName);
+    console.log('getCustomerDataLazyLoad - isGuid:', isGuid);
+    console.log('getCustomerDataLazyLoad - filter:', filter);
 
     // Thêm log filter và endpoint để debug
-    const customerQuery = `$select=${customerColumns}&$filter=${encodeURIComponent(
-      filter
-    )}&$top=${pageSize}&$orderby=crdfd_name`;
-    const customerApiEndpoint = `https://wecare-ii.crm5.dynamics.com/api/data/v9.2/${customerTable}?${customerQuery}&$expand=crdfd_Quanhuyen($select=_cr1bb_salesonline_value)`;
+    // Build query parts separately để tránh lỗi encoding
+    const selectPart = `$select=${encodeURIComponent(customerColumns)}`;
+    const filterPart = `$filter=${encodeURIComponent(filter)}`;
+    const topPart = `$top=${pageSize}`;
+    const orderbyPart = `$orderby=${encodeURIComponent('crdfd_name')}`;
+    const expandPart = `$expand=${encodeURIComponent('crdfd_Quanhuyen($select=_cr1bb_salesonline_value)')}`;
+    
+    const queryParams = [
+      selectPart,
+      filterPart,
+      topPart,
+      orderbyPart,
+      expandPart
+    ].join('&');
+    
+    const customerApiEndpoint = `https://wecare-ii.crm5.dynamics.com/api/data/v9.2/${customerTable}?${queryParams}`;
+    
+    console.log('getCustomerDataLazyLoad - Filter string:', filter);
+    console.log('getCustomerDataLazyLoad - API Endpoint:', customerApiEndpoint);
+    console.log('getCustomerDataLazyLoad - Full URL length:', customerApiEndpoint.length);
     
     const token = await getAccessToken();
 
@@ -178,6 +237,17 @@ const getCustomerDataLazyLoad = async (req: NextApiRequest, res: NextApiResponse
     // Fetch customer data first
     let customerResponse;
     try {
+      // Validate URL before making request
+      try {
+        new URL(customerApiEndpoint);
+      } catch (urlError) {
+        console.error('getCustomerDataLazyLoad - Invalid URL:', customerApiEndpoint);
+        return res.status(400).json({ 
+          error: "Invalid API endpoint URL",
+          details: "Failed to construct valid URL"
+        });
+      }
+      
       customerResponse = await axios.get(customerApiEndpoint, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -188,20 +258,33 @@ const getCustomerDataLazyLoad = async (req: NextApiRequest, res: NextApiResponse
       });
       
     } catch (error) {
+      console.error('getCustomerDataLazyLoad - Error fetching from CRM:', error);
       if (axios.isAxiosError(error)) {
+        console.error('getCustomerDataLazyLoad - Error response:', JSON.stringify(error.response?.data, null, 2));
+        console.error('getCustomerDataLazyLoad - Error status:', error.response?.status);
+        console.error('getCustomerDataLazyLoad - Error config URL:', error.config?.url);
+        
+        // Return more detailed error information
+        const errorDetails = error.response?.data || error.message;
         return res.status(error.response?.status || 500).json({
           error: "Error fetching data from CRM",
-          details: error.response?.data || error.message,
+          details: errorDetails,
+          filter: filter,
+          endpoint: customerApiEndpoint
         });
       }
       return res.status(500).json({ error: "Internal server error" });
     }
 
     if (!customerResponse.data.value || !Array.isArray(customerResponse.data.value)) {
+      console.log('getCustomerDataLazyLoad - Invalid response format:', customerResponse.data);
       return res.status(404).json({ error: "Invalid response format from customer API" });
     }
 
+    console.log('getCustomerDataLazyLoad - Found customers:', customerResponse.data.value.length);
+
     if (customerResponse.data.value.length === 0) {
+      console.log('getCustomerDataLazyLoad - No customers found with filter:', filter);
       return res.status(200).json({ 
         data: [], 
         pagination: {
@@ -221,7 +304,7 @@ const getCustomerDataLazyLoad = async (req: NextApiRequest, res: NextApiResponse
         crdfd_customerid: item.crdfd_customerid,
         crdfd_name: item.crdfd_name,
         saleonline: item.crdfd_saleonline || "",
-        saledirect: item._crdfd_salename_value || "",
+        saledirect: item.crdfd_saledirect || item._crdfd_salename_value || "",
         // Các field khác sẽ được thêm sau khi có đầy đủ data
         potentialProducts: [],
         sdt: "",
@@ -264,6 +347,13 @@ const getCustomerDataLazyLoad = async (req: NextApiRequest, res: NextApiResponse
       });
     } else {
       const customerData = customerResponse.data.value[0];
+      
+      // Kiểm tra xem customerData có tồn tại không
+      if (!customerData) {
+        console.log('getCustomerDataLazyLoad - No customer data found');
+        return res.status(404).json({ error: "No customer found" });
+      }
+      
       const potentialProducts = customerData.cr1bb_sptiemnangaconfirm
         ? customerData.cr1bb_sptiemnangaconfirm.split(", ")
         : [];
@@ -273,7 +363,8 @@ const getCustomerDataLazyLoad = async (req: NextApiRequest, res: NextApiResponse
           ? ""
           : customerData.crdfd_mst;
 
-      const debtFilter = `_cr44a_khachhang_value eq ${customerData.crdfd_customerid}`;
+      // GUID trong OData filter cần có dấu nháy đơn
+      const debtFilter = `_cr44a_khachhang_value eq '${customerData.crdfd_customerid}'`;
       const debtQuery = `$select=${debtColumns}&$filter=${encodeURIComponent(
         debtFilter
       )}&$orderby=createdon desc&$top=1`;
@@ -339,14 +430,26 @@ const getCustomerDataLazyLoad = async (req: NextApiRequest, res: NextApiResponse
         }
       });
     }
-  } catch (error) {
+  } catch (error: any) {
+    console.error('getCustomerDataLazyLoad - Unhandled error:', error);
+    console.error('getCustomerDataLazyLoad - Error stack:', error?.stack);
+    
     if (axios.isAxiosError(error)) {
       return res.status(error.response?.status || 500).json({
         error: "Error fetching data",
         details: error.response?.data || error.message,
       });
     }
-    return res.status(500).json({ error: "Internal server error" });
+    
+    // Log full error details
+    const errorMessage = error?.message || String(error);
+    console.error('getCustomerDataLazyLoad - Error message:', errorMessage);
+    
+    return res.status(500).json({ 
+      error: "Internal server error",
+      message: errorMessage,
+      details: error?.toString()
+    });
   }
 };
 

@@ -25,14 +25,15 @@ import {
   Alert,
   InputAdornment,
   Chip,
+  Tooltip,
 } from "@mui/material";
 import {
   Add as AddIcon,
   Save as SaveIcon,
   Refresh as RefreshIcon,
   Delete as DeleteIcon,
-  ArrowUpward,
-  ArrowDownward,
+  KeyboardArrowUp,
+  KeyboardArrowDown,
 } from "@mui/icons-material";
 import axios from "axios";
 import { getItem, setItem } from "@/utils/SecureStorage";
@@ -40,6 +41,7 @@ import { X } from "lucide-react";
 import JDStyleHeader from "@/components/JDStyleHeader";
 import Footer from "@/components/footer";
 import Toolbar from "@/components/toolbar";
+import SaleOrderType from "@/model/saleOder";
 
 type AdminRow = {
   id: number;
@@ -263,6 +265,9 @@ const AdminAppPage: React.FC = () => {
   const [orderCode, setOrderCode] = useState("");
   const [orderType, setOrderType] = useState<"SO" | "BO">("SO");
   const [orderVat, setOrderVat] = useState<"Có VAT" | "Không VAT">("Có VAT");
+  const [saleOrders, setSaleOrders] = useState<SaleOrderType[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<SaleOrderType | null>(null);
+  const [loadingOrders, setLoadingOrders] = useState(false);
   const [note, setNote] = useState("");
   const [deliveryDate, setDeliveryDate] = useState(new Date().toISOString().split("T")[0]);
   const [shift, setShift] = useState<"Ca sáng" | "Ca chiều">("Ca sáng");
@@ -290,15 +295,36 @@ const AdminAppPage: React.FC = () => {
     try {
       const saleName = getItem("saleName");
       const customerId = getItem("id");
-      const searchParam = inputValue ? `&search=${encodeURIComponent(inputValue)}` : '';
       
-      const res = await axios.get(`/api/getCustomerDataLazyLoad?customerId=${customerId}&saleName=${saleName}${searchParam}&page=1&pageSize=${pageSize}`);
+      console.log('loadCustomerOptions - saleName:', saleName);
+      console.log('loadCustomerOptions - customerId:', customerId);
       
-      if (res.data?.data) {
-        const dataArray = Array.isArray(res.data.data) ? res.data.data : [res.data.data];
-        const options = dataArray.map((customer: any) => ({
-          value: customer.crdfd_customerid,
-          label: `${customer.crdfd_name}${
+      // Bypass check đăng nhập - có thể gọi API mà không cần customerId
+      const params = new URLSearchParams();
+      
+      if (customerId && customerId !== 'null' && customerId !== 'undefined') {
+        params.append('customerId', customerId);
+      }
+      
+      if (saleName && saleName !== 'null' && saleName !== 'undefined') {
+        params.append('saleName', saleName);
+      }
+      
+      if (inputValue) {
+        params.append('search', inputValue);
+      }
+      
+      const res = await axios.get(`/api/getAllCustomers?${params.toString()}`);
+      
+      console.log('loadCustomerOptions - API Response:', res.data);
+      
+      if (res.data?.data && Array.isArray(res.data.data)) {
+        // Giới hạn số lượng kết quả theo pageSize
+        const limitedData = res.data.data.slice(0, pageSize);
+        console.log('loadCustomerOptions - Found customers:', limitedData.length);
+        const options = limitedData.map((customer: any) => ({
+          value: customer.customerId || customer.crdfd_customerid,
+          label: `${customer.name || customer.crdfd_name}${
             customer.cr1bb_ngunggiaodich !== null
               ? ` (Công nợ: ${customer.debtInfo?.cr1bb_tongcongno?.toLocaleString("vi-VN")} VNĐ)`
               : ""
@@ -307,6 +333,7 @@ const AdminAppPage: React.FC = () => {
         }));
         return options;
       }
+      console.log('loadCustomerOptions - No data in response');
       return [];
     } catch (error) {
       console.error('Error loading customer options:', error);
@@ -318,14 +345,27 @@ const AdminAppPage: React.FC = () => {
     const testLoad = async () => {
       const saleName = getItem("saleName");
       const customerId = getItem("id");
+      
+      // Bypass check đăng nhập - có thể gọi API mà không cần customerId
       try {
-        const res = await axios.get(`/api/getCustomerDataLazyLoad?customerId=${customerId}&saleName=${saleName}&page=1&pageSize=10`);
+        const params = new URLSearchParams();
+        
+        if (customerId && customerId !== 'null' && customerId !== 'undefined') {
+          params.append('customerId', customerId);
+        }
+        
+        if (saleName && saleName !== 'null' && saleName !== 'undefined') {
+          params.append('saleName', saleName);
+        }
+        
+        const res = await axios.get(`/api/getAllCustomers?${params.toString()}`);
         if (res.data?.error) {
           setCustomerError("Không tìm thấy khách hàng");
         } else {
           setCustomerError(null);
         }
       } catch (error) {
+        console.error('Error loading customers:', error);
         setCustomerError("Không tìm thấy khách hàng");
       }
     };
@@ -400,6 +440,31 @@ const AdminAppPage: React.FC = () => {
     console.debug("admin-app cart click");
   }, []);
 
+  // Hàm lấy đơn hàng của khách hàng
+  const fetchSaleOrders = useCallback(async (customerId: string) => {
+    try {
+      setLoadingOrders(true);
+      const response = await axios.get<SaleOrderType[]>(
+        `/api/getSaleOrdersData?id_khachhang=${customerId}`
+      );
+      
+      if (Array.isArray(response.data) && response.data.length > 0) {
+        setSaleOrders(response.data);
+      } else {
+        setSaleOrders([]);
+        setSelectedOrder(null);
+        setOrderCode("");
+      }
+    } catch (error) {
+      console.error("Error fetching sale orders:", error);
+      setSaleOrders([]);
+      setSelectedOrder(null);
+      setOrderCode("");
+    } finally {
+      setLoadingOrders(false);
+    }
+  }, []);
+
   const handleCustomerChange = useCallback((
     selectedOption: {
       value: string;
@@ -411,8 +476,14 @@ const AdminAppPage: React.FC = () => {
     if (selectedOption) {
       const customerId = selectedOption.value;
       setItem("selectedCustomerId", customerId);
+      // Lấy danh sách đơn hàng của khách hàng
+      fetchSaleOrders(customerId);
+    } else {
+      setSaleOrders([]);
+      setSelectedOrder(null);
+      setOrderCode("");
     }
-  }, []);
+  }, [fetchSaleOrders]);
 
   useEffect(() => {
     const product = availableProducts.find((p) => p.id === selectedProductId);
@@ -634,39 +705,54 @@ const AdminAppPage: React.FC = () => {
               </Box>
               <Box sx={{ minWidth: 200 }}>
                 <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 'bold' }}>
-                  Đơn hàng {orderVat}
+                  {orderVat === "Có VAT" ? "Đơn hàng Có VAT" : orderVat === "Không VAT" ? "Đơn hàng Không VAT" : "Đơn hàng"}
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                {loadingOrders ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
+                    <CircularProgress size={16} />
+                    <Typography variant="body2" color="text.secondary">Đang tải...</Typography>
+                  </Box>
+                ) : saleOrders.length > 0 ? (
+                  <FormControl fullWidth size="small">
+                    <InputLabel shrink={!!selectedOrder}>Chọn đơn hàng</InputLabel>
+                    <Select
+                      value={selectedOrder?.crdfd_sale_orderid || ""}
+                      onChange={(e) => {
+                        const orderId = e.target.value;
+                        const order = saleOrders.find(o => o.crdfd_sale_orderid === orderId);
+                        setSelectedOrder(order || null);
+                        setOrderCode(order?.crdfd_so_code || order?.crdfd_name || "");
+                      }}
+                      label="Chọn đơn hàng"
+                    >
+                      <MenuItem value="">Chọn đơn hàng</MenuItem>
+                      {saleOrders.map((order) => (
+                        <MenuItem key={order.crdfd_sale_orderid} value={order.crdfd_sale_orderid}>
+                          {order.crdfd_so_code || order.crdfd_name} - {new Date(order.crdfd_ngaytaoonhang).toLocaleDateString("vi-VN")}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                ) : selectedCustomer ? (
+                  <Tooltip title="Không có đơn hàng, vui lòng nhập mã đơn hàng" arrow>
+                    <TextField
+                      size="small"
+                      value={orderCode}
+                      onChange={(e) => setOrderCode(e.target.value)}
+                      placeholder=""
+                      fullWidth
+                    />
+                  </Tooltip>
+                ) : (
                   <TextField
                     size="small"
-                    value={orderCode || orderType}
+                    value={orderCode}
                     onChange={(e) => setOrderCode(e.target.value)}
-                    placeholder={orderType}
-                    sx={{ flex: 1 }}
+                    placeholder="Chọn khách hàng trước"
+                    fullWidth
+                    disabled
                   />
-                  <FormControl size="small" sx={{ minWidth: 100 }}>
-                    <InputLabel>Có VAT</InputLabel>
-                    <Select
-                      value={orderVat}
-                      onChange={(e) => setOrderVat(e.target.value as "Có VAT" | "Không VAT")}
-                      label="Có VAT"
-                    >
-                      <MenuItem value="Có VAT">Có VAT</MenuItem>
-                      <MenuItem value="Không VAT">Không VAT</MenuItem>
-                    </Select>
-                  </FormControl>
-                  <FormControl size="small" sx={{ minWidth: 80 }}>
-                    <InputLabel>Loại</InputLabel>
-                    <Select
-                      value={orderType}
-                      onChange={(e) => setOrderType(e.target.value as "SO" | "BO")}
-                      label="Loại"
-                    >
-                      <MenuItem value="SO">SO</MenuItem>
-                      <MenuItem value="BO">BO</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Box>
+                )}
               </Box>
             </Box>
             <Typography variant="caption" color="text.secondary">V2.93.86</Typography>
@@ -677,7 +763,7 @@ const AdminAppPage: React.FC = () => {
             <Grid container spacing={2} sx={{ mb: 2 }}>
               <Grid item xs={12} md={6} lg={3}>
                 <FormControl fullWidth size="small">
-                  <InputLabel>{orderVat === "Có VAT" ? "Sản phẩm có VAT" : "Sản phẩm không VAT"}</InputLabel>
+                  <InputLabel shrink={!!selectedProductId}>{orderVat === "Có VAT" ? "Sản phẩm có VAT" : "Sản phẩm không VAT"}</InputLabel>
                   <Select
                     value={selectedProductId || ''}
                     onChange={(e) => setSelectedProductId(Number(e.target.value))}
@@ -695,7 +781,7 @@ const AdminAppPage: React.FC = () => {
               </Grid>
               <Grid item xs={12} md={6} lg={3}>
                 <FormControl fullWidth size="small">
-                  <InputLabel>Đơn vị</InputLabel>
+                  <InputLabel shrink={!!selectedProduct?.unit}>Đơn vị</InputLabel>
                   <Select
                     value={selectedProduct?.unit || ''}
                     disabled={!selectedProduct}
@@ -717,15 +803,53 @@ const AdminAppPage: React.FC = () => {
                   type="number"
                   value={inputQuantity}
                   onChange={(e) => setInputQuantity(Number(e.target.value) || 0)}
+                  InputLabelProps={{ shrink: true }}
                   InputProps={{
                     endAdornment: (
-                      <InputAdornment position="end">
-                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                          <IconButton size="small" onClick={() => setInputQuantity(prev => prev + 1)}>
-                            <ArrowUpward fontSize="small" />
+                      <InputAdornment position="end" sx={{ margin: 0, padding: 0, height: '100%' }}>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            borderLeft: 'none',
+                            borderRadius: 0,
+                            borderTopRightRadius: '4px',
+                            borderBottomRightRadius: '4px',
+                            overflow: 'hidden',
+                            bgcolor: 'background.paper',
+                            height: '100%',
+                            minHeight: '40px',
+                            '& .MuiIconButton-root': {
+                              padding: '4px',
+                              borderRadius: 0,
+                              height: '50%',
+                              minHeight: 'auto',
+                              width: '24px',
+                              '&:hover': {
+                                bgcolor: 'action.hover',
+                              },
+                              '&:first-of-type': {
+                                borderBottom: '1px solid',
+                                borderColor: 'divider',
+                              },
+                            },
+                          }}
+                        >
+                          <IconButton
+                            size="small"
+                            onClick={() => setInputQuantity(prev => prev + 1)}
+                            sx={{ height: '50%', width: '24px' }}
+                          >
+                            <KeyboardArrowUp sx={{ fontSize: '14px' }} />
                           </IconButton>
-                          <IconButton size="small" onClick={() => setInputQuantity(prev => Math.max(0, prev - 1))}>
-                            <ArrowDownward fontSize="small" />
+                          <IconButton
+                            size="small"
+                            onClick={() => setInputQuantity(prev => Math.max(0, prev - 1))}
+                            sx={{ height: '50%', width: '24px' }}
+                          >
+                            <KeyboardArrowDown sx={{ fontSize: '14px' }} />
                           </IconButton>
                         </Box>
                       </InputAdornment>
@@ -745,21 +869,59 @@ const AdminAppPage: React.FC = () => {
                     setSouthernPrice(val);
                     setInputPrice(val);
                   }}
+                  InputLabelProps={{ shrink: true }}
                   InputProps={{
                     endAdornment: (
-                      <InputAdornment position="end">
-                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                          <IconButton size="small" onClick={() => {
-                            setSouthernPrice(prev => prev + 1000);
-                            setInputPrice(prev => prev + 1000);
-                          }}>
-                            <ArrowUpward fontSize="small" />
+                      <InputAdornment position="end" sx={{ margin: 0, padding: 0, height: '100%' }}>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            borderLeft: 'none',
+                            borderRadius: 0,
+                            borderTopRightRadius: '4px',
+                            borderBottomRightRadius: '4px',
+                            overflow: 'hidden',
+                            bgcolor: 'background.paper',
+                            height: '100%',
+                            minHeight: '40px',
+                            '& .MuiIconButton-root': {
+                              padding: '4px',
+                              borderRadius: 0,
+                              height: '50%',
+                              minHeight: 'auto',
+                              width: '24px',
+                              '&:hover': {
+                                bgcolor: 'action.hover',
+                              },
+                              '&:first-of-type': {
+                                borderBottom: '1px solid',
+                                borderColor: 'divider',
+                              },
+                            },
+                          }}
+                        >
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              setSouthernPrice(prev => prev + 1000);
+                              setInputPrice(prev => prev + 1000);
+                            }}
+                            sx={{ height: '50%', width: '24px' }}
+                          >
+                            <KeyboardArrowUp sx={{ fontSize: '14px' }} />
                           </IconButton>
-                          <IconButton size="small" onClick={() => {
-                            setSouthernPrice(prev => Math.max(0, prev - 1000));
-                            setInputPrice(prev => Math.max(0, prev - 1000));
-                          }}>
-                            <ArrowDownward fontSize="small" />
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              setSouthernPrice(prev => Math.max(0, prev - 1000));
+                              setInputPrice(prev => Math.max(0, prev - 1000));
+                            }}
+                            sx={{ height: '50%', width: '24px' }}
+                          >
+                            <KeyboardArrowDown sx={{ fontSize: '14px' }} />
                           </IconButton>
                         </Box>
                       </InputAdornment>
@@ -777,6 +939,7 @@ const AdminAppPage: React.FC = () => {
                   label="Giá đã giảm"
                   value={formatCurrency(selectedPriceAfterDiscount)}
                   InputProps={{ readOnly: true }}
+                  InputLabelProps={{ shrink: true }}
                 />
               </Grid>
               <Grid item xs={12} md={6} lg={3}>
@@ -786,6 +949,7 @@ const AdminAppPage: React.FC = () => {
                   label="Thành tiền"
                   value={formatCurrency(selectedLineTotal.baseTotal)}
                   InputProps={{ readOnly: true }}
+                  InputLabelProps={{ shrink: true }}
                 />
               </Grid>
               <Grid item xs={12} md={6} lg={3}>
@@ -796,15 +960,53 @@ const AdminAppPage: React.FC = () => {
                   type="number"
                   value={inputVat}
                   onChange={(e) => setInputVat(Number(e.target.value) || 0)}
+                  InputLabelProps={{ shrink: true }}
                   InputProps={{
                     endAdornment: (
-                      <InputAdornment position="end">
-                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                          <IconButton size="small" onClick={() => setInputVat(prev => Math.min(100, prev + 1))}>
-                            <ArrowUpward fontSize="small" />
+                      <InputAdornment position="end" sx={{ margin: 0, padding: 0, height: '100%' }}>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            borderLeft: 'none',
+                            borderRadius: 0,
+                            borderTopRightRadius: '4px',
+                            borderBottomRightRadius: '4px',
+                            overflow: 'hidden',
+                            bgcolor: 'background.paper',
+                            height: '100%',
+                            minHeight: '40px',
+                            '& .MuiIconButton-root': {
+                              padding: '4px',
+                              borderRadius: 0,
+                              height: '50%',
+                              minHeight: 'auto',
+                              width: '24px',
+                              '&:hover': {
+                                bgcolor: 'action.hover',
+                              },
+                              '&:first-of-type': {
+                                borderBottom: '1px solid',
+                                borderColor: 'divider',
+                              },
+                            },
+                          }}
+                        >
+                          <IconButton
+                            size="small"
+                            onClick={() => setInputVat(prev => Math.min(100, prev + 1))}
+                            sx={{ height: '50%', width: '24px' }}
+                          >
+                            <KeyboardArrowUp sx={{ fontSize: '14px' }} />
                           </IconButton>
-                          <IconButton size="small" onClick={() => setInputVat(prev => Math.max(0, prev - 1))}>
-                            <ArrowDownward fontSize="small" />
+                          <IconButton
+                            size="small"
+                            onClick={() => setInputVat(prev => Math.max(0, prev - 1))}
+                            sx={{ height: '50%', width: '24px' }}
+                          >
+                            <KeyboardArrowDown sx={{ fontSize: '14px' }} />
                           </IconButton>
                         </Box>
                       </InputAdornment>
@@ -819,11 +1021,12 @@ const AdminAppPage: React.FC = () => {
                   label="GTGT"
                   value={formatCurrency(selectedLineTotal.vatAmount)}
                   InputProps={{ readOnly: true }}
+                  InputLabelProps={{ shrink: true }}
                 />
               </Grid>
             </Grid>
 
-            <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid container spacing={2} sx={{ mb: 2, alignItems: 'center' }}>
               <Grid item xs={12} md={6} lg={3}>
                 <TextField
                   fullWidth
@@ -831,12 +1034,13 @@ const AdminAppPage: React.FC = () => {
                   label="Tổng tiền"
                   value={formatCurrency(selectedLineTotal.grand)}
                   InputProps={{ readOnly: true }}
+                  InputLabelProps={{ shrink: true }}
                   sx={{ '& .MuiInputBase-input': { fontWeight: 'bold' } }}
                 />
               </Grid>
               <Grid item xs={12} md={6} lg={3}>
                 <FormControl fullWidth size="small">
-                  <InputLabel>Kho</InputLabel>
+                  <InputLabel shrink={!!selectedWarehouse}>Kho</InputLabel>
                   <Select
                     value={selectedWarehouse}
                     onChange={(e) => setSelectedWarehouse(e.target.value)}
@@ -851,7 +1055,7 @@ const AdminAppPage: React.FC = () => {
               </Grid>
               <Grid item xs={12} md={6} lg={3}>
                 <FormControl fullWidth size="small">
-                  <InputLabel>Chính sách giảm giá</InputLabel>
+                  <InputLabel shrink={!!selectedDiscountPolicy}>Chính sách giảm giá</InputLabel>
                   <Select
                     value={selectedDiscountPolicy}
                     onChange={(e) => setSelectedDiscountPolicy(e.target.value)}
@@ -864,26 +1068,30 @@ const AdminAppPage: React.FC = () => {
                 </FormControl>
               </Grid>
               <Grid item xs={12} md={6} lg={3}>
-                <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 'bold' }}>
-                  Giảm
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <TextField
-                    size="small"
-                    type="number"
-                    value={discountPercent1}
-                    onChange={(e) => setDiscountPercent1(Number(e.target.value) || 0)}
-                    sx={{ width: 80 }}
-                  />
-                  <Typography>% +</Typography>
-                  <TextField
-                    size="small"
-                    type="number"
-                    value={discountPercent2}
-                    onChange={(e) => setDiscountPercent2(Number(e.target.value) || 0)}
-                    sx={{ width: 80 }}
-                  />
-                  <Typography>%</Typography>
+                <Box>
+                  <Typography variant="caption" sx={{ mb: 0.5, display: 'block', fontWeight: 'bold', color: 'text.secondary' }}>
+                    Giảm
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <TextField
+                      size="small"
+                      type="number"
+                      value={discountPercent1}
+                      onChange={(e) => setDiscountPercent1(Number(e.target.value) || 0)}
+                      InputLabelProps={{ shrink: true }}
+                      sx={{ width: 80 }}
+                    />
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>% +</Typography>
+                    <TextField
+                      size="small"
+                      type="number"
+                      value={discountPercent2}
+                      onChange={(e) => setDiscountPercent2(Number(e.target.value) || 0)}
+                      InputLabelProps={{ shrink: true }}
+                      sx={{ width: 80 }}
+                    />
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>%</Typography>
+                  </Box>
                 </Box>
               </Grid>
             </Grid>
@@ -898,6 +1106,7 @@ const AdminAppPage: React.FC = () => {
                     label="Tồn kho (bỏ mua)"
                     value={`${stockDiscardPurchase.toFixed(2)} ${selectedProduct?.unit || ''}`}
                     InputProps={{ readOnly: true }}
+                    InputLabelProps={{ shrink: true }}
                   />
                 </Grid>
                 <Grid item xs={12} md={6} lg={3}>
@@ -907,6 +1116,7 @@ const AdminAppPage: React.FC = () => {
                     label="Tồn LT kế toán"
                     value={`${stockAccountingLT.toFixed(2)} ${selectedProduct?.unit || ''}`}
                     InputProps={{ readOnly: true }}
+                    InputLabelProps={{ shrink: true }}
                   />
                 </Grid>
                 <Grid item xs={12} md={6} lg={3}>
@@ -916,6 +1126,7 @@ const AdminAppPage: React.FC = () => {
                     label="SL theo kho"
                     value={`${stockQuantity.toFixed(2)} ${selectedProduct?.unit || ''}`}
                     InputProps={{ readOnly: true }}
+                    InputLabelProps={{ shrink: true }}
                   />
                 </Grid>
                 <Grid item xs={12} md={6} lg={3}>
@@ -925,6 +1136,7 @@ const AdminAppPage: React.FC = () => {
                     label="Kho đề xuất"
                     value={suggestedWarehouse || "Chưa có đề xuất"}
                     InputProps={{ readOnly: true }}
+                    InputLabelProps={{ shrink: true }}
                   />
                 </Grid>
               </Grid>
@@ -955,7 +1167,7 @@ const AdminAppPage: React.FC = () => {
                 InputLabelProps={{ shrink: true }}
               />
               <FormControl size="small" sx={{ minWidth: 120 }}>
-                <InputLabel>Ca</InputLabel>
+                <InputLabel shrink={!!shift}>Ca</InputLabel>
                 <Select
                   value={shift}
                   onChange={(e) => setShift(e.target.value as "Ca sáng" | "Ca chiều")}
@@ -970,6 +1182,7 @@ const AdminAppPage: React.FC = () => {
                 label="Ghi chú"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
+                InputLabelProps={{ shrink: !!note }}
                 sx={{ flex: 1 }}
               />
               <Box sx={{ display: 'flex', gap: 1 }}>
