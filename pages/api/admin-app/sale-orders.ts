@@ -79,7 +79,7 @@ export default async function handler(
         crdfd_so_code: item.crdfd_so_code || "",
         crdfd_so_auto: item.crdfd_so_auto || "",
         cr1bb_vattext: item.cr1bb_vattext || "",
-        cr1bb_loaihoaon: item.cr1bb_loaihoaon ?? null,
+        cr1bb_loaihoaon: item.cr1bb_loaihoaon ?? null
       };
     });
 

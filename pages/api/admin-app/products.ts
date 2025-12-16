@@ -41,8 +41,9 @@ export default async function handler(
     }
 
     // Use crdfd_gtgt and cr1bb_banchatgiaphatra (Bản chất giá phát ra)
+    // Add crdfd_manhomsp for product group code
     const columns =
-      "crdfd_productsid,crdfd_name,crdfd_fullname,crdfd_masanpham,crdfd_unitname,crdfd_gtgt,cr1bb_banchatgiaphatra";
+      "crdfd_productsid,crdfd_name,crdfd_fullname,crdfd_masanpham,crdfd_unitname,crdfd_gtgt,cr1bb_banchatgiaphatra,crdfd_manhomsp";
     const query = `$select=${columns}&$filter=${encodeURIComponent(
       filter
     )}&$orderby=crdfd_name&$top=200`;
@@ -59,6 +60,7 @@ export default async function handler(
       crdfd_unitname: item.crdfd_unitname || "",
       crdfd_gtgt: item.crdfd_gtgt ?? null,
       cr1bb_banchatgiaphatra: item.cr1bb_banchatgiaphatra ?? null,
+      crdfd_manhomsp: item.crdfd_manhomsp || "",
     }));
 
     res.status(200).json(products);

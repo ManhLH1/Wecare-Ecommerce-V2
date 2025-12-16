@@ -258,6 +258,9 @@ export default function SalesOrderForm() {
           setWarehouse={setWarehouse}
           customerId={customerId}
           customerCode={customerCode}
+          customerName={customer}
+          vatText={selectedVatText}
+          soId={soId}
           quantity={quantity}
           setQuantity={setQuantity}
           price={price}
@@ -288,13 +291,7 @@ export default function SalesOrderForm() {
         />
 
         {/* Product Table */}
-        <ProductTable 
-          products={productList} 
-          setProducts={setProductList}
-          invoiceType={selectedSo?.cr1bb_loaihoaon ?? null}
-          vatChoice={selectedSo?.crdfd_vat ?? null}
-          customerIndustry={customerIndustry}
-        />
+        <ProductTable products={productList} setProducts={setProductList} />
       </div>
     </div>
   );

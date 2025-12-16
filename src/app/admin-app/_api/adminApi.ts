@@ -21,6 +21,7 @@ export interface Product {
   crdfd_gtgt?: number;
   crdfd_gtgt_option?: number;
   cr1bb_banchatgiaphatra?: number; // Bản chất giá phát ra (OptionSet)
+  crdfd_manhomsp?: string; // Mã nhóm sản phẩm
 }
 
 export interface Unit {
@@ -42,6 +43,13 @@ export interface Warehouse {
   crdfd_khowecareid: string;
   crdfd_name: string;
   crdfd_makho?: string;
+}
+
+export interface InventoryInfo {
+  productCode: string;
+  warehouseName?: string | null;
+  theoreticalStock: number; // Var_ton_kho_lythuyet_inventory (non VAT) hoặc tonkholythuyetbomuabd (VAT)
+  actualStock: number | null;
 }
 
 export interface ProductPrice {
@@ -155,6 +163,25 @@ export const fetchWarehouses = async (customerId?: string, customerCode?: string
   } catch (error) {
     console.error('Error fetching warehouses:', error);
     throw error;
+  }
+};
+
+// Fetch inventory (tồn kho lý thuyết) by product code + warehouse name
+export const fetchInventory = async (
+  productCode?: string,
+  warehouseName?: string,
+  isVatOrder?: boolean
+): Promise<InventoryInfo | null> => {
+  if (!productCode) return null;
+  try {
+    const params: Record<string, string> = { productCode };
+    if (warehouseName) params.warehouseName = warehouseName;
+    if (isVatOrder !== undefined) params.isVatOrder = String(isVatOrder);
+    const response = await axios.get(`${BASE_URL}/inventory`, { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching inventory:', error);
+    return null;
   }
 };
 

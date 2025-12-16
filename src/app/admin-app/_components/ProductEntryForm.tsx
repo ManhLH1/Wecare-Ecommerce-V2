@@ -1,9 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Dropdown from './Dropdown';
 import { useProducts, useUnits, useWarehouses } from '../_hooks/useDropdownData';
-import { fetchProductPrice, fetchProductPromotions, Promotion } from '../_api/adminApi';
+import {
+  fetchProductPrice,
+  fetchProductPromotions,
+  fetchInventory,
+  Promotion,
+  Product,
+} from '../_api/adminApi';
 
 // Map option set value of crdfd_gtgt/crdfd_gtgtnew to VAT percentage
 const VAT_OPTION_MAP: Record<number, number> = {
@@ -22,6 +28,10 @@ interface ProductEntryFormProps {
   setWarehouse: (value: string) => void;
   customerId?: string;
   customerCode?: string;
+  customerName?: string;
+  soId?: string;
+  orderType?: number | null; // Loại đơn hàng OptionSet value (optional)
+  vatText?: string; // VAT text từ SO ("Có VAT" hoặc "Không VAT")
   quantity: number;
   setQuantity: (value: number) => void;
   price: string;
@@ -60,6 +70,10 @@ export default function ProductEntryForm({
   setWarehouse,
   customerId,
   customerCode,
+  customerName,
+  soId,
+  orderType,
+  vatText,
   quantity,
   setQuantity,
   price,
@@ -88,11 +102,78 @@ export default function ProductEntryForm({
   onSave,
   onRefresh,
 }: ProductEntryFormProps) {
+  // Disable form if customer or SO is not selected
+  // Check for both null/undefined and empty string
+  const isFormDisabled = !customerId || customerId === '' || !soId || soId === '';
+  
   const [productSearch, setProductSearch] = useState('');
   const [productId, setProductId] = useState('');
   const [unitId, setUnitId] = useState('');
   const [warehouseId, setWarehouseId] = useState('');
   const [selectedProductCode, setSelectedProductCode] = useState<string | undefined>();
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [inventoryTheoretical, setInventoryTheoretical] = useState<number>(0);
+  const [inventoryLoading, setInventoryLoading] = useState<boolean>(false);
+  const [inventoryMessage, setInventoryMessage] = useState<string>('SL theo kho (tồn lý thuyết): 0');
+  const [inventoryColor, setInventoryColor] = useState<string | undefined>(undefined);
+  
+  // Calculate buttons disabled state based on PowerApps canvas logic
+  const buttonsDisabled = useMemo(() => {
+    // If form is disabled (no customer or SO), disable buttons
+    if (isFormDisabled) return true;
+    
+    // Condition 1: If product group code is in allowed list OR customer is "Kho Wecare" → Enable
+    const allowedProductGroupCodes = [
+      'NSP-00027',
+      'NSP-000872',
+      'NSP-000409',
+      'NSP-000474',
+      'NSP-000873'
+    ];
+    const productGroupCode = selectedProduct?.crdfd_manhomsp || '';
+    const customerNameLower = (customerName || '').toLowerCase();
+    
+    if (allowedProductGroupCodes.includes(productGroupCode) ||
+        customerNameLower === 'kho wecare' ||
+        customerNameLower === 'kho wecare (hồ chí minh)') {
+      return false; // Enable
+    }
+    
+    // Condition 2: If Order Type = "Đơn hàng khuyến mãi" → Enable
+    // Note: Need to determine OptionSet value for "Đơn hàng khuyến mãi"
+    // For now, we'll skip this check as we don't know the exact value
+    
+    // Condition 3: Check disable conditions
+    // 3a: var_warning_gia.value - skip for now (complex logic)
+    
+    // 3b: Đơn hàng Không VAT && Tên kho = Tên kho trong tồn kho && (Tồn kho <= 0 hoặc rỗng || Số lượng theo kho > Tồn kho)
+    // Skip for now - need inventory data from Inventory Weshops
+    
+    // Determine VAT order flags
+    const vatTextLower = (vatText || '').toLowerCase();
+    const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
+    const isNonVatOrder = vatTextLower.includes('không vat') || vatPercent === 0;
+    
+    // 3c: Đơn hàng Có VAT && GTGT của sản phẩm = 0% → disable
+    if (isVatOrder) {
+      const vatOptionValue = selectedProduct?.crdfd_gtgt_option ?? selectedProduct?.crdfd_gtgt;
+      const productVatPercent = vatOptionValue !== undefined ? VAT_OPTION_MAP[Number(vatOptionValue)] : undefined;
+      if (productVatPercent === 0 || productVatPercent === undefined) {
+        return true;
+      }
+    }
+    
+    // 3d: Đơn hàng Không VAT && GTGT > 0% && Tồn kho < Số lượng * Giá trị chuyển đổi
+    // Skip for now - need inventory data
+    
+    // 3e: Tên kho trống && VAT = "Không VAT" && Đã chọn sản phẩm
+    if (isNonVatOrder && !warehouse && selectedProduct) {
+      return true;
+    }
+    
+    // Default: Enable
+    return false;
+  }, [isFormDisabled, selectedProduct, customerName, vatText, vatPercent, warehouse]);
   const [priceLoading, setPriceLoading] = useState(false);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [promotionLoading, setPromotionLoading] = useState(false);
@@ -144,6 +225,53 @@ export default function ProductEntryForm({
   const { products, loading: productsLoading } = useProducts(productSearch);
   const { units, loading: unitsLoading } = useUnits(selectedProductCode);
   const { warehouses, loading: warehousesLoading } = useWarehouses(customerId);
+
+  // Load inventory (Var_ton_kho_lythuyet_inventory) when product code & warehouse change
+  useEffect(() => {
+    const loadInventory = async () => {
+      if (!selectedProductCode || !warehouse) {
+        setInventoryTheoretical(0);
+        setStockQuantity(0);
+        setInventoryMessage('SL theo kho (tồn lý thuyết): 0');
+        setInventoryColor(undefined);
+        return;
+      }
+
+      try {
+        setInventoryLoading(true);
+        // Determine VAT order: nếu vatText chứa "Có VAT" hoặc vatPercent > 0 => VAT
+        const vatTextLower = (vatText || '').toLowerCase();
+        const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
+
+        const result = await fetchInventory(selectedProductCode, warehouse, isVatOrder);
+        if (!result) {
+          setInventoryTheoretical(0);
+          setStockQuantity(0);
+          setInventoryMessage('Inventory không có sản phẩm này');
+          setInventoryColor('red');
+          return;
+        }
+
+        const theoretical = result.theoreticalStock ?? 0;
+        setInventoryTheoretical(theoretical);
+        setStockQuantity(theoretical);
+
+        const labelPrefix = isVatOrder ? 'Tồn kho (bỏ mua):' : 'Tồn kho (inventory):';
+        setInventoryMessage(`${labelPrefix} ${theoretical.toLocaleString('vi-VN')}`);
+        setInventoryColor(theoretical <= 0 ? 'red' : undefined);
+      } catch (e) {
+        console.error('Failed to load inventory info', e);
+        setInventoryTheoretical(0);
+        setStockQuantity(0);
+        setInventoryMessage('Inventory không có sản phẩm này');
+        setInventoryColor('red');
+      } finally {
+        setInventoryLoading(false);
+      }
+    };
+
+    loadInventory();
+  }, [selectedProductCode, warehouse, vatText, vatPercent, setStockQuantity]);
 
   // Sync product and unit with parent state
   useEffect(() => {
@@ -398,8 +526,9 @@ export default function ProductEntryForm({
               setProductId(value);
               setProduct(option?.label || '');
               // Get product code from selected product
-              const selectedProduct = products.find((p) => p.crdfd_productsid === value);
-              setSelectedProductCode(selectedProduct?.crdfd_masanpham);
+              const selectedProductData = products.find((p) => p.crdfd_productsid === value);
+              setSelectedProduct(selectedProductData || null);
+              setSelectedProductCode(selectedProductData?.crdfd_masanpham);
               // Apply VAT percent based on crdfd_gtgt option set
               const vatOptionValue = (option?.crdfd_gtgt_option ?? option?.crdfd_gtgt) as number | undefined;
               const vatFromOption = vatOptionValue !== undefined ? VAT_OPTION_MAP[Number(vatOptionValue)] : undefined;
@@ -410,12 +539,19 @@ export default function ProductEntryForm({
               setUnitId('');
               setUnit('');
             }}
-            placeholder="Chọn sản phẩm"
+            placeholder={isFormDisabled ? "Chọn khách hàng và SO trước" : "Chọn sản phẩm"}
             loading={productsLoading}
             searchable
             onSearch={setProductSearch}
             className="admin-app-input-wide"
+            disabled={isFormDisabled}
           />
+          <div
+            className="admin-app-hint"
+            style={{ marginTop: 4, color: inventoryColor }}
+          >
+            {inventoryLoading ? 'Đang tải tồn kho...' : inventoryMessage}
+          </div>
         </div>
 
         <div className="admin-app-field-group">
@@ -431,9 +567,9 @@ export default function ProductEntryForm({
               setWarehouseId(value);
               setWarehouse(option?.label || '');
             }}
-            placeholder="Chọn vị trí kho"
+            placeholder={isFormDisabled ? "Chọn khách hàng và SO trước" : "Chọn vị trí kho"}
             loading={warehousesLoading}
-            disabled={!customerId}
+            disabled={isFormDisabled}
           />
         </div>
 
@@ -450,8 +586,9 @@ export default function ProductEntryForm({
               setUnitId(value);
               setUnit(option?.label || '');
             }}
-            placeholder="Chọn đơn vị"
+            placeholder={isFormDisabled ? "Chọn khách hàng và SO trước" : "Chọn đơn vị"}
             loading={unitsLoading}
+            disabled={isFormDisabled}
           />
         </div>
       </div>
@@ -466,10 +603,10 @@ export default function ProductEntryForm({
               value={quantity}
               onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 0)}
               placeholder="0"
+              disabled={isFormDisabled}
             />
             <span className="admin-app-dropdown-arrow">▼</span>
           </div>
-          <div className="admin-app-hint">SL theo kho: {stockQuantity}.</div>
         </div>
 
         <div className="admin-app-field-group">
@@ -482,8 +619,9 @@ export default function ProductEntryForm({
               className="admin-app-input"
               value={price}
               onChange={(e) => handlePriceChange(e.target.value)}
-              placeholder={priceLoading ? "Đang tải giá..." : "Giá"}
+              placeholder={priceLoading ? "Đang tải giá..." : isFormDisabled ? "Chọn khách hàng và SO trước" : "Giá"}
               readOnly={priceLoading || (approvePrice && priceEntryMethod === 'Theo chiết khấu')}
+              disabled={isFormDisabled}
             />
             <span className="admin-app-dropdown-arrow">▼</span>
           </div>
@@ -508,6 +646,7 @@ export default function ProductEntryForm({
                   className="admin-app-input admin-app-input-wide"
                   value={normalizePromotionId(selectedPromotionId || normalizePromotionId(promotions[0]?.id))}
                   onChange={(e) => setSelectedPromotionId(normalizePromotionId(e.target.value))}
+                  disabled={isFormDisabled}
                 >
                   {promotions.map((promo) => {
                     const toNumber = (v: any) => {
@@ -593,6 +732,7 @@ export default function ProductEntryForm({
             checked={approvePrice}
             onChange={(e) => setApprovePrice(e.target.checked)}
             className="admin-app-checkbox"
+            disabled={isFormDisabled}
           />
           <label htmlFor="approvePrice" className="admin-app-checkbox-label">
             Duyệt giá
@@ -606,6 +746,7 @@ export default function ProductEntryForm({
             checked={approveSupPrice}
             onChange={(e) => setApproveSupPrice(e.target.checked)}
             className="admin-app-checkbox"
+            disabled={isFormDisabled}
           />
           <label htmlFor="approveSupPrice" className="admin-app-checkbox-label">
             Duyệt giá SUP
@@ -619,6 +760,7 @@ export default function ProductEntryForm({
             checked={urgentOrder}
             onChange={(e) => setUrgentOrder(e.target.checked)}
             className="admin-app-checkbox"
+            disabled={isFormDisabled}
           />
           <label htmlFor="urgentOrder" className="admin-app-checkbox-label">
             Đơn hàng gấp
@@ -645,6 +787,7 @@ export default function ProductEntryForm({
                 }
               }}
               placeholder="Chọn phương thức"
+              disabled={isFormDisabled}
             />
           </div>
 
@@ -659,6 +802,7 @@ export default function ProductEntryForm({
                 value={discountRate}
                 onChange={(value) => setDiscountRate(value)}
                 placeholder="Chọn tỉ lệ"
+                disabled={isFormDisabled}
               />
             </div>
           )}
@@ -673,6 +817,7 @@ export default function ProductEntryForm({
               value={approver}
               onChange={(value) => setApprover(value)}
               placeholder="Chọn người duyệt"
+              disabled={isFormDisabled}
             />
           </div>
         </div>
@@ -699,7 +844,8 @@ export default function ProductEntryForm({
               className="admin-app-input"
               value={deliveryDate}
               onChange={(e) => setDeliveryDate(e.target.value)}
-              placeholder="dd/mm/yyyy"
+              placeholder={isFormDisabled ? "Chọn khách hàng và SO trước" : "dd/mm/yyyy"}
+              disabled={isFormDisabled}
             />
             <span className="admin-app-calendar-icon">📅</span>
           </div>
@@ -712,7 +858,8 @@ export default function ProductEntryForm({
             className="admin-app-input admin-app-input-wide"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Ghi chú"
+            placeholder={isFormDisabled ? "Chọn khách hàng và SO trước" : "Ghi chú"}
+            disabled={isFormDisabled}
           />
         </div>
 
@@ -722,6 +869,7 @@ export default function ProductEntryForm({
             className="admin-app-action-btn admin-app-action-btn-add"
             onClick={onAdd}
             title="Thêm sản phẩm"
+            disabled={buttonsDisabled}
           >
             <span className="admin-app-action-icon">+</span>
           </button>
@@ -729,6 +877,7 @@ export default function ProductEntryForm({
             className="admin-app-action-btn admin-app-action-btn-save"
             onClick={onSave}
             title="Lưu"
+            disabled={buttonsDisabled}
           >
             <span className="admin-app-action-icon">💾</span>
           </button>
@@ -736,6 +885,7 @@ export default function ProductEntryForm({
             className="admin-app-action-btn admin-app-action-btn-refresh"
             onClick={onRefresh}
             title="Làm mới"
+            disabled={buttonsDisabled}
           >
             <span className="admin-app-action-icon">↻</span>
           </button>
