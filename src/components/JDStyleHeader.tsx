@@ -306,7 +306,7 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
     checkCameraSupport();
   }, []);
 
-  // Detect desktop viewport (used for future behaviors)
+  // Detect desktop viewport to auto-open category dropdown like sieuthihaiminh.vn
   useEffect(() => {
     const updateViewport = () => {
       if (typeof window === "undefined") return;
@@ -317,9 +317,11 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
     return () => window.removeEventListener("resize", updateViewport);
   }, []);
 
-  // Close category menu on mobile resize; keep user-driven state on desktop
+  // Auto-open panel on desktop, close on mobile
   useEffect(() => {
-    if (!isDesktop) {
+    if (isDesktop) {
+      setShowCategoryMenu(true);
+    } else {
       setShowCategoryMenu(false);
     }
   }, [isDesktop]);

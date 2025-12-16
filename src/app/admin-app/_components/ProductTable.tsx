@@ -2,6 +2,7 @@
 
 interface ProductItem {
   id: string;
+  stt?: number;
   productName: string;
   unit: string;
   quantity: number;
@@ -18,11 +19,55 @@ interface ProductItem {
 interface ProductTableProps {
   products: ProductItem[];
   setProducts: (products: ProductItem[]) => void;
+  invoiceType?: number | null; // Loại hóa đơn OptionSet value (cr1bb_loaihoaon)
+  vatChoice?: number | null;   // VAT OptionSet value (191920000 = Có VAT, 191920001 = Không VAT)
+  customerIndustry?: number | null; // Ngành nghề OptionSet value (191920004 = Shop bán lẻ)
 }
 
-export default function ProductTable({ products, setProducts }: ProductTableProps) {
+export default function ProductTable({ 
+  products, 
+  setProducts,
+  invoiceType,
+  vatChoice,
+  customerIndustry 
+}: ProductTableProps) {
   const handleDelete = (id: string) => {
     setProducts(products.filter((p) => p.id !== id));
+  };
+
+  // Tính toán điều kiện ẩn/hiện cột Phụ phí
+  // Điều kiện: Loại hóa đơn = "Hộ kinh doanh" AND VAT = "Không VAT" AND Ngành nghề = "Shop"
+  // VAT "Không VAT" = 191920001
+  // Ngành nghề "Shop" = 191920004 (Shop bán lẻ)
+  // Loại hóa đơn "Hộ kinh doanh" - cần xác định OptionSet value (có thể là một giá trị cụ thể)
+  // Tạm thời kiểm tra invoiceType có giá trị (không null/undefined)
+  const showSurchargeColumn = 
+    invoiceType !== null && invoiceType !== undefined && // Có Loại hóa đơn (cần xác định giá trị "Hộ kinh doanh")
+    vatChoice === 191920001 && // VAT = Không VAT
+    customerIndustry === 191920004; // Ngành nghề = Shop bán lẻ
+
+  // Format date to dd/mm/yyyy
+  const formatDate = (dateStr: string): string => {
+    if (!dateStr || dateStr.trim() === '') return '-';
+    
+    try {
+      // Try parsing as ISO date (2025-12-17)
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) {
+        // If not a valid date, check if already in dd/mm/yyyy format
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+          return dateStr;
+        }
+        return dateStr; // Return as-is if can't parse
+      }
+      
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch {
+      return dateStr; // Return as-is if error
+    }
   };
 
   return (
@@ -37,7 +82,9 @@ export default function ProductTable({ products, setProducts }: ProductTableProp
             <th>Đơn vị</th>
             <th>Số lượng</th>
             <th>Giá</th>
-            <th>Phụ phí...</th>
+            {showSurchargeColumn && (
+              <th title="Phụ phí">Phụ phí...</th>
+            )}
             <th>Chiết khấu</th>
             <th>Giá đã CK</th>
             <th>VAT</th>
@@ -50,7 +97,7 @@ export default function ProductTable({ products, setProducts }: ProductTableProp
         <tbody>
           {products.length === 0 ? (
             <tr>
-              <td colSpan={13} className="admin-app-table-empty">
+              <td colSpan={showSurchargeColumn ? 13 : 12} className="admin-app-table-empty">
                 Chưa có đơn hàng
               </td>
             </tr>
@@ -62,13 +109,15 @@ export default function ProductTable({ products, setProducts }: ProductTableProp
                 <td>{product.unit}</td>
                 <td>{product.quantity}</td>
                 <td>{product.price.toLocaleString('vi-VN')}</td>
-                <td>{product.surcharge.toLocaleString('vi-VN')}</td>
+                {showSurchargeColumn && (
+                  <td title="Phụ phí">{product.surcharge.toLocaleString('vi-VN')}</td>
+                )}
                 <td>{product.discount.toLocaleString('vi-VN')}</td>
                 <td>{product.discountedPrice.toLocaleString('vi-VN')}</td>
                 <td>{product.vat}%</td>
                 <td>{product.totalAmount.toLocaleString('vi-VN')}</td>
                 <td>{product.approver || '-'}</td>
-                <td>{product.deliveryDate}</td>
+                <td>{formatDate(product.deliveryDate)}</td>
                 <td>
                   <button
                     className="admin-app-delete-btn"

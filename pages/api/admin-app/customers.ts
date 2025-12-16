@@ -35,7 +35,7 @@ export default async function handler(
       filter += ` and (contains(crdfd_name, '${searchTerm}') or contains(cr44a_st, '${searchTerm}') or contains(crdfd_phone2, '${searchTerm}'))`;
     }
 
-    const columns = "crdfd_customerid,crdfd_name,cr44a_st,crdfd_phone2";
+    const columns = "crdfd_customerid,crdfd_name,cr44a_st,crdfd_phone2,cr44a_makhachhang,crdfd_nganhnghe";
     const query = `$select=${columns}&$filter=${encodeURIComponent(
       filter
     )}&$orderby=crdfd_name&$top=100`;
@@ -49,6 +49,8 @@ export default async function handler(
       crdfd_name: item.crdfd_name || "",
       cr44a_st: item.cr44a_st || "",
       crdfd_phone2: item.crdfd_phone2 || "",
+      cr44a_makhachhang: item.cr44a_makhachhang || "",
+      crdfd_nganhnghe: item.crdfd_nganhnghe ?? null,
     }));
 
     res.status(200).json(customers);

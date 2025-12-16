@@ -8,6 +8,8 @@ export interface Customer {
   crdfd_name: string;
   cr44a_st?: string;
   crdfd_phone2?: string;
+  cr44a_makhachhang?: string;
+  crdfd_nganhnghe?: number; // Ngành nghề (OptionSet)
 }
 
 export interface Product {
@@ -18,6 +20,7 @@ export interface Product {
   crdfd_unitname?: string;
   crdfd_gtgt?: number;
   crdfd_gtgt_option?: number;
+  cr1bb_banchatgiaphatra?: number; // Bản chất giá phát ra (OptionSet)
 }
 
 export interface Unit {
@@ -32,12 +35,65 @@ export interface SaleOrder {
   crdfd_so_auto?: string;
   cr1bb_vattext?: string;
   crdfd_vat?: number;
+  cr1bb_loaihoaon?: number | null; // Loại hóa đơn OptionSet value
 }
 
 export interface Warehouse {
   crdfd_khowecareid: string;
   crdfd_name: string;
   crdfd_makho?: string;
+}
+
+export interface ProductPrice {
+  price: number | null;
+  unitName?: string;
+  priceGroupText?: string;
+  priceGroupName?: string;
+  priceGroup?: string;
+  giaFormat?: string;       // Gia_format từ Báo giá - chi tiết
+  priceFormatted?: string;  // fallback tên khác nếu BE dùng
+}
+
+export interface Promotion {
+  id: string;
+  name: string;
+  conditions?: string;
+  type?: string;
+  value?: string;
+  value2?: string;
+  value3?: string;
+  valueWithVat?: string;
+  valueNoVat?: string;
+  valueBuyTogether?: string;
+  vn?: string;
+  startDate?: string;
+  endDate?: string;
+  promotionTypeText?: string;
+  totalAmountCondition?: string;
+  quantityCondition?: string;
+  quantityConditionLevel3?: string;
+  cumulativeQuantity?: string;
+  paymentTerms?: string;
+  paymentTermsLevel2?: string;
+  paymentTermsLevel3?: string;
+  saleInventoryOnly?: any;
+  unitName?: string;
+}
+
+export interface SaleOrderDetail {
+  id: string;
+  stt: number;
+  productName: string;
+  unit: string;
+  quantity: number;
+  price: number;
+  surcharge: number;
+  discount: number;
+  discountedPrice: number;
+  vat: number;
+  totalAmount: number;
+  approver: string;
+  deliveryDate: string;
 }
 
 // Fetch customers with search
@@ -99,6 +155,60 @@ export const fetchWarehouses = async (customerId?: string, customerCode?: string
   } catch (error) {
     console.error('Error fetching warehouses:', error);
     throw error;
+  }
+};
+
+// Fetch price by product code (with customer + unit to mirror PowerApps filters on Báo giá - chi tiết)
+export const fetchProductPrice = async (
+  productCode?: string,
+  customerCode?: string,
+  unitId?: string
+): Promise<ProductPrice | null> => {
+  if (!productCode) return null;
+  try {
+    const params: Record<string, string> = { productCode };
+    if (customerCode) params.customerCode = customerCode;
+    if (unitId) params.unitId = unitId;
+    const response = await axios.get(`${BASE_URL}/prices`, { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching product price:', error);
+    return null;
+  }
+};
+
+export const fetchProductPromotions = async (
+  productCode?: string,
+  customerCode?: string
+): Promise<Promotion[]> => {
+  if (!productCode) return [];
+  try {
+    const params: Record<string, string> = { productCode };
+    if (customerCode) {
+      params.customerCode = customerCode;
+    }
+    const response = await axios.get(`${BASE_URL}/promotions`, { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching promotions:', error);
+    return [];
+  }
+};
+
+// Fetch Sale Order Details by SO ID (formData equivalent)
+export const fetchSaleOrderDetails = async (
+  soId?: string
+): Promise<SaleOrderDetail[]> => {
+  if (!soId) return [];
+  try {
+    const params = { soId };
+    const response = await axios.get(`${BASE_URL}/sale-order-details`, { params });
+    // Sort by STT descending (already sorted by API, but ensure it here too)
+    const details = response.data || [];
+    return details.sort((a: SaleOrderDetail, b: SaleOrderDetail) => (b.stt || 0) - (a.stt || 0));
+  } catch (error) {
+    console.error('Error fetching sale order details:', error);
+    return [];
   }
 };
 

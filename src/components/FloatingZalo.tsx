@@ -1,14 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import ZaloIcon from "@/assets/img/Icon_of_Zalo.svg.webp";
 
 export default function FloatingZalo() {
+	const pathname = usePathname();
 	const [isHidden, setIsHidden] = useState(false);
 	const [isMinimized, setIsMinimized] = useState(true); // Luôn bắt đầu với trạng thái thu gọn
 	const [isCartOpen, setIsCartOpen] = useState(false);
+
+	// Ẩn FloatingZalo trong admin app
+	if (pathname?.includes('/admin-app')) {
+		return null;
+	}
 
 	useEffect(() => {
 		try {

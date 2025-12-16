@@ -1,13 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ProductEntryForm from './ProductEntryForm';
 import ProductTable from './ProductTable';
 import Dropdown from './Dropdown';
 import { useCustomers, useSaleOrders } from '../_hooks/useDropdownData';
+import { fetchSaleOrderDetails, SaleOrderDetail } from '../_api/adminApi';
 
 interface ProductItem {
   id: string;
+  stt?: number;
   productName: string;
   unit: string;
   quantity: number;
@@ -22,9 +24,9 @@ interface ProductItem {
 }
 
 export default function SalesOrderForm() {
-  const [activeTab, setActiveTab] = useState<'copilot' | 'data'>('copilot');
   const [customer, setCustomer] = useState('');
   const [customerId, setCustomerId] = useState('');
+  const [customerCode, setCustomerCode] = useState('');
   const [customerSearch, setCustomerSearch] = useState('');
   const [so, setSo] = useState('');
   const [soId, setSoId] = useState('');
@@ -46,7 +48,8 @@ export default function SalesOrderForm() {
   const [approvePrice, setApprovePrice] = useState(false);
   const [approveSupPrice, setApproveSupPrice] = useState(false);
   const [urgentOrder, setUrgentOrder] = useState(false);
-  const [deliveryDate, setDeliveryDate] = useState('14/12/2025');
+  const [deliveryDate, setDeliveryDate] = useState('');
+  const [customerIndustry, setCustomerIndustry] = useState<number | null>(null);
   const [note, setNote] = useState('');
   const [productList, setProductList] = useState<ProductItem[]>([]);
 
@@ -63,6 +66,44 @@ export default function SalesOrderForm() {
   const selectedSo = saleOrders.find((so) => so.crdfd_sale_orderid === soId);
   const selectedVatText = getVatLabelText(selectedSo);
   const soLabelText = selectedVatText ? `Sales Order (SO) - ${selectedVatText}` : 'Sales Order (SO)';
+
+  // Load Sale Order Details when soId changes (formData equivalent)
+  useEffect(() => {
+    const loadSaleOrderDetails = async () => {
+      if (!soId) {
+        setProductList([]);
+        return;
+      }
+
+      try {
+        const details = await fetchSaleOrderDetails(soId);
+        // Map SaleOrderDetail to ProductItem
+        const mappedProducts: ProductItem[] = details.map((detail: SaleOrderDetail) => ({
+          id: detail.id,
+          stt: detail.stt,
+          productName: detail.productName,
+          unit: detail.unit,
+          quantity: detail.quantity,
+          price: detail.price,
+          surcharge: detail.surcharge,
+          discount: detail.discount,
+          discountedPrice: detail.discountedPrice,
+          vat: detail.vat,
+          totalAmount: detail.totalAmount,
+          approver: detail.approver,
+          deliveryDate: detail.deliveryDate || '',
+        }));
+        // Sort by STT descending (already sorted by API, but ensure it)
+        mappedProducts.sort((a, b) => (b.stt || 0) - (a.stt || 0));
+        setProductList(mappedProducts);
+      } catch (error) {
+        console.error('Error loading sale order details:', error);
+        setProductList([]);
+      }
+    };
+
+    loadSaleOrderDetails();
+  }, [soId]);
 
   const handleAddProduct = () => {
     if (!product || quantity <= 0) return;
@@ -115,6 +156,7 @@ export default function SalesOrderForm() {
     // Reset all fields
     setCustomer('');
     setCustomerId('');
+    setCustomerCode('');
     setSo('');
     setSoId('');
     setProduct('');
@@ -137,22 +179,8 @@ export default function SalesOrderForm() {
 
   return (
     <div className="admin-app-wrapper">
-      {/* Header with Tabs and Version */}
+      {/* Header with Version */}
       <div className="admin-app-header">
-        <div className="admin-app-tabs">
-          <button
-            className={`admin-app-tab ${activeTab === 'copilot' ? 'active' : ''}`}
-            onClick={() => setActiveTab('copilot')}
-          >
-            Copilot
-          </button>
-          <button
-            className={`admin-app-tab ${activeTab === 'data' ? 'active' : ''}`}
-            onClick={() => setActiveTab('data')}
-          >
-            Data
-          </button>
-        </div>
         <div className="admin-app-version">V2.93.86</div>
       </div>
 
@@ -174,6 +202,10 @@ export default function SalesOrderForm() {
                 onChange={(value, option) => {
                   setCustomerId(value);
                   setCustomer(option?.label || '');
+                  // Use cr44a_makhachhang (mã khách hàng) instead of cr44a_st
+                  setCustomerCode(option?.cr44a_makhachhang || option?.cr44a_st || '');
+                  // Save industry for delivery date logic
+                  setCustomerIndustry(option?.crdfd_nganhnghe ?? null);
                   // Reset warehouse when customer changes
                   setWarehouse('');
                 }}
@@ -225,6 +257,7 @@ export default function SalesOrderForm() {
           warehouse={warehouse}
           setWarehouse={setWarehouse}
           customerId={customerId}
+          customerCode={customerCode}
           quantity={quantity}
           setQuantity={setQuantity}
           price={price}
@@ -255,7 +288,13 @@ export default function SalesOrderForm() {
         />
 
         {/* Product Table */}
-        <ProductTable products={productList} setProducts={setProductList} />
+        <ProductTable 
+          products={productList} 
+          setProducts={setProductList}
+          invoiceType={selectedSo?.cr1bb_loaihoaon ?? null}
+          vatChoice={selectedSo?.crdfd_vat ?? null}
+          customerIndustry={customerIndustry}
+        />
       </div>
     </div>
   );

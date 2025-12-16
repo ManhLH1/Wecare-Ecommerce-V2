@@ -271,14 +271,14 @@ Var_ton_kho_lythuyet_bomua = LookUp(
 );
 Var_ton_kho_lythuyet_inventory = LookUp(
     'Inventory Weshops',
-    'Vị trí kho'.'Tên kho' = var_selected_vitrikho.'Tên kho' && 'Sản phẩm'.'Mã sản phẩm' = var_selected_maSP,
+    'Vị trí kho'.'Tên kho' = var_selected_vitrikho.'Tên kho' && 'Sản phẩm'.'Mã sản phẩm' = var_selected_maSP && Status = 'Status (Inventory Weshops)'.Active && 'Số lượng tồn thực tế' > 0,
     'Số lượng tồn lý thuyết'
 );
 
 
 Var_ton_kho_lythuyet_inventory_vitrikho = LookUp(
     'Inventory Weshops',
-    'Vị trí kho'.'Tên kho' = var_selected_vitrikho.'Tên kho' && 'Sản phẩm'.'Mã sản phẩm' = var_selected_maSP,'Vị trí kho'
+    'Vị trí kho'.'Tên kho' = var_selected_vitrikho.'Tên kho' && 'Sản phẩm'.'Mã sản phẩm' = var_selected_maSP && Status = 'Status (Inventory Weshops)'.Active && 'Số lượng tồn thực tế' > 0,'Vị trí kho' 
 );
 
 var_ton_kho_lythuyet_KT = 
@@ -555,102 +555,100 @@ Promotion_Order_Max =
             (VND_Percent = 'VNĐ/% (Promotion)'.'%' && ValuePromotion = MaxPercentValue)
         )
     );  
-ListPromotion = Sort(
+ListPromotion =
+Sort(
     AddColumns(
         With(
             {
-                // Biến trung gian cho điều kiện khớp sản phẩm/nhóm
                 var_SP_Selected: var_selected_maSP & ",",
                 var_NSP_Selected: var_selected_manhomSP & ","
-            }, 
+            },
             Filter(
                 ListFilterPromotion,
                 With(
                     {
-                        // Điều kiện cơ bản
                         IsActivePromotion: statecode = 'Status (Promotion)'.Active,
                         IsValidType: crdfd_type <> "Order" && crdfd_type <> "Revenue",
-
-                        // Áp dụng DVT
-                        IsDVT:var_selected_vitrikho.'Tên kho' =Var_ton_kho_lythuyet_inventory_vitrikho.'Tên kho' &&  If((!IsBlank(cr1bb_onvitinh) && cr1bb_onvitinh.'Tên đơn vị' = var_selected_donvi.'Đơn vị chuyển đổi-Transfome'), ((var_SP_Selected in crdfd_masanpham_multiple && IsBlank(cr1bb_masanphammuakem)) || (var_NSP_Selected in cr1bb_manhomsp_multiple && IsBlank(cr1bb_manhomspmuakem)) )),
-                        
-                        // Áp dụng nhóm khách hàng
-                        IsNSPApdung: If((!IsBlank(cr1bb_Nhomkhachhangapdung.'Nhóm khách hàng') && cr1bb_Nhomkhachhangapdung.'Nhóm khách hàng' = var_selected_nhomgia.'Nhóm đối tượng text'),((var_SP_Selected in crdfd_masanpham_multiple && IsBlank(cr1bb_masanphammuakem)) || (var_NSP_Selected in cr1bb_manhomsp_multiple && IsBlank(cr1bb_manhomspmuakem)) )),
-
-                        // Điều kiện loại trừ đặc biệt
-                        IsNotExcludedGroup: Not(var_selected_manhomSP in var_selected_khachhang.'Promotion json mã nhóm SP' && crdfd_name = "[ALL] GIẢM GIÁ NHÓM SẢN PHẨM MỚI _ V1"),
-                        IsNotExcludedGroupMN: Not(var_selected_manhomSP in var_selected_khachhang.'Promotion json mã nhóm SP' && crdfd_name = "[MIỀN NAM] GIẢM GIÁ NHÓM SẢN PHẨM MỚI_V1"),
-                        // Điều kiện điều khoản thanh toán
-                        PaymentTermsMatch: IsBlank(
-                            Concat(cr1bb_ieukhoanthanhtoanapdung, Value, ", ")
-                        ) || var_selected_dieukhoanthanhtoan in Concat(
-                            cr1bb_ieukhoanthanhtoanapdung, Value, ", "
-                        ),
-
-                        // IsHangTonKhoBD
+                        IsDVT:
+                            var_selected_vitrikho.'Tên kho' = Var_ton_kho_lythuyet_inventory_vitrikho.'Tên kho' &&
+                            If(
+                                !IsBlank(cr1bb_onvitinh) && cr1bb_onvitinh.'Tên đơn vị' = var_selected_donvi.'Đơn vị chuyển đổi-Transfome',
+                                (var_SP_Selected in crdfd_masanpham_multiple && IsBlank(cr1bb_masanphammuakem)) ||
+                                (var_NSP_Selected in cr1bb_manhomsp_multiple && IsBlank(cr1bb_manhomspmuakem))
+                            ),
+                        IsNSPApdung:
+                            If(
+                                !IsBlank(cr1bb_Nhomkhachhangapdung.'Nhóm khách hàng') &&
+                                cr1bb_Nhomkhachhangapdung.'Nhóm khách hàng' = var_selected_nhomgia.'Nhóm đối tượng text',
+                                (var_SP_Selected in crdfd_masanpham_multiple && IsBlank(cr1bb_masanphammuakem)) ||
+                                (var_NSP_Selected in cr1bb_manhomsp_multiple && IsBlank(cr1bb_manhomspmuakem))
+                            ),
+                        IsNotExcludedGroup:
+                            Not(var_selected_manhomSP in var_selected_khachhang.'Promotion json mã nhóm SP' &&
+                                crdfd_name = "[ALL] GIẢM GIÁ NHÓM SẢN PHẨM MỚI _ V1"),
+                        IsNotExcludedGroupMN:
+                            Not(var_selected_manhomSP in var_selected_khachhang.'Promotion json mã nhóm SP' &&
+                                crdfd_name = "[MIỀN NAM] GIẢM GIÁ NHÓM SẢN PHẨM MỚI_V1"),
+                        PaymentTermsMatch:
+                            IsBlank(Concat(cr1bb_ieukhoanthanhtoanapdung, Value, ", ")) ||
+                            var_selected_dieukhoanthanhtoan in Concat(cr1bb_ieukhoanthanhtoanapdung, Value, ", "),
                         txtPromotionTonKho: crdfd_promotiontypetext,
-                        IsHangTonKhoBD:  Var_ton_kho_lythuyet_bomua > 0 && ((var_SP_Selected in crdfd_masanpham_multiple && IsBlank(cr1bb_masanphammuakem)) 
-                        || (var_NSP_Selected in cr1bb_manhomsp_multiple && IsBlank(cr1bb_manhomspmuakem))),
-
-                        // === TỔNG HỢP ĐIỀU KIỆN KHỚP SẢN PHẨM (INLINE) ===
-                        ProductMatches: 
-                            // 1. Áp dụng cho tất cả sản phẩm
-                            (crdfd_type = "All product") ||
-
-                            If(!IsBlank(cr1bb_tongtienapdung),
-                            ((var_SP_Selected in crdfd_masanpham_multiple && IsBlank(cr1bb_masanphammuakem)) || (var_NSP_Selected in cr1bb_manhomsp_multiple && IsBlank(cr1bb_manhomspmuakem))) 
-                            && var_Total_Order >= cr1bb_tongtienapdung,
-                            // 2. Khớp sản phẩm trực tiếp (không mua kèm)
+                        IsHangTonKhoBD:
+                            Var_ton_kho_lythuyet_bomua > 0 &&
                             ((var_SP_Selected in crdfd_masanpham_multiple && IsBlank(cr1bb_masanphammuakem)) ||
-                             (var_NSP_Selected in cr1bb_manhomsp_multiple && IsBlank(cr1bb_manhomspmuakem)))
+                             (var_NSP_Selected in cr1bb_manhomsp_multiple && IsBlank(cr1bb_manhomspmuakem))),
+                        ProductMatches:
+                            crdfd_type = "All product" ||
+                            If(
+                                !IsBlank(cr1bb_tongtienapdung),
+                                ((var_SP_Selected in crdfd_masanpham_multiple && IsBlank(cr1bb_masanphammuakem)) ||
+                                 (var_NSP_Selected in cr1bb_manhomsp_multiple && IsBlank(cr1bb_manhomspmuakem))) &&
+                                var_Total_Order >= cr1bb_tongtienapdung,
+                                (var_SP_Selected in crdfd_masanpham_multiple && IsBlank(cr1bb_masanphammuakem)) ||
+                                (var_NSP_Selected in cr1bb_manhomsp_multiple && IsBlank(cr1bb_manhomspmuakem))
                             ) ||
-                            
-                            // 3. Khớp sản phẩm mua kèm (từ form data hiện tại)
-                            ((CountIf(List_Ma_NSP_formdata, Text(Value & ",") in cr1bb_manhomspmuakem) > 0 && 
-                              !IsBlank(cr1bb_manhomsp_multiple) && 
-                              var_NSP_Selected in cr1bb_manhomsp_multiple) ||
-                             (CountIf(List_Ma_SP_formdata, Text(Value & ",") in cr1bb_masanphammuakem) > 0 && 
-                              !IsBlank(crdfd_masanpham_multiple) && 
-                              var_SP_Selected in crdfd_masanpham_multiple)) ||
-                            
-                            // 4. Khớp sản phẩm mua kèm (từ SO đã có)
-                            (((CountIf(List_Ma_NSP_SOD_MK, Text(Value & ",") in cr1bb_manhomspmuakem) > 0 && 
-                               (var_NSP_Selected in cr1bb_manhomsp_multiple || var_SP_Selected in crdfd_masanpham_multiple)) ||
-                              (CountIf(List_Ma_SP_SOD_MK, Text(Value & ",") in cr1bb_masanphammuakem) > 0 && 
-                               (var_NSP_Selected in cr1bb_manhomsp_multiple || var_SP_Selected in crdfd_masanpham_multiple))) &&
-                             (IsBlank(cr1bb_tongtienapdung) || Total_order_MK >= cr1bb_tongtienapdung)),
+                            (
+                                (CountIf(List_Ma_NSP_formdata, Text(Value & ",") in cr1bb_manhomspmuakem) > 0 &&
+                                 !IsBlank(cr1bb_manhomsp_multiple) &&
+                                 var_NSP_Selected in cr1bb_manhomsp_multiple) ||
+                                (CountIf(List_Ma_SP_formdata, Text(Value & ",") in crdfd_masanpham_multiple) > 0 &&
+                                 !IsBlank(crdfd_masanpham_multiple) &&
+                                 var_SP_Selected in crdfd_masanpham_multiple)
+                            ) ||
+                            (
+                                (
+                                    CountIf(List_Ma_NSP_SOD_MK, Text(Value & ",") in cr1bb_manhomspmuakem) > 0 &&
+                                    (var_NSP_Selected in cr1bb_manhomsp_multiple || var_SP_Selected in crdfd_masanpham_multiple)
+                                ) ||
+                                (
+                                    CountIf(List_Ma_SP_SOD_MK, Text(Value & ",") in cr1bb_masanphammuakem) > 0 &&
+                                    (var_NSP_Selected in cr1bb_manhomsp_multiple || var_SP_Selected in crdfd_masanpham_multiple)
+                                )
+                            ) &&
+                            (IsBlank(cr1bb_tongtienapdung) || Total_order_MK >= cr1bb_tongtienapdung),
                         Salehangton:
                             If(
-                                // Nếu là promotion Sale hàng tồn → cần kiểm tra tồn kho hoặc NSP đặc biệt
                                 crdfd_salehangton = 'Sale hàng tồn (Promotion)'.Yes,
-                                (
-                                    Var_ton_kho_lythuyet_inventory > 0 ||
-                                    cb_san_pham_SOBG.Selected.'Mã nhóm sp' = "NSP-00027" ||
-                                    cb_san_pham_SOBG.Selected.'Mã nhóm sp' = "NSP-000872" ||
-                                    cb_san_pham_SOBG.Selected.'Mã nhóm sp' = "NSP-000409" ||
-                                    cb_san_pham_SOBG.Selected.'Mã nhóm sp' = "NSP-000474" ||
-                                    cb_san_pham.Selected.'Mã nhóm sp' = "NSP-00027" ||
-                                    cb_san_pham.Selected.'Mã nhóm sp' = "NSP-000872" ||
-                                    cb_san_pham.Selected.'Mã nhóm sp' = "NSP-000409" ||
-                                    cb_san_pham.Selected.'Mã nhóm sp' = "NSP-000474"
-                                ),
-                                // Nếu KHÔNG phải promotion Sale hàng tồn → luôn pass
+                                Var_ton_kho_lythuyet_inventory > 0 ||
+                                cb_san_pham_SOBG.Selected.'Mã nhóm sp' in ["NSP-00027","NSP-000872","NSP-000409","NSP-000474"] ||
+                                cb_san_pham.Selected.'Mã nhóm sp' in ["NSP-00027","NSP-000872","NSP-000409","NSP-000474"],
                                 true
                             )
                     },
-                    (If(!IsBlank(cr1bb_onvitinh),IsDVT,ProductMatches) &&
-                    If(!IsBlank(cr1bb_Nhomkhachhangapdung),IsNSPApdung,ProductMatches) &&
-                    If(txtPromotionTonKho = "Promotion - Áp dụng cho hàng có tồn kho", IsHangTonKhoBD, ProductMatches)
-                    && IsActivePromotion 
-                    && IsValidType 
-                    && PaymentTermsMatch 
-                    && IsNotExcludedGroup && IsNotExcludedGroupMN )
-                    && Salehangton
+                    (
+                        If(!IsBlank(cr1bb_onvitinh), IsDVT, ProductMatches) &&
+                        If(!IsBlank(cr1bb_Nhomkhachhangapdung), IsNSPApdung, ProductMatches) &&
+                        If(txtPromotionTonKho = "Promotion - Áp dụng cho hàng có tồn kho", IsHangTonKhoBD, ProductMatches) &&
+                        IsActivePromotion &&
+                        IsValidType &&
+                        PaymentTermsMatch &&
+                        IsNotExcludedGroup &&
+                        IsNotExcludedGroupMN
+                    ) &&
+                    Salehangton
                 )
             )
         ),
-        
-        // === THÊM CÁC CỘT TÍNH TOÁN ===
         TypePromotion, crdfd_promotiontypetext,
         NamePromotion, crdfd_name,
         Cong_don_so_luong, cr1bb_congdonsoluong,
@@ -663,8 +661,6 @@ ListPromotion = Sort(
         Value_VAT, crdfd_value_co_vat,
         Value_NonVAT, crdfd_value_khong_vat,
         VND_Percent, crdfd_vn,
-        
-        // Tính chiết khấu với logic rõ ràng hơn
         chietkhau,
         With(
             {
@@ -673,20 +669,17 @@ ListPromotion = Sort(
             },
             If(
                 crdfd_vn = 'VNĐ/% (Promotion)'.VNĐ,
-                BasePrice - TotalDiscount,                    // Giảm số tiền cố định
-                BasePrice * (1 - TotalDiscount / 100)         // Giảm theo phần trăm
+                BasePrice - TotalDiscount,
+                BasePrice * (1 - TotalDiscount / 100)
             )
         ),
-        
-        // Các điều khoản thanh toán
         DKTT, Concat(cr1bb_ieukhoanthanhtoanapdung, Value, ", "),
         DKTT_Muc3, cr1bb_ieukhoanthanhtoanapdungmuc3,
         DKTT_Muc2, cr3b9_dieukhoanthanhtoanapdungmuc2
     ),
     chietkhau,
-    SortOrder.Ascending
+    SortOrder.Descending   // đổi sang Descending để ưu tiên chiết khấu lớn
 );
-
 Value_Promotion = With(
     var_selected_Promotion,
     With(
