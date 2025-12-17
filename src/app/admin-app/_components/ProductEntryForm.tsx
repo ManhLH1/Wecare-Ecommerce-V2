@@ -1,15 +1,17 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Dropdown from './Dropdown';
 import { useProducts, useUnits, useWarehouses } from '../_hooks/useDropdownData';
 import {
   fetchProductPrice,
   fetchProductPromotions,
   fetchInventory,
+  fetchAccountingStock,
   Promotion,
   Product,
 } from '../_api/adminApi';
+import { showToast } from '../../../components/ToastManager';
 
 // Map option set value of crdfd_gtgt/crdfd_gtgtnew to VAT percentage
 const VAT_OPTION_MAP: Record<number, number> = {
@@ -116,64 +118,8 @@ export default function ProductEntryForm({
   const [inventoryLoading, setInventoryLoading] = useState<boolean>(false);
   const [inventoryMessage, setInventoryMessage] = useState<string>('SL theo kho (tồn lý thuyết): 0');
   const [inventoryColor, setInventoryColor] = useState<string | undefined>(undefined);
-  
-  // Calculate buttons disabled state based on PowerApps canvas logic
-  const buttonsDisabled = useMemo(() => {
-    // If form is disabled (no customer or SO), disable buttons
-    if (isFormDisabled) return true;
-    
-    // Condition 1: If product group code is in allowed list OR customer is "Kho Wecare" → Enable
-    const allowedProductGroupCodes = [
-      'NSP-00027',
-      'NSP-000872',
-      'NSP-000409',
-      'NSP-000474',
-      'NSP-000873'
-    ];
-    const productGroupCode = selectedProduct?.crdfd_manhomsp || '';
-    const customerNameLower = (customerName || '').toLowerCase();
-    
-    if (allowedProductGroupCodes.includes(productGroupCode) ||
-        customerNameLower === 'kho wecare' ||
-        customerNameLower === 'kho wecare (hồ chí minh)') {
-      return false; // Enable
-    }
-    
-    // Condition 2: If Order Type = "Đơn hàng khuyến mãi" → Enable
-    // Note: Need to determine OptionSet value for "Đơn hàng khuyến mãi"
-    // For now, we'll skip this check as we don't know the exact value
-    
-    // Condition 3: Check disable conditions
-    // 3a: var_warning_gia.value - skip for now (complex logic)
-    
-    // 3b: Đơn hàng Không VAT && Tên kho = Tên kho trong tồn kho && (Tồn kho <= 0 hoặc rỗng || Số lượng theo kho > Tồn kho)
-    // Skip for now - need inventory data from Inventory Weshops
-    
-    // Determine VAT order flags
-    const vatTextLower = (vatText || '').toLowerCase();
-    const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
-    const isNonVatOrder = vatTextLower.includes('không vat') || vatPercent === 0;
-    
-    // 3c: Đơn hàng Có VAT && GTGT của sản phẩm = 0% → disable
-    if (isVatOrder) {
-      const vatOptionValue = selectedProduct?.crdfd_gtgt_option ?? selectedProduct?.crdfd_gtgt;
-      const productVatPercent = vatOptionValue !== undefined ? VAT_OPTION_MAP[Number(vatOptionValue)] : undefined;
-      if (productVatPercent === 0 || productVatPercent === undefined) {
-        return true;
-      }
-    }
-    
-    // 3d: Đơn hàng Không VAT && GTGT > 0% && Tồn kho < Số lượng * Giá trị chuyển đổi
-    // Skip for now - need inventory data
-    
-    // 3e: Tên kho trống && VAT = "Không VAT" && Đã chọn sản phẩm
-    if (isNonVatOrder && !warehouse && selectedProduct) {
-      return true;
-    }
-    
-    // Default: Enable
-    return false;
-  }, [isFormDisabled, selectedProduct, customerName, vatText, vatPercent, warehouse]);
+  const [accountingStock, setAccountingStock] = useState<number | null>(null);
+  const [accountingStockLoading, setAccountingStockLoading] = useState<boolean>(false);
   const [priceLoading, setPriceLoading] = useState(false);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [promotionLoading, setPromotionLoading] = useState(false);
@@ -184,6 +130,59 @@ export default function ProductEntryForm({
   const [discountRate, setDiscountRate] = useState<string>('1');
   const [approver, setApprover] = useState<string>('');
   const [basePriceForDiscount, setBasePriceForDiscount] = useState<number>(0);
+
+  const normalizePriceInput = (value: any) => {
+    if (value === null || value === undefined) return '';
+    const str = String(value);
+    // Remove thousand separators to keep numeric parsing consistent
+    return str.replace(/,/g, '').trim();
+  };
+
+  // Warning message for price based on PowerApps logic (var_warning_gia)
+  const priceWarningMessage = useMemo(() => {
+    // --- Điều kiện kiểm tra tồn kho cho đơn hàng Không VAT ---
+    const vatTextLower = (vatText || '').toLowerCase();
+    const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
+    const isNonVatOrder = vatTextLower.includes('không vat') || vatPercent === 0;
+    const warehouseNameLower = (warehouse || '').toLowerCase();
+    const isKhoBinhDinh = warehouseNameLower === 'kho bình định';
+
+    if (
+      isNonVatOrder &&
+      isKhoBinhDinh &&
+      (inventoryTheoretical <= 0 || inventoryTheoretical === null || inventoryTheoretical === undefined)
+    ) {
+      return 'Sản phẩm hết tồn kho';
+    }
+
+    // --- Điều kiện kiểm tra VAT & GTGT không khớp ---
+    const vatOptionValue = selectedProduct?.crdfd_gtgt_option ?? selectedProduct?.crdfd_gtgt;
+    const productVatPercent = vatOptionValue !== undefined ? VAT_OPTION_MAP[Number(vatOptionValue)] : undefined;
+
+    const productVatIsZero = productVatPercent === 0 || productVatPercent === undefined;
+    const productVatGreaterZero = productVatPercent !== undefined && productVatPercent > 0;
+
+    const soIsNonVat = isNonVatOrder;
+    const soIsVat = isVatOrder;
+
+    if (
+      (soIsNonVat && productVatGreaterZero) ||
+      (soIsVat && productVatIsZero)
+    ) {
+      return 'SO và sản phẩm không khớp GTGT';
+    }
+
+    // --- Nếu không rơi vào 2 TH trên thì giữ message cũ ---
+    const normalizedPrice = Number(normalizePriceInput(price));
+    const hasPrice = !isNaN(normalizedPrice) && normalizedPrice > 0;
+
+    if (hasPrice) {
+      return 'Giá bình thường';
+    }
+
+    const unitText = unit || 'đơn vị này';
+    return `Sản phẩm chưa báo giá cho đơn vị ${unitText} !!`;
+  }, [vatText, vatPercent, warehouse, inventoryTheoretical, selectedProduct, price, unit]);
 
   // Danh sách người duyệt
   const approversList = [
@@ -214,17 +213,171 @@ export default function ProductEntryForm({
     return String(id).trim();
   };
 
-  const normalizePriceInput = (value: any) => {
-    if (value === null || value === undefined) return '';
-    const str = String(value);
-    // Remove thousand separators to keep numeric parsing consistent
-    return str.replace(/,/g, '').trim();
-  };
-
   // Fetch data for dropdowns
   const { products, loading: productsLoading } = useProducts(productSearch);
   const { units, loading: unitsLoading } = useUnits(selectedProductCode);
   const { warehouses, loading: warehousesLoading } = useWarehouses(customerId);
+
+  // Fetch accounting stock (Tồn LT kế toán)
+  useEffect(() => {
+    const loadAccountingStock = async () => {
+      if (!selectedProductCode) {
+        setAccountingStock(null);
+        return;
+      }
+      try {
+        setAccountingStockLoading(true);
+        const vatTextLower = (vatText || '').toLowerCase();
+        const isVatOrder = vatTextLower.includes('có vat');
+        const result = await fetchAccountingStock(selectedProductCode, isVatOrder);
+        setAccountingStock(result?.accountingStock ?? null);
+      } catch (err) {
+        console.error('Error loading accounting stock', err);
+        setAccountingStock(null);
+      } finally {
+        setAccountingStockLoading(false);
+      }
+    };
+
+    loadAccountingStock();
+  }, [selectedProductCode, vatText]);
+
+  // Label "SL theo kho" = Số lượng * Giá trị chuyển đổi, hiển thị theo đơn vị chuẩn
+  const warehouseQuantityLabel = useMemo(() => {
+    if (!quantity || quantity <= 0) return '';
+
+    const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
+    const rawFactor =
+      (currentUnit as any)?.crdfd_giatrichuyenoi ??
+      (currentUnit as any)?.crdfd_giatrichuyendoi ??
+      (currentUnit as any)?.crdfd_conversionvalue ??
+      1;
+
+    const factorNum = Number(rawFactor);
+    const conversionFactor = !isNaN(factorNum) && factorNum > 0 ? factorNum : 1;
+
+    const converted = quantity * conversionFactor;
+    const formatted = converted.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+
+    const baseUnitText =
+      (currentUnit as any)?.crdfd_onvichuan ||
+      (currentUnit as any)?.crdfd_onvichuantext ||
+      (selectedProduct as any)?.crdfd_onvichuantext ||
+      'đơn vị chuẩn';
+
+    return `SL theo kho: ${formatted} ${baseUnitText}`;
+  }, [quantity, units, unitId, selectedProduct]);
+
+  const getConversionFactor = () => {
+    const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
+    const rawFactor =
+      (currentUnit as any)?.crdfd_giatrichuyenoi ??
+      (currentUnit as any)?.crdfd_giatrichuyendoi ??
+      (currentUnit as any)?.crdfd_conversionvalue ??
+      1;
+    const factorNum = Number(rawFactor);
+    return !isNaN(factorNum) && factorNum > 0 ? factorNum : 1;
+  };
+
+  const getRequestedBaseQuantity = () => {
+    const conversionFactor = getConversionFactor();
+    return (quantity || 0) * conversionFactor;
+  };
+
+  const syncInventoryState = (theoretical: number, isVatOrder: boolean) => {
+    setInventoryTheoretical(theoretical);
+    setStockQuantity(theoretical);
+    const labelPrefix = isVatOrder ? 'Tồn kho (bỏ mua):' : 'Tồn kho (inventory):';
+    setInventoryMessage(`${labelPrefix} ${theoretical.toLocaleString('vi-VN')}`);
+    setInventoryColor(theoretical <= 0 ? 'red' : undefined);
+  };
+
+  const checkInventoryBeforeAction = async () => {
+    if (!selectedProductCode) {
+      showToast.warning('Vui lòng chọn sản phẩm trước khi thực hiện.');
+      return false;
+    }
+    if (!warehouse) {
+      showToast.warning('Vui lòng chọn vị trí kho trước khi thực hiện.');
+      return false;
+    }
+    if (!quantity || quantity <= 0) {
+      showToast.warning('Số lượng phải lớn hơn 0.');
+      return false;
+    }
+
+    const vatTextLower = (vatText || '').toLowerCase();
+    const isVatOrder = vatTextLower.includes('có vat');
+
+    try {
+      setInventoryLoading(true);
+      const latest = await fetchInventory(selectedProductCode, warehouse, isVatOrder);
+      if (!latest) {
+        showToast.error('Không lấy được thông tin tồn kho. Vui lòng thử lại.');
+        return false;
+      }
+
+      const latestStock = latest.theoreticalStock ?? 0;
+      syncInventoryState(latestStock, isVatOrder);
+
+      const requestedQty = getRequestedBaseQuantity();
+      if (latestStock < requestedQty) {
+        showToast.warning(
+          `Tồn kho đã thay đổi, chỉ còn ${latestStock.toLocaleString(
+            'vi-VN'
+          )} (đơn vị chuẩn) - không đủ cho số lượng yêu cầu ${requestedQty.toLocaleString('vi-VN')}. Vui lòng điều chỉnh.`,
+          { autoClose: 5000 }
+        );
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Inventory re-check failed', err);
+      showToast.error('Kiểm tra tồn kho thất bại. Vui lòng thử lại.');
+      return false;
+    } finally {
+      setInventoryLoading(false);
+    }
+  };
+
+  // Helper function to normalize text (moved before useMemo)
+  const normalizeText = useCallback((value: string | undefined | null) => {
+    if (!value) return '';
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  }, []);
+
+  // Simplified disable logic - chỉ disable khi form chưa sẵn sàng
+  // Các kiểm tra chi tiết sẽ được thực hiện trong hàm xử lý và hiển thị toast cảnh báo
+  const buttonsDisabled = useMemo(() => {
+    // Chỉ disable khi form chưa sẵn sàng (chưa chọn khách hàng hoặc SO)
+    return isFormDisabled;
+  }, [isFormDisabled]);
+
+  const accountingStockLabel = useMemo(() => {
+    if (accountingStock === null || accountingStock === undefined) return '';
+
+    const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
+    const baseUnitText =
+      (currentUnit as any)?.crdfd_onvichuan ||
+      (currentUnit as any)?.crdfd_onvichuantext ||
+      (selectedProduct as any)?.crdfd_onvichuantext ||
+      'đơn vị chuẩn';
+
+    const formatted = accountingStock.toLocaleString('vi-VN', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+
+    return `Tồn LT kế toán: ${formatted} ${baseUnitText}`;
+  }, [accountingStock, units, unitId, selectedProduct]);
 
   // Load inventory (Var_ton_kho_lythuyet_inventory) when product code & warehouse change
   useEffect(() => {
@@ -239,9 +392,11 @@ export default function ProductEntryForm({
 
       try {
         setInventoryLoading(true);
-        // Determine VAT order: nếu vatText chứa "Có VAT" hoặc vatPercent > 0 => VAT
+        // Xác định nguồn tồn kho theo VAT của Sales Order:
+        // - "Có VAT"  → Kho Bình Định
+        // - "Không VAT" (hoặc còn lại) → Inventory Weshops
         const vatTextLower = (vatText || '').toLowerCase();
-        const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
+        const isVatOrder = vatTextLower.includes('có vat');
 
         const result = await fetchInventory(selectedProductCode, warehouse, isVatOrder);
         if (!result) {
@@ -480,6 +635,95 @@ export default function ProductEntryForm({
     setTotalAmount(subtotal + newVat);
   };
 
+  // Kiểm tra điều kiện trước khi thực hiện action (theo logic PowerApps)
+  const checkConditionsBeforeAction = async (): Promise<boolean> => {
+    // Kiểm tra 1: Price warning (var_warning_gia)
+    if (priceWarningMessage && priceWarningMessage !== 'Giá bình thường' && priceWarningMessage.trim() !== '') {
+      // Không hiển thị toast cho "SO và sản phẩm không khớp GTGT", chỉ chặn action
+      if (priceWarningMessage !== 'SO và sản phẩm không khớp GTGT') {
+        showToast.warning(priceWarningMessage, { autoClose: 5000 });
+      }
+      return false;
+    }
+
+    // Kiểm tra 2: Đơn Không VAT + Kho Bình Định + tồn kho <= 0 hoặc số lượng > tồn kho
+    const vatTextLower = (vatText || '').toLowerCase();
+    const isNonVatOrder = vatTextLower.includes('không vat') || vatPercent === 0;
+    const warehouseNameNorm = normalizeText(warehouse);
+    const isKhoBinhDinh = 
+      warehouseNameNorm === 'kho binh dinh' || 
+      warehouseNameNorm.includes('kho binh dinh');
+
+    if (isNonVatOrder && isKhoBinhDinh && selectedProduct && warehouse) {
+      // Tính số lượng yêu cầu (quy đổi về đơn vị chuẩn)
+      const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
+      const rawFactor =
+        (currentUnit as any)?.crdfd_giatrichuyenoi ??
+        (currentUnit as any)?.crdfd_giatrichuyendoi ??
+        (currentUnit as any)?.crdfd_conversionvalue ??
+        1;
+      const factorNum = Number(rawFactor);
+      const conversionFactor = !isNaN(factorNum) && factorNum > 0 ? factorNum : 1;
+      const requestedQty = (quantity || 0) * conversionFactor;
+      
+      const inv = inventoryTheoretical ?? 0;
+      const invIsZeroOrLess = inv <= 0;
+      const invIsBlank = inv === null || inv === undefined;
+      const qtyExceedsInv = requestedQty > inv;
+
+      if (invIsZeroOrLess || invIsBlank) {
+        showToast.warning('Sản phẩm hết tồn kho. Vui lòng kiểm tra lại.', { autoClose: 5000 });
+        return false;
+      }
+
+      if (qtyExceedsInv) {
+        showToast.warning(
+          `Số lượng yêu cầu (${requestedQty.toLocaleString('vi-VN')}) vượt quá tồn kho hiện có (${inv.toLocaleString('vi-VN')}). Vui lòng điều chỉnh số lượng.`,
+          { autoClose: 5000 }
+        );
+        return false;
+      }
+
+      // Re-check inventory từ API để đảm bảo tồn kho không thay đổi
+      if (selectedProductCode && warehouse) {
+        try {
+          const isVatOrder = vatTextLower.includes('có vat');
+          const latest = await fetchInventory(selectedProductCode, warehouse, isVatOrder);
+          if (latest) {
+            const latestStock = latest.theoreticalStock ?? 0;
+            syncInventoryState(latestStock, isVatOrder);
+            
+            if (latestStock < requestedQty) {
+              showToast.warning(
+                `Tồn kho đã thay đổi, chỉ còn ${latestStock.toLocaleString('vi-VN')} (đơn vị chuẩn) - không đủ cho số lượng yêu cầu ${requestedQty.toLocaleString('vi-VN')}. Vui lòng điều chỉnh.`,
+                { autoClose: 5000 }
+              );
+              return false;
+            }
+          }
+        } catch (err) {
+          console.error('Failed to re-check inventory:', err);
+          // Không chặn nếu lỗi API, chỉ cảnh báo
+          showToast.warning('Không thể kiểm tra tồn kho mới nhất. Vui lòng thử lại.', { autoClose: 3000 });
+        }
+      }
+    }
+
+    return true;
+  };
+
+  const handleAddWithInventoryCheck = async () => {
+    const ok = await checkConditionsBeforeAction();
+    if (!ok) return;
+    onAdd();
+  };
+
+  const handleSaveWithInventoryCheck = async () => {
+    const ok = await checkConditionsBeforeAction();
+    if (!ok) return;
+    onSave();
+  };
+
   const productLabel = vatPercent === 0 ? 'Sản phẩm không VAT' : 'Sản phẩm có VAT';
 
   const formatDate = (date: Date) => {
@@ -552,6 +796,11 @@ export default function ProductEntryForm({
           >
             {inventoryLoading ? 'Đang tải tồn kho...' : inventoryMessage}
           </div>
+          {accountingStockLabel && !accountingStockLoading && (
+            <div className="admin-app-hint">
+              {accountingStockLabel}
+            </div>
+          )}
         </div>
 
         <div className="admin-app-field-group">
@@ -599,7 +848,7 @@ export default function ProductEntryForm({
           <div className="admin-app-input-wrapper">
             <input
               type="number"
-              className="admin-app-input"
+              className="admin-app-input admin-app-input-number"
               value={quantity}
               onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 0)}
               placeholder="0"
@@ -607,6 +856,11 @@ export default function ProductEntryForm({
             />
             <span className="admin-app-dropdown-arrow">▼</span>
           </div>
+          {warehouseQuantityLabel && (
+            <div className="admin-app-hint">
+              {warehouseQuantityLabel}
+            </div>
+          )}
         </div>
 
         <div className="admin-app-field-group">
@@ -616,7 +870,7 @@ export default function ProductEntryForm({
           <div className="admin-app-input-wrapper">
             <input
               type="text"
-              className="admin-app-input"
+              className={`admin-app-input admin-app-input-money${priceLoading || (approvePrice && priceEntryMethod === 'Theo chiết khấu') ? ' admin-app-input-readonly' : ''}`}
               value={price}
               onChange={(e) => handlePriceChange(e.target.value)}
               placeholder={priceLoading ? "Đang tải giá..." : isFormDisabled ? "Chọn khách hàng và SO trước" : "Giá"}
@@ -625,8 +879,8 @@ export default function ProductEntryForm({
             />
             <span className="admin-app-dropdown-arrow">▼</span>
           </div>
-          <div className="admin-app-hint">
-            {priceLoading ? 'Đang tải giá từ báo giá...' : 'Giá bình thường'}
+          <div className={`admin-app-hint${!priceLoading && priceWarningMessage !== 'Giá bình thường' ? ' admin-app-hint-warning' : ''}`}>
+            {priceLoading ? 'Đang tải giá từ báo giá...' : priceWarningMessage}
           </div>
         </div>
 
@@ -683,8 +937,8 @@ export default function ProductEntryForm({
           <label className="admin-app-label">Thành tiền</label>
           <input
             type="text"
-            className="admin-app-input admin-app-input-readonly"
-            value={subtotal.toLocaleString('vi-VN')}
+            className="admin-app-input admin-app-input-readonly admin-app-input-money"
+            value={`${subtotal.toLocaleString('vi-VN')} ₫`}
             readOnly
           />
         </div>
@@ -706,8 +960,8 @@ export default function ProductEntryForm({
           <label className="admin-app-label">GTGT</label>
           <input
             type="text"
-            className="admin-app-input admin-app-input-readonly"
-            value={vatAmount.toLocaleString('vi-VN')}
+            className="admin-app-input admin-app-input-readonly admin-app-input-money"
+            value={`${vatAmount.toLocaleString('vi-VN')} ₫`}
             readOnly
           />
         </div>
@@ -716,15 +970,15 @@ export default function ProductEntryForm({
           <label className="admin-app-label">Tổng tiền</label>
           <input
             type="text"
-            className="admin-app-input admin-app-input-readonly"
-            value={totalAmount.toLocaleString('vi-VN')}
+            className="admin-app-input admin-app-input-readonly admin-app-input-money"
+            value={`${totalAmount.toLocaleString('vi-VN')} ₫`}
             readOnly
           />
         </div>
       </div>
 
       {/* Checkboxes and Additional Fields */}
-      <div className="admin-app-form-row admin-app-form-row-checkboxes">
+      <div className="admin-app-form-row admin-app-form-row-checkboxes admin-app-business-flags">
         <div className="admin-app-checkbox-group">
           <input
             type="checkbox"
@@ -867,7 +1121,7 @@ export default function ProductEntryForm({
         <div className="admin-app-action-buttons">
           <button
             className="admin-app-action-btn admin-app-action-btn-add"
-            onClick={onAdd}
+            onClick={handleAddWithInventoryCheck}
             title="Thêm sản phẩm"
             disabled={buttonsDisabled}
           >
@@ -875,7 +1129,7 @@ export default function ProductEntryForm({
           </button>
           <button
             className="admin-app-action-btn admin-app-action-btn-save"
-            onClick={onSave}
+            onClick={handleSaveWithInventoryCheck}
             title="Lưu"
             disabled={buttonsDisabled}
           >

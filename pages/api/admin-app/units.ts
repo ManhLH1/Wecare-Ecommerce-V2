@@ -36,8 +36,8 @@ export default async function handler(
       filter += ` and cr44a_masanpham eq '${productCode.trim()}'`;
     }
 
-    // Select fields: get unit conversion info - crdfd_onvichuyenoitransfome is the unit name text field
-    const columns = "crdfd_unitconvertionid,cr44a_masanpham,crdfd_onvichuyenoitransfome";
+  // Select fields: get unit conversion info - crdfd_onvichuyenoitransfome is the unit name text field
+  const columns = "crdfd_unitconvertionid,cr44a_masanpham,crdfd_onvichuyenoitransfome,crdfd_giatrichuyenoi,crdfd_onvichuan";
     
     const query = `$select=${columns}&$filter=${encodeURIComponent(filter)}&$orderby=crdfd_onvichuyenoitransfome&$top=500`;
 
@@ -55,10 +55,13 @@ export default async function handler(
         // crdfd_onvichuyenoitransfome is the unit name text field
         const unitName = item.crdfd_onvichuyenoitransfome || "";
         const unitId = item.crdfd_unitconvertionid || "";
-        
+        const giatrichuyenoi = item.crdfd_giatrichuyenoi || 0;
+        const onvichuan = item.crdfd_onvichuan || "";
         return {
           crdfd_unitsid: unitId,
           crdfd_name: unitName,
+          crdfd_giatrichuyenoi: item.crdfd_giatrichuyenoi,
+          crdfd_onvichuan: item.crdfd_onvichuan,
         };
       })
       .filter((unit: any) => unit.crdfd_name) // Remove empty units

@@ -107,15 +107,15 @@ export default function ProductTable({
                 <td>{index + 1}</td>
                 <td>{product.productName}</td>
                 <td>{product.unit}</td>
-                <td>{product.quantity}</td>
-                <td>{product.price.toLocaleString('vi-VN')}</td>
+                <td className="admin-app-cell-right">{product.quantity}</td>
+                <td className="admin-app-cell-right">{product.price.toLocaleString('vi-VN')}</td>
                 {showSurchargeColumn && (
-                  <td title="Phụ phí">{product.surcharge.toLocaleString('vi-VN')}</td>
+                  <td title="Phụ phí" className="admin-app-cell-right">{product.surcharge.toLocaleString('vi-VN')}</td>
                 )}
-                <td>{product.discount.toLocaleString('vi-VN')}</td>
-                <td>{product.discountedPrice.toLocaleString('vi-VN')}</td>
-                <td>{product.vat}%</td>
-                <td>{product.totalAmount.toLocaleString('vi-VN')}</td>
+                <td className="admin-app-cell-right">{product.discount.toLocaleString('vi-VN')}</td>
+                <td className="admin-app-cell-right">{product.discountedPrice.toLocaleString('vi-VN')}</td>
+                <td className="admin-app-cell-right">{product.vat}%</td>
+                <td className="admin-app-cell-right">{product.totalAmount.toLocaleString('vi-VN')}</td>
                 <td>{product.approver || '-'}</td>
                 <td>{formatDate(product.deliveryDate)}</td>
                 <td>

@@ -53,6 +53,19 @@ export default function SalesOrderForm() {
   const [note, setNote] = useState('');
   const [productList, setProductList] = useState<ProductItem[]>([]);
 
+  // Tổng hợp tiền toàn đơn hàng
+  const orderSummary = productList.reduce(
+    (acc, item) => {
+      const lineSubtotal = (item.discountedPrice || item.price) * item.quantity;
+      const lineVat = (lineSubtotal * item.vat) / 100;
+      acc.subtotal += lineSubtotal;
+      acc.vat += lineVat;
+      acc.total += lineSubtotal + lineVat;
+      return acc;
+    },
+    { subtotal: 0, vat: 0, total: 0 }
+  );
+
   // Helper to derive VAT text from SO record
   const getVatLabelText = (so: any) => {
     if (!so) return '';
@@ -181,7 +194,15 @@ export default function SalesOrderForm() {
     <div className="admin-app-wrapper">
       {/* Header with Version */}
       <div className="admin-app-header">
-        <div className="admin-app-version">V2.93.86</div>
+        <div className="admin-app-header-left">
+          <div className="admin-app-title">Admin App</div>
+          <div className="admin-app-subtitle">Quản lý đơn hàng bán hàng</div>
+        </div>
+        <div className="admin-app-header-right">
+          <span className="admin-app-badge admin-app-badge-version">
+            V0
+          </span>
+        </div>
       </div>
 
       {/* Main Content */}
@@ -260,6 +281,7 @@ export default function SalesOrderForm() {
           customerCode={customerCode}
           customerName={customer}
           vatText={selectedVatText}
+        orderType={selectedSo?.crdfd_loai_don_hang}
           soId={soId}
           quantity={quantity}
           setQuantity={setQuantity}

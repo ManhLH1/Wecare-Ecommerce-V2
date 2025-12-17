@@ -18,6 +18,7 @@ export interface Product {
   crdfd_fullname?: string;
   crdfd_masanpham?: string;
   crdfd_unitname?: string;
+  crdfd_onvichuantext?: string;
   crdfd_gtgt?: number;
   crdfd_gtgt_option?: number;
   cr1bb_banchatgiaphatra?: number; // Bản chất giá phát ra (OptionSet)
@@ -27,6 +28,15 @@ export interface Product {
 export interface Unit {
   crdfd_unitsid: string;
   crdfd_name: string;
+  crdfd_giatrichuyenoi?: number;
+  crdfd_onvichuan?: string;
+  crdfd_onvichuantext?: string;
+}
+
+export interface AccountingStock {
+  productCode: string;
+  tenthuongmaitext?: string | null;
+  accountingStock: number | null;
 }
 
 export interface SaleOrder {
@@ -37,6 +47,7 @@ export interface SaleOrder {
   cr1bb_vattext?: string;
   crdfd_vat?: number;
   cr1bb_loaihoaon?: number | null; // Loại hóa đơn OptionSet value
+  crdfd_loai_don_hang?: number | null; // Loại đơn hàng OptionSet value
 }
 
 export interface Warehouse {
@@ -163,6 +174,22 @@ export const fetchWarehouses = async (customerId?: string, customerCode?: string
   } catch (error) {
     console.error('Error fetching warehouses:', error);
     throw error;
+  }
+};
+
+// Fetch accounting stock (Tồn kho kế toán)
+export const fetchAccountingStock = async (
+  productCode?: string,
+  isVatOrder?: boolean
+): Promise<AccountingStock | null> => {
+  if (!productCode) return null;
+  try {
+    const params: any = { productCode, isVatOrder };
+    const response = await axios.get(`${BASE_URL}/accounting-stock`, { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching accounting stock:', error);
+    return null;
   }
 };
 
