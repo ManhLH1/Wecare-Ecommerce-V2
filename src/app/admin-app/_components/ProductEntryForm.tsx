@@ -372,10 +372,8 @@ export default function ProductEntryForm({
 
   // Disable logic for Add/Save buttons mapped from the provided PowerApps expression
   const buttonsDisabled = useMemo(() => {
-    console.log('🔍 [Button Disable Check] Starting...');
     
     if (isFormDisabled) {
-      console.log('❌ [Button Disable] Form is disabled (no customer or SO)');
       return true;
     }
 

@@ -7,6 +7,7 @@ const SALE_ORDER_DETAILS_TABLE = "crdfd_saleorderdetails";
 const SALE_ORDERS_TABLE = "crdfd_sale_orders";
 const INVENTORY_TABLE = "cr44a_inventoryweshops";
 const PRODUCT_TABLE = "crdfd_productses";
+const KHO_BD_TABLE = "crdfd_kho_binh_dinhs";
 
 // Map VAT percentage to Điều chỉnh GTGT OptionSet value
 const VAT_TO_IEUCHINHGTGT_MAP: Record<number, number> = {
@@ -60,6 +61,124 @@ async function lookupProductId(
   }
 
   return null;
+}
+
+// Helper function to update inventory after saving SOD
+async function updateInventoryAfterSale(
+  productCode: string,
+  quantity: number,
+  warehouseName: string | undefined,
+  headers: any
+): Promise<void> {
+  if (!productCode || !warehouseName) {
+    console.log(`[Update Inventory] Skipping - missing productCode or warehouseName`, { productCode, warehouseName });
+    return;
+  }
+
+  const safeCode = productCode.trim().replace(/'/g, "''");
+  const safeWarehouse = warehouseName.trim().replace(/'/g, "''");
+
+  console.log(`[Update Inventory] Starting update for product ${safeCode}, quantity: ${quantity}, warehouse: ${safeWarehouse}`);
+
+  try {
+    // 1. Update cr44a_inventoryweshops - cr44a_soluongtonlythuyet
+    // Sử dụng cr44a_masanpham để query inventory
+    let invFilter = `cr44a_masanpham eq '${safeCode}' and statecode eq 0`;
+    if (safeWarehouse) {
+      invFilter += ` and cr1bb_vitrikhotext eq '${safeWarehouse}'`;
+    }
+    const invColumns = "cr44a_inventoryweshopid,cr44a_soluongtonlythuyet,cr1bb_vitrikhotext";
+    const invQuery = `$select=${invColumns}&$filter=${encodeURIComponent(invFilter)}&$top=1`;
+    const invEndpoint = `${BASE_URL}${INVENTORY_TABLE}?${invQuery}`;
+    
+    console.log(`[Update Inventory] Querying inventory with cr44a_masanpham:`, invEndpoint);
+    const invResponse = await axios.get(invEndpoint, { headers });
+    const invResults = invResponse.data.value || [];
+    
+    let invRecord = null;
+    if (invResults.length > 0) {
+      invRecord = invResults[0];
+    } else if (safeWarehouse) {
+      // Nếu không tìm thấy với warehouse filter, thử lại không có warehouse filter
+      console.log(`[Update Inventory] No result with warehouse filter, trying without warehouse...`);
+      const fallbackFilter = `cr44a_masanpham eq '${safeCode}' and statecode eq 0`;
+      const fallbackQuery = `$select=${invColumns}&$filter=${encodeURIComponent(fallbackFilter)}&$top=1`;
+      const fallbackEndpoint = `${BASE_URL}${INVENTORY_TABLE}?${fallbackQuery}`;
+      const fallbackResponse = await axios.get(fallbackEndpoint, { headers });
+      const fallbackResults = fallbackResponse.data.value || [];
+      if (fallbackResults.length > 0) {
+        console.log(`[Update Inventory] Found result without warehouse filter`);
+        invRecord = fallbackResults[0];
+      }
+    }
+    
+    if (invRecord && invRecord.cr44a_inventoryweshopid) {
+      const currentStock = invRecord.cr44a_soluongtonlythuyet ?? 0;
+      const newStock = Math.max(0, currentStock - quantity); // Trừ số lượng, không cho âm
+
+      const updateInvEndpoint = `${BASE_URL}${INVENTORY_TABLE}(${invRecord.cr44a_inventoryweshopid})`;
+      console.log(`[Update Inventory] Updating cr44a_inventoryweshops:`, {
+        recordId: invRecord.cr44a_inventoryweshopid,
+        currentStock,
+        quantity,
+        newStock,
+        endpoint: updateInvEndpoint
+      });
+
+      await axios.patch(
+        updateInvEndpoint,
+        { cr44a_soluongtonlythuyet: newStock },
+        { headers }
+      );
+      console.log(`[Update Inventory] ✅ Successfully updated cr44a_inventoryweshops: ${currentStock} -> ${newStock} for product ${safeCode}`);
+    } else {
+      console.log(`[Update Inventory] ⚠️ No inventory record found for product ${safeCode} in warehouse ${safeWarehouse}`);
+    }
+
+    // 2. Update crdfd_kho_binh_dinhs - crdfd_tonkholythuyet
+    let khoBDFilter = `crdfd_masp eq '${safeCode}' and statecode eq 0`;
+    if (safeWarehouse) {
+      khoBDFilter += ` and crdfd_vitrikhofx eq '${safeWarehouse}'`;
+    }
+    const khoBDColumns = "crdfd_kho_binh_dinhid,crdfd_tonkholythuyet,crdfd_vitrikhofx";
+    const khoBDQuery = `$select=${khoBDColumns}&$filter=${encodeURIComponent(khoBDFilter)}&$top=1`;
+    const khoBDEndpoint = `${BASE_URL}${KHO_BD_TABLE}?${khoBDQuery}`;
+
+    console.log(`[Update Inventory] Querying Kho Binh Dinh:`, khoBDEndpoint);
+    const khoBDResponse = await axios.get(khoBDEndpoint, { headers });
+    const khoBDResults = khoBDResponse.data.value || [];
+    
+    if (khoBDResults.length > 0) {
+      const khoBDRecord = khoBDResults[0];
+      const currentStockBD = khoBDRecord.crdfd_tonkholythuyet ?? 0;
+      const newStockBD = Math.max(0, currentStockBD - quantity); // Trừ số lượng, không cho âm
+
+      const updateKhoBDEndpoint = `${BASE_URL}${KHO_BD_TABLE}(${khoBDRecord.crdfd_kho_binh_dinhid})`;
+      console.log(`[Update Inventory] Updating crdfd_kho_binh_dinhs:`, {
+        recordId: khoBDRecord.crdfd_kho_binh_dinhid,
+        currentStock: currentStockBD,
+        quantity,
+        newStock: newStockBD,
+        endpoint: updateKhoBDEndpoint
+      });
+
+      await axios.patch(
+        updateKhoBDEndpoint,
+        { crdfd_tonkholythuyet: newStockBD },
+        { headers }
+      );
+      console.log(`[Update Inventory] ✅ Successfully updated crdfd_kho_binh_dinhs: ${currentStockBD} -> ${newStockBD} for product ${safeCode}`);
+    } else {
+      console.log(`[Update Inventory] ⚠️ No Kho Binh Dinh record found for product ${safeCode} in warehouse ${safeWarehouse}`);
+    }
+  } catch (error: any) {
+    console.error(`[Update Inventory] ❌ Error updating inventory for product ${safeCode}:`, {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
+    // Không throw error để không ảnh hưởng đến việc lưu SOD
+  }
 }
 
 interface SaleOrderDetailInput {
@@ -129,7 +248,12 @@ export default async function handler(
 
     // ============ KIỂM TRA TỒN KHO CHO ĐƠN HÀNG KHÔNG VAT ============
     const isNonVatOrder = !isVatOrder;
-    if (isNonVatOrder && warehouseName) {
+    // Kiểm tra warehouseName có giá trị (không phải empty string, null, hoặc undefined)
+    const hasWarehouseName = warehouseName && typeof warehouseName === 'string' && warehouseName.trim().length > 0;
+    
+    console.log(`[Save SOD] Inventory check - isNonVatOrder: ${isNonVatOrder}, warehouseName: "${warehouseName}", hasWarehouseName: ${hasWarehouseName}`);
+    
+    if (isNonVatOrder && hasWarehouseName) {
       // Check inventory for each product (excluding allowed product groups)
       const allowedProductGroupCodes = [
         "NSP-00027",
@@ -150,34 +274,88 @@ export default async function handler(
           continue;
         }
 
-        // Query inventory
+        // Query inventory với fallback logic (giống inventory.ts)
         const safeCode = (product.productCode || "").trim().replace(/'/g, "''");
-        const safeWarehouse = warehouseName.trim().replace(/'/g, "''");
-        const filter = `crdfd_masanpham eq '${safeCode}' and statecode eq 0 and cr1bb_vitrikhotext eq '${safeWarehouse}'`;
-        const columns = "cr44a_soluongtonlythuyet";
-        const query = `$select=${columns}&$filter=${encodeURIComponent(filter)}&$top=1`;
-        const endpoint = `${BASE_URL}${INVENTORY_TABLE}?${query}`;
+        const safeWarehouse = warehouseName?.trim().replace(/'/g, "''") || "";
+        
+        const queryInventory = async () => {
+          // Thử query với warehouse filter trước
+          let filter = `cr44a_masanpham eq '${safeCode}' and statecode eq 0`;
+          if (safeWarehouse) {
+            filter += ` and cr1bb_vitrikhotext eq '${safeWarehouse}'`;
+          }
+          const columns = "cr44a_inventoryweshopid,cr44a_masanpham,cr44a_soluongtonlythuyet,cr1bb_vitrikhotext";
+          const query = `$select=${columns}&$filter=${encodeURIComponent(filter)}&$top=1`;
+          const endpoint = `${BASE_URL}${INVENTORY_TABLE}?${query}`;
+
+          console.log(`[Check Inventory] Querying for product ${safeCode}, warehouse: ${safeWarehouse || 'none'}`);
+          const response = await axios.get(endpoint, { headers });
+          const results = response.data.value || [];
+          const first = results[0];
+
+          console.log(`[Check Inventory] Results count: ${results.length}`, {
+            productCode: safeCode,
+            warehouseName: safeWarehouse,
+            found: !!first,
+            theoreticalStock: first?.cr44a_soluongtonlythuyet,
+            warehouseInRecord: first?.cr1bb_vitrikhotext,
+          });
+
+          // Nếu không tìm thấy với warehouse filter, thử lại không có warehouse filter
+          if (!first && safeWarehouse) {
+            console.log(`[Check Inventory] No result with warehouse filter, trying without warehouse...`);
+            const fallbackFilter = `cr44a_masanpham eq '${safeCode}' and statecode eq 0`;
+            const fallbackQuery = `$select=${columns}&$filter=${encodeURIComponent(fallbackFilter)}&$top=1`;
+            const fallbackEndpoint = `${BASE_URL}${INVENTORY_TABLE}?${fallbackQuery}`;
+            const fallbackResponse = await axios.get(fallbackEndpoint, { headers });
+            const fallbackResults = fallbackResponse.data.value || [];
+            const fallbackFirst = fallbackResults[0];
+
+            if (fallbackFirst) {
+              console.log(`[Check Inventory] Found result without warehouse filter:`, {
+                theoreticalStock: fallbackFirst?.cr44a_soluongtonlythuyet,
+                warehouseName: fallbackFirst?.cr1bb_vitrikhotext,
+              });
+              return fallbackFirst;
+            }
+          }
+
+          return first || null;
+        };
 
         try {
-          const invResponse = await axios.get(endpoint, { headers });
-          const invResults = invResponse.data.value || [];
-          const inventoryRecord = invResults[0];
+          const inventoryRecord = await queryInventory();
           const availableStock = inventoryRecord?.cr44a_soluongtonlythuyet ?? 0;
+
+          console.log(`[Check Inventory] Final result for ${product.productName}:`, {
+            productCode: safeCode,
+            requestedQuantity: product.quantity,
+            availableStock: availableStock,
+            hasRecord: !!inventoryRecord,
+          });
 
           if (product.quantity > availableStock) {
             return res.status(400).json({
               error: "Không đủ tồn kho!",
               details: {
                 productName: product.productName,
+                productCode: product.productCode,
                 requestedQuantity: product.quantity,
                 availableStock: availableStock,
                 unit: product.unit,
+                warehouseName: safeWarehouse || 'N/A',
               },
             });
           }
         } catch (invError: any) {
-          console.error("Error checking inventory:", invError);
+          console.error(`[Check Inventory] Error checking inventory for ${product.productName}:`, {
+            error: invError.message,
+            response: invError.response?.data,
+            status: invError.response?.status,
+          });
           // Continue if inventory check fails (might be network issue)
+          // Nhưng log warning để biết có vấn đề
+          console.warn(`[Check Inventory] ⚠️ Skipping inventory check for ${product.productName} due to error`);
         }
       }
     }
@@ -282,27 +460,98 @@ export default async function handler(
 
       let detailId: string;
 
-      if (product.id) {
-        // Update existing record
-        const updateEndpoint = `${BASE_URL}${SALE_ORDER_DETAILS_TABLE}(${product.id})`;
-        console.log(`[Save SOD] Updating record ${product.id}:`, JSON.stringify(payload, null, 2));
-        await axios.patch(updateEndpoint, payload, { headers });
-        detailId = product.id;
-      } else {
-        // Create new record
-        const createEndpoint = `${BASE_URL}${SALE_ORDER_DETAILS_TABLE}`;
-        console.log(`[Save SOD] Creating new record:`, JSON.stringify(payload, null, 2));
-        const createResponse = await axios.post(createEndpoint, payload, {
-          headers,
-        });
-        detailId = createResponse.data.crdfd_saleorderdetailid;
-        console.log(`[Save SOD] Created record with ID: ${detailId}`);
-      }
+      try {
+        if (product.id) {
+          // Update existing record
+          const updateEndpoint = `${BASE_URL}${SALE_ORDER_DETAILS_TABLE}(${product.id})`;
+          console.log(`[Save SOD] Updating record ${product.id}:`, JSON.stringify(payload, null, 2));
+          await axios.patch(updateEndpoint, payload, { headers });
+          detailId = product.id;
+          console.log(`[Save SOD] ✅ Successfully updated record ${product.id}`);
+        } else {
+          // Create new record
+          const createEndpoint = `${BASE_URL}${SALE_ORDER_DETAILS_TABLE}`;
+          console.log(`[Save SOD] Creating new record:`, JSON.stringify(payload, null, 2));
+          const createResponse = await axios.post(createEndpoint, payload, {
+            headers,
+          });
+          detailId = createResponse.data.crdfd_saleorderdetailid;
+          console.log(`[Save SOD] ✅ Created record with ID: ${detailId}`);
+        }
 
-      savedDetails.push({ id: detailId, ...product });
+        savedDetails.push({ id: detailId, ...product });
+      } catch (saveError: any) {
+        console.error(`[Save SOD] ❌ Error saving product:`, {
+          productCode: product.productCode,
+          productName: product.productName,
+          error: saveError.message,
+          response: saveError.response?.data,
+          status: saveError.response?.status,
+          payload: JSON.stringify(payload, null, 2)
+        });
+        
+        // Throw error để dừng và trả về lỗi cho client
+        throw {
+          message: `Error saving product ${product.productName || product.productCode || 'unknown'}`,
+          details: saveError.response?.data?.error?.message || saveError.response?.data?.error || saveError.message,
+          fullError: saveError.response?.data,
+          product: {
+            productCode: product.productCode,
+            productName: product.productName,
+            quantity: product.quantity
+          }
+        };
+      }
     }
 
-   
+    // ============ CẬP NHẬT TỒN KHO SAU KHI LƯU SOD (CHỈ CHO ĐƠN KHÔNG VAT) ============
+    if (isNonVatOrder && hasWarehouseName) {
+      const trimmedWarehouseName = warehouseName.trim();
+      console.log(`[Update Inventory] Starting inventory update for non-VAT order. Warehouse: ${trimmedWarehouseName}, Products count: ${products.length}`);
+      
+      // Chỉ cập nhật tồn kho cho các sản phẩm mới (không có id ban đầu)
+      // và không thuộc các nhóm sản phẩm được phép
+      const allowedProductGroupCodes = [
+        "NSP-00027",
+        "NSP-000872",
+        "NSP-000409",
+        "NSP-000474",
+        "NSP-000873",
+      ];
+
+      let updateCount = 0;
+      for (const product of products) {
+        // Skip nếu là sản phẩm đã tồn tại (có id ban đầu)
+        if (product.id) {
+          console.log(`[Update Inventory] Skipping product ${product.productCode} - existing record (id: ${product.id})`);
+          continue;
+        }
+
+        // Skip nếu thuộc nhóm sản phẩm được phép
+        if (product.productGroupCode && allowedProductGroupCodes.includes(product.productGroupCode)) {
+          console.log(`[Update Inventory] Skipping product ${product.productCode} - allowed product group: ${product.productGroupCode}`);
+          continue;
+        }
+
+        // Cập nhật tồn kho
+        if (product.productCode) {
+          console.log(`[Update Inventory] Processing product: ${product.productCode}, quantity: ${product.quantity}`);
+          await updateInventoryAfterSale(
+            product.productCode,
+            product.quantity,
+            trimmedWarehouseName,
+            headers
+          );
+          updateCount++;
+        } else {
+          console.log(`[Update Inventory] Skipping product - no productCode`);
+        }
+      }
+      
+      console.log(`[Update Inventory] Completed inventory update. Processed ${updateCount} products.`);
+    } else {
+      console.log(`[Update Inventory] Skipping inventory update - isNonVatOrder: ${isNonVatOrder}, warehouseName: ${warehouseName}, hasWarehouseName: ${hasWarehouseName}`);
+    }
 
     const soUpdateEndpoint = `${BASE_URL}${SALE_ORDERS_TABLE}(${soId})`;
 
@@ -331,8 +580,19 @@ export default async function handler(
       totalAmount: products.reduce((sum, p) => sum + p.totalAmount, 0),
     });
   } catch (error: any) {
-    console.error("Error saving sale order details:", error);
+    console.error("❌ Error saving sale order details:", error);
 
+    // Nếu là lỗi từ việc save product (đã được throw từ trong loop)
+    if (error.message && error.details) {
+      return res.status(400).json({
+        error: error.message,
+        details: error.details,
+        fullError: error.fullError,
+        product: error.product,
+      });
+    }
+
+    // Nếu là lỗi từ axios/Dynamics API
     if (error.response) {
       console.error("Error response status:", error.response.status);
       console.error("Error response data:", JSON.stringify(error.response.data, null, 2));
@@ -343,9 +603,11 @@ export default async function handler(
       });
     }
 
+    // Lỗi khác
+    console.error("Unexpected error:", error);
     res.status(500).json({
       error: "Error saving sale order details",
-      details: error.message,
+      details: error.message || "Unknown error occurred",
     });
   }
 }
