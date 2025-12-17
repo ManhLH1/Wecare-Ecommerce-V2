@@ -74,6 +74,7 @@ export default async function handler(
       "crdfd_chieckhau",
       "crdfd_giagoc",
       "crdfd_ieuchinhgtgt",    // Điều chỉnh GTGT OptionSet để map sang VAT %
+      "crdfd_stton",           // Stt đơn
       "crdfd_tongtienchuavat", // Tổng tiền chưa VAT từ getSaleOrdersData.ts
       "crdfd_tongtiencovat",
       "crdfd_duyetgia",
@@ -91,7 +92,7 @@ export default async function handler(
 
     const saleOrderDetails = (response.data.value || []).map((item: any) => ({
       id: item.crdfd_saleorderdetailid || "",
-      stt: item.crdfd_sttdon || 0,
+      stt: item.crdfd_stton || 0, // Stt đơn (correct field name)
       productName: item.crdfd_tensanphamtext || item.crdfd_tensanpham || "",
       unit: item.crdfd_onvionhang || item.crdfd_donvi || "",
       quantity: item.crdfd_productnum || item.crdfd_soluong || 0,

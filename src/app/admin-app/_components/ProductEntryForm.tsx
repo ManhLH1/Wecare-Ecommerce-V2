@@ -24,6 +24,8 @@ const VAT_OPTION_MAP: Record<number, number> = {
 interface ProductEntryFormProps {
   product: string;
   setProduct: (value: string) => void;
+  productCode: string;
+  setProductCode: (value: string) => void;
   unit: string;
   setUnit: (value: string) => void;
   warehouse: string;
@@ -58,6 +60,14 @@ interface ProductEntryFormProps {
   setDeliveryDate: (value: string) => void;
   note: string;
   setNote: (value: string) => void;
+  approver: string;
+  setApprover: (value: string) => void;
+  discountPercent: number;
+  setDiscountPercent: (value: number) => void;
+  discountAmount: number;
+  setDiscountAmount: (value: number) => void;
+  promotionText: string;
+  setPromotionText: (value: string) => void;
   onAdd: () => void;
   onSave: () => void;
   onRefresh: () => void;
@@ -66,6 +76,8 @@ interface ProductEntryFormProps {
 export default function ProductEntryForm({
   product,
   setProduct,
+  productCode,
+  setProductCode,
   unit,
   setUnit,
   warehouse,
@@ -100,6 +112,14 @@ export default function ProductEntryForm({
   setDeliveryDate,
   note,
   setNote,
+  approver,
+  setApprover,
+  discountPercent,
+  setDiscountPercent,
+  discountAmount,
+  setDiscountAmount,
+  promotionText,
+  setPromotionText,
   onAdd,
   onSave,
   onRefresh,
@@ -116,7 +136,7 @@ export default function ProductEntryForm({
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [inventoryTheoretical, setInventoryTheoretical] = useState<number>(0);
   const [inventoryLoading, setInventoryLoading] = useState<boolean>(false);
-  const [inventoryMessage, setInventoryMessage] = useState<string>('SL theo kho (tồn lý thuyết): 0');
+  const [inventoryMessage, setInventoryMessage] = useState<string>('Tồn kho (inventory): 0');
   const [inventoryColor, setInventoryColor] = useState<string | undefined>(undefined);
   const [accountingStock, setAccountingStock] = useState<number | null>(null);
   const [accountingStockLoading, setAccountingStockLoading] = useState<boolean>(false);
@@ -128,7 +148,6 @@ export default function ProductEntryForm({
   const [priceGroupText, setPriceGroupText] = useState<string>('');
   const [priceEntryMethod, setPriceEntryMethod] = useState<'Nhập thủ công' | 'Theo chiết khấu'>('Nhập thủ công');
   const [discountRate, setDiscountRate] = useState<string>('1');
-  const [approver, setApprover] = useState<string>('');
   const [basePriceForDiscount, setBasePriceForDiscount] = useState<number>(0);
 
   const normalizePriceInput = (value: any) => {
@@ -480,21 +499,23 @@ export default function ProductEntryForm({
   // Load inventory (Var_ton_kho_lythuyet_inventory) when product code & warehouse change
   useEffect(() => {
     const loadInventory = async () => {
+      // Xác định nguồn tồn kho theo VAT của Sales Order:
+      // - "Có VAT"  → Kho Bình Định
+      // - "Không VAT" (hoặc còn lại) → Inventory Weshops
+      const vatTextLower = (vatText || '').toLowerCase();
+      const isVatOrder = vatTextLower.includes('có vat');
+      const labelPrefix = isVatOrder ? 'Tồn kho (bỏ mua):' : 'Tồn kho (inventory):';
+
       if (!selectedProductCode || !warehouse) {
         setInventoryTheoretical(0);
         setStockQuantity(0);
-        setInventoryMessage('SL theo kho (tồn lý thuyết): 0');
+        setInventoryMessage(`${labelPrefix} 0`);
         setInventoryColor(undefined);
         return;
       }
 
       try {
         setInventoryLoading(true);
-        // Xác định nguồn tồn kho theo VAT của Sales Order:
-        // - "Có VAT"  → Kho Bình Định
-        // - "Không VAT" (hoặc còn lại) → Inventory Weshops
-        const vatTextLower = (vatText || '').toLowerCase();
-        const isVatOrder = vatTextLower.includes('có vat');
 
         const result = await fetchInventory(selectedProductCode, warehouse, isVatOrder);
         if (!result) {
@@ -509,7 +530,6 @@ export default function ProductEntryForm({
         setInventoryTheoretical(theoretical);
         setStockQuantity(theoretical);
 
-        const labelPrefix = isVatOrder ? 'Tồn kho (bỏ mua):' : 'Tồn kho (inventory):';
         setInventoryMessage(`${labelPrefix} ${theoretical.toLocaleString('vi-VN')}`);
         setInventoryColor(theoretical <= 0 ? 'red' : undefined);
       } catch (e) {
@@ -794,6 +814,7 @@ export default function ProductEntryForm({
               const selectedProductData = products.find((p) => p.crdfd_productsid === value);
               setSelectedProduct(selectedProductData || null);
               setSelectedProductCode(selectedProductData?.crdfd_masanpham);
+              setProductCode(selectedProductData?.crdfd_masanpham || '');
               // Apply VAT percent based on crdfd_gtgt option set
               const vatOptionValue = (option?.crdfd_gtgt_option ?? option?.crdfd_gtgt) as number | undefined;
               const vatFromOption = vatOptionValue !== undefined ? VAT_OPTION_MAP[Number(vatOptionValue)] : undefined;
@@ -1150,9 +1171,8 @@ export default function ProductEntryForm({
           </button>
           <button
             className="admin-app-action-btn admin-app-action-btn-save"
-            onClick={handleSaveWithInventoryCheck}
+            onClick={onSave}
             title="Lưu"
-            disabled={buttonsDisabled}
           >
             <span className="admin-app-action-icon">💾</span>
           </button>

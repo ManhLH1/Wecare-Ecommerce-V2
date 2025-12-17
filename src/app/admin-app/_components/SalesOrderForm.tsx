@@ -5,22 +5,41 @@ import ProductEntryForm from './ProductEntryForm';
 import ProductTable from './ProductTable';
 import Dropdown from './Dropdown';
 import { useCustomers, useSaleOrders } from '../_hooks/useDropdownData';
-import { fetchSaleOrderDetails, SaleOrderDetail } from '../_api/adminApi';
+import { fetchSaleOrderDetails, SaleOrderDetail, saveSaleOrderDetails } from '../_api/adminApi';
+import { showToast } from '../../../components/ToastManager';
 
 interface ProductItem {
   id: string;
   stt?: number;
+  productCode?: string;
+  productId?: string;
   productName: string;
+  productGroupCode?: string;
+  productCategoryLevel4?: string;
   unit: string;
+  unitId?: string;
   quantity: number;
   price: number;
   surcharge: number;
   discount: number;
   discountedPrice: number;
   vat: number;
+  subtotal: number;
+  vatAmount: number;
   totalAmount: number;
   approver: string;
   deliveryDate: string;
+  warehouse?: string;
+  note?: string;
+  urgentOrder?: boolean;
+  approvePrice?: boolean;
+  approveSupPrice?: boolean;
+  approveSupPriceId?: string;
+  discountPercent?: number;
+  discountAmount?: number;
+  promotionText?: string;
+  invoiceSurcharge?: number; // Phụ phí hoá đơn
+  createdOn?: string;
 }
 
 export default function SalesOrderForm() {
@@ -36,6 +55,7 @@ export default function SalesOrderForm() {
   // Load SO - if customerId is selected, filter by customer, otherwise load all
   const { saleOrders, loading: soLoading, error: soError } = useSaleOrders(customerId || undefined);
   const [product, setProduct] = useState('');
+  const [productCode, setProductCode] = useState('');
   const [unit, setUnit] = useState('');
   const [warehouse, setWarehouse] = useState('');
   const [quantity, setQuantity] = useState(0);
@@ -51,6 +71,10 @@ export default function SalesOrderForm() {
   const [deliveryDate, setDeliveryDate] = useState('');
   const [customerIndustry, setCustomerIndustry] = useState<number | null>(null);
   const [note, setNote] = useState('');
+  const [approver, setApprover] = useState('');
+  const [discountPercent, setDiscountPercent] = useState(0);
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [promotionText, setPromotionText] = useState('');
   const [productList, setProductList] = useState<ProductItem[]>([]);
 
   // Tổng hợp tiền toàn đơn hàng
@@ -119,50 +143,205 @@ export default function SalesOrderForm() {
   }, [soId]);
 
   const handleAddProduct = () => {
-    if (!product || quantity <= 0) return;
+    // Validation: product, unit, quantity, price (or approve price checked)
+    if (!product || !unit || quantity <= 0 || (!price && !approvePrice)) {
+      console.warn('❌ Add Product Failed: Missing required fields', {
+        product: !!product,
+        unit: !!unit,
+        quantity,
+        price: !!price,
+        approvePrice,
+      });
+      return;
+    }
 
     const priceNum = parseFloat(price) || 0;
-    const subtotalCalc = quantity * priceNum;
+    
+    // Calculate invoice surcharge (Phụ phí hoá đơn)
+    // 1.5% for "Hộ kinh doanh" + "Không VAT" orders
+    const selectedSo = saleOrders.find((so) => so.crdfd_sale_orderid === soId);
+    const isHoKinhDoanh = selectedSo?.cr1bb_loaihoaon === 191920001; // TODO: confirm OptionSet value
+    const isNonVat = vatPercent === 0;
+    const invoiceSurchargeRate = isHoKinhDoanh && isNonVat ? 0.015 : 0;
+    
+    // Calculate discounted price (giá đã giảm)
+    // For now, use price directly; in future integrate with promotion logic
+    const discountedPriceCalc = priceNum * (1 - discountPercent / 100) - discountAmount;
+    const finalPrice = discountedPriceCalc * (1 + invoiceSurchargeRate);
+    
+    // Calculate amounts
+    const subtotalCalc = quantity * finalPrice;
     const vatCalc = (subtotalCalc * vatPercent) / 100;
     const totalCalc = subtotalCalc + vatCalc;
 
+    // Auto-increment STT
+    const maxStt = productList.length > 0 ? Math.max(...productList.map((p) => p.stt || 0)) : 0;
+    const newStt = maxStt + 1;
+
     const newProduct: ProductItem = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${newStt}`,
+      stt: newStt,
+      productCode: productCode,
       productName: product,
-      unit: unit || 'Cái',
+      unit: unit,
       quantity,
       price: priceNum,
       surcharge: 0,
-      discount: 0,
-      discountedPrice: priceNum,
+      discount: discountAmount,
+      discountedPrice: finalPrice,
+      discountPercent: discountPercent,
+      discountAmount: discountAmount,
       vat: vatPercent,
+      subtotal: subtotalCalc,
+      vatAmount: vatCalc,
       totalAmount: totalCalc,
-      approver: '',
+      approver: approver,
       deliveryDate: deliveryDate,
+      warehouse: warehouse,
+      note: note,
+      urgentOrder: urgentOrder,
+      approvePrice: approvePrice,
+      approveSupPrice: approveSupPrice,
+      promotionText: promotionText,
+      invoiceSurcharge: invoiceSurchargeRate,
+      createdOn: new Date().toISOString(),
     };
 
+    console.log('✅ Add Product Success:', newProduct);
     setProductList([...productList, newProduct]);
     
-    // Reset form
+    // Reset form fields (mimic PowerApps Reset())
     setProduct('');
+    setProductCode('');
     setUnit('');
     setQuantity(0);
     setPrice('');
     setSubtotal(0);
-    setVatPercent(0);
     setVatAmount(0);
     setTotalAmount(0);
+    setApprovePrice(false);
+    setApproveSupPrice(false);
+    setUrgentOrder(false);
+    setApprover('');
+    setDiscountPercent(0);
+    setDiscountAmount(0);
+    setPromotionText('');
+    setNote('');
+    // Keep warehouse, customer, SO, deliveryDate as they are reused
   };
 
-  const handleSave = () => {
-    // Handle save logic
-    console.log('Saving order...', {
-      customer,
-      so,
-      productList,
-      deliveryDate,
-      note,
-    });
+  const handleSave = async () => {
+    // Chỉ kiểm tra danh sách sản phẩm - không check các field input phía trên
+    if (productList.length === 0) {
+      showToast.error('Không có data để tạo đơn bán chi tiết!');
+      return;
+    }
+
+    if (!soId) {
+      showToast.error('Vui lòng chọn Sales Order trước khi lưu.');
+      return;
+    }
+
+    try {
+      // Load danh sách SOD hiện có từ CRM
+      const existingSOD = await fetchSaleOrderDetails(soId);
+      const existingProductIds = new Set(
+        existingSOD
+          .map((sod) => sod.id)
+          .filter((id): id is string => !!id && id.startsWith('crdfd_'))
+      );
+
+      // Lấy các sản phẩm CHƯA CÓ trong SOD từ CRM
+      // Sản phẩm mới là những sản phẩm không có ID từ CRM hoặc ID không nằm trong danh sách SOD hiện có
+      const newProducts = productList.filter((item) => {
+        // Nếu không có ID hoặc ID không phải từ CRM → sản phẩm mới
+        if (!item.id || !item.id.startsWith('crdfd_')) {
+          return true;
+        }
+        // Nếu có ID từ CRM nhưng không có trong SOD hiện có → cũng là sản phẩm mới (có thể bị xóa)
+        return !existingProductIds.has(item.id);
+      });
+
+      if (newProducts.length === 0) {
+        showToast.warning('Không có sản phẩm mới để lưu. Tất cả sản phẩm đã có trong SOD.');
+        return;
+      }
+
+      const selectedSo = saleOrders.find((so) => so.crdfd_sale_orderid === soId);
+      const isVatOrder = selectedVatText?.toLowerCase().includes('có vat') || false;
+
+      // Map chỉ các sản phẩm mới (chưa có trong SOD) to API format
+      // Không gửi ID vì đây là sản phẩm mới, chưa có trong CRM
+      const productsToSave = newProducts.map((item) => ({
+        id: undefined, // Không gửi ID cho sản phẩm mới - sẽ được tạo mới trong CRM
+        productId: item.productId,
+        productCode: item.productCode,
+        productName: item.productName,
+        productGroupCode: item.productGroupCode,
+        productCategoryLevel4: item.productCategoryLevel4,
+        unitId: item.unitId,
+        unit: item.unit,
+        quantity: item.quantity,
+        price: item.price,
+        discountedPrice: item.discountedPrice ?? item.price,
+        originalPrice: item.price,
+        vat: item.vat,
+        vatAmount: item.vatAmount,
+        subtotal: item.subtotal,
+        totalAmount: item.totalAmount,
+        stt: item.stt || 0,
+        deliveryDate: item.deliveryDate,
+        note: item.note,
+        urgentOrder: item.urgentOrder,
+        approvePrice: item.approvePrice,
+        approveSupPrice: item.approveSupPrice,
+        approveSupPriceId: item.approveSupPriceId,
+        approver: item.approver,
+        discountPercent: item.discountPercent,
+        discountAmount: item.discountAmount,
+        promotionText: item.promotionText,
+        invoiceSurcharge: item.invoiceSurcharge,
+      }));
+
+      const result = await saveSaleOrderDetails({
+        soId,
+        warehouseName: warehouse,
+        isVatOrder,
+        customerIndustry: customerIndustry,
+        products: productsToSave,
+      });
+
+      showToast.success(result.message || 'Tạo đơn bán chi tiết thành công!');
+      
+      // Reset form after successful save
+      handleRefresh();
+      
+      // Reload sale order details
+      if (soId) {
+        const details = await fetchSaleOrderDetails(soId);
+        const mappedProducts: ProductItem[] = details.map((detail: SaleOrderDetail) => ({
+          id: detail.id,
+          stt: detail.stt,
+          productName: detail.productName,
+          unit: detail.unit,
+          quantity: detail.quantity,
+          price: detail.price,
+          surcharge: detail.surcharge,
+          discount: detail.discount,
+          discountedPrice: detail.discountedPrice,
+          vat: detail.vat,
+          totalAmount: detail.totalAmount,
+          approver: detail.approver,
+          deliveryDate: detail.deliveryDate || '',
+        }));
+        mappedProducts.sort((a, b) => (b.stt || 0) - (a.stt || 0));
+        setProductList(mappedProducts);
+      }
+    } catch (error: any) {
+      console.error('Error saving sale order details:', error);
+      const errorMessage = error.message || 'Có lỗi xảy ra khi lưu đơn hàng. Vui lòng thử lại.';
+      showToast.error(errorMessage);
+    }
   };
 
   const handleRefresh = () => {
@@ -173,6 +352,7 @@ export default function SalesOrderForm() {
     setSo('');
     setSoId('');
     setProduct('');
+    setProductCode('');
     setUnit('');
     setWarehouse('');
     setQuantity(0);
@@ -187,6 +367,10 @@ export default function SalesOrderForm() {
     setUrgentOrder(false);
     setDeliveryDate('14/12/2025');
     setNote('');
+    setApprover('');
+    setDiscountPercent(0);
+    setDiscountAmount(0);
+    setPromotionText('');
     setProductList([]);
   };
 
@@ -273,6 +457,8 @@ export default function SalesOrderForm() {
         <ProductEntryForm
           product={product}
           setProduct={setProduct}
+          productCode={productCode}
+          setProductCode={setProductCode}
           unit={unit}
           setUnit={setUnit}
           warehouse={warehouse}
@@ -281,7 +467,7 @@ export default function SalesOrderForm() {
           customerCode={customerCode}
           customerName={customer}
           vatText={selectedVatText}
-        orderType={selectedSo?.crdfd_loai_don_hang}
+          orderType={selectedSo?.crdfd_loai_don_hang}
           soId={soId}
           quantity={quantity}
           setQuantity={setQuantity}
@@ -307,6 +493,14 @@ export default function SalesOrderForm() {
           setDeliveryDate={setDeliveryDate}
           note={note}
           setNote={setNote}
+          approver={approver}
+          setApprover={setApprover}
+          discountPercent={discountPercent}
+          setDiscountPercent={setDiscountPercent}
+          discountAmount={discountAmount}
+          setDiscountAmount={setDiscountAmount}
+          promotionText={promotionText}
+          setPromotionText={setPromotionText}
           onAdd={handleAddProduct}
           onSave={handleSave}
           onRefresh={handleRefresh}

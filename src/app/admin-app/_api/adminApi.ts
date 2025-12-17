@@ -266,3 +266,63 @@ export const fetchSaleOrderDetails = async (
   }
 };
 
+// Save Sale Order Details (create/update)
+export interface SaveSaleOrderDetailsRequest {
+  soId: string;
+  warehouseName?: string;
+  isVatOrder?: boolean;
+  customerIndustry?: number | null;
+  products: Array<{
+    id?: string;
+    productId?: string;
+    productCode?: string;
+    productName: string;
+    productGroupCode?: string;
+    productCategoryLevel4?: string;
+    unitId?: string;
+    unit: string;
+    quantity: number;
+    price: number;
+    discountedPrice?: number;
+    originalPrice?: number;
+    vat: number;
+    vatAmount: number;
+    subtotal: number;
+    totalAmount: number;
+    stt: number;
+    deliveryDate?: string;
+    note?: string;
+    urgentOrder?: boolean;
+    approvePrice?: boolean;
+    approveSupPrice?: boolean;
+    approveSupPriceId?: string;
+    approver?: string;
+    discountPercent?: number;
+    discountAmount?: number;
+    promotionText?: string;
+    invoiceSurcharge?: number;
+  }>;
+}
+
+export interface SaveSaleOrderDetailsResponse {
+  success: boolean;
+  message: string;
+  savedDetails: any[];
+  totalAmount: number;
+}
+
+export const saveSaleOrderDetails = async (
+  data: SaveSaleOrderDetailsRequest
+): Promise<SaveSaleOrderDetailsResponse> => {
+  try {
+    const response = await axios.post(`${BASE_URL}/save-sale-order-details`, data);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error saving sale order details:', error);
+    if (error.response?.data) {
+      throw new Error(error.response.data.details || error.response.data.error || 'Failed to save sale order details');
+    }
+    throw error;
+  }
+};
+
