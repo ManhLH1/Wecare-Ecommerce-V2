@@ -89,11 +89,14 @@ const DesktopSubHeader: React.FC<DesktopSubHeaderProps> = ({
 
           {showCategoryDropdown && (
             <div
-              className="absolute left-0 top-full mt-2 w-[calc(100vw-2rem)] min-w-[1200px] max-w-[1600px] bg-white rounded-2xl shadow-2xl border border-[#04B2D9] z-50 animate-fadeIn max-h-[70vh] p-2 overflow-y-auto overflow-x-hidden scrollbar-none"
+              className="absolute left-0 top-full mt-2 bg-white rounded-2xl shadow-2xl border border-[#04B2D9] z-50 animate-fadeIn max-h-[70vh] p-2 overflow-y-auto overflow-x-hidden scrollbar-none"
               style={{ 
                 scrollbarWidth: "none", 
                 msOverflowStyle: "none",
-                left: "clamp(-10vw, 0rem, -20px)"
+                left: "0px",
+                width: "auto",
+                minWidth: "280px",
+                maxWidth: "1100px"
               }}
             >
               {/* Hide scrollbar for Webkit browsers */}

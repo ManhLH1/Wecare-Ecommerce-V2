@@ -178,25 +178,24 @@ const Reveal = ({
     direction === "up"
       ? "translate-y-4"
       : direction === "down"
-      ? "-translate-y-4"
-      : direction === "left"
-      ? "-translate-x-4"
-      : direction === "right"
-      ? "translate-x-4"
-      : direction === "scale"
-      ? "scale-95"
-      : "translate-y-4";
+        ? "-translate-y-4"
+        : direction === "left"
+          ? "-translate-x-4"
+          : direction === "right"
+            ? "translate-x-4"
+            : direction === "scale"
+              ? "scale-95"
+              : "translate-y-4";
 
   const Tag: any = as;
 
   return (
     <Tag
       ref={elementRef as any}
-      className={`${className} transition-all duration-700 will-change-transform ${
-        isVisible
+      className={`${className} transition-all duration-700 will-change-transform ${isVisible
           ? "opacity-100 translate-x-0 translate-y-0 scale-100"
           : `opacity-0 ${hiddenTransform}`
-      }`}
+        }`}
       style={{
         transitionDelay: `${delay}ms`,
         transitionProperty: "opacity, transform",
@@ -896,16 +895,16 @@ const HomeContent = () => {
       : undefined,
     promotion: product.promotion
       ? {
-          promotionId: product.promotion.promotionId || "",
-          value: product.promotion.value,
-          value2: product.promotion.value2,
-          cr1bb_vn: product.promotion.vn,
-          name: product.promotion.name,
-          conditions: product.promotion.conditions,
-          soluongapdung: product.promotion.soluongapdung
-            ? Number(product.promotion.soluongapdung)
-            : undefined,
-        }
+        promotionId: product.promotion.promotionId || "",
+        value: product.promotion.value,
+        value2: product.promotion.value2,
+        cr1bb_vn: product.promotion.vn,
+        name: product.promotion.name,
+        conditions: product.promotion.conditions,
+        soluongapdung: product.promotion.soluongapdung
+          ? Number(product.promotion.soluongapdung)
+          : undefined,
+      }
       : undefined,
   });
 
@@ -955,9 +954,8 @@ const HomeContent = () => {
   }) => (
     <section className="py-6 md:py-12">
       <div
-        className={`mb-2 md:mb-6 text-left ${
-          title === "Sản phẩm bán chạy" ? "px-[5px] md:px-[50px]" : ""
-        }`}
+        className={`mb-2 md:mb-6 text-left ${title === "Sản phẩm bán chạy" ? "px-[5px] md:px-[50px]" : ""
+          }`}
       >
         {title === "Sản phẩm bán chạy" && !isDesktop ? null : (
           <h2 className="text-lg md:text-2xl font-semibold text-gray-900 mb-1 md:mb-2">
@@ -1005,15 +1003,19 @@ const HomeContent = () => {
           onCartClick={openCart}
         />
 
-        {/* Main Layout */}
-        <div className="max-w-7xl mx-auto px-0 py-6" style={{ paddingTop: '150px' }}>
+        {/* Main Layout - Hero section dịch sang phải để không bị dropdown che */}
+        <div className="w-full mx-auto px-0 py-6" style={{ paddingTop: '150px' }}>
           <div className="flex flex-col lg:flex-row gap-6">
-            {/* Main Content - full width */}
-            <JDStyleMainContent
-              categoryGroups={categoryGroups}
-              onCategorySelect={handleCategorySelect}
-              getIcon={getIcon}
-            />
+            {/* Spacer cho category dropdown trên Desktop - chiều rộng 280px = collapsed width của CategoryMenu */}
+            <div className="hidden lg:block w-[280px] flex-shrink-0" />
+            {/* Main Content - nằm bên phải của category dropdown */}
+            <div className="flex-1">
+              <JDStyleMainContent
+                categoryGroups={categoryGroups}
+                onCategorySelect={handleCategorySelect}
+                getIcon={getIcon}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -1065,12 +1067,12 @@ const HomeContent = () => {
             // Chỉ hiển thị cho các user type khác nếu cần
             ...(userType === "sale"
               ? [
-                  {
-                    icon: "👔",
-                    label: getSaleOrdersConfig(false).label,
-                    href: getSaleOrdersConfig(false).href,
-                  },
-                ]
+                {
+                  icon: "👔",
+                  label: getSaleOrdersConfig(false).label,
+                  href: getSaleOrdersConfig(false).href,
+                },
+              ]
               : []),
           ]}
         />
@@ -1100,29 +1102,29 @@ const HomeContent = () => {
               // Ẩn lịch sử đơn hàng và thanh toán nếu là sale
               ...(userType !== "sale"
                 ? [
-                    {
-                      icon: "📜",
-                      label: "Lịch sử đơn hàng",
-                      href: "/history-order",
-                      isScroll: false,
-                    },
-                    {
-                      icon: "💳",
-                      label: "Lịch sử thanh toán",
-                      href: "/history-payment",
-                      isScroll: false,
-                    },
-                  ]
+                  {
+                    icon: "📜",
+                    label: "Lịch sử đơn hàng",
+                    href: "/history-order",
+                    isScroll: false,
+                  },
+                  {
+                    icon: "💳",
+                    label: "Lịch sử thanh toán",
+                    href: "/history-payment",
+                    isScroll: false,
+                  },
+                ]
                 : []),
               ...(userType === "sale"
                 ? [
-                    {
-                      icon: "👔",
-                      label: getSaleOrdersConfig(true).label,
-                      href: getSaleOrdersConfig(true).href,
-                      isScroll: false,
-                    },
-                  ]
+                  {
+                    icon: "👔",
+                    label: getSaleOrdersConfig(true).label,
+                    href: getSaleOrdersConfig(true).href,
+                    isScroll: false,
+                  },
+                ]
                 : []),
             ].map((item, idx) => (
               <Link
@@ -1154,67 +1156,67 @@ const HomeContent = () => {
           <div aria-hidden className="pointer-events-none absolute -top-px left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] h-px w-screen bg-stone-200/90" />
           <div aria-hidden className="pointer-events-none absolute -bottom-px left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] h-px w-screen bg-stone-200/90" />
           <div className="relative px-[5px] md:px-[50px]">
-          <div className="py-6 md:py-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-            <Reveal as="div" direction="up" className="md:basis-3/5">
-              <h2 className="text-xl md:text-3xl font-bold text-gray-900 leading-tight">
-                Wecare – Giải pháp toàn diện giúp doanh nghiệp dễ dàng nhập
-                hàng, tối ưu chuỗi cung ứng và nâng cao hiệu quả vận hành.
-              </h2>
-            </Reveal>
-            <Reveal as="div" direction="up" delay={150} className="md:basis-2/5 grid grid-cols-2 gap-x-8 gap-y-8">
-              <div className="flex items-start h-20 md:h-24">
-                <span className="inline-block w-[3px] md:w-[4px] h-8 md:h-10 bg-gray-300 rounded mr-3 md:mr-4 flex-shrink-0"></span>
-                <div className="flex flex-col justify-center h-full">
-                  <div className="text-2xl md:text-3xl font-extrabold text-blue-600">
-                    {animatedProducts.toLocaleString()}+
-                  </div>
-                  <div className="text-xs md:text-sm text-gray-900 mt-1">
-                    sản phẩm
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-start h-20 md:h-24">
-                <span className="inline-block w-[3px] md:w-[4px] h-8 md:h-10 bg-gray-300 rounded mr-3 md:mr-4 flex-shrink-0"></span>
-                <div className="flex flex-col justify-center h-full">
-                  <div className="text-2xl md:text-3xl font-extrabold text-blue-600">
-                    {animatedProductGroups.toLocaleString()}+
-                  </div>
-                  <div className="text-xs md:text-sm text-gray-900 mt-1">
-                    danh mục
+            <div className="py-6 md:py-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+              <Reveal as="div" direction="up" className="md:basis-3/5">
+                <h2 className="text-xl md:text-3xl font-bold text-gray-900 leading-tight">
+                  Wecare – Giải pháp toàn diện giúp doanh nghiệp dễ dàng nhập
+                  hàng, tối ưu chuỗi cung ứng và nâng cao hiệu quả vận hành.
+                </h2>
+              </Reveal>
+              <Reveal as="div" direction="up" delay={150} className="md:basis-2/5 grid grid-cols-2 gap-x-8 gap-y-8">
+                <div className="flex items-start h-20 md:h-24">
+                  <span className="inline-block w-[3px] md:w-[4px] h-8 md:h-10 bg-gray-300 rounded mr-3 md:mr-4 flex-shrink-0"></span>
+                  <div className="flex flex-col justify-center h-full">
+                    <div className="text-2xl md:text-3xl font-extrabold text-blue-600">
+                      {animatedProducts.toLocaleString()}+
+                    </div>
+                    <div className="text-xs md:text-sm text-gray-900 mt-1">
+                      sản phẩm
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="flex items-start h-20 md:h-24">
-                <span className="inline-block w-[3px] md:w-[4px] h-8 md:h-10 bg-gray-300 rounded mr-3 md:mr-4 flex-shrink-0"></span>
-                <div className="flex flex-col justify-center h-full">
-                  <div className="text-2xl md:text-3xl font-extrabold text-blue-600">
-                    {animatedCustomer.toLocaleString()}+
-                  </div>
-                  <div className="text-xs md:text-sm text-gray-900 mt-1">
-                    khách hàng đã phục vụ
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-start h-20 md:h-24">
-                <span className="inline-block w-[3px] md:w-[4px] h-8 md:h-10 bg-gray-300 rounded mr-3 md:mr-4 flex-shrink-0"></span>
-                <div className="flex flex-col justify-center h-full">
-                  <img 
-                    src="/ban-do-viet-nam-vector-inkythuatso.svg" 
-                    alt="Bản đồ Việt Nam" 
-                    className="w-16 h-12 md:w-20 md:h-16 object-contain filter drop-shadow-lg mb-2"
-                    style={{
-                      filter: 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1))',
-                      maxWidth: '100%',
-                      height: 'auto'
-                    }}
-                  />
-                  <div className="text-xs md:text-sm text-gray-900">
-                    có mặt trên toàn quốc
+                <div className="flex items-start h-20 md:h-24">
+                  <span className="inline-block w-[3px] md:w-[4px] h-8 md:h-10 bg-gray-300 rounded mr-3 md:mr-4 flex-shrink-0"></span>
+                  <div className="flex flex-col justify-center h-full">
+                    <div className="text-2xl md:text-3xl font-extrabold text-blue-600">
+                      {animatedProductGroups.toLocaleString()}+
+                    </div>
+                    <div className="text-xs md:text-sm text-gray-900 mt-1">
+                      danh mục
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Reveal>
-          </div>
+                <div className="flex items-start h-20 md:h-24">
+                  <span className="inline-block w-[3px] md:w-[4px] h-8 md:h-10 bg-gray-300 rounded mr-3 md:mr-4 flex-shrink-0"></span>
+                  <div className="flex flex-col justify-center h-full">
+                    <div className="text-2xl md:text-3xl font-extrabold text-blue-600">
+                      {animatedCustomer.toLocaleString()}+
+                    </div>
+                    <div className="text-xs md:text-sm text-gray-900 mt-1">
+                      khách hàng đã phục vụ
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-start h-20 md:h-24">
+                  <span className="inline-block w-[3px] md:w-[4px] h-8 md:h-10 bg-gray-300 rounded mr-3 md:mr-4 flex-shrink-0"></span>
+                  <div className="flex flex-col justify-center h-full">
+                    <img
+                      src="/ban-do-viet-nam-vector-inkythuatso.svg"
+                      alt="Bản đồ Việt Nam"
+                      className="w-16 h-12 md:w-20 md:h-16 object-contain filter drop-shadow-lg mb-2"
+                      style={{
+                        filter: 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1))',
+                        maxWidth: '100%',
+                        height: 'auto'
+                      }}
+                    />
+                    <div className="text-xs md:text-sm text-gray-900">
+                      có mặt trên toàn quốc
+                    </div>
+                  </div>
+                </div>
+              </Reveal>
+            </div>
           </div>
         </section>
         {/* Divider */}
@@ -1340,9 +1342,9 @@ const HomeContent = () => {
         </section> */}
         {/* News Section - DESKTOP UI giữ nguyên */}
         {/* <section className="hidden md:block py-4 px-2 bg-white mb-3 drop-shadow-lg inset-shadow-3xs rounded-lg shadow-sm"> */}
-          <Reveal as="div" direction="up">
-            <NewsSection />
-          </Reveal>
+        <Reveal as="div" direction="up">
+          <NewsSection />
+        </Reveal>
         {/* </section> */}
       </main>
 
