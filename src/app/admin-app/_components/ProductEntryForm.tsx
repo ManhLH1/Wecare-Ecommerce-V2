@@ -494,55 +494,65 @@ export default function ProductEntryForm({
     return `Tồn LT kế toán: ${formatted} ${baseUnitText}`;
   }, [accountingStock, units, unitId, selectedProduct]);
 
-  // Load inventory (Var_ton_kho_lythuyet_inventory) when product code & warehouse change
-  useEffect(() => {
-    const loadInventory = async () => {
-      // Xác định nguồn tồn kho theo VAT của Sales Order:
-      // - "Có VAT"  → Kho Bình Định
-      // - "Không VAT" (hoặc còn lại) → Inventory Weshops
-      const vatTextLower = (vatText || '').toLowerCase();
-      const isVatOrder = vatTextLower.includes('có vat');
-      const labelPrefix = isVatOrder ? 'Tồn kho (bỏ mua):' : 'Tồn kho (inventory):';
+  // Function to load inventory
+  const loadInventory = async () => {
+    // Xác định nguồn tồn kho theo VAT của Sales Order:
+    // - "Có VAT"  → Kho Bình Định
+    // - "Không VAT" (hoặc còn lại) → Inventory Weshops
+    const vatTextLower = (vatText || '').toLowerCase();
+    const isVatOrder = vatTextLower.includes('có vat');
+    const labelPrefix = isVatOrder ? 'Tồn kho (bỏ mua):' : 'Tồn kho (inventory):';
 
-      if (!selectedProductCode || !warehouse) {
-        setInventoryTheoretical(0);
-        setStockQuantity(0);
-        setInventoryMessage(`${labelPrefix} 0`);
-        setInventoryColor(undefined);
-        return;
-      }
+    if (!selectedProductCode || !warehouse) {
+      setInventoryTheoretical(0);
+      setStockQuantity(0);
+      setInventoryMessage(`${labelPrefix} 0`);
+      setInventoryColor(undefined);
+      return;
+    }
 
-      try {
-        setInventoryLoading(true);
+    try {
+      setInventoryLoading(true);
 
-        const result = await fetchInventory(selectedProductCode, warehouse, isVatOrder);
-        if (!result) {
-          setInventoryTheoretical(0);
-          setStockQuantity(0);
-          setInventoryMessage('Inventory không có sản phẩm này');
-          setInventoryColor('red');
-          return;
-        }
-
-        const theoretical = result.theoreticalStock ?? 0;
-        setInventoryTheoretical(theoretical);
-        setStockQuantity(theoretical);
-
-        setInventoryMessage(`${labelPrefix} ${theoretical.toLocaleString('vi-VN')}`);
-        setInventoryColor(theoretical <= 0 ? 'red' : undefined);
-      } catch (e) {
-        console.error('Failed to load inventory info', e);
+      const result = await fetchInventory(selectedProductCode, warehouse, isVatOrder);
+      if (!result) {
         setInventoryTheoretical(0);
         setStockQuantity(0);
         setInventoryMessage('Inventory không có sản phẩm này');
         setInventoryColor('red');
-      } finally {
-        setInventoryLoading(false);
+        return;
       }
-    };
 
+      const theoretical = result.theoreticalStock ?? 0;
+      setInventoryTheoretical(theoretical);
+      setStockQuantity(theoretical);
+
+      setInventoryMessage(`${labelPrefix} ${theoretical.toLocaleString('vi-VN')}`);
+      setInventoryColor(theoretical <= 0 ? 'red' : undefined);
+    } catch (e) {
+      console.error('Failed to load inventory info', e);
+      setInventoryTheoretical(0);
+      setStockQuantity(0);
+      setInventoryMessage('Inventory không có sản phẩm này');
+      setInventoryColor('red');
+    } finally {
+      setInventoryLoading(false);
+    }
+  };
+
+  // Load inventory when product code & warehouse change
+  useEffect(() => {
     loadInventory();
   }, [selectedProductCode, warehouse, vatText, vatPercent, setStockQuantity]);
+
+  // Function to reload inventory manually
+  const handleReloadInventory = async () => {
+    if (!selectedProductCode || !warehouse) {
+      showToast.warning('Vui lòng chọn sản phẩm và kho trước');
+      return;
+    }
+    await loadInventory();
+  };
 
   // Sync product and unit with parent state
   useEffect(() => {
@@ -832,9 +842,45 @@ export default function ProductEntryForm({
           />
           <div
             className="admin-app-hint"
-            style={{ marginTop: 4, color: inventoryColor }}
+            style={{ marginTop: 4, color: inventoryColor, display: 'flex', alignItems: 'center', gap: '8px' }}
           >
-            {inventoryLoading ? 'Đang tải tồn kho...' : inventoryMessage}
+            <span>{inventoryLoading ? 'Đang tải tồn kho...' : inventoryMessage}</span>
+            {(inventoryTheoretical === 0 || inventoryTheoretical === null) && !inventoryLoading && (
+              <button
+                type="button"
+                onClick={handleReloadInventory}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '2px 4px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: inventoryColor || '#666',
+                  fontSize: '14px',
+                  lineHeight: 1,
+                }}
+                title="Tải lại tồn kho"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ display: 'block' }}
+                >
+                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                  <path d="M21 3v5h-5" />
+                  <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                  <path d="M3 21v-5h5" />
+                </svg>
+              </button>
+            )}
           </div>
           {accountingStockLabel && !accountingStockLoading && (
             <div className="admin-app-hint">

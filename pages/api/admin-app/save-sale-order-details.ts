@@ -8,6 +8,7 @@ const SALE_ORDERS_TABLE = "crdfd_sale_orders";
 const INVENTORY_TABLE = "cr44a_inventoryweshops";
 const PRODUCT_TABLE = "crdfd_productses";
 const KHO_BD_TABLE = "crdfd_kho_binh_dinhs";
+const UNIT_CONVERSION_TABLE = "crdfd_unitconvertions";
 
 // Map VAT percentage to Điều chỉnh GTGT OptionSet value
 const VAT_TO_IEUCHINHGTGT_MAP: Record<number, number> = {
@@ -58,6 +59,119 @@ async function lookupProductId(
     }
   } catch (error) {
     console.error("Error looking up product ID:", error);
+  }
+
+  return null;
+}
+
+// Helper function to lookup unit conversion ID from productCode and unit name
+async function lookupUnitConversionId(
+  productCode: string,
+  unitName: string,
+  headers: any
+): Promise<string | null> {
+  if (!productCode || !unitName) {
+    return null;
+  }
+
+  try {
+    const safeCode = productCode.trim().replace(/'/g, "''");
+    const safeUnitName = unitName.trim().replace(/'/g, "''");
+    
+    const filter = `cr44a_masanpham eq '${safeCode}' and statecode eq 0 and crdfd_onvichuyenoitransfome eq '${safeUnitName}'`;
+    const columns = "crdfd_unitconvertionid";
+    const query = `$select=${columns}&$filter=${encodeURIComponent(filter)}&$top=1`;
+    const endpoint = `${BASE_URL}${UNIT_CONVERSION_TABLE}?${query}`;
+
+    console.log(`[Lookup UnitConversionId] Querying: ${endpoint}`);
+    const response = await axios.get(endpoint, { headers });
+    const results = response.data.value || [];
+    
+    if (results.length > 0) {
+      const unitConversionId = results[0].crdfd_unitconvertionid;
+      console.log(`[Lookup UnitConversionId] ✅ Found: ${unitConversionId} for productCode: ${safeCode}, unitName: ${safeUnitName}`);
+      return unitConversionId;
+    }
+    
+    console.log(`[Lookup UnitConversionId] ⚠️ No result found for productCode: ${safeCode}, unitName: ${safeUnitName}`);
+  } catch (error: any) {
+    console.error(`[Lookup UnitConversionId] ❌ Error:`, {
+      error: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
+  }
+
+  return null;
+}
+
+// Helper function to lookup crdfd_giatrichuyenoi from crdfd_unitconversions table
+async function lookupTyleChuyenDoi(
+  unitId: string | undefined,
+  productCode: string | undefined,
+  unitName: string | undefined,
+  headers: any
+): Promise<number | null> {
+  if (!productCode) {
+    console.log(`[Lookup TyleChuyenDoi] Skipping - no productCode`);
+    return null;
+  }
+
+  try {
+    const safeCode = productCode.trim().replace(/'/g, "''");
+    
+    // Query unit conversion by productCode (cr44a_masanpham) - đây là cách chính xác nhất
+    let filter = `cr44a_masanpham eq '${safeCode}' and statecode eq 0`;
+    
+    // Nếu có unitId, thử query theo crdfd_unitconvertionid trước
+    if (unitId) {
+      const tryByUnitIdFilter = `crdfd_unitconvertionid eq '${unitId}' and statecode eq 0 and cr44a_masanpham eq '${safeCode}'`;
+      const columns = "crdfd_giatrichuyenoi";
+      const queryByUnitId = `$select=${columns}&$filter=${encodeURIComponent(tryByUnitIdFilter)}&$top=1`;
+      const endpointByUnitId = `${BASE_URL}${UNIT_CONVERSION_TABLE}?${queryByUnitId}`;
+
+      console.log(`[Lookup TyleChuyenDoi] Trying by unitId first: ${endpointByUnitId}`);
+      try {
+        const responseByUnitId = await axios.get(endpointByUnitId, { headers });
+        const resultsByUnitId = responseByUnitId.data.value || [];
+        
+        if (resultsByUnitId.length > 0) {
+          const giatrichuyenoi = resultsByUnitId[0].crdfd_giatrichuyenoi;
+          console.log(`[Lookup TyleChuyenDoi] ✅ Found by unitId: ${giatrichuyenoi} for unitId: ${unitId}, productCode: ${productCode}`);
+          return giatrichuyenoi ?? null;
+        }
+      } catch (err) {
+        console.log(`[Lookup TyleChuyenDoi] Query by unitId failed, trying by productCode only...`);
+      }
+    }
+    
+    // Nếu có unitName, thử filter thêm theo unit name
+    if (unitName) {
+      const safeUnitName = unitName.trim().replace(/'/g, "''");
+      filter += ` and crdfd_onvichuyenoitransfome eq '${safeUnitName}'`;
+    }
+
+    const columns = "crdfd_giatrichuyenoi,crdfd_onvichuyenoitransfome";
+    const query = `$select=${columns}&$filter=${encodeURIComponent(filter)}&$top=1`;
+    const endpoint = `${BASE_URL}${UNIT_CONVERSION_TABLE}?${query}`;
+
+    console.log(`[Lookup TyleChuyenDoi] Querying by productCode: ${endpoint}`);
+    const response = await axios.get(endpoint, { headers });
+    const results = response.data.value || [];
+    
+    if (results.length > 0) {
+      const giatrichuyenoi = results[0].crdfd_giatrichuyenoi;
+      console.log(`[Lookup TyleChuyenDoi] ✅ Found by productCode: ${giatrichuyenoi} for productCode: ${productCode}, unitName: ${unitName || 'N/A'}`);
+      return giatrichuyenoi ?? null;
+    }
+    
+    console.log(`[Lookup TyleChuyenDoi] ⚠️ No result found for productCode: ${productCode}, unitId: ${unitId || 'N/A'}, unitName: ${unitName || 'N/A'}`);
+  } catch (error: any) {
+    console.error(`[Lookup TyleChuyenDoi] ❌ Error looking up tyle chuyen doi:`, {
+      error: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
   }
 
   return null;
@@ -433,9 +547,41 @@ export default async function handler(
         console.log(`[Save SOD] Setting product lookup: crdfd_Sanpham = ${finalProductId}`);
       }
 
-      // Add unit reference if available (using Navigation property)
-      if (product.unitId) {
-        payload[`crdfd_onvionhang@odata.bind`] = `/crdfd_unitses(${product.unitId})`;
+      // Add unit reference if available
+      // ID_Unit_Sp (crdfd_onvi) là lookup đến crdfd_unitconversions table
+      // crdfd_onvionhang là lookup đến crdfd_unitses table
+      // Từ buttonSave: ID_Unit_Sp: formData[@'Record Đơn vị'] - đây là Unit Conversion record
+      // product.unitId là crdfd_unitconvertionid (từ units.ts)
+      
+      console.log(`[Save SOD] Unit info for product ${product.productCode}:`, {
+        unitId: product.unitId,
+        unit: product.unit,
+        productCode: product.productCode
+      });
+
+      // Lookup unitId từ Unit Conversions nếu chưa có
+      let finalUnitId = product.unitId;
+      if (!finalUnitId && product.productCode && product.unit) {
+        finalUnitId = await lookupUnitConversionId(product.productCode, product.unit, headers);
+        console.log(`[Save SOD] Looked up unitId: ${finalUnitId} for productCode: ${product.productCode}, unit: ${product.unit}`);
+      }
+
+      if (finalUnitId) {
+        // Set ID_Unit_Sp (crdfd_onvi) - lookup đến Unit Conversions
+        payload[`crdfd_onvi@odata.bind`] = `/crdfd_unitconvertions(${finalUnitId})`;
+        console.log(`[Save SOD] ✅ Setting crdfd_onvi (ID_Unit_Sp): ${finalUnitId} for product ${product.productCode}`);
+      } else {
+        console.log(`[Save SOD] ⚠️ No unitId found for product ${product.productCode}, unit: ${product.unit}`);
+      }
+
+      // Lookup và thêm crdfd_tylechuyenoi từ crdfd_unitconversions
+      // crdfd_tylechuyenoi = crdfd_giatrichuyenoi từ Unit Conversion record
+      const tyleChuyenDoi = await lookupTyleChuyenDoi(finalUnitId, product.productCode, product.unit, headers);
+      if (tyleChuyenDoi !== null && tyleChuyenDoi !== undefined) {
+        payload.crdfd_tylechuyenoi = tyleChuyenDoi;
+        console.log(`[Save SOD] ✅ Setting crdfd_tylechuyenoi: ${tyleChuyenDoi} for product ${product.productCode}`);
+      } else {
+        console.log(`[Save SOD] ⚠️ No tyleChuyenDoi found for unitId: ${product.unitId}, productCode: ${product.productCode}, unit: ${product.unit}`);
       }
 
       // Add approver if available
