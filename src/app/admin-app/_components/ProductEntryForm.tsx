@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Dropdown from './Dropdown';
 import { useProducts, useUnits, useWarehouses } from '../_hooks/useDropdownData';
 import {
@@ -287,6 +287,13 @@ export default function ProductEntryForm({
     return (quantity || 0) * conversionFactor;
   };
 
+  const normalizeText = (value: string | undefined | null) =>
+    (value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+
   const syncInventoryState = (theoretical: number, isVatOrder: boolean) => {
     setInventoryTheoretical(theoretical);
     setStockQuantity(theoretical);
@@ -344,22 +351,113 @@ export default function ProductEntryForm({
     }
   };
 
-  // Helper function to normalize text (moved before useMemo)
-  const normalizeText = useCallback((value: string | undefined | null) => {
-    if (!value) return '';
-    return value
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .trim();
-  }, []);
-
-  // Simplified disable logic - chỉ disable khi form chưa sẵn sàng
-  // Các kiểm tra chi tiết sẽ được thực hiện trong hàm xử lý và hiển thị toast cảnh báo
+  // Disable logic for Add/Save buttons mapped from the provided PowerApps expression
   const buttonsDisabled = useMemo(() => {
-    // Chỉ disable khi form chưa sẵn sàng (chưa chọn khách hàng hoặc SO)
-    return isFormDisabled;
-  }, [isFormDisabled]);
+    console.log('🔍 [Button Disable Check] Starting...');
+    
+    if (isFormDisabled) {
+      console.log('❌ [Button Disable] Form is disabled (no customer or SO)');
+      return true;
+    }
+
+    // Allowed product groups or special customers → always enabled
+    const allowedProductGroupCodes = [
+      'NSP-00027',
+      'NSP-000872',
+      'NSP-000409',
+      'NSP-000474',
+      'NSP-000873',
+    ];
+    const productGroupCode = selectedProduct?.crdfd_manhomsp || '';
+    const customerNameNorm = normalizeText(customerName);
+    const isAllowedGroup = allowedProductGroupCodes.includes(productGroupCode);
+    const isAllowedCustomer =
+      customerNameNorm === 'kho wecare' || customerNameNorm === 'kho wecare (ho chi minh)';
+    
+    console.log('📋 [Check 1] Product Group & Customer:', {
+      productGroupCode,
+      isAllowedGroup,
+      customerNameNorm,
+      isAllowedCustomer,
+    });
+    
+    if (isAllowedGroup || isAllowedCustomer) {
+      console.log('✅ [Button Enabled] Allowed product group or customer');
+      return false;
+    }
+
+    // Đơn hàng khuyến mãi → enabled (OptionSet value for "Đơn hàng khuyến mãi")
+    const PROMO_ORDER_OPTION = 191920002; // TODO: confirm actual OptionSet value
+    const isPromoOrder =
+      orderType === PROMO_ORDER_OPTION ||
+      normalizeText(String(orderType)) === 'don hang khuyen mai' ||
+      normalizeText(String(orderType)) === 'đon hang khuyen mai';
+    
+    console.log('📋 [Check 2] Promotion Order:', {
+      orderType,
+      isPromoOrder,
+    });
+    
+    if (isPromoOrder) {
+      console.log('✅ [Button Enabled] Promotion order');
+      return false;
+    }
+
+    // Price warning equivalent of var_warning_gia
+    // Ngoại lệ: "SO và sản phẩm không khớp GTGT" chỉ cảnh báo, không disable button
+    const isVatMismatchWarning = priceWarningMessage === 'SO và sản phẩm không khớp GTGT';
+    const hasPriceWarning = 
+      priceWarningMessage && 
+      priceWarningMessage !== 'Giá bình thường' && 
+      !isVatMismatchWarning;
+
+    const vatTextLower = (vatText || '').toLowerCase();
+    const isNonVatOrder = vatTextLower.includes('không vat') || vatPercent === 0;
+    const warehouseNameNorm = normalizeText(warehouse);
+    const isKhoBinhDinh =
+      warehouseNameNorm === 'kho binh dinh' || warehouseNameNorm.includes('kho binh dinh');
+
+    const requestedQty = getRequestedBaseQuantity();
+    const inv = inventoryTheoretical ?? 0;
+    const stockInvalid = inv <= 0 || requestedQty > inv;
+
+    console.log('📋 [Check 3] Price & Inventory:', {
+      priceWarningMessage,
+      isVatMismatchWarning,
+      hasPriceWarning,
+      vatTextLower,
+      isNonVatOrder,
+      warehouseNameNorm,
+      isKhoBinhDinh,
+      requestedQty,
+      inv,
+      stockInvalid,
+    });
+
+    // Kiểm tra tồn kho cho TẤT CẢ các đơn hàng (cả Có VAT và Không VAT)
+    if (hasPriceWarning || stockInvalid) {
+      console.log('❌ [Button Disabled] Price warning or stock invalid:', {
+        hasPriceWarning,
+        stockInvalid,
+        reason: hasPriceWarning ? 'Price warning' : stockInvalid ? 'Stock invalid' : 'Unknown',
+      });
+      return true;
+    }
+
+    console.log('✅ [Button Enabled] All checks passed');
+    return false;
+  }, [
+    isFormDisabled,
+    selectedProduct,
+    customerName,
+    orderType,
+    priceWarningMessage,
+    vatText,
+    vatPercent,
+    warehouse,
+    inventoryTheoretical,
+    getRequestedBaseQuantity,
+  ]);
 
   const accountingStockLabel = useMemo(() => {
     if (accountingStock === null || accountingStock === undefined) return '';
@@ -635,91 +733,14 @@ export default function ProductEntryForm({
     setTotalAmount(subtotal + newVat);
   };
 
-  // Kiểm tra điều kiện trước khi thực hiện action (theo logic PowerApps)
-  const checkConditionsBeforeAction = async (): Promise<boolean> => {
-    // Kiểm tra 1: Price warning (var_warning_gia)
-    if (priceWarningMessage && priceWarningMessage !== 'Giá bình thường' && priceWarningMessage.trim() !== '') {
-      // Không hiển thị toast cho "SO và sản phẩm không khớp GTGT", chỉ chặn action
-      if (priceWarningMessage !== 'SO và sản phẩm không khớp GTGT') {
-        showToast.warning(priceWarningMessage, { autoClose: 5000 });
-      }
-      return false;
-    }
-
-    // Kiểm tra 2: Đơn Không VAT + Kho Bình Định + tồn kho <= 0 hoặc số lượng > tồn kho
-    const vatTextLower = (vatText || '').toLowerCase();
-    const isNonVatOrder = vatTextLower.includes('không vat') || vatPercent === 0;
-    const warehouseNameNorm = normalizeText(warehouse);
-    const isKhoBinhDinh = 
-      warehouseNameNorm === 'kho binh dinh' || 
-      warehouseNameNorm.includes('kho binh dinh');
-
-    if (isNonVatOrder && isKhoBinhDinh && selectedProduct && warehouse) {
-      // Tính số lượng yêu cầu (quy đổi về đơn vị chuẩn)
-      const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
-      const rawFactor =
-        (currentUnit as any)?.crdfd_giatrichuyenoi ??
-        (currentUnit as any)?.crdfd_giatrichuyendoi ??
-        (currentUnit as any)?.crdfd_conversionvalue ??
-        1;
-      const factorNum = Number(rawFactor);
-      const conversionFactor = !isNaN(factorNum) && factorNum > 0 ? factorNum : 1;
-      const requestedQty = (quantity || 0) * conversionFactor;
-      
-      const inv = inventoryTheoretical ?? 0;
-      const invIsZeroOrLess = inv <= 0;
-      const invIsBlank = inv === null || inv === undefined;
-      const qtyExceedsInv = requestedQty > inv;
-
-      if (invIsZeroOrLess || invIsBlank) {
-        showToast.warning('Sản phẩm hết tồn kho. Vui lòng kiểm tra lại.', { autoClose: 5000 });
-        return false;
-      }
-
-      if (qtyExceedsInv) {
-        showToast.warning(
-          `Số lượng yêu cầu (${requestedQty.toLocaleString('vi-VN')}) vượt quá tồn kho hiện có (${inv.toLocaleString('vi-VN')}). Vui lòng điều chỉnh số lượng.`,
-          { autoClose: 5000 }
-        );
-        return false;
-      }
-
-      // Re-check inventory từ API để đảm bảo tồn kho không thay đổi
-      if (selectedProductCode && warehouse) {
-        try {
-          const isVatOrder = vatTextLower.includes('có vat');
-          const latest = await fetchInventory(selectedProductCode, warehouse, isVatOrder);
-          if (latest) {
-            const latestStock = latest.theoreticalStock ?? 0;
-            syncInventoryState(latestStock, isVatOrder);
-            
-            if (latestStock < requestedQty) {
-              showToast.warning(
-                `Tồn kho đã thay đổi, chỉ còn ${latestStock.toLocaleString('vi-VN')} (đơn vị chuẩn) - không đủ cho số lượng yêu cầu ${requestedQty.toLocaleString('vi-VN')}. Vui lòng điều chỉnh.`,
-                { autoClose: 5000 }
-              );
-              return false;
-            }
-          }
-        } catch (err) {
-          console.error('Failed to re-check inventory:', err);
-          // Không chặn nếu lỗi API, chỉ cảnh báo
-          showToast.warning('Không thể kiểm tra tồn kho mới nhất. Vui lòng thử lại.', { autoClose: 3000 });
-        }
-      }
-    }
-
-    return true;
-  };
-
   const handleAddWithInventoryCheck = async () => {
-    const ok = await checkConditionsBeforeAction();
+    const ok = await checkInventoryBeforeAction();
     if (!ok) return;
     onAdd();
   };
 
   const handleSaveWithInventoryCheck = async () => {
-    const ok = await checkConditionsBeforeAction();
+    const ok = await checkInventoryBeforeAction();
     if (!ok) return;
     onSave();
   };

@@ -417,29 +417,38 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-.admin-app-action-btn:hover {
+.admin-app-action-btn:hover:not(:disabled) {
   background: radial-gradient(circle at 30% 0%, #ffffff 0, #eff6ff 45%, #dbeafe 100%);
   border-color: #2563eb;
   box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
   transform: translateY(-1px);
 }
 
-.admin-app-action-btn:active {
+.admin-app-action-btn:active:not(:disabled) {
   transform: translateY(0);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-.admin-app-action-btn-add:hover {
+.admin-app-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+  background: #e5e7eb;
+  border-color: #d1d5db;
+  box-shadow: none;
+}
+
+.admin-app-action-btn-add:hover:not(:disabled) {
   background: radial-gradient(circle at 30% 0%, #ecfdf3 0, #bbf7d0 40%, #4ade80 100%);
   border-color: #16a34a;
 }
 
-.admin-app-action-btn-save:hover {
+.admin-app-action-btn-save:hover:not(:disabled) {
   background: radial-gradient(circle at 30% 0%, #eff6ff 0, #bfdbfe 40%, #60a5fa 100%);
   border-color: #2563eb;
 }
 
-.admin-app-action-btn-refresh:hover {
+.admin-app-action-btn-refresh:hover:not(:disabled) {
   background: radial-gradient(circle at 30% 0%, #fff7ed 0, #fed7aa 40%, #fdba74 100%);
   border-color: #f97316;
 }
