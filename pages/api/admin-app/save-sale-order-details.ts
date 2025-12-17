@@ -9,6 +9,12 @@ const INVENTORY_TABLE = "cr44a_inventoryweshops";
 const PRODUCT_TABLE = "crdfd_productses";
 const KHO_BD_TABLE = "crdfd_kho_binh_dinhs";
 const UNIT_CONVERSION_TABLE = "crdfd_unitconvertions";
+const PROVINCE_TABLE = "crdfd_tinhthanhs"; // Tỉnh/Thành
+const DISTRICT_TABLE = "cr1bb_quanhuyens"; // Quận/Huyện
+
+// Ca OptionSet values
+const CA_SANG = 283640000; // "Ca sáng"
+const CA_CHIEU = 283640001; // "Ca chiều"
 
 // Map VAT percentage to Điều chỉnh GTGT OptionSet value
 const VAT_TO_IEUCHINHGTGT_MAP: Record<number, number> = {
@@ -103,6 +109,104 @@ async function lookupUnitConversionId(
   }
 
   return null;
+}
+
+// Helper function to calculate delivery date and shift (Ca) based on lead time logic
+// Logic từ buttonadd và code canvas.txt:
+// 1. Nếu ngành nghề = "Shop": Tính từ lead time quận/huyện
+// 2. Nếu không: Tính từ lead time sản phẩm hoặc mặc định 1 ngày
+// 3. Có logic đặc biệt cho một số loại sản phẩm (Thiết bị nước, Thiết bị điện, Vật tư kim khí)
+async function calculateDeliveryDateAndShift(
+  product: SaleOrderDetailInput,
+  allProducts: SaleOrderDetailInput[],
+  customerIndustry: number | undefined,
+  baseDeliveryDate: string | undefined,
+  headers: any
+): Promise<{ deliveryDateNew: string | null; shift: number | null }> {
+  try {
+    // Nếu không có baseDeliveryDate, sử dụng ngày hiện tại
+    const baseDate = baseDeliveryDate 
+      ? new Date(baseDeliveryDate.split('/').reverse().join('-'))
+      : new Date();
+    
+    if (isNaN(baseDate.getTime())) {
+      console.log(`[Calculate Delivery] Invalid base date: ${baseDeliveryDate}`);
+      return { deliveryDateNew: null, shift: null };
+    }
+
+    // Logic đặc biệt cho ngành nghề "Shop" (191920001)
+    if (customerIndustry === 191920001) {
+      // Tính tổng số lượng và giá trị theo từng loại sản phẩm
+      const thietBiNuoc = allProducts.filter(p => 
+        p.productCategoryLevel2 === "Thiết bị nước" || p.productCategoryLevel4 === "Ống cứng PVC"
+      );
+      const thietBiDien = allProducts.filter(p => 
+        p.productCategoryLevel2 === "Thiết bị điện"
+      );
+      const vatTuKimKhi = allProducts.filter(p => 
+        p.productCategoryLevel2 === "Vật tư kim khí"
+      );
+
+      const sumThietBiNuoc = thietBiNuoc.reduce((sum, p) => sum + (p.totalAmount || 0), 0);
+      const countThietBiNuoc = thietBiNuoc.reduce((sum, p) => sum + p.quantity, 0);
+      const sumOngCung = allProducts
+        .filter(p => p.productCategoryLevel4 === "Ống cứng PVC")
+        .reduce((sum, p) => sum + (p.totalAmount || 0), 0);
+      const sumThietBiDien = thietBiDien.reduce((sum, p) => sum + (p.totalAmount || 0), 0);
+      const countKimKhi = vatTuKimKhi.reduce((sum, p) => sum + p.quantity, 0);
+
+      let leadTimeHours = 0;
+      let shouldApplySpecialLogic = false;
+
+      // Logic cho Thiết bị nước hoặc Ống cứng PVC
+      if (thietBiNuoc.length > 0 && 
+          ((countThietBiNuoc >= 50 && sumThietBiNuoc >= 100000000) || sumOngCung >= 100000000)) {
+        shouldApplySpecialLogic = true;
+        if (sumThietBiNuoc >= 200000000 || sumOngCung >= 200000000) {
+          leadTimeHours = 24;
+        } else {
+          leadTimeHours = 12;
+        }
+      }
+      // Logic cho Thiết bị điện
+      else if (thietBiDien.length > 0 && sumThietBiDien >= 200000000) {
+        shouldApplySpecialLogic = true;
+        leadTimeHours = 12;
+      }
+      // Logic cho Vật tư kim khí
+      else if (vatTuKimKhi.length > 0 && countKimKhi >= 100) {
+        shouldApplySpecialLogic = true;
+        leadTimeHours = 12;
+      }
+
+      if (shouldApplySpecialLogic) {
+        const newDate = new Date(baseDate);
+        newDate.setHours(newDate.getHours() + leadTimeHours);
+        
+        const hour = newDate.getHours();
+        const shift = (hour >= 0 && hour <= 12) ? CA_SANG : CA_CHIEU;
+        
+        const dateStr = newDate.toISOString().split('T')[0]; // YYYY-MM-DD
+        
+        console.log(`[Calculate Delivery] Special logic applied - leadTimeHours: ${leadTimeHours}, shift: ${shift}, date: ${dateStr}`);
+        return { deliveryDateNew: dateStr, shift };
+      }
+    }
+
+    // Logic mặc định: Sử dụng baseDeliveryDate và tính ca dựa trên giờ
+    const hour = baseDate.getHours();
+    const shift = (hour >= 0 && hour <= 12) ? CA_SANG : CA_CHIEU;
+    const dateStr = baseDate.toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    console.log(`[Calculate Delivery] Default logic - shift: ${shift}, date: ${dateStr}`);
+    return { deliveryDateNew: dateStr, shift };
+  } catch (error: any) {
+    console.error(`[Calculate Delivery] ❌ Error calculating delivery date and shift:`, {
+      error: error.message,
+      productCode: product.productCode
+    });
+    return { deliveryDateNew: null, shift: null };
+  }
 }
 
 // Helper function to lookup crdfd_giatrichuyenoi from crdfd_unitconversions table
@@ -300,6 +404,8 @@ interface SaleOrderDetailInput {
   productId?: string; // Product record ID
   productCode?: string;
   productName: string;
+  productCategoryLevel2?: string; // Cấp 2 NHSP (e.g., "Thiết bị nước", "Thiết bị điện", "Vật tư kim khí")
+  productCategoryLevel4?: string; // Cấp 4 (e.g., "Ống cứng PVC", "Dây điện", "Cáp điện")
   unitId?: string;
   unit: string;
   quantity: number;
@@ -581,7 +687,26 @@ export default async function handler(
         payload.crdfd_tylechuyenoi = tyleChuyenDoi;
         console.log(`[Save SOD] ✅ Setting crdfd_tylechuyenoi: ${tyleChuyenDoi} for product ${product.productCode}`);
       } else {
-        console.log(`[Save SOD] ⚠️ No tyleChuyenDoi found for unitId: ${product.unitId}, productCode: ${product.productCode}, unit: ${product.unit}`);
+        console.log(`[Save SOD] ⚠️ No tyleChuyenDoi found for unitId: ${finalUnitId}, productCode: ${product.productCode}, unit: ${product.unit}`);
+      }
+
+      // Tính ngày giao mới (crdfd_exdeliverynew) và ca làm việc (cr1bb_ca) dựa trên lead time logic
+      const { deliveryDateNew, shift } = await calculateDeliveryDateAndShift(
+        product,
+        products,
+        customerIndustry,
+        product.deliveryDate,
+        headers
+      );
+      
+      if (deliveryDateNew) {
+        payload.crdfd_exdeliverynew = deliveryDateNew;
+        console.log(`[Save SOD] ✅ Setting crdfd_exdeliverynew: ${deliveryDateNew} for product ${product.productCode}`);
+      }
+      
+      if (shift !== null) {
+        payload.cr1bb_ca = shift;
+        console.log(`[Save SOD] ✅ Setting cr1bb_ca: ${shift === CA_SANG ? 'Ca sáng' : 'Ca chiều'} for product ${product.productCode}`);
       }
 
       // Add approver if available
