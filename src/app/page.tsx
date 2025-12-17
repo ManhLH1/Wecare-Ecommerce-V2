@@ -193,8 +193,8 @@ const Reveal = ({
     <Tag
       ref={elementRef as any}
       className={`${className} transition-all duration-700 will-change-transform ${isVisible
-          ? "opacity-100 translate-x-0 translate-y-0 scale-100"
-          : `opacity-0 ${hiddenTransform}`
+        ? "opacity-100 translate-x-0 translate-y-0 scale-100"
+        : `opacity-0 ${hiddenTransform}`
         }`}
       style={{
         transitionDelay: `${delay}ms`,
@@ -1004,8 +1004,8 @@ const HomeContent = () => {
         />
 
         {/* Main Layout - Hero section dịch sang phải để không bị dropdown che */}
-        <div className="w-full mx-auto px-0 py-6" style={{ paddingTop: '150px' }}>
-          <div className="flex flex-col lg:flex-row gap-6">
+        <div className="w-full mx-auto px-0" style={{ marginTop: '115px' }}>
+          <div className="flex flex-col lg:flex-row gap-3">
             {/* Spacer cho category dropdown trên Desktop - chiều rộng 280px = collapsed width của CategoryMenu */}
             <div className="hidden lg:block w-[280px] flex-shrink-0" />
             {/* Main Content - nằm bên phải của category dropdown */}

@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { useProductGroupHierarchy } from '@/hooks/useProductGroupHierarchy';
 import { generateProductUrl } from '@/utils/urlGenerator';
 import { usePermission } from '@/hooks/usePermission';
+import HeroBannerImage from '@/assets/img/sample hero-section wecare.png';
 
 interface JDStyleMainContentProps {
   categoryGroups: any[];
@@ -285,7 +286,7 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
             {getMenuItems().map((item, idx) => (
               <Link key={idx} href={item.href} className="no-underline group flex items-center gap-2 whitespace-nowrap">
                 <span className="text-base">{item.icon}</span>
-                <span className="text-xs sm:text-[13px] font-medium text-gray-700 group-hover:text-gray-900">{item.label}</span>
+                <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">{item.label}</span>
               </Link>
             ))}
           </nav>
@@ -293,25 +294,28 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
       </div>
 
       {/* Hero Section + 2 Tin tức bên phải (xếp dọc) */}
-      <div ref={heroContainerRef} className="flex flex-col lg:flex-row gap-2 mb-4">
+      <div ref={heroContainerRef} className="flex flex-col lg:flex-row gap-2 mb-3 lg:pl-3 lg:items-stretch">
         {/* Hero Banner - ở giữa */}
-        <div className="w-full lg:w-[70%] bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden" style={{ height: 420 }}>
-          {bestPromotions.length > 0 && bestPromotions[0]?.image ? (
+        <div className="w-full lg:w-[70%] border border-gray-200 rounded shadow-sm overflow-hidden aspect-[16/7] lg:aspect-auto lg:h-[500px]">
+          {bestPromotions.length > 0 ? (
             <div
               className="relative w-full h-full cursor-pointer"
               onClick={() => (window.location.href = '/promotion')}
             >
-              <img
-                src={bestPromotions[0].image}
-                alt={bestPromotions[0].name || 'Promotion'}
-                className="w-full h-full object-contain object-center"
+              <Image
+                src={HeroBannerImage}
+                alt="Wecare - Chương trình khuyến mãi"
+                fill
+                className="object-cover object-center"
+                priority
+                sizes="(max-width: 1024px) 100vw, 70vw"
               />
             </div>
           ) : (
-            <div className="bg-gradient-to-r from-cyan-600 to-cyan-700 rounded-lg p-6 text-white h-full flex flex-col justify-center">
+            <div className="bg-gradient-to-r from-cyan-600 to-cyan-700 p-6 text-white h-full flex flex-col justify-center">
               <h2 className="text-2xl font-bold mb-2">Ưu đãi tốt nhất hôm nay</h2>
               <p className="text-cyan-100 mb-4">Tổng hợp khuyến mãi, sản phẩm mới, xếp hạng cao</p>
-              <button className="bg-white text-cyan-600 px-6 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors w-fit" onClick={() => window.location.href = '/promotion'}>
+              <button className="bg-white text-cyan-600 px-6 py-2 font-medium hover:bg-gray-50 transition-colors w-fit rounded" onClick={() => window.location.href = '/promotion'}>
                 Xem khuyến mãi
               </button>
             </div>
@@ -319,9 +323,9 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
         </div>
 
         {/* 2 Tin tức xếp dọc bên phải */}
-        <div className="w-full lg:w-[30%] flex flex-col gap-2" style={{ height: 420 }}>
+        <div className="w-full lg:w-[30%] flex flex-col gap-2 lg:h-[500px]">
           {/* Tin tức 1 */}
-          <div className="flex-1 bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden relative">
+          <div className="h-1/2 bg-white border border-gray-200 rounded shadow-sm overflow-hidden relative">
             {loading ? (
               <div className="w-full h-full animate-pulse bg-gray-200" />
             ) : latestNews[0] ? (
@@ -339,7 +343,7 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
                   />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-cyan-100 to-cyan-200 flex items-center justify-center">
-                    <span className="text-3xl">📰</span>
+                    <span className="text-2xl">📰</span>
                   </div>
                 )}
               </Link>
@@ -353,7 +357,7 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
           </div>
 
           {/* Tin tức 2 */}
-          <div className="flex-1 bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden relative">
+          <div className="h-1/2 bg-white border border-gray-200 rounded shadow-sm overflow-hidden relative">
             {loading ? (
               <div className="w-full h-full animate-pulse bg-gray-200" />
             ) : latestNews[1] ? (
@@ -371,14 +375,14 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
                   />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-cyan-100 to-cyan-200 flex items-center justify-center">
-                    <span className="text-3xl">📰</span>
+                    <span className="text-2xl">📰</span>
                   </div>
                 )}
               </Link>
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-gray-50">
                 <Link href="/post" className="text-xs text-cyan-600 hover:text-cyan-700 font-medium no-underline">
-                  Xem thêm tin tức
+                  Xem tin tức
                 </Link>
               </div>
             )}

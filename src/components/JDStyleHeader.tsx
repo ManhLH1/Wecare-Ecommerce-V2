@@ -812,14 +812,14 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
         </div>
 
         {/* Sub Header - Danh mục sản phẩm - Giống sieuthihaiminh.vn */}
-        <div className="w-full border-b" style={{ backgroundColor: '#236E84' }}>
+        <div className="w-full border-b" style={{ backgroundColor: '#3492ab' }}>
           <div className="w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12">
             <div className="flex items-center">
               {/* Nút Danh mục sản phẩm - Style giống sieuthihaiminh.vn */}
               <div className="relative" ref={categoryMenuRef}>
                 <button
                   onClick={() => setShowCategoryMenu(!showCategoryMenu)}
-                  className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-none transition-all duration-200 font-semibold text-sm shadow-sm hover:shadow-md h-[45px] leading-tight"
+                  className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-none transition-all duration-200 font-semibold text-base shadow-sm hover:shadow-md h-[45px] leading-tight"
                   style={{
                     fontFamily: '"Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
                     fontWeight: 600
@@ -834,7 +834,7 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
                 {showCategoryMenu && (
                   <div
                     className="absolute top-full left-0 mt-0 z-50 bg-white rounded-b-lg shadow-2xl border border-gray-200 overflow-hidden"
-                    style={{ maxHeight: '600px' }}
+                    style={{ height: '500px' }}
                   >
                     <CategoryMenu
                       categoryHierarchy={categoryHierarchy}
@@ -855,7 +855,7 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
                   <Link
                     key={index}
                     href={item.href}
-                    className="flex items-center gap-1.5 text-white hover:bg-white/10 px-3 py-2 rounded transition-all duration-200 no-underline text-sm font-medium whitespace-nowrap"
+                    className="flex items-center gap-1.5 text-white hover:bg-white/10 px-3 py-2 rounded transition-all duration-200 no-underline text-base font-medium whitespace-nowrap"
                     style={{
                       fontFamily: '"Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
                       fontWeight: 500

@@ -413,17 +413,17 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
           <div>
             <ul className="mt-1 p-2">
               {sortedCategories.map((group, idx) => (
-                <li key={group.crdfd_productgroupid || idx} className="mb-0.5">
+                <li key={group.crdfd_productgroupid || idx} className="mb-0">
                   <button
-                    className={`flex items-center w-full px-3 py-2.5 text-sm font-medium transition-all duration-200 rounded-md group ${selectedMainCategory?.crdfd_productgroupid ===
+                    className={`flex items-center w-full px-3 py-1.5 text-base font-medium transition-all duration-200 group ${selectedMainCategory?.crdfd_productgroupid ===
                       group.crdfd_productgroupid
-                      ? "bg-amber-50 text-amber-700 border-l-4 border-amber-500 shadow-sm"
+                      ? "bg-amber-50 text-amber-700 border-l-4 border-amber-500"
                       : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                       }`}
                     onClick={() => handleCategoryClick(group)}
                     onMouseEnter={() => handleCategoryHover(group)}
                   >
-                    <span className={`flex items-center justify-center w-8 h-8 rounded-md mr-2 transition-colors ${selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
+                    <span className={`flex items-center justify-center w-6 h-6 mr-2 transition-colors ${selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
                       ? "bg-amber-100"
                       : "bg-white group-hover:bg-gray-50"
                       }`}>
@@ -439,7 +439,7 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
                     </span>
                     {group.productCount !== undefined &&
                       group.productCount > 0 && (
-                        <span className={`text-xs ml-2 ${selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
+                        <span className={`text-sm ml-2 ${selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
                           ? "text-amber-600"
                           : "text-gray-400"
                           }`}>
@@ -466,7 +466,7 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
             onMouseLeave={handleMouseLeavePanel}
           >
             {allSubCategoriesGrouped.length > 0 ? (
-              <div className="p-6 max-w-full flex flex-col items-center">
+              <div className="p-4 max-w-full flex flex-col items-center">
                 {allSubCategoriesGrouped.map(
                   ({ mainCategory, subCategories }) => (
                     <div
@@ -476,33 +476,33 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
                         categoryRefs.current[mainCategory.crdfd_productgroupid] =
                           el;
                       }}
-                      className="mb-6 w-full"
+                      className="mb-4 w-full"
                     >
-                      {/* Subcategories - LV2 và LV3 - Hiển thị theo dạng columns căn giữa */}
-                      <div className="grid grid-cols-4 gap-8 justify-items-center mx-auto">
+                      {/* Subcategories - LV2 và LV3 - Hiển thị theo dạng columns căn trái */}
+                      <div className="grid grid-cols-4 gap-4 justify-items-start">
                         {subCategories.map((lv2Item: any) => {
                           const lv3Items = lv2Item.children || [];
 
                           return (
-                            <div key={lv2Item.crdfd_productgroupid} className="flex flex-col items-center text-center">
+                            <div key={lv2Item.crdfd_productgroupid} className="flex flex-col items-start text-left">
                               {/* LV2 Header - Bold text, clickable */}
                               <button
                                 onClick={() => onCategorySelect(lv2Item)}
-                                className="text-center mb-2 group"
+                                className="text-left mb-0.5 group"
                               >
-                                <h4 className="text-sm font-bold text-gray-900 group-hover:text-amber-600 transition-colors leading-tight">
+                                <h4 className="text-base font-bold text-gray-900 group-hover:text-amber-600 transition-colors leading-none">
                                   {lv2Item.crdfd_productname}
                                 </h4>
                               </button>
 
                               {/* LV3 Items - Simple text links, always visible */}
                               {lv3Items.length > 0 ? (
-                                <div className="flex flex-col space-y-0.5 items-center">
+                                <div className="flex flex-col items-start -space-y-0.5">
                                   {lv3Items.map((lv3Item: any) => (
                                     <button
                                       key={lv3Item.crdfd_productgroupid}
                                       onClick={() => onCategorySelect(lv3Item)}
-                                      className="text-center text-sm text-gray-600 hover:text-amber-600 transition-colors py-1 leading-relaxed"
+                                      className="text-left text-sm text-gray-600 hover:text-amber-600 transition-colors leading-none"
                                     >
                                       {lv3Item.crdfd_productname}
                                     </button>
