@@ -12,6 +12,15 @@ jobs:
       - image: cimg/node:20.0
     steps:
       - checkout
+      - run:
+          name: Generate package-lock.json if missing
+          command: |
+            if [ ! -f "package-lock.json" ]; then
+              echo "package-lock.json not found, generating it..."
+              npm install --package-lock-only
+            else
+              echo "package-lock.json exists"
+            fi
       - restore_cache:
           keys:
             - v1-dependencies-{{ checksum "package-lock.json" }}
