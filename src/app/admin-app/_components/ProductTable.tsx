@@ -11,6 +11,8 @@ interface ProductItem {
   discount: number;
   discountedPrice: number;
   vat: number;
+  subtotal: number;
+  vatAmount: number;
   totalAmount: number;
   approver: string;
   deliveryDate: string;

@@ -12,11 +12,7 @@ export default function FloatingZalo() {
 	const [isMinimized, setIsMinimized] = useState(true); // Luôn bắt đầu với trạng thái thu gọn
 	const [isCartOpen, setIsCartOpen] = useState(false);
 
-	// Ẩn FloatingZalo trong admin app
-	if (pathname?.includes('/admin-app')) {
-		return null;
-	}
-
+	// All hooks must be declared before any conditional returns
 	useEffect(() => {
 		try {
 			const stored = typeof window !== "undefined" ? localStorage.getItem("wecare_hide_floating_zalo") : null;
@@ -48,6 +44,11 @@ export default function FloatingZalo() {
 
 		return () => observer.disconnect();
 	}, []);
+
+	// Ẩn FloatingZalo trong admin app - MUST be after all hooks
+	if (pathname?.includes('/admin-app')) {
+		return null;
+	}
 
 	if (isHidden) {
 		return (

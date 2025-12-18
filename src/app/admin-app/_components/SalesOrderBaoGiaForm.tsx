@@ -119,21 +119,27 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       try {
         const details = await fetchSaleOrderDetails(soId);
         // Map SaleOrderDetail to ProductItem
-        const mappedProducts: ProductItem[] = details.map((detail: SaleOrderDetail) => ({
-          id: detail.id,
-          stt: detail.stt,
-          productName: detail.productName,
-          unit: detail.unit,
-          quantity: detail.quantity,
-          price: detail.price,
-          surcharge: detail.surcharge,
-          discount: detail.discount,
-          discountedPrice: detail.discountedPrice,
-          vat: detail.vat,
-          totalAmount: detail.totalAmount,
-          approver: detail.approver,
-          deliveryDate: detail.deliveryDate || '',
-        }));
+        const mappedProducts: ProductItem[] = details.map((detail: SaleOrderDetail) => {
+          const subtotal = (detail.discountedPrice || detail.price) * detail.quantity;
+          const vatAmount = (subtotal * detail.vat) / 100;
+          return {
+            id: detail.id,
+            stt: detail.stt,
+            productName: detail.productName,
+            unit: detail.unit,
+            quantity: detail.quantity,
+            price: detail.price,
+            surcharge: detail.surcharge,
+            discount: detail.discount,
+            discountedPrice: detail.discountedPrice,
+            vat: detail.vat,
+            subtotal,
+            vatAmount,
+            totalAmount: detail.totalAmount,
+            approver: detail.approver,
+            deliveryDate: detail.deliveryDate || '',
+          };
+        });
         // Sort by STT descending (already sorted by API, but ensure it)
         mappedProducts.sort((a, b) => (b.stt || 0) - (a.stt || 0));
         setProductList(mappedProducts);
@@ -323,21 +329,27 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       // Reload sale order details
       if (soId) {
         const details = await fetchSaleOrderDetails(soId);
-        const mappedProducts: ProductItem[] = details.map((detail: SaleOrderDetail) => ({
-          id: detail.id,
-          stt: detail.stt,
-          productName: detail.productName,
-          unit: detail.unit,
-          quantity: detail.quantity,
-          price: detail.price,
-          surcharge: detail.surcharge,
-          discount: detail.discount,
-          discountedPrice: detail.discountedPrice,
-          vat: detail.vat,
-          totalAmount: detail.totalAmount,
-          approver: detail.approver,
-          deliveryDate: detail.deliveryDate || '',
-        }));
+        const mappedProducts: ProductItem[] = details.map((detail: SaleOrderDetail) => {
+          const subtotal = (detail.discountedPrice || detail.price) * detail.quantity;
+          const vatAmount = (subtotal * detail.vat) / 100;
+          return {
+            id: detail.id,
+            stt: detail.stt,
+            productName: detail.productName,
+            unit: detail.unit,
+            quantity: detail.quantity,
+            price: detail.price,
+            surcharge: detail.surcharge,
+            discount: detail.discount,
+            discountedPrice: detail.discountedPrice,
+            vat: detail.vat,
+            subtotal,
+            vatAmount,
+            totalAmount: detail.totalAmount,
+            approver: detail.approver,
+            deliveryDate: detail.deliveryDate || '',
+          };
+        });
         mappedProducts.sort((a, b) => (b.stt || 0) - (a.stt || 0));
         setProductList(mappedProducts);
       }

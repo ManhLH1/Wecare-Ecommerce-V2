@@ -234,7 +234,8 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
   };
 
   // Lấy subcategories (LV2) cho category được chọn từ hierarchy, lọc sản phẩm > 0
-  const getSubCategories = (categoryId: string) => {
+  // Wrap trong useCallback để sử dụng trong getAllSubCategoriesGrouped
+  const getSubCategories = useCallback((categoryId: string) => {
     if (!categoryHierarchy?.hierarchy) return [];
 
     const findCategory = (categories: any[]): any => {
@@ -260,10 +261,11 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
         ...lv2,
         children: (lv2.children || []).filter((lv3: any) => (lv3.productCount || 0) > 0),
       }));
-  };
+  }, [categoryHierarchy]);
 
   // Lấy tất cả subcategories (LV2 và LV3) theo từng nhóm chính
-  const getAllSubCategoriesGrouped = () => {
+  // Wrap trong useCallback để tránh thay đổi dependency trong useMemo
+  const getAllSubCategoriesGrouped = useCallback(() => {
     // Ưu tiên sử dụng hierarchy nếu có (hỗ trợ 3 level)
     if (categoryHierarchy?.hierarchy) {
       return filteredCategories
@@ -291,7 +293,7 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
     }
     
     return [];
-  };
+  }, [categoryHierarchy, filteredCategories, getSubCategories]);
 
   // Tính tổng số lượng sản phẩm từ tất cả danh mục con (LV2 và LV3)
   const getTotalProductCountFromSubCategories = () => {
@@ -323,6 +325,20 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
     
     return 0;
   };
+
+  // Giữ nguyên thứ tự từ API (đã sắp xếp theo CSV) và đã lọc
+  const sortedCategories = filteredCategories;
+
+  // Chỉ hiển thị danh mục đang chọn để tránh scroll dài
+  // MUST be declared before any conditional returns (mobile check)
+  const allSubCategoriesGrouped = useMemo(() => {
+    if (!selectedMainCategory) return [];
+    const group = getAllSubCategoriesGrouped().find(
+      (g) => g.mainCategory.crdfd_productgroupid === selectedMainCategory.crdfd_productgroupid
+    );
+    return group ? [group] : [];
+  }, [selectedMainCategory, getAllSubCategoriesGrouped]);
+  const totalProductCountFromSubCategories = getTotalProductCountFromSubCategories();
 
   // Mobile version - moved after all hooks
   if (isMobile) {
@@ -379,19 +395,6 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
       setShowRightPanel(false);
     }, 120);
   };
-
-  // Giữ nguyên thứ tự từ API (đã sắp xếp theo CSV) và đã lọc
-  const sortedCategories = filteredCategories;
-
-  // Chỉ hiển thị danh mục đang chọn để tránh scroll dài
-  const allSubCategoriesGrouped = useMemo(() => {
-    if (!selectedMainCategory) return [];
-    const group = getAllSubCategoriesGrouped().find(
-      (g) => g.mainCategory.crdfd_productgroupid === selectedMainCategory.crdfd_productgroupid
-    );
-    return group ? [group] : [];
-  }, [selectedMainCategory, getAllSubCategoriesGrouped]);
-  const totalProductCountFromSubCategories = getTotalProductCountFromSubCategories();
 
   if (loadingCategory) {
     return (
