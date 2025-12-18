@@ -53,6 +53,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const [customerSearch, setCustomerSearch] = useState('');
   const [so, setSo] = useState('');
   const [soId, setSoId] = useState('');
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
 
   // Fetch data for dropdowns
   const { customers, loading: customersLoading } = useCustomers(customerSearch);
@@ -116,6 +119,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         return;
       }
 
+      setIsLoadingDetails(true);
       try {
         const details = await fetchSaleOrderDetails(soId);
         // Map SaleOrderDetail to ProductItem
@@ -140,13 +144,15 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       } catch (error) {
         console.error('Error loading sale order details:', error);
         setProductList([]);
+      } finally {
+        setIsLoadingDetails(false);
       }
     };
 
     loadSaleOrderDetails();
   }, [soId]);
 
-  const handleAddProduct = () => {
+  const handleAddProduct = async () => {
     // Validation: product, unit, quantity, price (or approve price checked)
     if (!product || !unit || quantity <= 0 || (!price && !approvePrice)) {
       console.warn('❌ Add Product Failed: Missing required fields', {
@@ -158,6 +164,10 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       });
       return;
     }
+
+    setIsAdding(true);
+    // Add small delay for animation feedback
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     const priceNum = parseFloat(price) || 0;
     
@@ -232,6 +242,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setPromotionText('');
     setNote('');
     // Keep warehouse, customer, SO, deliveryDate as they are reused
+    
+    setIsAdding(false);
+    showToast.success('Đã thêm sản phẩm vào danh sách!');
   };
 
   const handleSave = async () => {
@@ -246,6 +259,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       return;
     }
 
+    setIsSaving(true);
     try {
       // Load danh sách SOD hiện có từ CRM
       const existingSOD = await fetchSaleOrderDetails(soId);
@@ -317,34 +331,41 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
 
       showToast.success(result.message || 'Tạo đơn bán chi tiết thành công!');
       
-      // Reset form after successful save
-      handleRefresh();
-      
       // Reload sale order details
       if (soId) {
-        const details = await fetchSaleOrderDetails(soId);
-        const mappedProducts: ProductItem[] = details.map((detail: SaleOrderDetail) => ({
-          id: detail.id,
-          stt: detail.stt,
-          productName: detail.productName,
-          unit: detail.unit,
-          quantity: detail.quantity,
-          price: detail.price,
-          surcharge: detail.surcharge,
-          discount: detail.discount,
-          discountedPrice: detail.discountedPrice,
-          vat: detail.vat,
-          totalAmount: detail.totalAmount,
-          approver: detail.approver,
-          deliveryDate: detail.deliveryDate || '',
-        }));
-        mappedProducts.sort((a, b) => (b.stt || 0) - (a.stt || 0));
-        setProductList(mappedProducts);
+        setIsLoadingDetails(true);
+        try {
+          const details = await fetchSaleOrderDetails(soId);
+          const mappedProducts: ProductItem[] = details.map((detail: SaleOrderDetail) => ({
+            id: detail.id,
+            stt: detail.stt,
+            productName: detail.productName,
+            unit: detail.unit,
+            quantity: detail.quantity,
+            price: detail.price,
+            surcharge: detail.surcharge,
+            discount: detail.discount,
+            discountedPrice: detail.discountedPrice,
+            vat: detail.vat,
+            totalAmount: detail.totalAmount,
+            approver: detail.approver,
+            deliveryDate: detail.deliveryDate || '',
+          }));
+          mappedProducts.sort((a, b) => (b.stt || 0) - (a.stt || 0));
+          setProductList(mappedProducts);
+        } finally {
+          setIsLoadingDetails(false);
+        }
       }
+      
+      // Reset form after successful save
+      handleRefresh();
     } catch (error: any) {
       console.error('Error saving sale order details:', error);
       const errorMessage = error.message || 'Có lỗi xảy ra khi lưu đơn hàng. Vui lòng thử lại.';
       showToast.error(errorMessage);
+    } finally {
+      setIsSaving(false);
     }
   };
 

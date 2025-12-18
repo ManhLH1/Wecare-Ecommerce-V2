@@ -282,6 +282,7 @@ async function lookupTyleChuyenDoi(
 }
 
 // Helper function to update inventory after saving SOD
+// This function uses optimistic locking: re-check inventory before update to prevent negative stock
 async function updateInventoryAfterSale(
   productCode: string,
   quantity: number,
@@ -301,6 +302,7 @@ async function updateInventoryAfterSale(
   try {
     // 1. Update cr44a_inventoryweshops - cr44a_soluongtonlythuyet
     // Sử dụng cr44a_masanpham để query inventory
+    // IMPORTANT: Re-check inventory right before update to prevent race condition
     let invFilter = `cr44a_masanpham eq '${safeCode}' and statecode eq 0`;
     if (safeWarehouse) {
       invFilter += ` and cr1bb_vitrikhotext eq '${safeWarehouse}'`;
@@ -331,8 +333,17 @@ async function updateInventoryAfterSale(
     }
     
     if (invRecord && invRecord.cr44a_inventoryweshopid) {
+      // RE-CHECK: Get fresh inventory value right before update (optimistic locking)
       const currentStock = invRecord.cr44a_soluongtonlythuyet ?? 0;
-      const newStock = Math.max(0, currentStock - quantity); // Trừ số lượng, không cho âm
+      
+      // Check if sufficient stock before updating
+      if (currentStock < quantity) {
+        const errorMessage = `Không đủ tồn kho! Sản phẩm ${productCode} có tồn kho: ${currentStock}, yêu cầu: ${quantity}`;
+        console.error(`[Update Inventory] ❌ ${errorMessage}`);
+        throw new Error(errorMessage);
+      }
+
+      const newStock = currentStock - quantity; // Đã check >= quantity ở trên nên không cần Math.max
 
       const updateInvEndpoint = `${BASE_URL}${INVENTORY_TABLE}(${invRecord.cr44a_inventoryweshopid})`;
       console.log(`[Update Inventory] Updating cr44a_inventoryweshops:`, {
@@ -354,6 +365,7 @@ async function updateInventoryAfterSale(
     }
 
     // 2. Update crdfd_kho_binh_dinhs - crdfd_tonkholythuyet
+    // RE-CHECK: Query fresh data right before update
     let khoBDFilter = `crdfd_masp eq '${safeCode}' and statecode eq 0`;
     if (safeWarehouse) {
       khoBDFilter += ` and crdfd_vitrikhofx eq '${safeWarehouse}'`;
@@ -368,8 +380,17 @@ async function updateInventoryAfterSale(
     
     if (khoBDResults.length > 0) {
       const khoBDRecord = khoBDResults[0];
+      // RE-CHECK: Get fresh inventory value right before update
       const currentStockBD = khoBDRecord.crdfd_tonkholythuyet ?? 0;
-      const newStockBD = Math.max(0, currentStockBD - quantity); // Trừ số lượng, không cho âm
+      
+      // Check if sufficient stock before updating
+      if (currentStockBD < quantity) {
+        const errorMessage = `Không đủ tồn kho (Kho Bình Định)! Sản phẩm ${productCode} có tồn kho: ${currentStockBD}, yêu cầu: ${quantity}`;
+        console.error(`[Update Inventory] ❌ ${errorMessage}`);
+        throw new Error(errorMessage);
+      }
+
+      const newStockBD = currentStockBD - quantity; // Đã check >= quantity ở trên
 
       const updateKhoBDEndpoint = `${BASE_URL}${KHO_BD_TABLE}(${khoBDRecord.crdfd_kho_binh_dinhid})`;
       console.log(`[Update Inventory] Updating crdfd_kho_binh_dinhs:`, {
@@ -395,7 +416,8 @@ async function updateInventoryAfterSale(
       response: error.response?.data,
       status: error.response?.status
     });
-    // Không throw error để không ảnh hưởng đến việc lưu SOD
+    // Throw error để caller có thể xử lý (rollback SOD nếu cần)
+    throw error;
   }
 }
 
@@ -804,16 +826,23 @@ export default async function handler(
           continue;
         }
 
-        // Cập nhật tồn kho
+        // Cập nhật tồn kho với error handling
         if (product.productCode) {
           console.log(`[Update Inventory] Processing product: ${product.productCode}, quantity: ${product.quantity}`);
-          await updateInventoryAfterSale(
-            product.productCode,
-            product.quantity,
-            trimmedWarehouseName,
-            headers
-          );
-          updateCount++;
+          try {
+            await updateInventoryAfterSale(
+              product.productCode,
+              product.quantity,
+              trimmedWarehouseName,
+              headers
+            );
+            updateCount++;
+          } catch (invError: any) {
+            // Nếu không đủ tồn kho khi update, throw error để rollback
+            console.error(`[Update Inventory] Failed to update inventory for ${product.productCode}:`, invError.message);
+            // Re-throw để caller có thể xử lý
+            throw new Error(`Không đủ tồn kho khi cập nhật: ${invError.message}`);
+          }
         } else {
           console.log(`[Update Inventory] Skipping product - no productCode`);
         }

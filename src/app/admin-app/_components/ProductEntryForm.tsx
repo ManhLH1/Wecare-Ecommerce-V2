@@ -22,6 +22,9 @@ const VAT_OPTION_MAP: Record<number, number> = {
 };
 
 interface ProductEntryFormProps {
+  isAdding?: boolean;
+  isSaving?: boolean;
+  isLoadingDetails?: boolean;
   product: string;
   setProduct: (value: string) => void;
   productCode: string;
@@ -74,6 +77,9 @@ interface ProductEntryFormProps {
 }
 
 export default function ProductEntryForm({
+  isAdding = false,
+  isSaving = false,
+  isLoadingDetails = false,
   product,
   setProduct,
   productCode,

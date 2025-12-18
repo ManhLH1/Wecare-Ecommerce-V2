@@ -57,7 +57,7 @@ export const decodeBase64Unicode = (str: string): string => {
 
 const DYNAMICS_RESOURCE = 'https://wecare-ii.crm5.dynamics.com/';
 console.log('🔒 window.location.origin', window.location.origin);
-const CLIENT_ID = window.location.origin === 'https://supplier-invoice-matching-tool-573735243623.us-west1.run.app'
+const CLIENT_ID = window.location.origin === 'https://wecare.com.vn/admin-app/login'
   ? '6fba5a54-1729-4c41-b444-8992ae22c909' // Public Client ID
   : '51f81489-12ee-4a9e-aaae-a2591f45987d'; // Dataverse REST Builder Client ID
 const REDIRECT_URI = window.location.origin; // Use current domain as redirect URI
