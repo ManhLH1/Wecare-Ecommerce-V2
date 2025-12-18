@@ -3,135 +3,128 @@ version: 2.1
 # Orbs để sử dụng các công cụ có sẵn
 orbs:
   node: circleci/node@5.1.0
+  docker: circleci/docker@2.4.0
 
-# Jobs định nghĩa các công việc sẽ chạy
+# Jobs định nghĩa các bước build/test/deploy
 jobs:
-  # Job build và test
-  build-and-test:
+  # Job: Install dependencies và cache
+  install-dependencies:
     docker:
       - image: cimg/node:20.0
-    working_directory: ~/project
     steps:
       - checkout
-      
-      # Khôi phục cache node_modules
-      - restore_cache:
-          keys:
-            - v1-dependencies-{{ checksum "package-lock.json" }}
-            - v1-dependencies-
-      
-      # Cài đặt dependencies
-      - run:
-          name: Install Dependencies
-          command: npm ci
-      
-      # Lưu cache node_modules
-      - save_cache:
+      - node/install-packages:
+          pkg-manager: npm
+      - persist_to_workspace:
+          root: ~/project
           paths:
             - node_modules
-          key: v1-dependencies-{{ checksum "package-lock.json" }}
-      
-      # Chạy linter
+
+  # Job: Lint code
+  lint:
+    docker:
+      - image: cimg/node:20.0
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ~/project
       - run:
-          name: Run Linter
+          name: Run ESLint
           command: npm run lint
-          no_output_timeout: 10m
-      
-      # Build Next.js application
+
+  # Job: Build Next.js application
+  build:
+    docker:
+      - image: cimg/node:20.0
+    environment:
+      # Set environment variables for build
+      NODE_ENV: production
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ~/project
       - run:
           name: Build Next.js App
           command: npm run build
-          no_output_timeout: 20m
-          environment:
-            NODE_ENV: production
-      
-      # Lưu build artifacts
       - persist_to_workspace:
           root: ~/project
           paths:
             - .next
-            - node_modules
+            - public
             - package.json
             - package-lock.json
             - next.config.mjs
-            - public
-            - src
 
-  # Job build Docker image
+  # Job: Build Docker Image
   build-docker:
-    docker:
-      - image: cimg/base:stable
+    machine:
+      image: ubuntu-2204:current
     steps:
       - checkout
-      
       - setup_remote_docker:
-          version: 20.10.14
-      
-      # Khôi phục workspace từ job build-and-test
+          version: 24.0.5
       - attach_workspace:
           at: ~/project
-      
       - run:
           name: Build Docker Image
           command: |
             docker build -t wecare-ecommerce:${CIRCLE_SHA1} .
             docker tag wecare-ecommerce:${CIRCLE_SHA1} wecare-ecommerce:latest
-      
-      # Lưu Docker image (nếu cần push lên registry)
       - run:
           name: Save Docker Image
           command: |
             docker save wecare-ecommerce:${CIRCLE_SHA1} | gzip > /tmp/wecare-ecommerce-${CIRCLE_SHA1}.tar.gz
-      
       - persist_to_workspace:
           root: /tmp
           paths:
             - wecare-ecommerce-*.tar.gz
 
-  # Job deploy (có thể mở rộng sau)
-  deploy:
+  # Job: Test (nếu có test files)
+  test:
     docker:
-      - image: cimg/base:stable
+      - image: cimg/node:20.0
     steps:
       - checkout
       - attach_workspace:
           at: ~/project
       - run:
-          name: Deploy Application
+          name: Run Tests
           command: |
-            echo "Deploy job - customize based on your deployment target"
-            echo "Examples: Vercel, AWS, Azure, etc."
+            if [ -f "package.json" ] && grep -q '"test"' package.json; then
+              npm test || echo "No tests configured"
+            else
+              echo "No test script found, skipping tests"
+            fi
 
 # Workflows định nghĩa thứ tự chạy các jobs
 workflows:
-  version: 2
-  build-and-deploy:
+  build-and-test:
     jobs:
-      # Chạy build và test trước
-      - build-and-test:
-          filters:
-            branches:
-              only:
-                - main
-                - develop
-                - /^feature\/.*/
+      # Bước 1: Install dependencies (chạy đầu tiên)
+      - install-dependencies
       
-      # Build Docker image sau khi build thành công
+      # Bước 2: Chạy song song lint và test
+      - lint:
+          requires:
+            - install-dependencies
+      - test:
+          requires:
+            - install-dependencies
+      
+      # Bước 3: Build Next.js app (sau khi lint và test pass)
+      - build:
+          requires:
+            - lint
+            - test
+      
+      # Bước 4: Build Docker image (sau khi build Next.js thành công)
       - build-docker:
           requires:
-            - build-and-test
+            - build
           filters:
             branches:
               only:
                 - main
+                - master
                 - develop
-      
-      # Deploy (tùy chọn - uncomment khi cần)
-      # - deploy:
-      #     requires:
-      #       - build-docker
-      #     filters:
-      #       branches:
-      #         only:
-      #           - main
 
