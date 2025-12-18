@@ -261,18 +261,26 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       const existingProductIds = new Set(
         existingSOD
           .map((sod) => sod.id)
-          .filter((id): id is string => !!id && id.startsWith('crdfd_'))
+          .filter((id): id is string => !!id)
       );
+      const crmGuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
       // Lấy các sản phẩm CHƯA CÓ trong SOD từ CRM
       // Sản phẩm mới là những sản phẩm không có ID từ CRM hoặc ID không nằm trong danh sách SOD hiện có
       const newProducts = productList.filter((item) => {
-        // Nếu không có ID hoặc ID không phải từ CRM → sản phẩm mới
-        if (!item.id || !item.id.startsWith('crdfd_')) {
-          return true;
+        if (!item.id) return true; // chưa có ID → mới
+
+        // Đã đánh dấu SOD đã tạo → bỏ qua
+        if (item.isSodCreated) return false;
+
+        const idLower = item.id.toLowerCase();
+        // Id CRM dạng GUID hoặc prefix crdfd_ → coi là đã tạo (nếu thấy trong CRM)
+        if (crmGuidPattern.test(item.id) || idLower.startsWith('crdfd_')) {
+          return !existingProductIds.has(item.id);
         }
-        // Nếu có ID từ CRM nhưng không có trong SOD hiện có → cũng là sản phẩm mới (có thể bị xóa)
-        return !existingProductIds.has(item.id);
+
+        // Id tạm khác → cho phép lưu
+        return true;
       });
 
       if (newProducts.length === 0) {
@@ -441,6 +449,9 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
                 searchable
                 onSearch={setCustomerSearch}
               />
+              <div className="admin-app-hint" style={{ marginTop: 4 }}>
+                Mã khách hàng: {customerCode || '—'}
+              </div>
             </div>
 
             <div className="admin-app-field-group admin-app-field-group-large">

@@ -36,7 +36,6 @@ interface ProductEntryFormProps {
   customerId?: string;
   customerCode?: string;
   customerName?: string;
-  customerRegion?: string; // NEW: Customer region for pricing
   soId?: string;
   orderType?: number | null; // Loại đơn hàng OptionSet value (optional)
   vatText?: string; // VAT text từ SO ("Có VAT" hoặc "Không VAT")
@@ -92,7 +91,6 @@ export default function ProductEntryForm({
   customerId,
   customerCode,
   customerName,
-  customerRegion,
   soId,
   orderType,
   vatText,
@@ -157,6 +155,7 @@ export default function ProductEntryForm({
   const [priceEntryMethod, setPriceEntryMethod] = useState<'Nhập thủ công' | 'Theo chiết khấu'>('Nhập thủ công');
   const [discountRate, setDiscountRate] = useState<string>('1');
   const [basePriceForDiscount, setBasePriceForDiscount] = useState<number>(0);
+  const [promotionDiscountPercent, setPromotionDiscountPercent] = useState<number>(0);
 
   const normalizePriceInput = (value: any) => {
     if (value === null || value === undefined) return '';
@@ -330,6 +329,14 @@ export default function ProductEntryForm({
   };
 
   const checkInventoryBeforeAction = async () => {
+    const vatTextLower = (vatText || '').toLowerCase();
+    const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
+
+    // Đơn VAT: không chặn theo tồn kho
+    if (isVatOrder) {
+      return true;
+    }
+
     if (!selectedProductCode) {
       showToast.warning('Vui lòng chọn sản phẩm trước khi thực hiện.');
       return false;
@@ -342,9 +349,6 @@ export default function ProductEntryForm({
       showToast.warning('Số lượng phải lớn hơn 0.');
       return false;
     }
-
-    const vatTextLower = (vatText || '').toLowerCase();
-    const isVatOrder = vatTextLower.includes('có vat');
 
     try {
       setInventoryLoading(true);
@@ -438,6 +442,7 @@ export default function ProductEntryForm({
 
     const vatTextLower = (vatText || '').toLowerCase();
     const isNonVatOrder = vatTextLower.includes('không vat') || vatPercent === 0;
+    const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
     const warehouseNameNorm = normalizeText(warehouse);
     const isKhoBinhDinh =
       warehouseNameNorm === 'kho binh dinh' || warehouseNameNorm.includes('kho binh dinh');
@@ -459,12 +464,15 @@ export default function ProductEntryForm({
       stockInvalid,
     });
 
-    // Kiểm tra tồn kho cho TẤT CẢ các đơn hàng (cả Có VAT và Không VAT)
-    if (hasPriceWarning || stockInvalid) {
+    // Không chặn theo tồn kho cho đơn VAT
+    const shouldBlockByStock = !isVatOrder && stockInvalid;
+
+    // Kiểm tra tồn kho cho đơn Không VAT; VAT chỉ xét cảnh báo giá
+    if (hasPriceWarning || shouldBlockByStock) {
       console.log('❌ [Button Disabled] Price warning or stock invalid:', {
         hasPriceWarning,
-        stockInvalid,
-        reason: hasPriceWarning ? 'Price warning' : stockInvalid ? 'Stock invalid' : 'Unknown',
+        stockInvalid: shouldBlockByStock,
+        reason: hasPriceWarning ? 'Price warning' : shouldBlockByStock ? 'Stock invalid' : 'Unknown',
       });
       return true;
     }
@@ -631,12 +639,12 @@ export default function ProductEntryForm({
       // Determine if this is a VAT order
       const isVatOrder = vatPercent > 0 || (vatText?.toLowerCase().includes('có vat') ?? false);
 
-      // Pass region and isVatOrder to price API
+      // Pass isVatOrder to price API
       const result = await fetchProductPrice(
         selectedProductCode,
         customerCode,
         unitId,
-        customerRegion, // Regional pricing for non-VAT orders
+        undefined, // region filter removed
         isVatOrder       // VAT status
       );
 
@@ -697,7 +705,7 @@ export default function ProductEntryForm({
     };
 
     loadPrice();
-  }, [selectedProductCode, customerCode, unitId, customerRegion, vatPercent, vatText]);
+  }, [selectedProductCode, customerCode, unitId, vatPercent, vatText]);
 
   // Fetch promotions based on product code and customer code
   useEffect(() => {
@@ -751,32 +759,32 @@ export default function ProductEntryForm({
     }
   }, [approvePrice, priceEntryMethod, discountRate, basePriceForDiscount]);
 
+  // Calculate totals with promotion discount
+  const recomputeTotals = (priceValue: string | number, qty: number, promoDiscountPct: number, vatPct: number) => {
+    const priceNum = parseFloat(String(priceValue)) || 0;
+    const discountFactor = 1 - (promoDiscountPct > 0 ? promoDiscountPct / 100 : 0);
+    const effectivePrice = priceNum * discountFactor;
+    const newSubtotal = qty * effectivePrice;
+    const newVat = (newSubtotal * vatPct) / 100;
+    setSubtotal(newSubtotal);
+    setVatAmount(newVat);
+    setTotalAmount(newSubtotal + newVat);
+  };
+
   // Calculate subtotal when quantity or price changes
   const handleQuantityChange = (value: number) => {
     setQuantity(value);
-    const priceNum = parseFloat(price) || 0;
-    const newSubtotal = value * priceNum;
-    setSubtotal(newSubtotal);
-    const newVat = (newSubtotal * vatPercent) / 100;
-    setVatAmount(newVat);
-    setTotalAmount(newSubtotal + newVat);
+    recomputeTotals(price, value, discountPercent || promotionDiscountPercent, vatPercent);
   };
 
   const handlePriceChange = (value: string) => {
     setPrice(value);
-    const priceNum = parseFloat(value) || 0;
-    const newSubtotal = quantity * priceNum;
-    setSubtotal(newSubtotal);
-    const newVat = (newSubtotal * vatPercent) / 100;
-    setVatAmount(newVat);
-    setTotalAmount(newSubtotal + newVat);
+    recomputeTotals(value, quantity, discountPercent || promotionDiscountPercent, vatPercent);
   };
 
   const handleVatChange = (value: number) => {
     setVatPercent(value);
-    const newVat = (subtotal * value) / 100;
-    setVatAmount(newVat);
-    setTotalAmount(subtotal + newVat);
+    recomputeTotals(price, quantity, discountPercent || promotionDiscountPercent, value);
   };
 
   const handleAddWithInventoryCheck = async () => {
@@ -790,6 +798,47 @@ export default function ProductEntryForm({
     if (!ok) return;
     onSave();
   };
+
+  // Derive promotion discount percent from selected promotion
+  const derivePromotionPercent = (promo?: Promotion | null) => {
+    if (!promo) return 0;
+    const candidates = [
+      promo.valueWithVat,
+      promo.valueNoVat,
+      promo.value,
+      promo.value2,
+      promo.value3,
+      promo.valueBuyTogether,
+    ];
+    for (const c of candidates) {
+      const num = Number(c);
+      if (isNaN(num)) continue;
+      if (num > 0 && num <= 1) {
+        return Math.round(num * 100); // convert fraction to %
+      }
+      if (num > 0) {
+        return num;
+      }
+    }
+    return 0;
+  };
+
+  // Sync discount percent from promotion selection
+  useEffect(() => {
+    const selected = promotions.find(
+      (p) => normalizePromotionId(p.id) === normalizePromotionId(selectedPromotionId || normalizePromotionId(promotions[0]?.id))
+    );
+    const promoPct = derivePromotionPercent(selected);
+    setPromotionDiscountPercent(promoPct);
+    setDiscountPercent(promoPct); // propagate to parent state
+    setPromotionText(selected?.name || '');
+    recomputeTotals(price, quantity, promoPct || discountPercent, vatPercent);
+  }, [selectedPromotionId, promotions]);
+
+  // Recompute totals when discount percent changes elsewhere
+  useEffect(() => {
+    recomputeTotals(price, quantity, discountPercent || promotionDiscountPercent, vatPercent);
+  }, [discountPercent]);
 
   const productLabel = vatPercent === 0 ? 'Sản phẩm không VAT' : 'Sản phẩm có VAT';
 
@@ -899,6 +948,9 @@ export default function ProductEntryForm({
                 </svg>
               </button>
             )}
+          </div>
+          <div className="admin-app-hint" style={{ marginTop: 4 }}>
+            Mã sản phẩm: {productCode || '—'}
           </div>
           {accountingStockLabel && !accountingStockLoading && (
             <div className="admin-app-hint">
@@ -1030,6 +1082,11 @@ export default function ProductEntryForm({
                   })}
                 </select>
                 <span className="admin-app-dropdown-arrow">▼</span>
+              </div>
+            )}
+            {!promotionLoading && !promotionError && promotions.length > 0 && (
+              <div className="admin-app-hint" style={{ marginTop: 6 }}>
+                Giảm giá: {promotionDiscountPercent || discountPercent || 0}%
               </div>
             )}
           </div>
