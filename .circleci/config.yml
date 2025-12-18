@@ -31,6 +31,8 @@ jobs:
       - run:
           name: Run ESLint
           command: npm run lint
+      - setup_remote_docker:
+          docker_layer_caching: true
 
   # Job: Build Next.js application
   build:
