@@ -21,6 +21,14 @@ const VAT_OPTION_MAP: Record<number, number> = {
   191920003: 10, // 10%
 };
 
+// Product groups that bypass inventory checks (PowerApps: item.'Mã nhóm SP' <> ... AND ...)
+const INVENTORY_BYPASS_PRODUCT_GROUP_CODES = [
+  'NSP-00027',
+  'NSP-000872',
+  'NSP-000409',
+  'NSP-000474',
+] as const;
+
 interface ProductEntryFormProps {
   isAdding?: boolean;
   isSaving?: boolean;
@@ -359,6 +367,25 @@ export default function ProductEntryForm({
       .toLowerCase()
       .trim();
 
+  const selectedProductGroupCode = useMemo(() => {
+    const fromState = (selectedProduct as any)?.crdfd_manhomsp as string | undefined;
+    if (fromState) return fromState;
+
+    const fromId = products.find((p) => p.crdfd_productsid === productId)?.crdfd_manhomsp;
+    if (fromId) return fromId;
+
+    const fromCode =
+      selectedProductCode
+        ? products.find((p) => p.crdfd_masanpham === selectedProductCode)?.crdfd_manhomsp
+        : undefined;
+    return fromCode || '';
+  }, [selectedProduct, products, productId, selectedProductCode]);
+
+  const shouldBypassInventoryCheck = useMemo(() => {
+    if (!selectedProductGroupCode) return false;
+    return (INVENTORY_BYPASS_PRODUCT_GROUP_CODES as readonly string[]).includes(selectedProductGroupCode);
+  }, [selectedProductGroupCode]);
+
   const syncInventoryState = (theoretical: number, isVatOrder: boolean) => {
     setInventoryTheoretical(theoretical);
     setStockQuantity(theoretical);
@@ -373,6 +400,11 @@ export default function ProductEntryForm({
 
     // Đơn VAT: không chặn theo tồn kho
     if (isVatOrder) {
+      return true;
+    }
+
+    // Bỏ qua kiểm tra tồn kho cho các nhóm SP đặc thù
+    if (shouldBypassInventoryCheck) {
       return true;
     }
 
@@ -434,16 +466,9 @@ export default function ProductEntryForm({
     }
 
     // Allowed product groups or special customers → always enabled
-    const allowedProductGroupCodes = [
-      'NSP-00027',
-      'NSP-000872',
-      'NSP-000409',
-      'NSP-000474',
-      'NSP-000873',
-    ];
-    const productGroupCode = selectedProduct?.crdfd_manhomsp || '';
+    const productGroupCode = selectedProductGroupCode || '';
     const customerNameNorm = normalizeText(customerName);
-    const isAllowedGroup = allowedProductGroupCodes.includes(productGroupCode);
+    const isAllowedGroup = (INVENTORY_BYPASS_PRODUCT_GROUP_CODES as readonly string[]).includes(productGroupCode);
     const isAllowedCustomer =
       customerNameNorm === 'kho wecare' || customerNameNorm === 'kho wecare (ho chi minh)';
 
@@ -526,6 +551,7 @@ export default function ProductEntryForm({
   }, [
     isFormDisabled,
     selectedProduct,
+    selectedProductGroupCode,
     customerName,
     orderType,
     priceWarningMessage,
@@ -611,6 +637,16 @@ export default function ProductEntryForm({
     const isVatOrder = vatTextLower.includes('có vat');
     const labelPrefix = isVatOrder ? 'Tồn kho (bỏ mua):' : 'Tồn kho (inventory):';
 
+    if (shouldBypassInventoryCheck) {
+      setInventoryTheoretical(0);
+      setStockQuantity(0);
+      setInventoryMessage(
+        `Bỏ qua kiểm tra tồn kho (nhóm SP: ${selectedProductGroupCode || '—'})`
+      );
+      setInventoryColor(undefined);
+      return;
+    }
+
     if (!selectedProductCode || !warehouse) {
       setInventoryTheoretical(0);
       setStockQuantity(0);
@@ -651,10 +687,13 @@ export default function ProductEntryForm({
   // Load inventory when product code & warehouse change
   useEffect(() => {
     loadInventory();
-  }, [selectedProductCode, warehouse, vatText, vatPercent, setStockQuantity]);
+  }, [selectedProductCode, warehouse, vatText, vatPercent, setStockQuantity, shouldBypassInventoryCheck, selectedProductGroupCode]);
 
   // Function to reload inventory manually
   const handleReloadInventory = async () => {
+    if (shouldBypassInventoryCheck) {
+      return;
+    }
     if (!selectedProductCode || !warehouse) {
       showToast.warning('Vui lòng chọn sản phẩm và kho trước');
       return;
@@ -669,6 +708,8 @@ export default function ProductEntryForm({
       const found = products.find((p) => p.crdfd_name === product);
       if (found) {
         setProductId(found.crdfd_productsid);
+        setSelectedProduct(found as any);
+        setSelectedProductCode(found.crdfd_masanpham);
         const gtgtVal = found.crdfd_gtgt_option ?? found.crdfd_gtgt;
         const vatFromOption = gtgtVal !== undefined ? VAT_OPTION_MAP[gtgtVal] : undefined;
         if (vatFromOption !== undefined) {
@@ -1099,7 +1140,7 @@ export default function ProductEntryForm({
               <span className="admin-app-inventory-text">
                 {inventoryLoading ? 'Đang tải...' : inventoryMessage}
               </span>
-              {(inventoryTheoretical === 0 || inventoryTheoretical === null) && !inventoryLoading && (
+              {!shouldBypassInventoryCheck && (inventoryTheoretical === 0 || inventoryTheoretical === null) && !inventoryLoading && (
                 <button
                   type="button"
                   onClick={handleReloadInventory}
