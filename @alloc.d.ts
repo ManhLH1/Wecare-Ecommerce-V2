@@ -13,4 +13,3 @@ declare module '@alloc/quick-lru' {
     size: number;
   }
 }
-
