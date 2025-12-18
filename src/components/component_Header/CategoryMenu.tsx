@@ -26,7 +26,7 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
   onCategorySelect,
   isMobile = false,
   isOpen = true,
-  onClose = () => {},
+  onClose = () => { },
 }) => {
   // All hooks must be declared at the top level before any conditional logic
   const [selectedMainCategory, setSelectedMainCategory] = useState<any>(null);
@@ -148,11 +148,11 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
         if (elementBottom > containerTop && elementTop < containerTop + containerHeight) {
           // Calculate distance from threshold
           const distance = Math.abs(elementTop - threshold);
-          
+
           // If this category is closer to our threshold, select it
           if (distance < smallestDistance) {
             smallestDistance = distance;
-            closestCategory = categoryGroups.find(cat => 
+            closestCategory = categoryGroups.find(cat =>
               cat.crdfd_productgroupid === categoryId
             );
           }
@@ -172,7 +172,7 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
     if (!container) return;
 
     container.addEventListener('scroll', handleScroll);
-    
+
     // Initial check
     handleScroll();
 
@@ -192,7 +192,7 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
       }
     };
   }, []);
-  
+
   // Clear hide timeout on unmount
   useEffect(() => {
     return () => {
@@ -200,18 +200,8 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
     };
   }, []);
 
-  // Auto-close dropdown on scroll (desktop) to mimic sieuthihaiminh.vn panel
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (isMobile || !isOpen) return;
-
-    const handleScrollClose = () => {
-      onClose?.();
-    };
-
-    window.addEventListener("scroll", handleScrollClose, { passive: true });
-    return () => window.removeEventListener("scroll", handleScrollClose);
-  }, [isMobile, isOpen, onClose]);
+  // NOTE: Scroll handling for dropdown is now managed in JDStyleHeader.tsx
+  // with scroll direction detection (close on scroll down, open on scroll up)
 
   // Hàm icon cho từng nhóm
   const getIcon = (groupName: string) => {
@@ -273,7 +263,7 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
           const categoryInHierarchy = categoryHierarchy.hierarchy.find(
             (cat: any) => cat.crdfd_productgroupid === category.crdfd_productgroupid
           );
-          
+
           return {
             mainCategory: category,
             subCategories: getSubCategories(category.crdfd_productgroupid),
@@ -281,7 +271,7 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
         })
         .filter((group) => group.subCategories.length > 0);
     }
-    
+
     // Fallback: sử dụng byLevel (chỉ hỗ trợ 2 level)
     if (categoryHierarchy?.byLevel?.["2"]) {
       return filteredCategories
@@ -291,14 +281,14 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
         }))
         .filter((group) => group.subCategories.length > 0);
     }
-    
+
     return [];
   }, [categoryHierarchy, filteredCategories, getSubCategories]);
 
   // Tính tổng số lượng sản phẩm từ tất cả danh mục con (LV2 và LV3)
   const getTotalProductCountFromSubCategories = () => {
     if (!categoryHierarchy) return 0;
-    
+
     // Sử dụng hierarchy nếu có
     if (categoryHierarchy.hierarchy) {
       let total = 0;
@@ -315,14 +305,14 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
       countProducts(categoryHierarchy.hierarchy);
       return total;
     }
-    
+
     // Fallback: sử dụng byLevel
     if (categoryHierarchy.byLevel?.["2"]) {
       return categoryHierarchy.byLevel["2"].reduce((total: number, subCategory: any) => {
         return total + (subCategory.productCount || 0);
       }, 0);
     }
-    
+
     return 0;
   };
 
@@ -426,27 +416,24 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
           <div>
             <ul className="mt-1 p-2">
               {sortedCategories.map((group, idx) => (
-                <li key={group.crdfd_productgroupid || idx} className="mb-0.5">
+                <li key={group.crdfd_productgroupid || idx} className="mb-0">
                   <button
-                    className={`flex items-center w-full px-3 py-2.5 text-sm font-medium transition-all duration-200 rounded-md group ${
-                      selectedMainCategory?.crdfd_productgroupid ===
+                    className={`flex items-center w-full px-3 py-1.5 text-base font-medium transition-all duration-200 group ${selectedMainCategory?.crdfd_productgroupid ===
                       group.crdfd_productgroupid
-                        ? "bg-amber-50 text-amber-700 border-l-4 border-amber-500 shadow-sm"
-                        : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                    }`}
+                      ? "bg-amber-50 text-amber-700 border-l-4 border-amber-500"
+                      : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                      }`}
                     onClick={() => handleCategoryClick(group)}
                     onMouseEnter={() => handleCategoryHover(group)}
                   >
-                    <span className={`flex items-center justify-center w-7 h-7 rounded-md mr-3 transition-colors ${
-                      selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
-                        ? "bg-amber-100"
-                        : "bg-white group-hover:bg-gray-50"
-                    }`}>
-                      <span className={`text-sm ${
-                        selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
-                          ? "text-amber-600"
-                          : "text-gray-600"
+                    <span className={`flex items-center justify-center w-6 h-6 mr-2 transition-colors ${selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
+                      ? "bg-amber-100"
+                      : "bg-white group-hover:bg-gray-50"
                       }`}>
+                      <span className={`text-base ${selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
+                        ? "text-amber-600"
+                        : "text-gray-600"
+                        }`}>
                         {getIcon(group.crdfd_productname)}
                       </span>
                     </span>
@@ -455,19 +442,17 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
                     </span>
                     {group.productCount !== undefined &&
                       group.productCount > 0 && (
-                        <span className={`text-xs ml-2 ${
-                          selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
-                            ? "text-amber-600"
-                            : "text-gray-400"
-                        }`}>
+                        <span className={`text-sm ml-2 ${selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
+                          ? "text-amber-600"
+                          : "text-gray-400"
+                          }`}>
                           ({group.productCount})
                         </span>
                       )}
-                    <FaChevronRight className={`w-3 h-3 ml-2 transition-transform duration-200 ${
-                      selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
-                        ? 'text-amber-600 transform rotate-90'
-                        : 'text-gray-400'
-                    }`} />
+                    <FaChevronRight className={`w-3 h-3 ml-2 transition-transform duration-200 ${selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
+                      ? 'text-amber-600 transform rotate-90'
+                      : 'text-gray-400'
+                      }`} />
                   </button>
                 </li>
               ))}
@@ -483,104 +468,104 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
             onMouseEnter={() => setShowRightPanel(true)}
             onMouseLeave={handleMouseLeavePanel}
           >
-          {allSubCategoriesGrouped.length > 0 ? (
-            <div className="p-6 max-w-full">
-              {allSubCategoriesGrouped.map(
-          ({ mainCategory, subCategories }) => (
-            <div
-              key={mainCategory.crdfd_productgroupid}
-              id={`category-${mainCategory.crdfd_productgroupid}`}
-              ref={(el) => {
-                categoryRefs.current[mainCategory.crdfd_productgroupid] =
-            el;
-              }}
-              className="mb-6"
-            >
-              {/* Subcategories - LV2 và LV3 - Hiển thị theo dạng columns như hình */}
-              <div className="grid grid-cols-4 gap-8">
-                {subCategories.map((lv2Item: any) => {
-                  const lv3Items = lv2Item.children || [];
-                  
-                  return (
-                    <div key={lv2Item.crdfd_productgroupid} className="flex flex-col">
-                      {/* LV2 Header - Bold text, clickable */}
-                      <button
-                        onClick={() => onCategorySelect(lv2Item)}
-                        className="text-left mb-2 group"
-                      >
-                        <h4 className="text-sm font-bold text-gray-900 group-hover:text-amber-600 transition-colors leading-tight">
-                          {lv2Item.crdfd_productname}
-                        </h4>
-                      </button>
+            {allSubCategoriesGrouped.length > 0 ? (
+              <div className="p-4 max-w-full flex flex-col items-center">
+                {allSubCategoriesGrouped.map(
+                  ({ mainCategory, subCategories }) => (
+                    <div
+                      key={mainCategory.crdfd_productgroupid}
+                      id={`category-${mainCategory.crdfd_productgroupid}`}
+                      ref={(el) => {
+                        categoryRefs.current[mainCategory.crdfd_productgroupid] =
+                          el;
+                      }}
+                      className="mb-4 w-full"
+                    >
+                      {/* Subcategories - LV2 và LV3 - Hiển thị theo dạng columns căn trái */}
+                      <div className="grid grid-cols-4 gap-4 justify-items-start">
+                        {subCategories.map((lv2Item: any) => {
+                          const lv3Items = lv2Item.children || [];
 
-                      {/* LV3 Items - Simple text links, always visible */}
-                      {lv3Items.length > 0 ? (
-                        <div className="flex flex-col space-y-0.5">
-                          {lv3Items.map((lv3Item: any) => (
-                            <button
-                              key={lv3Item.crdfd_productgroupid}
-                              onClick={() => onCategorySelect(lv3Item)}
-                              className="text-left text-sm text-gray-600 hover:text-amber-600 transition-colors py-1 leading-relaxed"
-                            >
-                              {lv3Item.crdfd_productname}
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
+                          return (
+                            <div key={lv2Item.crdfd_productgroupid} className="flex flex-col items-start text-left">
+                              {/* LV2 Header - Bold text, clickable */}
+                              <button
+                                onClick={() => onCategorySelect(lv2Item)}
+                                className="text-left mb-0.5 group"
+                              >
+                                <h4 className="text-base font-bold text-gray-900 group-hover:text-amber-600 transition-colors leading-none">
+                                  {lv2Item.crdfd_productname}
+                                </h4>
+                              </button>
+
+                              {/* LV3 Items - Simple text links, always visible */}
+                              {lv3Items.length > 0 ? (
+                                <div className="flex flex-col items-start -space-y-0.5">
+                                  {lv3Items.map((lv3Item: any) => (
+                                    <button
+                                      key={lv3Item.crdfd_productgroupid}
+                                      onClick={() => onCategorySelect(lv3Item)}
+                                      className="text-left text-sm text-gray-600 hover:text-amber-600 transition-colors leading-none"
+                                    >
+                                      {lv3Item.crdfd_productname}
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  );
-                })}
+                  )
+                )}
               </div>
-            </div>
-          )
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center py-6 text-[#049DBF]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#049DBF] mx-auto mb-4"></div>
-          <p className="text-gray-500 text-sm">Đang tải danh mục...</p>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center py-6 text-[#049DBF]">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#049DBF] mx-auto mb-4"></div>
+                  <p className="text-gray-500 text-sm">Đang tải danh mục...</p>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
         )}
       </div>
 
       {/* Footer - Style giống sieuthihaiminh.vn */}
       {showRightPanel && (
-      <div className="bg-gray-50 border-t-2 border-gray-200 px-5 py-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-gray-600 font-medium">
-            Tổng cộng <strong className="text-gray-900">{sortedCategories.length}</strong> danh mục chính •{" "}
-            <strong className="text-gray-900">{(() => {
-              let lv2Count = 0;
-              let lv3Count = 0;
-              allSubCategoriesGrouped.forEach(group => {
-                group.subCategories.forEach((lv2: any) => {
-                  lv2Count++;
-                  if (lv2.children) {
-                    lv3Count += lv2.children.length;
-                  }
+        <div className="bg-gray-50 border-t-2 border-gray-200 px-5 py-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-600 font-medium">
+              Tổng cộng <strong className="text-gray-900">{sortedCategories.length}</strong> danh mục chính •{" "}
+              <strong className="text-gray-900">{(() => {
+                let lv2Count = 0;
+                let lv3Count = 0;
+                allSubCategoriesGrouped.forEach(group => {
+                  group.subCategories.forEach((lv2: any) => {
+                    lv2Count++;
+                    if (lv2.children) {
+                      lv3Count += lv2.children.length;
+                    }
+                  });
                 });
-              });
-              return `${lv2Count} LV2${lv3Count > 0 ? ` • ${lv3Count} LV3` : ''}`;
-            })()}</strong>{" "}
-            danh mục con • <strong className="text-gray-900">{totalProductCountFromSubCategories.toLocaleString()}</strong> sản phẩm
-          </span>
-          <button
-            onClick={() =>
-              onCategorySelect({
-                crdfd_productgroupid: "all",
-                crdfd_productname: "Tất cả sản phẩm",
-              })
-            }
-            className="text-xs text-amber-600 hover:text-amber-700 font-semibold hover:underline transition-all duration-200"
-          >
-            Xem tất cả sản phẩm →
-          </button>
+                return `${lv2Count} LV2${lv3Count > 0 ? ` • ${lv3Count} LV3` : ''}`;
+              })()}</strong>{" "}
+              danh mục con • <strong className="text-gray-900">{totalProductCountFromSubCategories.toLocaleString()}</strong> sản phẩm
+            </span>
+            <button
+              onClick={() =>
+                onCategorySelect({
+                  crdfd_productgroupid: "all",
+                  crdfd_productname: "Tất cả sản phẩm",
+                })
+              }
+              className="text-xs text-amber-600 hover:text-amber-700 font-semibold hover:underline transition-all duration-200"
+            >
+              Xem tất cả sản phẩm →
+            </button>
+          </div>
         </div>
-      </div>
       )}
     </div>
   );

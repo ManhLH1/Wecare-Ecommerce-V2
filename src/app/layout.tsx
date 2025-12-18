@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Roboto } from "next/font/google";
 import "./globals.css";
 import Head from "next/head";
 import ToastManager from '@/components/ToastManager';
@@ -15,16 +15,17 @@ import GTMAlternative, { GTMAlternativeNoscript } from "@/components/GTMAlternat
 
 const CartProviderWrapper = dynamic(
   () => import('@/components/CartManager').then(mod => mod.CartProvider),
-  { 
+  {
     ssr: false,
     loading: () => <Loading />
   }
 );
 
-const inter = Inter({ 
-  subsets: ["latin"],
+const roboto = Roboto({
+  weight: ['300', '400', '500', '700'],
+  subsets: ["latin", "vietnamese"],
   display: 'swap',
-  variable: '--font-inter',
+  variable: '--font-roboto',
 });
 
 export const metadata: Metadata = {
@@ -57,13 +58,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" className={inter.variable}>
+    <html lang="vi" className={roboto.variable}>
       <head>
         <link rel="icon" type="image/svg+xml" href="/logo.svg" />
         <link rel="alternate icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" href="/logo.svg" />
         <meta name="google-site-verification" content="LAHTG-uNsNx8gjrMqdTTeDrAclGeFVK5-acMNbBzaBg" />
-        
+
         {/* Google Tag Manager & Analytics */}
         <GTMAlternative />
         <Script id="json-circular-fix" strategy="beforeInteractive">
@@ -95,7 +96,7 @@ export default function RootLayout({
           `}
         </Script>
       </head>
-      <body className={`${inter.className} text-gray-700`}>
+      <body className={`${roboto.className} text-gray-700`}>
         {/* Google Tag Manager (noscript) */}
         <GTMAlternativeNoscript />
         <CartProviderWrapper>
