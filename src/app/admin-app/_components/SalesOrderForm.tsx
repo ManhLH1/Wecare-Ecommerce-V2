@@ -57,6 +57,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [isOrderInfoCollapsed, setIsOrderInfoCollapsed] = useState(false);
 
   // Fetch data for dropdowns
   const { customers, loading: customersLoading } = useCustomers(customerSearch);
@@ -66,7 +67,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const [productCode, setProductCode] = useState('');
   const [unit, setUnit] = useState('');
   const [warehouse, setWarehouse] = useState('');
-  const [quantity, setQuantity] = useState(0);
+  const [quantity, setQuantity] = useState(1);
   const [price, setPrice] = useState('');
   const [subtotal, setSubtotal] = useState(0);
   const [vatPercent, setVatPercent] = useState(0);
@@ -110,7 +111,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
 
   const selectedSo = saleOrders.find((so) => so.crdfd_sale_orderid === soId);
   const selectedVatText = getVatLabelText(selectedSo);
-  const soLabelText = selectedVatText ? `Sales Order (SO) - ${selectedVatText}` : 'Sales Order (SO)';
+  const isNonVatSelected = (selectedVatText || '').toLowerCase().includes('không');
 
   // Load Sale Order Details when soId changes (formData equivalent)
   useEffect(() => {
@@ -237,7 +238,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setProduct('');
     setProductCode('');
     setUnit('');
-    setQuantity(0);
+    setQuantity(1);
     setPrice('');
     setSubtotal(0);
     setVatAmount(0);
@@ -405,7 +406,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setProductCode('');
     setUnit('');
     setWarehouse('');
-    setQuantity(0);
+    setQuantity(1);
     setPrice('');
     setSubtotal(0);
     setVatPercent(0);
@@ -425,15 +426,39 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   };
 
   return (
-    <>
-      {/* Header with Version - Only show if not hidden */}
+    <div className="admin-app-compact-layout">
+      {/* Compact Header - 56px */}
       {!hideHeader && (
-        <div className="admin-app-header">
-          <div className="admin-app-header-left">
-            <div className="admin-app-title">Admin App</div>
-            <div className="admin-app-subtitle">Quản lý đơn hàng bán hàng</div>
+        <div className="admin-app-header-compact">
+          <div className="admin-app-header-compact-left">
+            <div className="admin-app-title-compact">Admin</div>
+            <div className="admin-app-status-badge">
+              {soId ? 'SO ✓' : 'Chưa SO'}
+            </div>
           </div>
-          <div className="admin-app-header-right">
+          <div className="admin-app-header-compact-right">
+            <button
+              className="admin-app-header-btn admin-app-header-btn-save"
+              onClick={handleSave}
+              disabled={isSaving || productList.length === 0}
+              title="Lưu"
+            >
+              💾 Lưu
+            </button>
+            <button
+              className="admin-app-header-btn admin-app-header-btn-submit"
+              disabled
+              title="Gửi duyệt"
+            >
+              ✔ Gửi duyệt
+            </button>
+            <button
+              className="admin-app-header-btn admin-app-header-btn-create"
+              disabled
+              title="Tạo đơn"
+            >
+              🧾 Tạo đơn
+            </button>
             <span className="admin-app-badge admin-app-badge-version">
               V0
             </span>
@@ -441,133 +466,198 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         </div>
       )}
 
-      {/* Main Content */}
-      <div className="admin-app-content">
-        {/* Customer and SO Section */}
-        <div className="admin-app-section">
-          <h3 className="admin-app-section-title">Thông tin đơn hàng</h3>
-          <div className="admin-app-form-row">
-            <div className="admin-app-field-group admin-app-field-group-large">
-              <label className="admin-app-label">Khách hàng <span className="admin-app-required">*</span></label>
-              <Dropdown
-                options={customers.map((c) => {
-                  const regionText = c.cr1bb_vungmien_text ? ` - ${c.cr1bb_vungmien_text}` : '';
-                  return {
-                    value: c.crdfd_customerid,
-                    label: `${c.crdfd_name}${regionText}`,
-                    ...c,
-                  };
-                })}
-                value={customerId}
-                onChange={(value, option) => {
-                  setCustomerId(value);
-                  setCustomer(option?.label || '');
-                  // Use cr44a_makhachhang (mã khách hàng) instead of cr44a_st
-                  setCustomerCode(option?.cr44a_makhachhang || option?.cr44a_st || '');
-                  // Save industry for delivery date logic
-                  setCustomerIndustry(option?.crdfd_nganhnghe ?? null);
-                  // Reset warehouse when customer changes
-                  setWarehouse('');
-                }}
-                placeholder="Chọn khách hàng"
-                loading={customersLoading}
-                searchable
-                onSearch={setCustomerSearch}
-              />
-              <div className="admin-app-hint" style={{ marginTop: 4 }}>
-                Mã khách hàng: {customerCode || '—'}
-              </div>
+      {/* Main Content - 2 Columns Layout */}
+      <div className="admin-app-content-compact">
+        {/* Left Column - Order Info (Slide Out) */}
+        <div className={`admin-app-column-left ${isOrderInfoCollapsed ? 'admin-app-column-collapsed' : ''}`}>
+          <div className="admin-app-card-compact">
+            <div className="admin-app-card-header-collapsible" onClick={() => setIsOrderInfoCollapsed(!isOrderInfoCollapsed)}>
+              <h3 className="admin-app-card-title">Thông tin đơn hàng</h3>
+              <button className="admin-app-collapse-btn" title={isOrderInfoCollapsed ? 'Mở rộng' : 'Ẩn sang trái'}>
+                {isOrderInfoCollapsed ? '◀' : '▶'}
+              </button>
             </div>
+            <div className="admin-app-form-compact">
+              <div className="admin-app-field-compact">
+                <label className="admin-app-label-inline">Khách hàng <span className="admin-app-required">*</span></label>
+                <Dropdown
+                  options={customers.map((c) => {
+                    const regionText = c.cr1bb_vungmien_text ? ` - ${c.cr1bb_vungmien_text}` : '';
+                    return {
+                      value: c.crdfd_customerid,
+                      label: `${c.crdfd_name}${regionText}`,
+                      ...c,
+                    };
+                  })}
+                  value={customerId}
+                  onChange={(value, option) => {
+                    setCustomerId(value);
+                    setCustomer(option?.label || '');
+                    setCustomerCode(option?.cr44a_makhachhang || option?.cr44a_st || '');
+                    setCustomerIndustry(option?.crdfd_nganhnghe ?? null);
+                    setWarehouse('');
+                  }}
+                  placeholder="Chọn khách hàng"
+                  loading={customersLoading}
+                  searchable
+                  onSearch={setCustomerSearch}
+                />
+              </div>
 
-            <div className="admin-app-field-group admin-app-field-group-large">
-              <label className="admin-app-label">{soLabelText}</label>
-              <Dropdown
-                options={saleOrders.map((so) => {
-                  const baseLabel = so.crdfd_name || so.crdfd_so_code || so.crdfd_so_auto || 'SO không tên';
-                  const vatLabelText = getVatLabelText(so) || 'Không VAT';
-                  const label = `${baseLabel} - ${vatLabelText}`;
-                  return {
-                    value: so.crdfd_sale_orderid,
-                    label,
-                    vatLabelText,
-                    ...so,
-                  };
-                })}
-                value={soId}
-                onChange={(value, option) => {
-                  setSoId(value);
-                  setSo(option?.label || '');
-                }}
-                placeholder={customerId ? "Chọn SO" : "Chọn khách hàng trước"}
-                loading={soLoading}
-                disabled={!customerId}
-              />
-              {soError && (
-                <div className="admin-app-error" style={{ fontSize: '11px', color: '#ff4444', marginTop: '4px' }}>
-                  {soError}
+              <div className="admin-app-field-compact">
+                <label className="admin-app-label-inline">
+                  Sales Order
+                  {selectedVatText && (
+                    <span
+                      className={`admin-app-badge-vat ${isNonVatSelected ? 'is-non-vat' : 'is-vat'}`}
+                      title={selectedVatText}
+                    >
+                      {selectedVatText}
+                    </span>
+                  )}
+                </label>
+                <Dropdown
+                  options={saleOrders.map((so) => {
+                    const baseLabel = so.crdfd_name || so.crdfd_so_code || so.crdfd_so_auto || 'SO không tên';
+                    const vatLabelText = getVatLabelText(so) || 'Không VAT';
+                    return {
+                      value: so.crdfd_sale_orderid,
+                      label: baseLabel,
+                      vatLabelText,
+                      ...so,
+                    };
+                  })}
+                  value={soId}
+                  onChange={(value, option) => {
+                    setSoId(value);
+                    setSo(option?.label || '');
+                  }}
+                  placeholder={customerId ? "Chọn SO" : "Chọn khách hàng trước"}
+                  loading={soLoading}
+                  disabled={!customerId}
+                />
+                {soError && (
+                  <div className="admin-app-error-inline">{soError}</div>
+                )}
+              </div>
+
+              <div className="admin-app-form-row-mini">
+                <div className="admin-app-field-compact admin-app-field-mini">
+                  <label className="admin-app-label-inline">Ngày giao</label>
+                  <div className="admin-app-input-wrapper">
+                    <input
+                      type="text"
+                      className="admin-app-input admin-app-input-compact"
+                      value={deliveryDate}
+                      onChange={(e) => setDeliveryDate(e.target.value)}
+                      placeholder="dd/mm/yyyy"
+                      disabled={!customerId || !soId}
+                    />
+                    <span className="admin-app-calendar-icon">📅</span>
+                  </div>
                 </div>
-              )}
+                <div className="admin-app-field-compact admin-app-field-mini admin-app-field-span-2">
+                  <label className="admin-app-label-inline">Ghi chú</label>
+                  <input
+                    type="text"
+                    className="admin-app-input admin-app-input-compact"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="Ghi chú"
+                    disabled={!customerId || !soId}
+                  />
+                </div>
+              </div>
+
+              <div className="admin-app-checkboxes-inline admin-app-checkboxes-inline-right">
+                <label className={`admin-app-chip-toggle ${urgentOrder ? 'is-active' : ''} ${(!customerId || !soId) ? 'is-disabled' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={urgentOrder}
+                    onChange={(e) => setUrgentOrder(e.target.checked)}
+                    disabled={!customerId || !soId}
+                  />
+                  <span>Đơn hàng gấp</span>
+                </label>
+                <label className={`admin-app-chip-toggle ${approvePrice ? 'is-active' : ''} ${(!customerId || !soId) ? 'is-disabled' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={approvePrice}
+                    onChange={(e) => setApprovePrice(e.target.checked)}
+                    disabled={!customerId || !soId}
+                  />
+                  <span>Duyệt giá</span>
+                </label>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Product Entry Section */}
-        <ProductEntryForm
-          product={product}
-          setProduct={setProduct}
-          productCode={productCode}
-          setProductCode={setProductCode}
-          unit={unit}
-          setUnit={setUnit}
-          warehouse={warehouse}
-          setWarehouse={setWarehouse}
-          customerId={customerId}
-          customerCode={customerCode}
-          customerName={customer}
-          vatText={selectedVatText}
-          orderType={selectedSo?.crdfd_loai_don_hang}
-          soId={soId}
-          quantity={quantity}
-          setQuantity={setQuantity}
-          price={price}
-          setPrice={setPrice}
-          subtotal={subtotal}
-          setSubtotal={setSubtotal}
-          vatPercent={vatPercent}
-          setVatPercent={setVatPercent}
-          vatAmount={vatAmount}
-          setVatAmount={setVatAmount}
-          totalAmount={totalAmount}
-          setTotalAmount={setTotalAmount}
-          stockQuantity={stockQuantity}
-          setStockQuantity={setStockQuantity}
-          approvePrice={approvePrice}
-          setApprovePrice={setApprovePrice}
-          approveSupPrice={approveSupPrice}
-          setApproveSupPrice={setApproveSupPrice}
-          urgentOrder={urgentOrder}
-          setUrgentOrder={setUrgentOrder}
-          deliveryDate={deliveryDate}
-          setDeliveryDate={setDeliveryDate}
-          note={note}
-          setNote={setNote}
-          approver={approver}
-          setApprover={setApprover}
-          discountPercent={discountPercent}
-          setDiscountPercent={setDiscountPercent}
-          discountAmount={discountAmount}
-          setDiscountAmount={setDiscountAmount}
-          promotionText={promotionText}
-          setPromotionText={setPromotionText}
-          onAdd={handleAddProduct}
-          onSave={handleSave}
-          onRefresh={handleRefresh}
-        />
+        {/* Right Column - Product Info (70%) */}
+        <div className="admin-app-column-right">
+          <ProductEntryForm
+            isAdding={isAdding}
+            isSaving={isSaving}
+            isLoadingDetails={isLoadingDetails}
+            showInlineActions={hideHeader}
+            product={product}
+            setProduct={setProduct}
+            productCode={productCode}
+            setProductCode={setProductCode}
+            unit={unit}
+            setUnit={setUnit}
+            warehouse={warehouse}
+            setWarehouse={setWarehouse}
+            customerId={customerId}
+            customerCode={customerCode}
+            customerName={customer}
+            vatText={selectedVatText}
+            orderType={selectedSo?.crdfd_loai_don_hang}
+            soId={soId}
+            quantity={quantity}
+            setQuantity={setQuantity}
+            price={price}
+            setPrice={setPrice}
+            subtotal={subtotal}
+            setSubtotal={setSubtotal}
+            vatPercent={vatPercent}
+            setVatPercent={setVatPercent}
+            vatAmount={vatAmount}
+            setVatAmount={setVatAmount}
+            totalAmount={totalAmount}
+            setTotalAmount={setTotalAmount}
+            stockQuantity={stockQuantity}
+            setStockQuantity={setStockQuantity}
+            approvePrice={approvePrice}
+            setApprovePrice={setApprovePrice}
+            approveSupPrice={approveSupPrice}
+            setApproveSupPrice={setApproveSupPrice}
+            urgentOrder={urgentOrder}
+            setUrgentOrder={setUrgentOrder}
+            deliveryDate={deliveryDate}
+            setDeliveryDate={setDeliveryDate}
+            note={note}
+            setNote={setNote}
+            approver={approver}
+            setApprover={setApprover}
+            discountPercent={discountPercent}
+            setDiscountPercent={setDiscountPercent}
+            discountAmount={discountAmount}
+            setDiscountAmount={setDiscountAmount}
+            promotionText={promotionText}
+            setPromotionText={setPromotionText}
+            onAdd={handleAddProduct}
+            onSave={handleSave}
+            onRefresh={handleRefresh}
+          />
+        </div>
+      </div>
 
-        {/* Product Table */}
+      {/* Product Table - Fixed Height, No Scroll */}
+      <div className="admin-app-table-wrapper">
         <ProductTable products={productList} setProducts={setProductList} />
       </div>
-    </>
+    </div>
   );
 }
 

@@ -63,7 +63,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   const [productCode, setProductCode] = useState('');
   const [unit, setUnit] = useState('');
   const [warehouse, setWarehouse] = useState('');
-  const [quantity, setQuantity] = useState(0);
+  const [quantity, setQuantity] = useState(1);
   const [price, setPrice] = useState('');
   const [subtotal, setSubtotal] = useState(0);
   const [vatPercent, setVatPercent] = useState(0);
@@ -167,6 +167,12 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       return;
     }
 
+    // Validation: If approvePrice is true, approver is required
+    if (approvePrice && !approver) {
+      showToast.error('Vui lòng chọn người duyệt khi bật "Duyệt giá"');
+      return;
+    }
+
     const priceNum = parseFloat(price) || 0;
     
     // Calculate invoice surcharge (Phụ phí hoá đơn)
@@ -227,7 +233,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     setProduct('');
     setProductCode('');
     setUnit('');
-    setQuantity(0);
+    setQuantity(1);
     setPrice('');
     setSubtotal(0);
     setVatAmount(0);
@@ -383,7 +389,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     setProductCode('');
     setUnit('');
     setWarehouse('');
-    setQuantity(0);
+    setQuantity(1);
     setPrice('');
     setSubtotal(0);
     setVatPercent(0);

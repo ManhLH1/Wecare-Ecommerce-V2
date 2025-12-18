@@ -1,5 +1,7 @@
 'use client';
 
+import { useState, useMemo } from 'react';
+
 interface ProductItem {
   id: string;
   stt?: number;
@@ -22,10 +24,12 @@ interface ProductItem {
 interface ProductTableProps {
   products: ProductItem[];
   setProducts: (products: ProductItem[]) => void;
-  invoiceType?: number | null; // Loại hóa đơn OptionSet value (cr1bb_loaihoaon)
-  vatChoice?: number | null;   // VAT OptionSet value (191920000 = Có VAT, 191920001 = Không VAT)
-  customerIndustry?: number | null; // Ngành nghề OptionSet value (191920004 = Shop bán lẻ)
+  invoiceType?: number | null;
+  vatChoice?: number | null;
+  customerIndustry?: number | null;
 }
+
+const ITEMS_PER_PAGE = 5;
 
 export default function ProductTable({ 
   products, 
@@ -34,124 +38,121 @@ export default function ProductTable({
   vatChoice,
   customerIndustry 
 }: ProductTableProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+
   const handleDelete = (id: string) => {
     setProducts(products.filter((p) => p.id !== id));
   };
 
-  // Tính toán điều kiện ẩn/hiện cột Phụ phí
-  // Điều kiện: Loại hóa đơn = "Hộ kinh doanh" AND VAT = "Không VAT" AND Ngành nghề = "Shop"
-  // VAT "Không VAT" = 191920001
-  // Ngành nghề "Shop" = 191920004 (Shop bán lẻ)
-  // Loại hóa đơn "Hộ kinh doanh" - cần xác định OptionSet value (có thể là một giá trị cụ thể)
-  // Tạm thời kiểm tra invoiceType có giá trị (không null/undefined)
   const showSurchargeColumn = 
-    invoiceType !== null && invoiceType !== undefined && // Có Loại hóa đơn (cần xác định giá trị "Hộ kinh doanh")
-    vatChoice === 191920001 && // VAT = Không VAT
-    customerIndustry === 191920004; // Ngành nghề = Shop bán lẻ
+    invoiceType !== null && invoiceType !== undefined &&
+    vatChoice === 191920001 &&
+    customerIndustry === 191920004;
 
-  const totalColumns = showSurchargeColumn ? 14 : 13;
+  const totalPages = Math.ceil(products.length / ITEMS_PER_PAGE);
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return products.slice(start, start + ITEMS_PER_PAGE);
+  }, [products, currentPage]);
 
-  // Format date to dd/mm/yyyy
+  // Reset to page 1 if current page is out of bounds
+  if (currentPage > totalPages && totalPages > 0) {
+    setCurrentPage(1);
+  }
+
   const formatDate = (dateStr: string): string => {
     if (!dateStr || dateStr.trim() === '') return '-';
-    
     try {
-      // Try parsing as ISO date (2025-12-17)
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) {
-        // If not a valid date, check if already in dd/mm/yyyy format
         if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
           return dateStr;
         }
-        return dateStr; // Return as-is if can't parse
+        return dateStr;
       }
-      
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const year = date.getFullYear();
       return `${day}/${month}/${year}`;
     } catch {
-      return dateStr; // Return as-is if error
+      return dateStr;
     }
   };
 
+  const getStatusBadge = (product: ProductItem) => {
+    const crmGuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const sodCreated = product.isSodCreated
+      ?? crmGuidPattern.test(product.id || '')
+      ?? (product.id?.toLowerCase().startsWith('crdfd_') ?? false);
+    
+    return (
+      <span className={`admin-app-table-status-badge ${sodCreated ? 'admin-app-status-success' : 'admin-app-status-pending'}`}>
+        {sodCreated ? '✓' : '○'}
+      </span>
+    );
+  };
+
   return (
-    <div className="admin-app-section">
-      <h3 className="admin-app-section-title">Danh sách sản phẩm</h3>
-      <div className="admin-app-table-container">
-        <table className="admin-app-table">
+    <div className="admin-app-table-compact-wrapper">
+      <div className="admin-app-table-compact-header">
+        <h3 className="admin-app-table-title">Danh sách sản phẩm</h3>
+        {products.length > 0 && (
+          <span className="admin-app-table-count">{products.length} sản phẩm</span>
+        )}
+      </div>
+      
+      <div className="admin-app-table-compact-container">
+        <table className="admin-app-table-compact">
         <thead>
           <tr>
-            <th>STT</th>
-            <th>Tên sản phẩm</th>
-            <th>Đơn vị</th>
-            <th>Số lượng</th>
-            <th>Giá</th>
-            {showSurchargeColumn && (
-              <th title="Phụ phí">Phụ phí...</th>
-            )}
-            <th>Chiết khấu</th>
-            <th>Giá đã CK</th>
-            <th>VAT</th>
-            <th>Tổng tiền</th>
-            <th>Người duyệt</th>
-            <th>Ngày giao</th>
-            <th>Trạng thái SOD</th>
-            <th>Thao tác</th>
+              <th style={{ width: '40px' }}>SP</th>
+              <th style={{ width: '80px' }}>ĐV</th>
+              <th style={{ width: '70px' }}>SL</th>
+              <th style={{ width: '100px' }}>Giá</th>
+              {showSurchargeColumn && <th style={{ width: '80px' }}>Phụ phí</th>}
+              <th style={{ width: '80px' }}>CK</th>
+              <th style={{ width: '100px' }}>VAT</th>
+              <th style={{ width: '120px' }}>Tổng</th>
+              <th style={{ width: '60px' }}>TT</th>
+              <th style={{ width: '60px' }}>Action</th>
           </tr>
         </thead>
         <tbody>
           {products.length === 0 ? (
             <tr>
-              <td colSpan={totalColumns} className="admin-app-table-empty">
+                <td colSpan={showSurchargeColumn ? 10 : 9} className="admin-app-table-empty-compact">
                 Chưa có đơn hàng
               </td>
             </tr>
           ) : (
-            products.map((product, index) => {
-              // Prefer explicit flag; fallback to CRM Guid or prefixed id detection
-              const crmGuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-              const sodCreated = product.isSodCreated
-                ?? crmGuidPattern.test(product.id || '')
-                ?? (product.id?.toLowerCase().startsWith('crdfd_') ?? false);
-              const statusStyle = {
-                display: 'inline-block',
-                padding: '4px 8px',
-                borderRadius: '12px',
-                backgroundColor: sodCreated ? '#dcfce7' : '#fff7ed',
-                color: sodCreated ? '#166534' : '#9a3412',
-                fontSize: '12px',
-                fontWeight: 600,
-                border: sodCreated ? '1px solid #bbf7d0' : '1px solid #fed7aa',
-              };
-
+              paginatedProducts.map((product, idx) => {
+                const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + idx;
               return (
                 <tr key={product.id}>
-                  <td>{index + 1}</td>
-                  <td>{product.productName}</td>
+                    <td className="admin-app-cell-product-name" title={product.productName}>
+                      {product.productName.length > 20 
+                        ? `${product.productName.substring(0, 20)}...` 
+                        : product.productName}
+                    </td>
                   <td>{product.unit}</td>
                   <td className="admin-app-cell-right">{product.quantity}</td>
                   <td className="admin-app-cell-right">{product.price.toLocaleString('vi-VN')}</td>
                   {showSurchargeColumn && (
-                    <td title="Phụ phí" className="admin-app-cell-right">{product.surcharge.toLocaleString('vi-VN')}</td>
+                      <td className="admin-app-cell-right">{product.surcharge.toLocaleString('vi-VN')}</td>
                   )}
                   <td className="admin-app-cell-right">{product.discount.toLocaleString('vi-VN')}</td>
-                  <td className="admin-app-cell-right">{product.discountedPrice.toLocaleString('vi-VN')}</td>
                   <td className="admin-app-cell-right">{product.vat}%</td>
-                  <td className="admin-app-cell-right">{product.totalAmount.toLocaleString('vi-VN')}</td>
-                  <td>{product.approver || '-'}</td>
-                  <td>{formatDate(product.deliveryDate)}</td>
-                  <td>
-                    <span style={statusStyle}>
-                      {sodCreated ? 'Đã tạo SOD' : 'Chưa tạo'}
-                    </span>
+                    <td className="admin-app-cell-right admin-app-cell-total">{product.totalAmount.toLocaleString('vi-VN')}</td>
+                    <td className="admin-app-cell-center" title={`Người duyệt: ${product.approver || '-'}\nNgày giao: ${formatDate(product.deliveryDate)}`}>
+                      {getStatusBadge(product)}
                   </td>
-                  <td>
+                    <td className="admin-app-cell-center">
                     <button
-                      className="admin-app-delete-btn"
+                        className="admin-app-delete-btn-compact"
                       onClick={() => handleDelete(product.id)}
+                        title="Xóa"
                     >
-                      Xóa
+                        ×
                     </button>
                   </td>
                 </tr>
@@ -161,6 +162,35 @@ export default function ProductTable({
         </tbody>
       </table>
       </div>
+
+      {/* Pagination */}
+      {products.length > ITEMS_PER_PAGE && (
+        <div className="admin-app-pagination">
+          <button
+            className="admin-app-pagination-btn"
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+          >
+            ‹
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            <button
+              key={page}
+              className={`admin-app-pagination-btn ${currentPage === page ? 'admin-app-pagination-active' : ''}`}
+              onClick={() => setCurrentPage(page)}
+            >
+              {page}
+            </button>
+          ))}
+          <button
+            className="admin-app-pagination-btn"
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+          >
+            ›
+          </button>
+        </div>
+      )}
     </div>
   );
 }
