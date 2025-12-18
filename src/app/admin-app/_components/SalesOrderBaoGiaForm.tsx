@@ -29,6 +29,7 @@ interface ProductItem {
   totalAmount: number;
   approver: string;
   deliveryDate: string;
+  isSodCreated?: boolean;
   warehouse?: string;
   note?: string;
   urgentOrder?: boolean;
@@ -138,6 +139,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             totalAmount: detail.totalAmount,
             approver: detail.approver,
             deliveryDate: detail.deliveryDate || '',
+            isSodCreated: true,
           };
         });
         // Sort by STT descending (already sorted by API, but ensure it)
@@ -215,6 +217,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       promotionText: promotionText,
       invoiceSurcharge: invoiceSurchargeRate,
       createdOn: new Date().toISOString(),
+      isSodCreated: false,
     };
 
     console.log('✅ Add Product Success:', newProduct);
@@ -348,6 +351,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             totalAmount: detail.totalAmount,
             approver: detail.approver,
             deliveryDate: detail.deliveryDate || '',
+            isSodCreated: true,
           };
         });
         mappedProducts.sort((a, b) => (b.stt || 0) - (a.stt || 0));
