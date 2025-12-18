@@ -1,13 +1,13 @@
 'use client';
 
-import SalesOrderForm from './_components/SalesOrderForm';
+import SalesOrderFormWrapper from './_components/SalesOrderFormWrapper';
 import ToastManager from '../../components/ToastManager';
 
 export default function AdminAppPage() {
   return (
     <>
       <ToastManager />
-      <SalesOrderForm />
+      <SalesOrderFormWrapper />
     </>
   );
 }

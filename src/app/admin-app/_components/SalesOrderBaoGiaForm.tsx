@@ -42,11 +42,11 @@ interface ProductItem {
   createdOn?: string;
 }
 
-interface SalesOrderFormProps {
+interface SalesOrderBaoGiaFormProps {
   hideHeader?: boolean;
 }
 
-export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormProps) {
+export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderBaoGiaFormProps = {}) {
   const [customer, setCustomer] = useState('');
   const [customerId, setCustomerId] = useState('');
   const [customerCode, setCustomerCode] = useState('');
@@ -106,7 +106,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
 
   const selectedSo = saleOrders.find((so) => so.crdfd_sale_orderid === soId);
   const selectedVatText = getVatLabelText(selectedSo);
-  const soLabelText = selectedVatText ? `Sales Order (SO) - ${selectedVatText}` : 'Sales Order (SO)';
+  const soLabelText = selectedVatText ? `Sale Order Báo Giá (SOBG) - ${selectedVatText}` : 'Sale Order Báo Giá (SOBG)';
 
   // Load Sale Order Details when soId changes (formData equivalent)
   useEffect(() => {
@@ -242,7 +242,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     }
 
     if (!soId) {
-      showToast.error('Vui lòng chọn Sales Order trước khi lưu.');
+      showToast.error('Vui lòng chọn Sales Order Báo Giá trước khi lưu.');
       return;
     }
 
@@ -385,7 +385,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         <div className="admin-app-header">
           <div className="admin-app-header-left">
             <div className="admin-app-title">Admin App</div>
-            <div className="admin-app-subtitle">Quản lý đơn hàng bán hàng</div>
+            <div className="admin-app-subtitle">Quản lý đơn hàng báo giá</div>
           </div>
           <div className="admin-app-header-right">
             <span className="admin-app-badge admin-app-badge-version">
@@ -431,7 +431,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
               <label className="admin-app-label">{soLabelText}</label>
               <Dropdown
                 options={saleOrders.map((so) => {
-                  const baseLabel = so.crdfd_name || so.crdfd_so_code || so.crdfd_so_auto || 'SO không tên';
+                  const baseLabel = so.crdfd_name || so.crdfd_so_code || so.crdfd_so_auto || 'SOBG không tên';
                   const vatLabelText = getVatLabelText(so) || 'Không VAT';
                   const label = `${baseLabel} - ${vatLabelText}`;
                   return {
@@ -446,7 +446,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                   setSoId(value);
                   setSo(option?.label || '');
                 }}
-                placeholder={customerId ? "Chọn SO" : "Chọn khách hàng trước"}
+                placeholder={customerId ? "Chọn SOBG" : "Chọn khách hàng trước"}
                 loading={soLoading}
                 disabled={!customerId}
               />
