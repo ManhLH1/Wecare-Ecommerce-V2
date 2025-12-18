@@ -13,7 +13,7 @@ const nextConfig = {
     ],
   },
   transpilePackages: ['react-toastify'],
-  
+
   // CSP cho development và production
   async headers() {
     // CSP cho development - cho phép webpack dev server và HMR
@@ -67,7 +67,59 @@ const nextConfig = {
       include: /node_modules/,
       type: 'javascript/auto',
     });
-    
+
+    // Fix CSS loading from node_modules
+    // Next.js CSS rules might exclude node_modules, we need to allow CSS files
+    const oneOfRule = config.module.rules.find((rule) => rule.oneOf);
+    if (oneOfRule) {
+      oneOfRule.oneOf.forEach((rule) => {
+        if (
+          rule.test &&
+          rule.test.toString().match(/css|scss|sass/) &&
+          rule.exclude
+        ) {
+          // Modify exclude to allow CSS from node_modules
+          if (Array.isArray(rule.exclude)) {
+            rule.exclude = rule.exclude.filter((exclude) => {
+              if (typeof exclude === 'string') {
+                return !exclude.includes('node_modules');
+              }
+              if (exclude && exclude.toString) {
+                const excludeStr = exclude.toString();
+                return !excludeStr.includes('node_modules');
+              }
+              return true;
+            });
+          } else if (typeof rule.exclude === 'function') {
+            const originalExclude = rule.exclude;
+            rule.exclude = (filePath) => {
+              // Allow CSS files from node_modules
+              if (filePath.includes('node_modules') && /\.css$/.test(filePath)) {
+                return false;
+              }
+              return originalExclude(filePath);
+            };
+          } else if (rule.exclude && rule.exclude.toString) {
+            const excludeStr = rule.exclude.toString();
+            if (excludeStr.includes('node_modules')) {
+              // Replace with function that allows CSS
+              const originalExclude = rule.exclude;
+              rule.exclude = (filePath) => {
+                if (filePath.includes('node_modules') && /\.css$/.test(filePath)) {
+                  return false;
+                }
+                // Try to use original exclude if it's a regex
+                if (originalExclude instanceof RegExp) {
+                  return originalExclude.test(filePath);
+                }
+                return true;
+              };
+            }
+          }
+        }
+      });
+    }
+
     // Configure for react-pdf
     if (!isServer) {
       config.resolve.fallback = {
@@ -77,7 +129,7 @@ const nextConfig = {
         crypto: false,
       };
     }
-    
+
     // Cải thiện hot reload cho development
     if (dev && !isServer) {
       config.watchOptions = {
@@ -85,14 +137,14 @@ const nextConfig = {
         aggregateTimeout: 300,
       };
     }
-    
+
     return config;
   },
   // Cải thiện development experience
   experimental: {
     optimizePackageImports: ['react-icons', 'lucide-react'],
   },
-  
+
   // Tắt source maps trong production để bảo mật
   productionBrowserSourceMaps: false,
   async rewrites() {

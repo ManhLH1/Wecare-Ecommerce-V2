@@ -56,10 +56,7 @@ export const decodeBase64Unicode = (str: string): string => {
 };
 
 const DYNAMICS_RESOURCE = 'https://wecare-ii.crm5.dynamics.com/';
-const CLIENT_ID = typeof window !== 'undefined' 
-&& window.location.origin === 'https://wecare.com.vn/admin-app'
-  ? '6fba5a54-1729-4c41-b444-8992ae22c909' // Public Client ID
-  : '51f81489-12ee-4a9e-aaae-a2591f45987d'; // Dataverse REST Builder Client ID
+const CLIENT_ID = '6fba5a54-1729-4c41-b444-8992ae22c909' // Dataverse REST Builder Client ID
 // Redirect về callback page hoặc origin nếu không có callback page
 const REDIRECT_URI = typeof window !== 'undefined' 
   ? `${window.location.origin}/admin-app/oauth-callback`

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { isTokenValid } from '../_utils/implicitAuthService';
 
 interface AdminAuthGuardProps {
@@ -12,6 +12,12 @@ const AdminAuthGuard = ({ children }: AdminAuthGuardProps) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Ensure we're on the client side
+    if (typeof window === 'undefined') {
+      setIsLoading(false);
+      return;
+    }
+
     const checkAuth = () => {
       try {
         // Kiểm tra token OAuth có hợp lệ không
@@ -25,6 +31,7 @@ const AdminAuthGuard = ({ children }: AdminAuthGuardProps) => {
         setIsLoading(false);
       } catch (error) {
         console.error('Auth check error:', error);
+        setIsLoading(false);
         window.location.href = '/admin-app/login';
       }
     };

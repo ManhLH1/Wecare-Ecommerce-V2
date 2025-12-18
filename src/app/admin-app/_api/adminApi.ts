@@ -10,6 +10,10 @@ export interface Customer {
   crdfd_phone2?: string;
   cr44a_makhachhang?: string;
   crdfd_nganhnghe?: number; // Ngành nghề (OptionSet)
+  crdfd_tinhthanh?: string; // Province ID
+  crdfd_tinhthanh_name?: string; // Province name
+  cr1bb_vungmien?: number; // Region OptionSet value
+  cr1bb_vungmien_text?: string; // Region text (Miền Trung/Miền Nam)
 }
 
 export interface Product {
@@ -216,13 +220,17 @@ export const fetchInventory = async (
 export const fetchProductPrice = async (
   productCode?: string,
   customerCode?: string,
-  unitId?: string
+  unitId?: string,
+  region?: string,
+  isVatOrder?: boolean
 ): Promise<ProductPrice | null> => {
   if (!productCode) return null;
   try {
     const params: Record<string, string> = { productCode };
     if (customerCode) params.customerCode = customerCode;
     if (unitId) params.unitId = unitId;
+    if (region) params.region = region;
+    if (isVatOrder !== undefined) params.isVatOrder = String(isVatOrder);
     const response = await axios.get(`${BASE_URL}/prices`, { params });
     return response.data;
   } catch (error) {

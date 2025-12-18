@@ -29,6 +29,7 @@ interface ProductItem {
   totalAmount: number;
   approver: string;
   deliveryDate: string;
+  isSodCreated?: boolean;
   warehouse?: string;
   note?: string;
   urgentOrder?: boolean;
@@ -142,6 +143,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             totalAmount: detail.totalAmount,
             approver: detail.approver,
             deliveryDate: detail.deliveryDate || '',
+            isSodCreated: true,
           };
         });
         // Sort by STT descending (already sorted by API, but ensure it)
@@ -176,19 +178,19 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     await new Promise(resolve => setTimeout(resolve, 100));
 
     const priceNum = parseFloat(price) || 0;
-    
+
     // Calculate invoice surcharge (Phụ phí hoá đơn)
     // 1.5% for "Hộ kinh doanh" + "Không VAT" orders
     const selectedSo = saleOrders.find((so) => so.crdfd_sale_orderid === soId);
     const isHoKinhDoanh = selectedSo?.cr1bb_loaihoaon === 191920001; // TODO: confirm OptionSet value
     const isNonVat = vatPercent === 0;
     const invoiceSurchargeRate = isHoKinhDoanh && isNonVat ? 0.015 : 0;
-    
+
     // Calculate discounted price (giá đã giảm)
     // For now, use price directly; in future integrate with promotion logic
     const discountedPriceCalc = priceNum * (1 - discountPercent / 100) - discountAmount;
     const finalPrice = discountedPriceCalc * (1 + invoiceSurchargeRate);
-    
+
     // Calculate amounts
     const subtotalCalc = quantity * finalPrice;
     const vatCalc = (subtotalCalc * vatPercent) / 100;
@@ -225,11 +227,12 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       promotionText: promotionText,
       invoiceSurcharge: invoiceSurchargeRate,
       createdOn: new Date().toISOString(),
+      isSodCreated: false,
     };
 
     console.log('✅ Add Product Success:', newProduct);
     setProductList([...productList, newProduct]);
-    
+
     // Reset form fields (mimic PowerApps Reset())
     setProduct('');
     setProductCode('');
@@ -248,7 +251,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setPromotionText('');
     setNote('');
     // Keep warehouse, customer, SO, deliveryDate as they are reused
-    
+
     setIsAdding(false);
     showToast.success('Đã thêm sản phẩm vào danh sách!');
   };
@@ -272,18 +275,27 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       const existingProductIds = new Set(
         existingSOD
           .map((sod) => sod.id)
-          .filter((id): id is string => !!id && id.startsWith('crdfd_'))
+          .filter((id): id is string => !!id)
       );
+      const crmGuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
       // Lấy các sản phẩm CHƯA CÓ trong SOD từ CRM
       // Sản phẩm mới là những sản phẩm không có ID từ CRM hoặc ID không nằm trong danh sách SOD hiện có
       const newProducts = productList.filter((item) => {
-        // Nếu không có ID hoặc ID không phải từ CRM → sản phẩm mới
-        if (!item.id || !item.id.startsWith('crdfd_')) {
-          return true;
+        // Không có ID → sản phẩm mới
+        if (!item.id) return true;
+
+        // Đã đánh dấu là SOD đã tạo → bỏ qua
+        if (item.isSodCreated) return false;
+
+        const idLower = item.id.toLowerCase();
+        // Id CRM dạng GUID hoặc prefix crdfd_ → coi là đã tạo (nếu tìm thấy trong CRM)
+        if (crmGuidPattern.test(item.id) || idLower.startsWith('crdfd_')) {
+          return !existingProductIds.has(item.id);
         }
-        // Nếu có ID từ CRM nhưng không có trong SOD hiện có → cũng là sản phẩm mới (có thể bị xóa)
-        return !existingProductIds.has(item.id);
+
+        // Các id tạm (local) khác → cho phép lưu
+        return true;
       });
 
       if (newProducts.length === 0) {
@@ -336,7 +348,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       });
 
       showToast.success(result.message || 'Tạo đơn bán chi tiết thành công!');
-      
+
       // Reload sale order details
       if (soId) {
         setIsLoadingDetails(true);
@@ -361,6 +373,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
               totalAmount: detail.totalAmount,
               approver: detail.approver,
               deliveryDate: detail.deliveryDate || '',
+              isSodCreated: true,
             };
           });
           mappedProducts.sort((a, b) => (b.stt || 0) - (a.stt || 0));
@@ -369,7 +382,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           setIsLoadingDetails(false);
         }
       }
-      
+
       // Reset form after successful save
       handleRefresh();
     } catch (error: any) {
@@ -437,11 +450,14 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             <div className="admin-app-field-group admin-app-field-group-large">
               <label className="admin-app-label">Khách hàng <span className="admin-app-required">*</span></label>
               <Dropdown
-                options={customers.map((c) => ({
-                  value: c.crdfd_customerid,
-                  label: c.crdfd_name,
-                  ...c,
-                }))}
+                options={customers.map((c) => {
+                  const regionText = c.cr1bb_vungmien_text ? ` - ${c.cr1bb_vungmien_text}` : '';
+                  return {
+                    value: c.crdfd_customerid,
+                    label: `${c.crdfd_name}${regionText}`,
+                    ...c,
+                  };
+                })}
                 value={customerId}
                 onChange={(value, option) => {
                   setCustomerId(value);
@@ -458,6 +474,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                 searchable
                 onSearch={setCustomerSearch}
               />
+              <div className="admin-app-hint" style={{ marginTop: 4 }}>
+                Mã khách hàng: {customerCode || '—'}
+              </div>
             </div>
 
             <div className="admin-app-field-group admin-app-field-group-large">

@@ -16,6 +16,7 @@ interface ProductItem {
   totalAmount: number;
   approver: string;
   deliveryDate: string;
+  isSodCreated?: boolean;
 }
 
 interface ProductTableProps {
@@ -47,6 +48,8 @@ export default function ProductTable({
     invoiceType !== null && invoiceType !== undefined && // Có Loại hóa đơn (cần xác định giá trị "Hộ kinh doanh")
     vatChoice === 191920001 && // VAT = Không VAT
     customerIndustry === 191920004; // Ngành nghề = Shop bán lẻ
+
+  const totalColumns = showSurchargeColumn ? 14 : 13;
 
   // Format date to dd/mm/yyyy
   const formatDate = (dateStr: string): string => {
@@ -93,43 +96,67 @@ export default function ProductTable({
             <th>Tổng tiền</th>
             <th>Người duyệt</th>
             <th>Ngày giao</th>
+            <th>Trạng thái SOD</th>
             <th>Thao tác</th>
           </tr>
         </thead>
         <tbody>
           {products.length === 0 ? (
             <tr>
-              <td colSpan={showSurchargeColumn ? 13 : 12} className="admin-app-table-empty">
+              <td colSpan={totalColumns} className="admin-app-table-empty">
                 Chưa có đơn hàng
               </td>
             </tr>
           ) : (
-            products.map((product, index) => (
-              <tr key={product.id}>
-                <td>{index + 1}</td>
-                <td>{product.productName}</td>
-                <td>{product.unit}</td>
-                <td className="admin-app-cell-right">{product.quantity}</td>
-                <td className="admin-app-cell-right">{product.price.toLocaleString('vi-VN')}</td>
-                {showSurchargeColumn && (
-                  <td title="Phụ phí" className="admin-app-cell-right">{product.surcharge.toLocaleString('vi-VN')}</td>
-                )}
-                <td className="admin-app-cell-right">{product.discount.toLocaleString('vi-VN')}</td>
-                <td className="admin-app-cell-right">{product.discountedPrice.toLocaleString('vi-VN')}</td>
-                <td className="admin-app-cell-right">{product.vat}%</td>
-                <td className="admin-app-cell-right">{product.totalAmount.toLocaleString('vi-VN')}</td>
-                <td>{product.approver || '-'}</td>
-                <td>{formatDate(product.deliveryDate)}</td>
-                <td>
-                  <button
-                    className="admin-app-delete-btn"
-                    onClick={() => handleDelete(product.id)}
-                  >
-                    Xóa
-                  </button>
-                </td>
-              </tr>
-            ))
+            products.map((product, index) => {
+              // Prefer explicit flag; fallback to CRM Guid or prefixed id detection
+              const crmGuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+              const sodCreated = product.isSodCreated
+                ?? crmGuidPattern.test(product.id || '')
+                ?? (product.id?.toLowerCase().startsWith('crdfd_') ?? false);
+              const statusStyle = {
+                display: 'inline-block',
+                padding: '4px 8px',
+                borderRadius: '12px',
+                backgroundColor: sodCreated ? '#dcfce7' : '#fff7ed',
+                color: sodCreated ? '#166534' : '#9a3412',
+                fontSize: '12px',
+                fontWeight: 600,
+                border: sodCreated ? '1px solid #bbf7d0' : '1px solid #fed7aa',
+              };
+
+              return (
+                <tr key={product.id}>
+                  <td>{index + 1}</td>
+                  <td>{product.productName}</td>
+                  <td>{product.unit}</td>
+                  <td className="admin-app-cell-right">{product.quantity}</td>
+                  <td className="admin-app-cell-right">{product.price.toLocaleString('vi-VN')}</td>
+                  {showSurchargeColumn && (
+                    <td title="Phụ phí" className="admin-app-cell-right">{product.surcharge.toLocaleString('vi-VN')}</td>
+                  )}
+                  <td className="admin-app-cell-right">{product.discount.toLocaleString('vi-VN')}</td>
+                  <td className="admin-app-cell-right">{product.discountedPrice.toLocaleString('vi-VN')}</td>
+                  <td className="admin-app-cell-right">{product.vat}%</td>
+                  <td className="admin-app-cell-right">{product.totalAmount.toLocaleString('vi-VN')}</td>
+                  <td>{product.approver || '-'}</td>
+                  <td>{formatDate(product.deliveryDate)}</td>
+                  <td>
+                    <span style={statusStyle}>
+                      {sodCreated ? 'Đã tạo SOD' : 'Chưa tạo'}
+                    </span>
+                  </td>
+                  <td>
+                    <button
+                      className="admin-app-delete-btn"
+                      onClick={() => handleDelete(product.id)}
+                    >
+                      Xóa
+                    </button>
+                  </td>
+                </tr>
+              );
+            })
           )}
         </tbody>
       </table>
