@@ -2,7 +2,6 @@ version: 2.1
 
 # Orbs để sử dụng các công cụ có sẵn
 orbs:
-  node: circleci/node@5.1.0
   docker: circleci/docker@2.4.0
 
 # Jobs định nghĩa các bước build/test/deploy
@@ -13,12 +12,23 @@ jobs:
       - image: cimg/node:20.0
     steps:
       - checkout
-      - node/install-packages:
-          pkg-manager: npm
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "package-lock.json" }}
+            - v1-dependencies-
+      - run:
+          name: Install Dependencies
+          command: npm ci
+      - save_cache:
+          paths:
+            - node_modules
+          key: v1-dependencies-{{ checksum "package-lock.json" }}
       - persist_to_workspace:
           root: ~/project
           paths:
             - node_modules
+            - package.json
+            - package-lock.json
 
   # Job: Lint code
   lint:
@@ -26,13 +36,15 @@ jobs:
       - image: cimg/node:20.0
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "package-lock.json" }}
+            - v1-dependencies-
       - attach_workspace:
           at: ~/project
       - run:
           name: Run ESLint
           command: npm run lint
-      - setup_remote_docker:
-          docker_layer_caching: true
 
   # Job: Build Next.js application
   build:
@@ -43,6 +55,10 @@ jobs:
       NODE_ENV: production
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "package-lock.json" }}
+            - v1-dependencies-
       - attach_workspace:
           at: ~/project
       - run:
@@ -56,6 +72,7 @@ jobs:
             - package.json
             - package-lock.json
             - next.config.mjs
+            - node_modules
 
   # Job: Build Docker Image
   build-docker:
@@ -87,6 +104,10 @@ jobs:
       - image: cimg/node:20.0
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "package-lock.json" }}
+            - v1-dependencies-
       - attach_workspace:
           at: ~/project
       - run:
