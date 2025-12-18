@@ -1,0 +1,137 @@
+version: 2.1
+
+# Orbs để sử dụng các công cụ có sẵn
+orbs:
+  node: circleci/node@5.1.0
+
+# Jobs định nghĩa các công việc sẽ chạy
+jobs:
+  # Job build và test
+  build-and-test:
+    docker:
+      - image: cimg/node:20.0
+    working_directory: ~/project
+    steps:
+      - checkout
+      
+      # Khôi phục cache node_modules
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "package-lock.json" }}
+            - v1-dependencies-
+      
+      # Cài đặt dependencies
+      - run:
+          name: Install Dependencies
+          command: npm ci
+      
+      # Lưu cache node_modules
+      - save_cache:
+          paths:
+            - node_modules
+          key: v1-dependencies-{{ checksum "package-lock.json" }}
+      
+      # Chạy linter
+      - run:
+          name: Run Linter
+          command: npm run lint
+          no_output_timeout: 10m
+      
+      # Build Next.js application
+      - run:
+          name: Build Next.js App
+          command: npm run build
+          no_output_timeout: 20m
+          environment:
+            NODE_ENV: production
+      
+      # Lưu build artifacts
+      - persist_to_workspace:
+          root: ~/project
+          paths:
+            - .next
+            - node_modules
+            - package.json
+            - package-lock.json
+            - next.config.mjs
+            - public
+            - src
+
+  # Job build Docker image
+  build-docker:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      
+      - setup_remote_docker:
+          version: 20.10.14
+      
+      # Khôi phục workspace từ job build-and-test
+      - attach_workspace:
+          at: ~/project
+      
+      - run:
+          name: Build Docker Image
+          command: |
+            docker build -t wecare-ecommerce:${CIRCLE_SHA1} .
+            docker tag wecare-ecommerce:${CIRCLE_SHA1} wecare-ecommerce:latest
+      
+      # Lưu Docker image (nếu cần push lên registry)
+      - run:
+          name: Save Docker Image
+          command: |
+            docker save wecare-ecommerce:${CIRCLE_SHA1} | gzip > /tmp/wecare-ecommerce-${CIRCLE_SHA1}.tar.gz
+      
+      - persist_to_workspace:
+          root: /tmp
+          paths:
+            - wecare-ecommerce-*.tar.gz
+
+  # Job deploy (có thể mở rộng sau)
+  deploy:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ~/project
+      - run:
+          name: Deploy Application
+          command: |
+            echo "Deploy job - customize based on your deployment target"
+            echo "Examples: Vercel, AWS, Azure, etc."
+
+# Workflows định nghĩa thứ tự chạy các jobs
+workflows:
+  version: 2
+  build-and-deploy:
+    jobs:
+      # Chạy build và test trước
+      - build-and-test:
+          filters:
+            branches:
+              only:
+                - main
+                - develop
+                - /^feature\/.*/
+      
+      # Build Docker image sau khi build thành công
+      - build-docker:
+          requires:
+            - build-and-test
+          filters:
+            branches:
+              only:
+                - main
+                - develop
+      
+      # Deploy (tùy chọn - uncomment khi cần)
+      # - deploy:
+      #     requires:
+      #       - build-docker
+      #     filters:
+      #       branches:
+      #         only:
+      #           - main
+
