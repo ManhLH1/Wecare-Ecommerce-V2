@@ -31,13 +31,11 @@ const CategoryMenuMobile: React.FC<CategoryMenuMobileProps> = ({
     new Set()
   );
 
-  // Auto-select first category when data loads
+  // Auto-select first category when data loads (giữ nguyên thứ tự từ API - đã sắp xếp theo CSV)
   useEffect(() => {
     if (categoryGroups && categoryGroups.length > 0 && !selectedMainCategory) {
-      const sortedCategories = categoryGroups
-        .slice()
-        .sort((a, b) => (b.productCount || 0) - (a.productCount || 0));
-      setSelectedMainCategory(sortedCategories[0]);
+      // Không sắp xếp lại, giữ nguyên thứ tự từ API
+      setSelectedMainCategory(categoryGroups[0]);
     }
   }, [categoryGroups, selectedMainCategory]);
 
@@ -68,12 +66,12 @@ const CategoryMenuMobile: React.FC<CategoryMenuMobileProps> = ({
     }
   };
 
-  // Lấy subcategories cho category được chọn
+  // Lấy subcategories cho category được chọn (giữ nguyên thứ tự từ API - đã sắp xếp theo CSV)
   const getSubCategories = (categoryId: string) => {
     if (!categoryHierarchy?.byLevel?.["2"]) return [];
+    // Không sắp xếp lại, giữ nguyên thứ tự từ API
     return categoryHierarchy.byLevel["2"]
-      .filter((item: any) => item._crdfd_nhomsanphamcha_value === categoryId)
-      .sort((a: any, b: any) => (b.productCount || 0) - (a.productCount || 0));
+      .filter((item: any) => item._crdfd_nhomsanphamcha_value === categoryId);
   };
 
   if (!isOpen) return null;
@@ -88,9 +86,8 @@ const CategoryMenuMobile: React.FC<CategoryMenuMobileProps> = ({
     );
   }
 
-  const sortedCategories = categoryGroups
-    .slice()
-    .sort((a, b) => (b.productCount || 0) - (a.productCount || 0));
+  // Giữ nguyên thứ tự từ API (đã sắp xếp theo CSV)
+  const sortedCategories = categoryGroups;
 
   const currentSubCategories = selectedMainCategory
     ? getSubCategories(selectedMainCategory.crdfd_productgroupid)

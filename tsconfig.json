@@ -26,7 +26,11 @@
         "./src/*"
       ]
     },
-    "target": "ES2017"
+    "target": "ES2017",
+    "typeRoots": [
+      "./node_modules/@types",
+      "./node_modules"
+    ]
   },
   "include": [
     "next-env.d.ts",

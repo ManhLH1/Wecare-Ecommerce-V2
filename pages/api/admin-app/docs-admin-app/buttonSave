@@ -1,0 +1,598 @@
+UpdateContext({record_MaDH_selected: dp_MaDH.Selected});
+
+    // ============ KIỂM TRA TỒN KHO CHO ĐƠN HÀNG KHÔNG VAT (KHO BÌNH ĐỊNH) ============
+    // Chỉ kiểm tra các dòng mới chưa có ID đơn hàng (Record SOD3)
+
+    Set(
+
+        Var_SP_thieu_ton,
+
+        If(
+
+            lbl_Donhang.Text = "Đơn hàng Không VAT" 
+
+                && dp_ViTriKho.Selected.'Tên kho' = Var_ton_kho_lythuyet_inventory_vitrikho.'Tên kho',
+
+            First(
+
+                Filter(
+
+                    formData As item,
+
+                    // Chỉ kiểm tra các dòng chưa có ID đơn hàng (dòng mới)
+                    IsBlank(item[@'Record SOD3']) &&
+
+                    item.'Mã nhóm SP' <> "NSP-00027" &&
+
+                    item.'Mã nhóm SP' <> "NSP-000872" &&
+
+                    item.'Mã nhóm SP' <> "NSP-000409" &&
+
+                    item.'Mã nhóm SP' <> "NSP-000474" &&
+
+                    With(
+
+                        {
+
+                            ton_kho_inventory: LookUp(
+
+                                'Inventory Weshops',
+
+                                'Mã sản phẩm' = item.'Mã sản phẩm',
+
+                                'Số lượng tồn lý thuyết'
+
+                            )
+
+                        },
+
+                        Value(item[@'Số lượng']) > Coalesce(ton_kho_inventory, 0)
+
+                    )
+
+                )
+
+            ),
+
+            Blank()
+
+        )
+
+    );
+
+    // ============ XỬ LÝ KẾT QUẢ KIỂM TRA ============
+
+    If(
+
+        !IsBlank(Var_SP_thieu_ton),
+
+        Notify(
+
+            "Không đủ tồn kho! SP: " & Var_SP_thieu_ton.'Tên sản phẩm' &
+
+            " | Tồn còn: " &
+
+            Text(
+
+                Coalesce(
+
+                    LookUp(
+
+                        'Inventory Weshops',
+
+                        'Mã sản phẩm' = Var_SP_thieu_ton.'Mã sản phẩm' And 'Vị trí kho'.'Tên kho' = dp_ViTriKho.Selected.'Tên kho',
+
+                        'Số lượng tồn lý thuyết'
+
+                    ),
+
+                    0
+
+                )
+
+        ) & " " &
+
+        Coalesce(
+
+            Var_SP_thieu_ton.'Đơn vị',
+
+            Var_SP_thieu_ton.'Record Đơn vị'.'Đơn vị chuẩn',
+
+            ""
+
+        ),
+
+            NotificationType.Error,
+
+            5000
+
+        );
+
+        UpdateContext({showLoading: false}),
+
+        
+
+        // ============ CODE GỐC - CHỈ CHẠY KHI ĐỦ TỒN KHO ============
+
+        If(
+
+            false, //(IsBlank(var_KenhTiepNhan) And !var_kenhtiepnhan_isSelected) && var_selected_khachhang.'Ngành nghề text' = "5. Shop bán lẻ",
+
+            UpdateContext({show_popup_nhacchonkenhtiepnhan: true}),
+
+            Set(
+
+                khachhang_selected,
+
+                cb_khach_hang.Selected
+
+            );
+
+            Set(
+
+                var_check_promotion_SOD,
+
+                IsEmpty(
+
+                    Filter(
+
+                        formData,
+
+                        !IsBlank(PromotionRecord)
+
+                    )
+
+                )
+
+            );
+
+            If(
+
+                dp_ViTriKho.DisplayMode = DisplayMode.Edit,
+
+                Patch(
+
+                    Sale_Orders,
+
+                    LookUp(
+
+                        Sale_Orders,
+
+                        'Mã Đơn Hàng' = record_MaDH_selected.'Mã Đơn Hàng'
+
+                    ),
+
+                    {'Vị trí kho': dp_ViTriKho.Selected}
+
+                )
+
+            );
+
+            /*If(
+
+                var_selected_khachhang.'Ngành nghề text' = "5. Shop bán lẻ",
+
+                Patch(
+
+                    Sale_Orders,
+
+                    record_MaDH_selected,
+
+                    {'Kênh tiếp nhận': dp_kenhtiepnhan.Selected.Value}
+
+                );
+
+            );*/
+
+            If(
+
+                CountRows(formData) > 0,
+
+                ForAll(
+
+                    formData,
+
+                    With(
+
+                        {
+
+                            existingRecord: formData[@'Record SOD3'],
+
+                            expectedDeliveryDate: If(
+
+                                cb_khach_hang.Selected.'Ngành nghề text' = "5. Shop bán lẻ",
+
+                                formData[@'Ngày giao'],
+
+                                formData[@'Ngày giao NM']
+
+                            ),
+
+                            mappedVAT: LookUp(
+
+                                Table(
+
+                                    {
+
+                                        VAT: 10,
+
+                                        Value: 'Thuế GTGT'.'10%'
+
+                                    },
+
+                                    {
+
+                                        VAT: 8,
+
+                                        Value: 'Thuế GTGT'.'8%'
+
+                                    },
+
+                                    {
+
+                                        VAT: 5,
+
+                                        Value: 'Thuế GTGT'.'5%'
+
+                                    },
+
+                                    {
+
+                                        VAT: 0,
+
+                                        Value: 'Thuế GTGT'.'0%'
+
+                                    }
+
+                                ),
+
+                                VAT = formData[@VAT],
+
+                                Value
+
+                            ),
+
+                            mappedApproval: LookUp(
+
+                                var_table_duyetgia,
+
+                                Name = formData[@duyet_gia],
+
+                                Value
+
+                            ),
+
+                            approvedPriceSUP: If(
+
+                                !IsBlank(formData[@id_duyetgiaSUP]),
+
+                                LookUp(
+
+                                    'Duyệt giá',
+
+                                    Status = 'Status (Duyệt giá)'.Active And ID = formData[@id_duyetgiaSUP]
+
+                                )
+
+                            )
+
+                        },
+
+                        Patch(
+
+                            'Sale Order Details',
+
+                            Coalesce(
+
+                                existingRecord,
+
+                                Defaults('Sale Order Details')
+
+                            ),
+
+                            {
+
+                                'Mã đơn hàng': record_MaDH_selected,
+
+                                'Tên sản phẩm': formData[@'Record sản phẩm'],
+
+                                ID_Unit_Sp: formData[@'Record Đơn vị'],
+
+                                'Số lượng': Value(formData[@'Số lượng']),
+
+                                Giá: If(
+
+                                    var_Nganh_nghe = "Shop",
+
+                                    Value(formData[@'Giá đã giảm']),
+
+                                    Value(formData[@Giá])
+
+                                ),
+
+                                'Giá gốc': Value(formData[@Giá]),
+
+                                Thuế: Value(formData[@GTGT]),
+
+                                'Stt đơn': formData[@STT],
+
+                                'Ngày dự kiến giao': expectedDeliveryDate,
+
+                                'Điều chỉnh GTGT': mappedVAT,
+
+                                'Ghi chú': formData[@GhiChu],
+
+                                'Đơn hàng gấp': formData[@DonhangGap],
+
+                                'Duyệt giá (crdfd_duyetgia)': mappedApproval,
+
+                                'Chiết khấu %': formData[@Chietkhauphantram],
+
+                                'Chiết khấu VNĐ': formData[@Chietkhautien],
+
+                                'Promotion text': formData[@promotiontext],
+
+                                Promotion: formData[@PromotionRecord],
+
+                                'Duyệt giá sup': approvedPriceSUP,
+
+                                'Chiết khấu 2 (%)': 0,
+
+                                Ca: If(
+
+                                    formData[@Ca] = "Ca sáng",
+
+                                    'Ca (Sale Order Details)'.'Ca sáng',
+
+                                    'Ca (Sale Order Details)'.'Ca chiều'
+
+                                ),
+
+                                'Phụ phí hoá đơn (%)': formData[@'Phụ phí hoá đơn']
+
+                            }
+
+                        )
+
+                    )
+
+                );
+
+                Patch(
+
+                    Sale_Orders,
+
+                    record_MaDH_selected,
+
+                    {
+
+                        'Số đơn hàng chi tiết': CountRows(formData),
+
+                        'Số đơn chi tiết có Promotion': CountRows(
+
+                            Filter(
+
+                                formData,
+
+                                !IsBlank(PromotionRecord) And "Thanh toán sau khi nhận hàng" in DKTT
+
+                            )
+
+                        )
+
+                    }
+
+                );
+
+                If(
+
+                    var_Nganh_nghe = "Shop" &&
+
+                    CountRows(
+
+                        Filter(
+
+                            formData,
+
+                            'Record sản phẩm'.'Cấp 4' = "Dây điện" Or 'Record sản phẩm'.'Cấp 4' = "Cáp điện"
+
+                        )
+
+                    ) > 0,
+
+                    Patch(
+
+                        Sale_Orders,
+
+                        record_MaDH_selected,
+
+                        { 'Hình Thức Giao Hàng': HT_giaohang.'Giao 1 lần' }
+
+                    )
+
+                );
+
+                Notify(
+
+                    "Tạo đơn bán chi tiết thành công!",
+
+                    NotificationType.Success,
+
+                    2000
+
+                );
+
+                Set(
+
+                    Total_Order,
+
+                    Sum(
+
+                        formData,
+
+                        'Tổng tiền'
+
+                    )
+
+                );
+
+                Set(
+
+                    var_table_SP,
+
+                    Split(
+
+                        Concat(
+
+                            ShowColumns(
+
+                                formData,
+
+                                'Mã sản phẩm'
+
+                            ),
+
+                            'Mã sản phẩm',
+
+                            ","
+
+                        ),
+
+                        ","
+
+                    )
+
+                );
+
+                Set(
+
+                    var_table_NSP,
+
+                    Split(
+
+                        Concat(
+
+                            ShowColumns(
+
+                                formData,
+
+                                'Mã nhóm SP'
+
+                            ),
+
+                            'Mã nhóm SP',
+
+                            ","
+
+                        ),
+
+                        ","
+
+                    )
+
+                );
+
+                Set(
+
+                    var_count_notIn_Promotions,
+
+                    CountRows(
+
+                        Filter(
+
+                            formData As item,
+
+                            CountRows(
+
+                                Filter(
+
+                                    ListPromotion_Order As PromotionM,
+
+                                    PromotionM.'Chiết khấu 2' = 'Chiết khấu 2 (Promotion)'.Yes && (item.'Mã sản phẩm' in PromotionM.Ma_SP || item.'Mã nhóm SP' in PromotionM.Ma_NSP)
+
+                                )
+
+                            ) = 0
+
+                        )
+
+                    )
+
+                );
+
+                Set(
+
+                    var_dieukhoanthanhtoan,
+
+                    record_MaDH_selected.'Điều khoản thanh toán CAL'
+
+                );
+
+                ClearCollect(
+
+                    OrderxPromotion_Order,
+
+                    Filter(
+
+                        'Orders x Promotion',
+
+                        Status = 'Status (Orders x Promotion)'.Active,
+
+                        SO.Id = record_MaDH_selected.Id,
+
+                        'Type cal' = "Order"
+
+                    )
+
+                );
+
+                UpdateContext({showLoading: false});
+
+                UpdateContext({Popup_PromotionOrder: true});
+
+                //UpdateContext({var_kenhtiepnhan_isSelected: false});
+
+                Clear(formData);
+
+                Reset(cb_san_pham);
+
+                Reset(dp_Don_vi);
+
+                Reset(txt_So_luong);
+
+                Reset(txt_Gia);
+
+                Reset(dp_VAT);
+
+                Reset(cb_khach_hang);
+
+                Reset(dp_MaDH);
+
+                Reset(dp_ngay_giao_NM);
+
+                Reset(txt_Ghichu);
+
+                Reset(dp_ngay_giao);
+
+                Reset(drd_duyet_gia);
+
+                Reset(dp_ViTriKho);
+
+                Reset(dp_Ca),
+
+                Notify(
+
+                    "Không có data để tạo đơn bán chi tiết!",
+
+                    NotificationType.Error,
+
+                    2000
+
+                )
+
+            )
+
+        )
+
+    )
+

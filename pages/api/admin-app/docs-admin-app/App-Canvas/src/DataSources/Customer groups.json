@@ -1,0 +1,178 @@
+[
+  {
+    "CdsFCBContext": "{\"FileType\":true,\"ImageExternalStorage\":true}",
+    "EntitySetName": "crdfd_customergroups",
+    "IsHidden": false,
+    "IsSampleData": false,
+    "IsWritable": true,
+    "LogicalName": "crdfd_customergroup",
+    "MaxGetRowsCount": 2000,
+    "Name": "Customer groups",
+    "NativeCDSDataSourceInfoNameMapping": {
+      "_ownerid_value": "Owner",
+      "cr1bb_chinhanh": "Chi nhánh",
+      "cr1bb_cr1bb_groupkh_Nhomkhachhang_crdfd_custome": "Group - KH",
+      "cr1bb_crdfd_Customergroup_crdfd_Customer_crdfd_": "Customers",
+      "cr1bb_crdfd_promotion_Nhomkhachhangapdung_crdfd_customergroup": "Promotion (cr1bb_crdfd_promotion_Nhomkhachhangapdung_crdfd_customergroup)",
+      "cr1bb_data_website_ecommerce_CustomerGroup_crdfd_customergroup": "Ecommerce Website",
+      "cr1bb_makh": "Mã KH",
+      "cr1bb_note": "Note",
+      "cr3b9_loaibopromotion": "Loại bỏ Promotion",
+      "cr3b9_nhombaogiachitiet": "Nhóm báo giá - chi tiết",
+      "crdfd_countkh2": "Count KH",
+      "crdfd_countkh2_date": "Count KH 2 (Last Updated On)",
+      "crdfd_countkh2_state": "Count KH 2 (State)",
+      "crdfd_crdfd_baogiachitiet_Nhomoituong_crdfd_cus": "Báo giá - chi tiết",
+      "crdfd_customergroup_AsyncOperations": "System Jobs",
+      "crdfd_customergroup_BulkDeleteFailures": "Bulk Delete Failures",
+      "crdfd_customergroup_DuplicateBaseRecord": "Duplicate Records (crdfd_customergroup_DuplicateBaseRecord)",
+      "crdfd_customergroup_DuplicateMatchingRecord": "Duplicate Records (crdfd_customergroup_DuplicateMatchingRecord)",
+      "crdfd_customergroup_MailboxTrackingFolders": "Mailbox Auto Tracking Folders",
+      "crdfd_customergroup_PrincipalObjectAttributeAccesses": "Field Sharing",
+      "crdfd_customergroup_ProcessSession": "Process Sessions",
+      "crdfd_customergroup_SyncErrors": "Sync Errors",
+      "crdfd_customergroupid": "ID",
+      "crdfd_flag_check": "Flag check",
+      "crdfd_manhomkh": "Mã nhóm KH",
+      "crdfd_name": "Nhóm khách hàng",
+      "crdfd_nganhnghe": "Ngành nghề",
+      "crdfd_promotion_Customergroup_crdfd_customergro": "Promotion (crdfd_promotion_Customergroup_crdfd_customergro)",
+      "crdfd_quanhuyen": "Quận Huyện ",
+      "crdfd_tinhthanh": "Tỉnh thành",
+      "crdfd_vip": "VIP",
+      "createdby": "Created By",
+      "createdon": "Created On",
+      "createdonbehalfby": "Created By (Delegate)",
+      "importsequencenumber": "Import Sequence Number",
+      "modifiedby": "Modified By",
+      "modifiedon": "Modified On",
+      "modifiedonbehalfby": "Modified By (Delegate)",
+      "overriddencreatedon": "Record Created On",
+      "owningbusinessunit": "Owning Business Unit",
+      "owningteam": "Owning Team",
+      "owninguser": "Owning User",
+      "statecode": "Status",
+      "statuscode": "Status Reason",
+      "timezoneruleversionnumber": "Time Zone Rule Version Number",
+      "utcconversiontimezonecode": "UTC Conversion Time Zone Code",
+      "versionnumber": "Version Number"
+    },
+    "PreferredName": "Customer groups",
+    "Type": "NativeCDSDataSourceInfo"
+  },
+  {
+    "DisplayName": "Customer groups (Views)",
+    "Name": "_crdfd_customergroup_views",
+    "RelatedEntityName": "Customer groups",
+    "TrimmedViewName": true,
+    "Type": "ViewInfo",
+    "ViewInfoNameMapping": {
+      "41608991-b3dd-47ad-9e95-d2495bff9403": "Inactive Customer groups",
+      "6755c62c-b7a6-4548-8508-a34cd4f30249": "Customer group Lookup View",
+      "86452d2a-1450-4b56-8254-9508ac5f3747": "Customer group Advanced Find View",
+      "8980028e-b0cd-4f15-9b1c-f9e38499c87d": "Customer group Associated View",
+      "a569c4d2-ab7c-424f-bc7d-39085cf578b5": "Customer groups",
+      "bc1fdaf3-cabf-ed11-83fe-000d3a08d197": "Manual customer group"
+    }
+  },
+  {
+    "DisplayName": "Loại bỏ Promotion (Customer groups)",
+    "Name": "cr3b9_crdfd_customergroup_cr3b9_loaibopromotion",
+    "OptionSetInfoNameMapping": {
+      "0": "No",
+      "1": "Yes"
+    },
+    "OptionSetIsBooleanValued": true,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr3b9_loaibopromotion",
+        "OptionSetReferenceEntityName": "Customer groups"
+      }
+    },
+    "OptionSetTypeKey": "BooleanType",
+    "RelatedColumnInvariantName": "cr3b9_loaibopromotion",
+    "RelatedEntityName": "Customer groups",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Nhóm báo giá - chi tiết (Customer groups)",
+    "Name": "cr3b9_crdfd_customergroup_cr3b9_nhombaogiachitiet",
+    "OptionSetInfoNameMapping": {
+      "0": "No",
+      "1": "Yes"
+    },
+    "OptionSetIsBooleanValued": true,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr3b9_nhombaogiachitiet",
+        "OptionSetReferenceEntityName": "Customer groups"
+      }
+    },
+    "OptionSetTypeKey": "BooleanType",
+    "RelatedColumnInvariantName": "cr3b9_nhombaogiachitiet",
+    "RelatedEntityName": "Customer groups",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Flag check (Customer groups)",
+    "Name": "crdfd_customergroup_crdfd_flag_check",
+    "OptionSetInfoNameMapping": {
+      "0": "No",
+      "1": "Yes"
+    },
+    "OptionSetIsBooleanValued": true,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_flag_check",
+        "OptionSetReferenceEntityName": "Customer groups"
+      }
+    },
+    "OptionSetTypeKey": "BooleanType",
+    "RelatedColumnInvariantName": "crdfd_flag_check",
+    "RelatedEntityName": "Customer groups",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status (Customer groups)",
+    "Name": "crdfd_customergroup_statecode",
+    "OptionSetInfoNameMapping": {
+      "0": "Active",
+      "1": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statecode",
+        "OptionSetReferenceEntityName": "Customer groups"
+      }
+    },
+    "OptionSetTypeKey": "StateType",
+    "RelatedColumnInvariantName": "statecode",
+    "RelatedEntityName": "Customer groups",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status Reason (Customer groups)",
+    "Name": "crdfd_customergroup_statuscode",
+    "OptionSetInfoNameMapping": {
+      "1": "Active",
+      "2": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statuscode",
+        "OptionSetReferenceEntityName": "Customer groups"
+      }
+    },
+    "OptionSetTypeKey": "StatusType",
+    "RelatedColumnInvariantName": "statuscode",
+    "RelatedEntityName": "Customer groups",
+    "Type": "OptionSetInfo"
+  }
+]

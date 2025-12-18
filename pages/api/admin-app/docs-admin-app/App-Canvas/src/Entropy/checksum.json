@@ -1,0 +1,32 @@
+{
+  "ClientPerFileChecksums": {
+    ".gitignore": "C8_VaC8EcEG56Ufcy1DFyC8Ky19iV9xSsXMDIAcmF2GTj8=",
+    "AppCheckerResult.sarif": "C8_fq7D79TcouLLtnhdCkYOylT3zG1TVQ1QWRUrwTUFi0A=",
+    "AppTests\\2.json": "C8_e7Z5ho6SvUqSh//DYBIVEsC7mmj17lXYIufX2nDXaQ8=",
+    "Controls\\1.json": "C8_3fg53FuUZTGEW9ZV5+LT/AtSjVqFE8SnGYWxFuxU8xk=",
+    "Controls\\110.json": "C8_XvRIbKhK6pFCukjPLvzjl7HvLJmVLVAUYNssGT96MMw=",
+    "Controls\\249.json": "C8_IorcbN3QjhBTMHaUYf3Z7NWnhYRfu2KlkRkw5KggBgU=",
+    "Controls\\336.json": "C8_Mp1vucKUeafjR9Nba947cVtDnO7Q/VP8BrpA/FLRDMk=",
+    "Controls\\4.json": "C8_BkOlF+JfkAI3i+GbD1QpRdH4u4jol3OFYmV6Mi4nBYU=",
+    "Controls\\461.json": "C8_7zMbOpJ6W88KAjkyQLeFAX8br63gTX382DiPMCBhaPY=",
+    "Header.json": "C8_h9fVOVAxVRX44yclYXIrY+X4VPeTy4yT0I2dfJj2OJ8=",
+    "Properties.json": "C8_A8JTrpZuoHjCI/whJ45N19FxpKUJg9lw90gnV2jG0LI=",
+    "References\\DataSources.json": "C8_ACbiuFY+Uodye+drjsoJ/X8tzNKqZSA6bu1lzW77Z1s=",
+    "References\\ModernThemes.json": "C8_1XTFUyizx/wh0ey/3NOpF9qihugYmb3Gdsmapid1tSk=",
+    "References\\QualifiedValues.json": "C8_WBJo8Vd4Q+OSnRm4CQNfRAyjssE6GxGPx4pO0GqRx5I=",
+    "References\\Resources.json": "C8_s+se9qfOYnCKwfIt6gbv1FGBHW47JCt5d/CkUpqbcjk=",
+    "References\\Templates.json": "C8_xFrKJ2I8fWLUN6Xf6b2688W+epYlJFfsDUjoFELAwcw=",
+    "References\\Themes.json": "C8_DnUA+Cd8il+qVoErJnpl/xvuY/Yz4QpfURIdsOmrLAU=",
+    "Resources\\4sruidiw.jpg": "C8_qRZUKNFMS9ENHh5uCqLbRlTN859uFRANgtdlJdZoNWQ=",
+    "Resources\\Controls\\CustomComponent.IconFontAwesome.bundle.js": "C8_WcT1u8k/jKJIrv6r/616SrdRkgw3DaXiPw+uZbh/4NM=",
+    "Resources\\PublishInfo.json": "C8_YpJj6cPNehJPTvatYflVot4zNTCUQXpTeV6nR7dwi18=",
+    "Src\\_EditorState.pa.yaml": "C8_iAer9a8jqr7+awoiHyIPAmOpjs6JSjNAObzUVzuOeh0=",
+    "Src\\_Sc_debug.pa.yaml": "C8_XINsov3McxPlkYmCUApntT1ubv98asvZ0MAziqDXRwc=",
+    "Src\\App.pa.yaml": "C8_fma5jUD055XUinuFtPAro69tLoBzcvoE+ZKyTulceZ4=",
+    "Src\\Main.pa.yaml": "C8_MvcHfuV3d5zGa+WuOewK3AFkZQLFxNaW4GMOkCn8ihE=",
+    "Src\\Screen_SO_tam.pa.yaml": "C8_Mys5Ue8RSDF5xprQw08KC+i90n+UgFyXnAdQCT4AVrE=",
+    "Src\\Screen_SONew.pa.yaml": "C8_XtMxXTXcdst1FmGjZ3Wc+GrkzUwxwqvDrKOrP7rE410=",
+    "Src\\SO_b_o gi_.pa.yaml": "C8_YFeEuq19+2wDicNu+9hurpmUkXDhIlGDyy8h4tgCCTg="
+  },
+  "ClientStampedChecksum": "C8_YvHT5815tk/z06+prcKLywH1Dky2sEVv4SdnyqVsKLk="
+}

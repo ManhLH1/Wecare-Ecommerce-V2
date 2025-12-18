@@ -1,0 +1,204 @@
+[
+  {
+    "DisplayName": "Đặt hàng SOS (Views)",
+    "Name": "_crdfd_athangso_views",
+    "RelatedEntityName": "Đặt hàng SOS",
+    "TrimmedViewName": true,
+    "Type": "ViewInfo",
+    "ViewInfoNameMapping": {
+      "23619073-b19b-4d9b-a53b-e264f10c0aa8": "Đặt hàng SO Associated View",
+      "397deb01-4dfd-49b8-8e63-5dbf77d584ec": "Inactive Đặt hàng",
+      "a719c543-959b-43e9-a215-14d1b0b75ee3": "Đặt hàng",
+      "e2ea72a0-437e-4d05-a357-223765415a01": "Đặt hàng SO Advanced Find View",
+      "e7faaf05-c2c7-4d3f-bc03-149f263bbe6e": "Đặt hàng SO Lookup View",
+      "fac47971-7653-ee11-be6e-6045bd1f9e5b": "Lịch sử đặt hàng"
+    }
+  },
+  {
+    "DisplayName": "Ca",
+    "Name": "cr1bb_ca",
+    "OptionSetInfoNameMapping": {
+      "283640000": "Ca sáng",
+      "283640001": "Ca chiều"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_ca",
+        "OptionSetReferenceEntityName": "Đặt hàng SOS"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_ca",
+    "RelatedEntityName": "Đặt hàng SOS",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "CTKM (Đặt hàng SOS)",
+    "Name": "crdfd_athangso_crdfd_ctkm",
+    "OptionSetInfoNameMapping": {
+      "0": "No",
+      "1": "Yes"
+    },
+    "OptionSetIsBooleanValued": true,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_ctkm",
+        "OptionSetReferenceEntityName": "Đặt hàng SOS"
+      }
+    },
+    "OptionSetTypeKey": "BooleanType",
+    "RelatedColumnInvariantName": "crdfd_ctkm",
+    "RelatedEntityName": "Đặt hàng SOS",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Trạng thái đơn hàng (Đặt hàng SOS)",
+    "Name": "crdfd_athangso_crdfd_trangthaionhang",
+    "OptionSetInfoNameMapping": {
+      "191920000": "Chờ xác nhận",
+      "191920001": "Đã xác nhận",
+      "191920002": "Hủy đơn hàng"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_trangthaionhang",
+        "OptionSetReferenceEntityName": "Đặt hàng SOS"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "crdfd_trangthaionhang",
+    "RelatedEntityName": "Đặt hàng SOS",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status (Đặt hàng SOS)",
+    "Name": "crdfd_athangso_statecode",
+    "OptionSetInfoNameMapping": {
+      "0": "Active",
+      "1": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statecode",
+        "OptionSetReferenceEntityName": "Đặt hàng SOS"
+      }
+    },
+    "OptionSetTypeKey": "StateType",
+    "RelatedColumnInvariantName": "statecode",
+    "RelatedEntityName": "Đặt hàng SOS",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status Reason (Đặt hàng SOS)",
+    "Name": "crdfd_athangso_statuscode",
+    "OptionSetInfoNameMapping": {
+      "1": "Active",
+      "2": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statuscode",
+        "OptionSetReferenceEntityName": "Đặt hàng SOS"
+      }
+    },
+    "OptionSetTypeKey": "StatusType",
+    "RelatedColumnInvariantName": "statuscode",
+    "RelatedEntityName": "Đặt hàng SOS",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "CdsFCBContext": "{\"FileType\":true,\"ImageExternalStorage\":true}",
+    "EntitySetName": "crdfd_athangsos",
+    "IsHidden": false,
+    "IsSampleData": false,
+    "IsWritable": true,
+    "LogicalName": "crdfd_athangso",
+    "MaxGetRowsCount": 2000,
+    "Name": "Đặt hàng SOS",
+    "NativeCDSDataSourceInfoNameMapping": {
+      "_ownerid_value": "Owner",
+      "cr1bb_ca": "Ca",
+      "cr1bb_giamgia": "% giảm giá",
+      "cr1bb_hinhthucgiaohang": "Hình thức giao hàng",
+      "cr1bb_kenhtiepnhanso": "Kênh tiếp nhận SO",
+      "cr1bb_Khachhang": "Khách hàng",
+      "cr1bb_lydosuagia": "Lý do sửa giá",
+      "cr1bb_ngaygiao": "Ngày giao",
+      "cr1bb_onvi": "Đơn vị",
+      "cr1bb_onvichietkhau": "Đơn vị chiết khấu",
+      "cr1bb_phantramgiamgia": "Phần trăm giảm giá",
+      "cr1bb_Promotion": "Promotion",
+      "cr1bb_Sanpham": "Sản phẩm",
+      "cr1bb_sanphamtext": "Sản phẩm CAL",
+      "cr1bb_trangthaiduyetgia": "Trạng thái duyệt giá",
+      "crdfd_app": "App",
+      "crdfd_athangso_AsyncOperations": "System Jobs",
+      "crdfd_athangso_BulkDeleteFailures": "Bulk Delete Failures",
+      "crdfd_athangso_DuplicateBaseRecord": "Duplicate Records (crdfd_athangso_DuplicateBaseRecord)",
+      "crdfd_athangso_DuplicateMatchingRecord": "Duplicate Records (crdfd_athangso_DuplicateMatchingRecord)",
+      "crdfd_athangso_MailboxTrackingFolders": "Mailbox Auto Tracking Folders",
+      "crdfd_athangso_PrincipalObjectAttributeAccesses": "Field Sharing",
+      "crdfd_athangso_ProcessSession": "Process Sessions",
+      "crdfd_athangso_SyncErrors": "Sync Errors",
+      "crdfd_athangsoid": "ID",
+      "crdfd_BGCT": "BGCT",
+      "crdfd_chieckhau": "Chiết khấu",
+      "crdfd_ctkm": "CTKM",
+      "crdfd_dieukhoanthanhtoan": "Điều khoản thanh toán",
+      "crdfd_duyetgia": "Duyệt giá",
+      "crdfd_ghichu": "Ghi chú",
+      "crdfd_giaexuat": "Giá đề xuất",
+      "crdfd_giagoc": "Giá gốc",
+      "crdfd_giasauchietkhau": "Giá sau chiết khấu",
+      "crdfd_gtgtsanpham": "GTGT Sản phẩm",
+      "crdfd_idkhachhang": "ID khách hàng",
+      "crdfd_idonvi": "ID Đơn vị",
+      "crdfd_idsanpham": "ID sản phẩm",
+      "crdfd_khachhangtext": "Khách hàng text",
+      "crdfd_lichsu": "Lịch sử",
+      "crdfd_makhachhang": "Mã khách hàng",
+      "crdfd_manhomsanpham": "Mã nhóm sản phẩm",
+      "crdfd_masanpham": "Mã sản phẩm",
+      "crdfd_name": "Mã SO",
+      "crdfd_ngaytao2": "Ngày tạo",
+      "crdfd_nguoiduyetgia": "Người duyệt giá",
+      "crdfd_nguoitao": "Người tạo",
+      "crdfd_nhanviensales": "Nhân viên Sales",
+      "crdfd_number": "Number",
+      "crdfd_onvical": "Đơn vị CAL",
+      "crdfd_onvitext": "Đơn vị text",
+      "crdfd_sanphamtext": "Sản phẩm text",
+      "crdfd_soluong": "Số lượng",
+      "crdfd_thanhtien": "Thành tiền",
+      "crdfd_trangthaionhang": "Trạng thái đơn hàng",
+      "crdfd_vat": "VAT",
+      "createdby": "Created By",
+      "createdon": "Created On",
+      "createdonbehalfby": "Created By (Delegate)",
+      "importsequencenumber": "Import Sequence Number",
+      "modifiedby": "Modified By",
+      "modifiedon": "Modified On",
+      "modifiedonbehalfby": "Modified By (Delegate)",
+      "overriddencreatedon": "Record Created On",
+      "owningbusinessunit": "Owning Business Unit",
+      "owningteam": "Owning Team",
+      "owninguser": "Owning User",
+      "statecode": "Status",
+      "statuscode": "Status Reason",
+      "timezoneruleversionnumber": "Time Zone Rule Version Number",
+      "utcconversiontimezonecode": "UTC Conversion Time Zone Code",
+      "versionnumber": "Version Number"
+    },
+    "PreferredName": "Đặt hàng SOS",
+    "Type": "NativeCDSDataSourceInfo"
+  }
+]

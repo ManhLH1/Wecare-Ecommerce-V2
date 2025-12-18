@@ -85,7 +85,8 @@ const ProductTree: React.FC<ProductTreeProps> = ({ onCategorySelect, onSearchPro
   }, []);
 
   const level1Groups: ProductGroup[] = useMemo(() => {
-    return (categoryHierarchy?.byLevel?.["1"] || []).slice().sort((a, b) => (b.productCount || 0) - (a.productCount || 0));
+    // Giữ nguyên thứ tự từ API (đã sắp xếp theo CSV)
+    return (categoryHierarchy?.byLevel?.["1"] || []).slice();
   }, [categoryHierarchy]);
 
   const level2Groups: ProductGroup[] = useMemo(() => {
@@ -101,9 +102,8 @@ const ProductTree: React.FC<ProductTreeProps> = ({ onCategorySelect, onSearchPro
 
   const getSubCategories = useCallback(
     (categoryId: string) =>
-      level2Groups
-        .filter((g) => g._crdfd_nhomsanphamcha_value === categoryId)
-        .sort((a, b) => (b.productCount || 0) - (a.productCount || 0)),
+      // Giữ nguyên thứ tự từ API (đã sắp xếp theo CSV)
+      level2Groups.filter((g) => g._crdfd_nhomsanphamcha_value === categoryId),
     [level2Groups]
   );
 

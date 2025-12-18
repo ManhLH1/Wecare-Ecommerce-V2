@@ -35,7 +35,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .github/copilot-instructions.md
-package-lock.json
 BUILD_ERROR_PREVENTION_GUIDE.md
 DEVELOPMENT_GUIDELINES.md
 QUICK_BUILD_CHECKLIST.md

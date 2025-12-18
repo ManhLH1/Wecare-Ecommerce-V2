@@ -43,10 +43,10 @@ export default async function handler(
         customerFilter += ` and crdfd_customerid eq '${customerId}'`;
       }
     } else if (customerCode && typeof customerCode === "string") {
-      customerFilter += ` and crdfd_makhachhang eq '${customerCode}'`;
+      customerFilter += ` and cr44a_makhachhang eq '${customerCode}'`;
     }
 
-    const customerColumns = "crdfd_customerid,crdfd_makhachhang,wc001_VItrikho,cr1bb_vitrikhophu";
+    const customerColumns = "crdfd_customerid,cr44a_makhachhang,wc001_VItrikho,cr1bb_vitrikhophu";
     const customerExpand = "$expand=wc001_VItrikho($select=crdfd_khowecareid,crdfd_name)";
     const customerQuery = `$select=${customerColumns}&$filter=${encodeURIComponent(customerFilter)}&${customerExpand}`;
     const customerEndpoint = `${BASE_URL}${CUSTOMER_TABLE}?${customerQuery}`;

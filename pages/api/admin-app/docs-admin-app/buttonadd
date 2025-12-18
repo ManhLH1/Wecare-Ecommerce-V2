@@ -1,0 +1,306 @@
+If(
+    !IsBlank(var_selected_maSP) And !IsBlank(dp_Don_vi.Selected.'Đơn vị chuyển đổi-Transfome') And !IsBlank(txt_So_luong.Text) And !IsBlank(txt_Gia.Text) Or (drd_duyet_gia.Selected.Value And drd_duyet_gia.Selected.Value),
+    UpdateIf(
+        formData,
+        ThisRecord.PromotionRecord.'Promotion type (text)' = var_selected_Promotion.TypePromotion && ThisRecord.PromotionRecord.'Cộng dồn số lượng' = 'Cộng dồn số lượng (Promotion)'.Yes && (IsBlank(ThisRecord.PromotionRecord.'Số lượng áp dụng') || var_cong_don + var_input_soluong >= ThisRecord.PromotionRecord.'Số lượng áp dụng'),
+        With(
+            {
+                giamgia: If(
+                    !IsBlank(ThisRecord.PromotionRecord.'Số lượng áp dụng mức 3') && var_cong_don + var_input_soluong >= ThisRecord.PromotionRecord.'Số lượng áp dụng mức 3' And (IsBlank(ThisRecord.PromotionRecord.'Điều khoản thanh toán áp dụng mức 3') Or ThisRecord.PromotionRecord.'Điều khoản thanh toán áp dụng mức 3' = var_selected_dieukhoanthanhtoan_choice),
+                    ThisRecord.PromotionRecord.'Value 3',
+                    If(
+                        (IsBlank(ThisRecord.PromotionRecord.'Điều khoản thanh toán áp dụng mức 2') Or ThisRecord.PromotionRecord.'Điều khoản thanh toán áp dụng mức 2' = var_selected_dieukhoanthanhtoan_choice),
+                        ThisRecord.PromotionRecord.'Value 2',
+                        ThisRecord.PromotionRecord.Value
+                    )
+                ),
+                Value_muakem: If(
+                    !IsBlank(ThisRecord.PromotionRecord.'Value mua kèm') && (IsBlank(ThisRecord.PromotionRecord.'Số lượng áp dụng mức 3') || ThisRecord.PromotionRecord.'Số lượng áp dụng mức 3' > var_input_soluong),
+                    ThisRecord.PromotionRecord.'Value mua kèm',
+                    0
+                ),
+                Record: ThisRecord
+            },
+            With(
+                {
+                    PPHD: If(
+                        dp_MaDH.Selected.'Loại hóa đơn' = 'Loại hóa đơn (Sale_Orders)'.'Hộ kinh doanh' And dp_MaDH.Selected.VAT = VAT_choice.'Không VAT',
+                        1.015,
+                        1
+                    ),
+                    Gia_da_chietkhau: If(
+                        Record.PromotionRecord.'VNĐ/% Text' = "VNĐ",
+                        Record.Giá - (giamgia+Value_muakem),
+                        Record.Giá * (1 - (giamgia + Value_muakem) / 100)
+                    )
+                },
+                {
+                    '% Giảm giá': If(
+                        var_selected_Promotion.VND_Percent = 'VNĐ/% (Promotion)'.'%',
+                        (giamgia + Value_muakem) / 100,
+                        giamgia + Value_muakem
+                    ),
+                    'Giá đã giảm': Gia_da_chietkhau * PPHD,
+                    'Tổng tiền': (Record.'Số lượng' * Gia_da_chietkhau * PPHD) + Record.VAT,
+                    Chietkhauphantram: If(
+                        var_selected_Promotion.VND_Percent = 'VNĐ/% (Promotion)'.'%' && var_selected_khachhang.'Ngành nghề' = 'Ngành nghề mới'.Shop,
+                        (giamgia + Value_muakem) / 100,
+                        0
+                    ),
+                    Chietkhautien: If(
+                        var_selected_Promotion.VND_Percent = 'VNĐ/% (Promotion)'.VNĐ && var_selected_khachhang.'Ngành nghề' = 'Ngành nghề mới'.Shop,
+                        (giamgia + Value_muakem),
+                        0
+                    )
+                }
+            )
+        )
+    );
+    UpdateIf(
+        formData,
+        var_count_thiet_bi_nuoc >= 200000000,
+        {'Ngày giao': DateValue(dp_ngay_giao.SelectedDate)}
+    );
+    Collect(
+        formData,
+        {
+            IDform: GUID(),
+            'Tên sản phẩm': cb_san_pham.Selected.'Tên sản phẩm',
+            'Mã sản phẩm': cb_san_pham.Selected.'Mã sản phẩm',
+            'Record sản phẩm': cb_san_pham.Selected,
+            'Mã nhóm SP': var_selected_manhomSP,
+            'Số lượng': Value(txt_So_luong.Text),
+            'Đơn vị': dp_Don_vi.Selected.'Đơn vị chuyển đổi-Transfome',
+            'Record Đơn vị': dp_Don_vi.Selected,
+            Giá: Value(txt_Gia.Text),
+            'Giá đã giảm': If(
+                Value(txt_Gia.Text) = 0,
+                0,
+                Value(lbl_GiaDaGiam.Text)
+            ),
+            '% Giảm giá': If(var_selected_Checkbox_duyetgia, var_selected_theochietkhau/100,
+                var_selected_Promotion.VND_Percent = 'VNĐ/% (Promotion)'.VNĐ,
+                Value_Promotion + Value_Promtion_Muakem,
+                (Value_Promotion + Value_Promtion_Muakem) / 100
+            ),
+            'Thành Tiền': Value(lbl_Thanh_tien.Text),
+            'Tổng tiền': Value(lbl_Tong_tien.Text),
+            VAT: dp_VAT.Selected.Value,
+            GTGT: Value(lbl_GTGT.Text),
+            'Ngày giao': DateValue(dp_ngay_giao.SelectedDate),
+            Ca: dp_Ca.SelectedText.Value,
+            'Ngày giao NM': DateValue(dp_ngay_giao_NM.SelectedDate),
+            MaDH: dp_MaDH.Selected.'Mã Đơn Hàng',
+            STT: If(
+                Max(
+                    formData,
+                    STT
+                ) = 0,
+                1,
+                Max(
+                    formData,
+                    STT
+                ) + 1
+            ),
+            GhiChu: txt_Ghichu.Text,
+            duyet_gia: drd_duyet_gia.Selected.Value,
+            DonhangGap: Checkbox_DHgap_1.Value,
+            Chietkhauphantram: If(var_selected_Checkbox_duyetgia, var_selected_theochietkhau/100,
+                var_selected_Promotion.VND_Percent = 'VNĐ/% (Promotion)'.'%' And var_selected_khachhang.'Ngành nghề' = 'Ngành nghề mới'.Shop,
+                (Value_Promotion + Value_Promtion_Muakem) / 100,
+                0
+            ),
+            Chietkhautien: If(
+                var_selected_Promotion.VND_Percent = 'VNĐ/% (Promotion)'.VNĐ And var_selected_khachhang.'Ngành nghề' = 'Ngành nghề mới'.Shop,
+                Value_Promotion + Value_Promtion_Muakem,
+                0
+            ),
+            promotiontext: If(
+                cb_khach_hang.Selected.'Ngành nghề' = 'Ngành nghề mới'.Shop,
+                var_selected_Promotion.NamePromotion
+            ),
+            PromotionRecord: LookUp(
+                Promotion,
+                ID = var_selected_Promotion.crdfd_promotionid
+            ),
+            id_duyetgiaSUP: First(var_duyetgiasup).ID,
+            'Kho đáp ứng': LookUp(
+                TanSuatKho,
+                TênSảnPhẩm = cb_san_pham.Selected.'Tên sản phẩm',
+                Kho
+            ),
+            DKTT: var_selected_Promotion.DKTT,
+            Createdon: Now(),
+            'Phụ phí hoá đơn': If(
+                dp_MaDH.Selected.'Loại hóa đơn' = 'Loại hóa đơn (Sale_Orders)'.'Hộ kinh doanh' And dp_MaDH.Selected.VAT = VAT_choice.'Không VAT' And var_Nganh_nghe = "Shop",
+                0.015,
+                0
+            ), 
+            HinhThucGiaoHang: HT_giaohang.'Giao theo tiến độ'
+        }
+    );
+    If(
+        var_Nganh_nghe = "Shop",
+        UpdateIf(
+            Filter(
+                formData,
+                'Record sản phẩm'.'Cấp 2 NHSP' = "Thiết bị nước" || 'Record sản phẩm'.'Cấp 4' = "Ống cứng PVC"
+            ),
+            ((var_count_thiet_bi_nuoc >= 50 && var_sum_thiet_bi_nuoc >= 100000000) || var_sum_ong_cung >= 100000000),
+            {
+                'Ngày giao': DateAdd(
+                    DateTimeValue(ngay_giao),
+                    If(
+                        var_sum_thiet_bi_nuoc >= 200000000 || var_sum_ong_cung >= 200000000,
+                        24,
+                        12
+                    ),
+                    TimeUnit.Hours
+                ),
+                Ca: If(
+                    Hour(
+                        DateAdd(
+                            DateTimeValue(ngay_giao),
+                            If(
+                                (var_count_thiet_bi_nuoc >= 50 && var_sum_thiet_bi_nuoc >= 200000000) || var_sum_ong_cung >= 200000000,
+                                24,
+                                12
+                            ),
+                            TimeUnit.Hours
+                        )
+                    ) <= 12,
+                    'Ca (SOD báo giá)'.'Ca sáng',
+                    'Ca (SOD báo giá)'.'Ca chiều'
+                )
+            }
+        );
+        UpdateIf(
+            Filter(
+                formData,
+                'Record sản phẩm'.'Cấp 2 NHSP' = "Thiết bị điện"
+            ),
+            var_sum_thiet_bi_dien >= 200000000,
+            {
+                'Ngày giao': DateAdd(
+                    DateTimeValue(ngay_giao),
+                    12,
+                    TimeUnit.Hours
+                ),
+                Ca: If(
+                    Hour(
+                        DateAdd(
+                            DateTimeValue(ngay_giao),
+                            12,
+                            TimeUnit.Hours
+                        )
+                    ) >= 0 && Hour(
+                        DateAdd(
+                            DateTimeValue(ngay_giao),
+                            12,
+                            TimeUnit.Hours
+                        )
+                    ) <= 12,
+                    'Ca (SOD báo giá)'.'Ca sáng',
+                    'Ca (SOD báo giá)'.'Ca chiều'
+                )
+            }
+        );
+        UpdateIf(
+            Filter(
+                formData,
+                'Record sản phẩm'.'Cấp 2 NHSP' = "Vật tư kim khí"
+            ),
+            var_count_kim_khi >= 100,
+            {
+                'Ngày giao': DateAdd(
+                    DateTimeValue(ngay_giao),
+                    12,
+                    TimeUnit.Hours
+                ),
+                Ca: If(
+                    Hour(
+                        DateAdd(
+                            DateTimeValue(ngay_giao),
+                            12,
+                            TimeUnit.Hours
+                        )
+                    ) >= 0 && Hour(
+                        DateAdd(
+                            DateTimeValue(ngay_giao),
+                            12,
+                            TimeUnit.Hours
+                        )
+                    ) <= 12,
+                    'Ca (SOD báo giá)'.'Ca sáng',
+                    'Ca (SOD báo giá)'.'Ca chiều'
+                )
+            }
+        );
+    );
+    Reset(cb_san_pham);
+    Reset(dp_Don_vi);
+    Reset(txt_So_luong);
+    Reset(txt_Gia);
+    Reset(dp_VAT);
+    Reset(drd_duyet_gia);
+    Reset(dp_ngay_giao);
+    Reset(Checkbox_DHgap_1);
+    Reset(Checkbox_duyetgiasup);
+    Reset(cb_listPromotion_SO);
+    Reset(Checkbox_duyetgia);
+    //Set(
+    //    var_kenhtiepnhan_isSelected,
+    //    false
+    //);
+    ,
+    Notify(
+        "Vui lòng điền đầy đủ thông tin!!",
+        NotificationType.Warning,
+        1000
+    );
+    
+);
+Clear(TanSuatKho);
+ForAll(
+    formData As ColData,
+    ForAll(
+        var_filterkho As Kho,
+        If(
+            CountRows(
+                Filter(
+                    'Kho Bình Định',
+                    'Vị trí kho'.'Tên kho' = Kho.'Tên kho' && 'Tên sản phẩm'.'Tên sản phẩm' = ColData.'Tên sản phẩm' && 'Tồn kho lý thuyết - Bỏ mua' >= ColData.'Số lượng'
+                )
+            ) > 0,
+            Collect(
+                TanSuatKho,
+                {
+                    TênSảnPhẩm: ColData.'Tên sản phẩm',
+                    SốLượng: ColData.'Số lượng',
+                    Kho: Kho.'Tên kho'
+                }
+            )
+        )
+    )
+);
+With(
+    {tempData: formData},
+    ForAll(
+        tempData As ColData,
+        Patch(
+            formData,
+            LookUp(
+                formData,
+                'Tên sản phẩm' = ColData.'Tên sản phẩm'
+            ),
+            {
+                'Kho đáp ứng': LookUp(
+                    TanSuatKho,
+                    TênSảnPhẩm = ColData.'Tên sản phẩm',
+                    Kho
+                )
+            }
+        )
+    )
+);
+Reset(dp_Ca);

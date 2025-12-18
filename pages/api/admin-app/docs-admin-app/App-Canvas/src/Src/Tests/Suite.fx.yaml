@@ -1,0 +1,76 @@
+"'dfa3994b-6f41-434f-b2f6-2c8c47c105db' As TestSuite":
+    Description: =""
+    DisplayName: ="Suite"
+
+    "'21e47870-bc25-4641-907e-41872f78cbbf' As TestCase":
+        Description: =""
+        DisplayName: ="Case Cộng dồn value 3"
+
+        Step1 As TestStep:
+            Description: |-
+                ="Set 'cb_khach_hang'.SelectedItems to Table({'cr1bb_nganhnghemoi':{'Id':283640001,'Value':""Shop""},'cr1bb_tinhthanh':""Bình Định"",'cr44a_makhachhang':""KH-9286"",'crdfd_customerid':""2b6f5ca6-e825-ee11-9965-000d3a08d54a"",'crdfd_keyquanhuyen':""QH-108"",'crdfd_loaioituong':{'Id':191920000,'Value':""Khách hàng""},'crdfd_name':""DEV_test"",'crdfd_nganhnghetext':""5. Shop bán lẻ"",'crdfd_promotionjson':""NSP-00146"",'statecode':{'Id':0,'Value':""Active""},'{Attachments}':""appres://datasources/Customers/table/crdfd_customer/rows/2b6f5ca6-e825-ee11-9965-000d3a08d54a/property/%7BAttachments%7D/uniqueId/6050c0c8-a3ba-4111-9373-829132c2292d""})"
+            Screen: =Main
+            Value: |-
+                =SetProperty(cb_khach_hang.SelectedItems, Table({cr1bb_nganhnghemoi:{Id:283640001,Value:"Shop"},cr1bb_tinhthanh:"Bình Định",cr44a_makhachhang:"KH-9286",crdfd_customerid:"2b6f5ca6-e825-ee11-9965-000d3a08d54a",crdfd_keyquanhuyen:"QH-108",crdfd_loaioituong:{Id:191920000,Value:"Khách hàng"},crdfd_name:"DEV_test",crdfd_nganhnghetext:"5. Shop bán lẻ",crdfd_promotionjson:"NSP-00146",statecode:{Id:0,Value:"Active"},'{Attachments}':"appres://datasources/Customers/table/crdfd_customer/rows/2b6f5ca6-e825-ee11-9965-000d3a08d54a/property/%7BAttachments%7D/uniqueId/6050c0c8-a3ba-4111-9373-829132c2292d"}))
+
+        Step2 As TestStep:
+            Description: ="Select 'cb_khach_hang'"
+            Screen: =Main
+            Value: =Select(cb_khach_hang)
+
+        Step3 As TestStep:
+            Description: |-
+                ="Set 'cb_san_pham'.SelectedItems to Table({'crdfd_leadtime2':4,'crdfd_manhomsp':""NSP-00253"",'crdfd_masanpham':""SP-8806"",'crdfd_name':""Sơn xịt WIN 236 Candy Red*"",'crdfd_onvichuantext':""Thùng"",'crdfd_productsid':""b244dadd-79ab-ed11-83fe-002248ed3871"",'crdfd_tonkholythuyetbomuabd':4,'statecode':{'Id':0,'Value':""Active""},'{Attachments}':""appres://datasources/products/table/crdfd_products/rows/b244dadd-79ab-ed11-83fe-002248ed3871/property/%7BAttachments%7D/uniqueId/80a368a3-08d1-4d15-9ba2-2a30af94c076""})"
+            Screen: =Main
+            Value: |-
+                =SetProperty(cb_san_pham.SelectedItems, Table({crdfd_leadtime2:4,crdfd_manhomsp:"NSP-00253",crdfd_masanpham:"SP-8806",crdfd_name:"Sơn xịt WIN 236 Candy Red*",crdfd_onvichuantext:"Thùng",crdfd_productsid:"b244dadd-79ab-ed11-83fe-002248ed3871",crdfd_tonkholythuyetbomuabd:4,statecode:{Id:0,Value:"Active"},'{Attachments}':"appres://datasources/products/table/crdfd_products/rows/b244dadd-79ab-ed11-83fe-002248ed3871/property/%7BAttachments%7D/uniqueId/80a368a3-08d1-4d15-9ba2-2a30af94c076"}))
+
+        Step4 As TestStep:
+            Description: ="Select 'cb_san_pham'"
+            Screen: =Main
+            Value: =Select(cb_san_pham)
+
+        Step5 As TestStep:
+            Description: |-
+                ="Set 'cb_listPromotion_SO'.SelectedItems to Table({'wc001_Promotion':{'cr1bb_congdonsoluong':{'Id':true,'Value':""Yes""},'cr1bb_ieukhoanthanhtoanapdung':Blank(),'cr1bb_soluongapdung':10,'cr1bb_value2':17000,'crdfd_conditions':Blank(),'crdfd_manhomsp':"""",'crdfd_masanpham_multiple':""SP-8806, SP-8774, SP-8268, SP-5296, SP-5067, SP-5043, SP-4959"",'crdfd_multiple_manhomsp':Blank(),'crdfd_name':""04.2025 - SƠN XỊT WIN - MÀU ĐẶC BIỆT"",'crdfd_promotionid':""30aa815a-970e-f011-998a-6045bd1d396f"",'crdfd_promotiontypetext':""SƠN XỊT WIN"",'crdfd_soluongapdungmuc3':Blank(),'crdfd_type':""Product detail"",'crdfd_value':13000,'crdfd_value3':Blank(),'crdfd_vn':{'Id':191920001,'Value':""VNĐ""},'statecode':{'Id':0,'Value':""Active""}},'TypePromotion':""SƠN XỊT WIN"",'PromotionRecord':{'cr1bb_congdonsoluong':{'Id':true,'Value':""Yes""},'cr1bb_ieukhoanthanhtoanapdung':Blank(),'cr1bb_soluongapdung':10,'cr1bb_value2':17000,'crdfd_conditions':Blank(),'crdfd_manhomsp':"""",'crdfd_masanpham_multiple':""SP-8806, SP-8774, SP-8268, SP-5296, SP-5067, SP-5043, SP-4959"",'crdfd_multiple_manhomsp':Blank(),'crdfd_name':""04.2025 - SƠN XỊT WIN - MÀU ĐẶC BIỆT"",'crdfd_promotionid':""30aa815a-970e-f011-998a-6045bd1d396f"",'crdfd_promotiontypetext':""SƠN XỊT WIN"",'crdfd_soluongapdungmuc3':Blank(),'crdfd_type':""Product detail"",'crdfd_value':13000,'crdfd_value3':Blank(),'crdfd_vn':{'Id':191920001,'Value':""VNĐ""},'statecode':{'Id':0,'Value':""Active""}},'NamePromotion':""04.2025 - SƠN XỊT WIN - MÀU ĐẶC BIỆT"",'Cong_don_so_luong':{'Id':true,'Value':""Yes""},'SL_ApDungMuc3':Blank(),'ValuePromotion':13000,'Value2Promotion':17000,'Value3Promotion':Blank(),'VND_Percent':{'Id':191920001,'Value':""VNĐ""},'chietkhau':366000})"
+            Screen: =Main
+            Value: |-
+                =SetProperty(cb_listPromotion_SO.SelectedItems, Table({wc001_Promotion:{cr1bb_congdonsoluong:{Id:true,Value:"Yes"},cr1bb_ieukhoanthanhtoanapdung:Blank(),cr1bb_soluongapdung:10,cr1bb_value2:17000,crdfd_conditions:Blank(),crdfd_manhomsp:"",crdfd_masanpham_multiple:"SP-8806, SP-8774, SP-8268, SP-5296, SP-5067, SP-5043, SP-4959",crdfd_multiple_manhomsp:Blank(),crdfd_name:"04.2025 - SƠN XỊT WIN - MÀU ĐẶC BIỆT",crdfd_promotionid:"30aa815a-970e-f011-998a-6045bd1d396f",crdfd_promotiontypetext:"SƠN XỊT WIN",crdfd_soluongapdungmuc3:Blank(),crdfd_type:"Product detail",crdfd_value:13000,crdfd_value3:Blank(),crdfd_vn:{Id:191920001,Value:"VNĐ"},statecode:{Id:0,Value:"Active"}},TypePromotion:"SƠN XỊT WIN",PromotionRecord:{cr1bb_congdonsoluong:{Id:true,Value:"Yes"},cr1bb_ieukhoanthanhtoanapdung:Blank(),cr1bb_soluongapdung:10,cr1bb_value2:17000,crdfd_conditions:Blank(),crdfd_manhomsp:"",crdfd_masanpham_multiple:"SP-8806, SP-8774, SP-8268, SP-5296, SP-5067, SP-5043, SP-4959",crdfd_multiple_manhomsp:Blank(),crdfd_name:"04.2025 - SƠN XỊT WIN - MÀU ĐẶC BIỆT",crdfd_promotionid:"30aa815a-970e-f011-998a-6045bd1d396f",crdfd_promotiontypetext:"SƠN XỊT WIN",crdfd_soluongapdungmuc3:Blank(),crdfd_type:"Product detail",crdfd_value:13000,crdfd_value3:Blank(),crdfd_vn:{Id:191920001,Value:"VNĐ"},statecode:{Id:0,Value:"Active"}},NamePromotion:"04.2025 - SƠN XỊT WIN - MÀU ĐẶC BIỆT",Cong_don_so_luong:{Id:true,Value:"Yes"},SL_ApDungMuc3:Blank(),ValuePromotion:13000,Value2Promotion:17000,Value3Promotion:Blank(),VND_Percent:{Id:191920001,Value:"VNĐ"},chietkhau:366000}))
+
+        Step6 As TestStep:
+            Description: ="Select 'cb_listPromotion_SO'"
+            Screen: =Main
+            Value: =Select(cb_listPromotion_SO)
+
+        Step7 As TestStep:
+            Description: ="Set 'txt_So_luong'.Text to ""7"""
+            Screen: =Main
+            Value: =SetProperty(txt_So_luong.Text, "7")
+
+        Step8 As TestStep:
+            Description: ="Select 'Icon_Them'"
+            Screen: =Main
+            Value: =Select(Icon_Them)
+
+        Step9 As TestStep:
+            Description: |-
+                ="Set 'cb_san_pham'.SelectedItems to Table({'crdfd_leadtime2':4,'crdfd_manhomsp':""NSP-00253"",'crdfd_masanpham':""SP-4704"",'crdfd_name':""Sơn xịt WIN 226 Orange"",'crdfd_onvichuantext':""Thùng"",'crdfd_productsid':""08d13075-2819-ed11-b83f-000d3a80d3eb"",'crdfd_tonkholythuyetbomuabd':38,'statecode':{'Id':0,'Value':""Active""},'{Attachments}':""appres://datasources/products/table/crdfd_products/rows/08d13075-2819-ed11-b83f-000d3a80d3eb/property/%7BAttachments%7D/uniqueId/90ec40ff-33a0-45a5-a769-8a97a6722677""})"
+            Screen: =Main
+            Value: |-
+                =SetProperty(cb_san_pham.SelectedItems, Table({crdfd_leadtime2:4,crdfd_manhomsp:"NSP-00253",crdfd_masanpham:"SP-4704",crdfd_name:"Sơn xịt WIN 226 Orange",crdfd_onvichuantext:"Thùng",crdfd_productsid:"08d13075-2819-ed11-b83f-000d3a80d3eb",crdfd_tonkholythuyetbomuabd:38,statecode:{Id:0,Value:"Active"},'{Attachments}':"appres://datasources/products/table/crdfd_products/rows/08d13075-2819-ed11-b83f-000d3a80d3eb/property/%7BAttachments%7D/uniqueId/90ec40ff-33a0-45a5-a769-8a97a6722677"}))
+
+        Step10 As TestStep:
+            Description: ="Select 'cb_san_pham'"
+            Screen: =Main
+            Value: =Select(cb_san_pham)
+
+        Step11 As TestStep:
+            Description: ="Set 'txt_So_luong'.Text to ""43"""
+            Screen: =Main
+            Value: =SetProperty(txt_So_luong.Text, "43")
+
+        Step12 As TestStep:
+            Description: ="Select 'Icon_Them'"
+            Screen: =Main
+            Value: =Select(Icon_Them)
+

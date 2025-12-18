@@ -1,0 +1,576 @@
+{
+  "QualifiedValues": [
+    {
+      "Kind": "default.cds_crdfd_customer_forms",
+      "Namespace": "Customers (Forms)",
+      "Values": {
+        "Công nợ kháchh hàng": "71f0ba94-59c5-ed11-b597-000d3a094665",
+        "Customer quick create form": "8fd47a9e-b646-ec11-8c62-00224816e6d3",
+        "Customer quick view Competitor": "660993ec-f117-ef11-840a-002248587161",
+        "Customer quick view form": "b5a519af-e001-ef11-9f89-0022485ab3be",
+        "Information": "cfa28847-ce6a-4bb4-824e-f3f5dcbea7e5",
+        "KH_Quick detail issue_SOD": "b7aeaf78-f4ef-ee11-904b-6045bd1cc6ea",
+        "Khách hàng - Accounting": "ecea3e37-723d-ed11-bba2-000d3a856e52",
+        "Khách hàng - công nợ nền": "b3b3a3c1-0d3b-ee11-bdf4-000d3a08d137",
+        "Khởi tạo khách hàng": "bd0ae77e-4201-ef11-9f8a-6045bd1f635f",
+        "Promotion": "b26d67cf-5d1a-ef11-840a-000d3ac81698",
+        "Quick view - interaction": "421a4802-a948-ef11-a316-6045bd1baef0",
+        "quick view CHKD": "1361e625-e001-ef11-9f89-000d3aa1fde0",
+        "Quick view CHKD promotion": "7089b26d-1823-ef11-840a-002248587727",
+        "Quick view Công nợ KH": "0e87690b-d21b-ee11-8f6d-000d3a094665",
+        "quick view đơn SO": "32ddca4c-a202-ef11-9f8a-6045bd1bff1d",
+        "quick view DS CHKD": "839d8175-e201-ef11-9f89-000d3aa1fde0",
+        "quick view nhắc nợ KH": "0623d1ec-e801-ef11-9f89-000d3a08a095",
+        "Quick view Promotion - SO": "aa22ead1-3b04-ef11-9f89-00224857b5ea",
+        "Quick view Promotion - SO báo giá": "80d85cba-3eb1-ef11-b8e8-6045bd208527",
+        "Quick view_promotion": "e4f0ab92-9454-ef11-bfe3-002248567a68",
+        "quick view_thông tin KH": "52be3e2d-a602-ef11-9f8a-6045bd1bff1d",
+        "Quickview - Vận tải (Task)": "507a0dab-a6b2-ef11-b8e8-0022485750af",
+        "Subgrid_view_task": "117b5b6c-502d-ef11-840b-000d3aa3a5a4",
+        "Thông tin khách hàng": "b7f8f4c5-b505-ee11-8f6e-000d3a094e75",
+        "Thông tin khách hàng Dev": "e36c18a1-2e57-ec11-8f8f-000d3a805b5f",
+        "Thông tin khách hàng_task": "eaa820e3-3213-ef11-9f89-000d3aa1fde0",
+        "Xác nhận KH chính thức": "e3d82873-383e-ee11-bdf3-000d3a08d54a"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_saleorderdetail_forms",
+      "Namespace": "Sale Order Details (Forms)",
+      "Values": {
+        "Chỉnh sửa Đơn bán chi tiết - Admin": "09dfe617-b1b4-ed11-b596-000d3a094665",
+        "Chỉnh sửa Đơn bán chi tiết - Admin_nhà máy": "d3e743f3-7816-ef11-840a-6045bd216ea7",
+        "Đơn bán chi tiết - Dev": "cbbd619e-42bb-4f1d-9afd-e77ca0db16df",
+        "Information": "f0ecd3b9-bdb3-4373-bab9-9a0da6bb1358",
+        "Sale Order Detail quick view form": "d558f075-55d0-ed11-a7c6-000d3a094665",
+        "Thông tin đơn bán chi tiết": "e73dfc88-6358-ec11-8f8f-000d3a805b5f"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_sale_order_forms",
+      "Namespace": "Sale_Orders (Forms)",
+      "Values": {
+        "Đơn hàng bán-DEV": "bbd87a75-03b0-ec11-983f-00224818d51b",
+        "Information": "ef181861-bdb9-4d57-8c2f-c6b6ff17b506",
+        "Thông tin đơn hàng bán": "6623d1f9-05b0-ec11-983f-00224818d51b",
+        "Thông tin đơn hàng bán - admin": "e9bd027c-3d04-ef11-9f89-000d3a08a095"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_products_forms",
+      "Namespace": "products (Forms)",
+      "Values": {
+        "Buy quick view Product - BĐ": "f4e834ce-5269-ec11-8943-002248163ead",
+        "Buy quick view Products - SG": "1d741d86-72fe-ec11-82e6-000d3a80d3eb",
+        "Chi_tiết_nhóm_SP_powerpages": "8addf684-ed38-ee11-bdf4-000d3a094e75",
+        "Chỉnh sửa người phụ trách - Source": "1421e555-6870-ed11-81ac-002248593b27",
+        "Chuyển đổi hàng hóa-Nhập": "624c5e29-48b6-ec11-983f-002248193088",
+        "Chuyển đổi hàng hóa-Xuất": "5f240181-45b6-ec11-983f-002248193088",
+        "Information": "80821d06-b0d9-4765-980e-ed0152774a57",
+        "Products Quick Create": "b8ce76be-6145-ec11-8c62-00224816e6d3",
+        "Products quick view form bán hàng": "471f2a1c-95dd-ec11-bb3c-00224815baa5",
+        "Products quick view form mua hàng": "98721fbf-95dd-ec11-bb3c-00224815baa5",
+        "Sale quick view Product - BĐ": "a1283fd1-5369-ec11-8943-002248163ead",
+        "Sản phẩm cân kho": "f63273ab-557b-ec11-8d21-000d3a8239a4",
+        "shop_prod_ppages": "e1ab3b6b-c338-ee11-bdf4-000d3a08d137",
+        "Thông tin hàng lỗi": "c515d1e6-9095-ee11-be36-000d3aa3f382",
+        "Thông tin sản phẩm": "873c65bf-5658-ec11-8f8f-000d3a805b5f",
+        "Thông tin sản phẩm - DEV": "d244b888-13a4-ec11-983f-000d3a856b60",
+        "Thông tin sản phẩm - Marketing": "f774fd24-a342-f011-877a-00224856d252",
+        "Thông tin sản phẩm ACC": "c247e42b-7321-f011-998a-00224857a570"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_unitconvertion_forms",
+      "Namespace": "Unit conversions (Forms)",
+      "Values": {
+        "Chỉnh sửa Tỷ lệ chuyển đổi": "df49506a-1574-4d5b-93fa-779d5fcb4620",
+        "Information": "8daf6af5-7cb7-400a-a1be-b2691b2ec35b",
+        "Quick view unit BOD duyệt giá": "45b5d1a1-6296-ef11-8a68-000d3ac6dc2d",
+        "Quick view unit SOD duyệt giá": "44653f48-6296-ef11-8a69-00224859d934",
+        "Tỷ lệ chuyển đổi - DEV": "9ca599f2-b367-ed11-9561-002248593b27",
+        "Unit conversion quick create form": "93f38fc7-936f-ed11-81ac-00224859398c"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_baogiachitiet_forms",
+      "Namespace": "Báo giá - chi tiếts (Forms)",
+      "Values": {
+        "Báo giá - chi tiết": "4258280c-4651-4ad8-a047-cc6026640582",
+        "Báo giá - chi tiết DEV": "961c4584-4e03-ee11-8f6e-6045bd1f9d5f",
+        "Báo giá - chi tiết_page": "a5fa7185-e838-ee11-bdf4-000d3a09423e",
+        "Information": "494ba47f-5ca7-4985-b66d-ba6b2248db87"
+      }
+    },
+    {
+      "Kind": "default.cds_cr1bb_groupkh_forms",
+      "Namespace": "Group - KH (Forms)",
+      "Values": {
+        "Group - KH": "5baf66a0-d591-4aa5-9923-5c421f7c6395",
+        "Information": "4e905508-bbab-4a89-a7f8-f42dcc8db228"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_tinhthanh_forms",
+      "Namespace": "Tỉnh/Thành (Forms)",
+      "Values": {
+        "Information": "f9c92cc4-c17d-4fc0-94ae-983721c5f508",
+        "Tỉnh/Thành": "2ad9be53-74fc-4949-b0e3-20e60c3bff35",
+        "Tỉnh/Thành - DEV": "a18b3192-6bab-ed11-8400-000d3a856806"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_kho_binh_dinh_forms",
+      "Namespace": "Kho Bình Định (Forms)",
+      "Values": {
+        "Information": "1ae1abee-f9e5-45b4-b257-8c7b94743da1",
+        "Kho": "e633bf63-ff12-4694-94ba-f23fb1a68e64",
+        "Kho Dev": "ae874757-4172-ed11-81ab-002248593d29",
+        "Theodoi_tiendo": "61e7abb6-0698-4bb9-b491-baaa19ba4cbd"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_athangso_forms",
+      "Namespace": "Đặt hàng SOS (Forms)",
+      "Values": {
+        "Đặt hàng SO": "48ed9bf7-6721-4875-814b-67090f5bc870",
+        "Đặt hàng SO - DEV": "7dd7069b-1852-ee11-be6e-6045bd1f9e5b",
+        "Information": "89a97652-9888-409c-8aff-ed3feb718df6"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_promotion_forms",
+      "Namespace": "Promotion (Forms)",
+      "Values": {
+        "Information": "00ef1a90-e86c-44f6-a941-a54e9573fe1d",
+        "Promotion": "ca77c382-338f-4c44-82cf-eb13ac54dd1b",
+        "Promotion new": "1bb057e5-0374-f011-b4cd-000d3aa129b6"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_ordersxpromotion_forms",
+      "Namespace": "Orders x Promotion (Forms)",
+      "Values": {
+        "Information": "090a91d5-3740-4a3e-824d-7b5551e42549",
+        "Orders x Promotion dev": "d1af6b55-cb78-f011-b4cc-6045bd213118"
+      }
+    },
+    {
+      "Kind": "default.cds_cr1bb_congty_forms",
+      "Namespace": "Công ty (Forms)",
+      "Values": {
+        "Công ty": "22f2cbbf-884b-4d64-a820-12882c2cb12a",
+        "Information": "e8262627-0e25-4a8a-be07-7aafa31a30c5"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_duyetgia_forms",
+      "Namespace": "Duyệt giá (Forms)",
+      "Values": {
+        "Duyệt giá": "4d721d0c-e794-ef11-8a68-000d3ac6dc2d",
+        "Information": "7818b695-178e-4248-b730-7e6835b4e6de",
+        "Tạo duyệt giá": "26ae1169-aff4-4f68-921e-a1cc21e0b3aa"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_sobaogia_forms",
+      "Namespace": "SO báo giá (Forms)",
+      "Values": {
+        "Information": "d7e0bc7f-b6fe-45bc-8e11-d031181632cd",
+        "SO báo giá": "f3e9e38c-4398-42bd-b60c-ccd00e2f560e",
+        "SO báo giá - dev": "18d6d2e8-a7b2-ef11-b8e8-6045bd20880c"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_sobaogiaxpromotion_forms",
+      "Namespace": "SO báo giá x Promotion (Forms)",
+      "Values": {
+        "Information": "3018ef89-3144-4a76-84c2-c8fdf4fe5ae7",
+        "SO báo giá x Promotion": "a293f8bd-cd8b-44af-add2-c41ce63c5021"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_sodbaogia_forms",
+      "Namespace": "SOD báo giá (Forms)",
+      "Values": {
+        "Information": "faca3670-9445-4652-81aa-eb1162a3d3fb",
+        "SOD báo giá": "b8454e55-c468-4e5a-b534-9a1bbd8b7a5d",
+        "SOD báo giá - dev": "37f1d250-a7b2-ef11-b8e8-00224858f144"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_quanhuyen_forms",
+      "Namespace": "Quận/Huyện (Forms)",
+      "Values": {
+        "Information": "659e7d6a-6506-4711-a02b-f14a2a2a04d9",
+        "Quận huyện": "41e7f56c-07d4-45ad-b42f-f464409c4114",
+        "Quận/Huyện quick create form": "4f76fdc4-305d-f011-bec2-6045bd220341"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_khowecare_forms",
+      "Namespace": "Kho WECARE (Forms)",
+      "Values": {
+        "Information": "1b5e6ac4-0ab9-48b0-a541-cb508ead8b8e"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_customergroup_forms",
+      "Namespace": "Customer groups (Forms)",
+      "Values": {
+        "Information": "ece34f00-dd41-4f0a-988a-6dc2b7b1c120",
+        "Nhóm KH": "7752eade-71f5-4220-8601-ad2f0657aa23",
+        "Nhóm KH - DEV": "aea8cf5e-4f0e-ee11-8f6e-6045bd1f9af1"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_employee_forms",
+      "Namespace": "Employees (Forms)",
+      "Values": {
+        "DEV": "04309643-b20a-f011-bae3-0022485928d6",
+        "Employee quick view form": "d869536c-e386-ef11-ac21-000d3aa09b3d",
+        "Employees": "e9ded0a4-3ca7-4375-adad-ad8c3dd25ad1",
+        "Information": "11009c2b-bc78-463f-87af-ffa767729b9d",
+        "Thiết lập sale liên tỉnh": "f583a429-337f-f011-b4cc-6045bd213118"
+      }
+    },
+    {
+      "Kind": "default.cds_cr1bb_margin_forms",
+      "Namespace": "Margins (Forms)",
+      "Values": {
+        "Information": "575a5263-40ee-4d5a-a456-f6522a68fb66"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_productgroup_forms",
+      "Namespace": "Product groups (Forms)",
+      "Values": {
+        "Chuỗi cung ứng": "ee73343a-7e11-ef11-9f89-000d3aa00fac",
+        "Information": "a989fb19-37fb-47f9-8590-ac93dc2eb0be",
+        "Thiết lập - Kho vận": "07c01fbd-df15-f011-998a-6045bd204b66",
+        "Thông tin nhóm sản phẩm": "f3f03123-84ff-4f4d-a769-95eebe282557"
+      }
+    },
+    {
+      "Kind": "default.cds_adx_alertsubscription_forms",
+      "Namespace": "Alert Subscriptions (Forms)",
+      "Values": {
+        "Information": "df15c7f9-bd9a-4ab7-9a44-1e6c2b9fe699"
+      }
+    },
+    {
+      "Kind": "default.cds_cr44a_tonkhoketoan_forms",
+      "Namespace": "Tồn kho kế toáns (Forms)",
+      "Values": {
+        "DEV": "c0ed01c7-c669-f011-bec3-6045bd220341",
+        "Information": "f5355ce8-550e-41be-9f1b-75a8e1ea8e0a"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_units_forms",
+      "Namespace": "Units (Forms)",
+      "Values": {
+        "Chỉnh sửa đơn vị": "c1965ba1-5720-46ef-acbe-2a0f1ac53e08",
+        "Đơn vị": "49322963-ab67-ed11-9561-002248593b27",
+        "Information": "4e3b1f0b-bdbd-48ed-a672-e20a15e143f6"
+      }
+    },
+    {
+      "Kind": "default.cds_cr44a_inventoryweshop_forms",
+      "Namespace": "Inventory Weshops (Forms)",
+      "Values": {
+        "Information": "fbeb29c4-1182-4803-83d4-fe1be3230fc0",
+        "Inventory Weshop": "f4b0586f-d25e-40e7-9d75-2a52e9504eca"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_customerxpromotion_forms",
+      "Namespace": "Customer x Promotion (Forms)",
+      "Values": {
+        "Customer x Promotion": "9efcff01-4b4b-4999-b748-a9ba92d0c8e7",
+        "dev": "00117eaf-1b94-ef11-8a69-000d3ac91200",
+        "Information": "4ab49775-a732-41b0-8bd8-86b2aec12975"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_promotion_type_forms",
+      "Namespace": "Promotion type (Forms)",
+      "Values": {
+        "Information": "a7d02f58-b558-46ad-884e-fd435efeda26",
+        "Promotion type": "73bd5b5b-b341-4414-8d52-4d35d121209f"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_customer_forms",
+      "Namespace": "Customers (Biểu mẫu)",
+      "Values": {
+        "Công nợ kháchh hàng": "71f0ba94-59c5-ed11-b597-000d3a094665",
+        "Customer quick create form": "8fd47a9e-b646-ec11-8c62-00224816e6d3",
+        "Customer quick view Competitor": "660993ec-f117-ef11-840a-002248587161",
+        "Customer quick view form": "b5a519af-e001-ef11-9f89-0022485ab3be",
+        "Information": "cfa28847-ce6a-4bb4-824e-f3f5dcbea7e5",
+        "KH_Quick detail issue_SOD": "b7aeaf78-f4ef-ee11-904b-6045bd1cc6ea",
+        "Khách hàng - Accounting": "ecea3e37-723d-ed11-bba2-000d3a856e52",
+        "Khách hàng - công nợ nền": "b3b3a3c1-0d3b-ee11-bdf4-000d3a08d137",
+        "Khởi tạo khách hàng": "bd0ae77e-4201-ef11-9f8a-6045bd1f635f",
+        "Promotion": "b26d67cf-5d1a-ef11-840a-000d3ac81698",
+        "Quick view - interaction": "421a4802-a948-ef11-a316-6045bd1baef0",
+        "quick view CHKD": "1361e625-e001-ef11-9f89-000d3aa1fde0",
+        "Quick view CHKD promotion": "7089b26d-1823-ef11-840a-002248587727",
+        "Quick view Công nợ KH": "0e87690b-d21b-ee11-8f6d-000d3a094665",
+        "quick view đơn SO": "32ddca4c-a202-ef11-9f8a-6045bd1bff1d",
+        "quick view DS CHKD": "839d8175-e201-ef11-9f89-000d3aa1fde0",
+        "quick view nhắc nợ KH": "0623d1ec-e801-ef11-9f89-000d3a08a095",
+        "Quick view Promotion - SO": "aa22ead1-3b04-ef11-9f89-00224857b5ea",
+        "Quick view Promotion - SO báo giá": "80d85cba-3eb1-ef11-b8e8-6045bd208527",
+        "Quick view_promotion": "e4f0ab92-9454-ef11-bfe3-002248567a68",
+        "quick view_thông tin KH": "52be3e2d-a602-ef11-9f8a-6045bd1bff1d",
+        "Quickview - Vận tải (Task)": "507a0dab-a6b2-ef11-b8e8-0022485750af",
+        "Subgrid_view_task": "117b5b6c-502d-ef11-840b-000d3aa3a5a4",
+        "Thông tin khách hàng": "b7f8f4c5-b505-ee11-8f6e-000d3a094e75",
+        "Thông tin khách hàng Dev": "e36c18a1-2e57-ec11-8f8f-000d3a805b5f",
+        "Thông tin khách hàng_task": "eaa820e3-3213-ef11-9f89-000d3aa1fde0",
+        "Xác nhận KH chính thức": "e3d82873-383e-ee11-bdf3-000d3a08d54a"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_saleorderdetail_forms",
+      "Namespace": "Sale Order Details (Biểu mẫu)",
+      "Values": {
+        "Chỉnh sửa Đơn bán chi tiết - Admin": "09dfe617-b1b4-ed11-b596-000d3a094665",
+        "Chỉnh sửa Đơn bán chi tiết - Admin_nhà máy": "d3e743f3-7816-ef11-840a-6045bd216ea7",
+        "Đơn bán chi tiết - Dev": "cbbd619e-42bb-4f1d-9afd-e77ca0db16df",
+        "Information": "f0ecd3b9-bdb3-4373-bab9-9a0da6bb1358",
+        "New Form": "dbce0ada-862f-4f93-bb96-78fdaaede7e0",
+        "Sale Order Detail quick view form": "d558f075-55d0-ed11-a7c6-000d3a094665",
+        "Thông tin đơn bán chi tiết": "e73dfc88-6358-ec11-8f8f-000d3a805b5f"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_sale_order_forms",
+      "Namespace": "Sale_Orders (Biểu mẫu)",
+      "Values": {
+        "Đơn hàng bán-DEV": "bbd87a75-03b0-ec11-983f-00224818d51b",
+        "Information": "ef181861-bdb9-4d57-8c2f-c6b6ff17b506",
+        "Thông tin đơn hàng bán": "6623d1f9-05b0-ec11-983f-00224818d51b",
+        "Thông tin đơn hàng bán - admin": "e9bd027c-3d04-ef11-9f89-000d3a08a095"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_products_forms",
+      "Namespace": "products (Biểu mẫu)",
+      "Values": {
+        "Buy quick view Product - BĐ": "f4e834ce-5269-ec11-8943-002248163ead",
+        "Buy quick view Products - SG": "1d741d86-72fe-ec11-82e6-000d3a80d3eb",
+        "Chi_tiết_nhóm_SP_powerpages": "8addf684-ed38-ee11-bdf4-000d3a094e75",
+        "Chỉnh sửa người phụ trách - Source": "1421e555-6870-ed11-81ac-002248593b27",
+        "Chỉnh sửa Thông tin sản phẩm_powerpage": "9d825e9f-b438-ee11-bdf4-000d3a094144",
+        "Chuyển đổi hàng hóa-Nhập": "624c5e29-48b6-ec11-983f-002248193088",
+        "Chuyển đổi hàng hóa-Xuất": "5f240181-45b6-ec11-983f-002248193088",
+        "Information": "80821d06-b0d9-4765-980e-ed0152774a57",
+        "Products Quick Create": "b8ce76be-6145-ec11-8c62-00224816e6d3",
+        "Products quick view form bán hàng": "471f2a1c-95dd-ec11-bb3c-00224815baa5",
+        "Products quick view form mua hàng": "98721fbf-95dd-ec11-bb3c-00224815baa5",
+        "Sale quick view Product - BĐ": "a1283fd1-5369-ec11-8943-002248163ead",
+        "Sản phẩm cân kho": "f63273ab-557b-ec11-8d21-000d3a8239a4",
+        "shop_prod_ppages": "e1ab3b6b-c338-ee11-bdf4-000d3a08d137",
+        "Thông tin hàng lỗi": "c515d1e6-9095-ee11-be36-000d3aa3f382",
+        "Thông tin sản phẩm": "873c65bf-5658-ec11-8f8f-000d3a805b5f",
+        "Thông tin sản phẩm - DEV": "d244b888-13a4-ec11-983f-000d3a856b60"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_unitconvertion_forms",
+      "Namespace": "Unit conversions (Biểu mẫu)",
+      "Values": {
+        "Chỉnh sửa Tỷ lệ chuyển đổi": "df49506a-1574-4d5b-93fa-779d5fcb4620",
+        "Chỉnh sửa Tỷ lệ chuyển đổi - powerpages": "e50a76e1-b638-ee11-bdf4-000d3a08d8d5",
+        "Information": "8daf6af5-7cb7-400a-a1be-b2691b2ec35b",
+        "Quick view unit BOD duyệt giá": "45b5d1a1-6296-ef11-8a68-000d3ac6dc2d",
+        "Quick view unit SOD duyệt giá": "44653f48-6296-ef11-8a69-00224859d934",
+        "Tỷ lệ chuyển đổi - DEV": "9ca599f2-b367-ed11-9561-002248593b27",
+        "Unit conversion quick create form": "93f38fc7-936f-ed11-81ac-00224859398c"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_baogiachitiet_forms",
+      "Namespace": "Báo giá - chi tiếts (Biểu mẫu)",
+      "Values": {
+        "Báo giá - chi tiết": "4258280c-4651-4ad8-a047-cc6026640582",
+        "Báo giá - chi tiết DEV": "961c4584-4e03-ee11-8f6e-6045bd1f9d5f",
+        "Báo giá - chi tiết_page": "a5fa7185-e838-ee11-bdf4-000d3a09423e",
+        "Information": "494ba47f-5ca7-4985-b66d-ba6b2248db87"
+      }
+    },
+    {
+      "Kind": "default.cds_cr1bb_groupkh_forms",
+      "Namespace": "Group - KH (Biểu mẫu)",
+      "Values": {
+        "Group - KH": "5baf66a0-d591-4aa5-9923-5c421f7c6395",
+        "Information": "4e905508-bbab-4a89-a7f8-f42dcc8db228"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_tinhthanh_forms",
+      "Namespace": "Tỉnh/Thành (Biểu mẫu)",
+      "Values": {
+        "Information": "f9c92cc4-c17d-4fc0-94ae-983721c5f508",
+        "Tỉnh/Thành": "2ad9be53-74fc-4949-b0e3-20e60c3bff35",
+        "Tỉnh/Thành - DEV": "a18b3192-6bab-ed11-8400-000d3a856806"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_kho_binh_dinh_forms",
+      "Namespace": "Kho Bình Định (Biểu mẫu)",
+      "Values": {
+        "Information": "1ae1abee-f9e5-45b4-b257-8c7b94743da1",
+        "Kho": "e633bf63-ff12-4694-94ba-f23fb1a68e64",
+        "Kho Dev": "ae874757-4172-ed11-81ab-002248593d29",
+        "Theodoi_tiendo": "61e7abb6-0698-4bb9-b491-baaa19ba4cbd"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_athangso_forms",
+      "Namespace": "Đặt hàng SOS (Biểu mẫu)",
+      "Values": {
+        "Đặt hàng SO": "48ed9bf7-6721-4875-814b-67090f5bc870",
+        "Đặt hàng SO - DEV": "7dd7069b-1852-ee11-be6e-6045bd1f9e5b",
+        "Information": "89a97652-9888-409c-8aff-ed3feb718df6"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_promotion_forms",
+      "Namespace": "Promotion (Biểu mẫu)",
+      "Values": {
+        "Information": "00ef1a90-e86c-44f6-a941-a54e9573fe1d",
+        "Promotion": "ca77c382-338f-4c44-82cf-eb13ac54dd1b"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_ordersxpromotion_forms",
+      "Namespace": "Orders x Promotion (Biểu mẫu)",
+      "Values": {
+        "Information": "090a91d5-3740-4a3e-824d-7b5551e42549"
+      }
+    },
+    {
+      "Kind": "default.cds_cr1bb_congty_forms",
+      "Namespace": "Công ty (Biểu mẫu)",
+      "Values": {
+        "Công ty": "22f2cbbf-884b-4d64-a820-12882c2cb12a",
+        "Information": "e8262627-0e25-4a8a-be07-7aafa31a30c5"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_duyetgia_forms",
+      "Namespace": "Duyệt giá (Biểu mẫu)",
+      "Values": {
+        "Duyệt giá": "4d721d0c-e794-ef11-8a68-000d3ac6dc2d",
+        "Information": "7818b695-178e-4248-b730-7e6835b4e6de",
+        "Tạo duyệt giá": "26ae1169-aff4-4f68-921e-a1cc21e0b3aa"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_sobaogia_forms",
+      "Namespace": "SO báo giá (Biểu mẫu)",
+      "Values": {
+        "Information": "d7e0bc7f-b6fe-45bc-8e11-d031181632cd",
+        "SO báo giá": "f3e9e38c-4398-42bd-b60c-ccd00e2f560e",
+        "SO báo giá - dev": "18d6d2e8-a7b2-ef11-b8e8-6045bd20880c"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_sobaogiaxpromotion_forms",
+      "Namespace": "SO báo giá x Promotion (Biểu mẫu)",
+      "Values": {
+        "Information": "3018ef89-3144-4a76-84c2-c8fdf4fe5ae7",
+        "SO báo giá x Promotion": "a293f8bd-cd8b-44af-add2-c41ce63c5021"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_sodbaogia_forms",
+      "Namespace": "SOD báo giá (Biểu mẫu)",
+      "Values": {
+        "Information": "faca3670-9445-4652-81aa-eb1162a3d3fb",
+        "SOD báo giá": "b8454e55-c468-4e5a-b534-9a1bbd8b7a5d",
+        "SOD báo giá - dev": "37f1d250-a7b2-ef11-b8e8-00224858f144"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_quanhuyen_forms",
+      "Namespace": "Quận/Huyện (Biểu mẫu)",
+      "Values": {
+        "Information": "659e7d6a-6506-4711-a02b-f14a2a2a04d9",
+        "Quận huyện": "41e7f56c-07d4-45ad-b42f-f464409c4114"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_khowecare_forms",
+      "Namespace": "Kho WECARE (Biểu mẫu)",
+      "Values": {
+        "Information": "1b5e6ac4-0ab9-48b0-a541-cb508ead8b8e"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_customerxpromotion_forms",
+      "Namespace": "Customer x Promotion (Biểu mẫu)",
+      "Values": {
+        "Customer x Promotion": "9efcff01-4b4b-4999-b748-a9ba92d0c8e7",
+        "dev": "00117eaf-1b94-ef11-8a69-000d3ac91200",
+        "Information": "4ab49775-a732-41b0-8bd8-86b2aec12975"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_promotion_type_forms",
+      "Namespace": "Promotion type (Biểu mẫu)",
+      "Values": {
+        "Information": "a7d02f58-b558-46ad-884e-fd435efeda26",
+        "Promotion type": "73bd5b5b-b341-4414-8d52-4d35d121209f"
+      }
+    },
+    {
+      "Kind": "default.cds_systemuser_forms",
+      "Namespace": "Users (Forms)",
+      "Values": {
+        "Application User": "d26924ef-4d80-46f7-ab1d-e6ae80a54ce8",
+        "Information": "094fb08a-77bb-49e0-b7ea-8dbddfd01294",
+        "User": "c2cd9e55-d4b4-4b55-9951-16ead79643e5",
+        "User form – Business": "c2413504-7eb2-4c59-a087-95d819866114",
+        "User Hierarchy Tile Form": "c68d6c09-d7a7-4959-8d0f-44b8cff9b452"
+      }
+    },
+    {
+      "Kind": "default.cds_cr44a_baogia_forms",
+      "Namespace": "Báo giá (Forms)",
+      "Values": {
+        "Báo giá": "b410ef8f-24f3-4351-8d2f-40ef508ee9c7",
+        "Information": "72df28cb-100a-4028-a40c-204e5854df01"
+      }
+    },
+    {
+      "Kind": "default.cds_cr44a_banhangchitiet_forms",
+      "Namespace": "Bán hàng - chi tiếts (Forms)",
+      "Values": {
+        "Bán hàng - chi tiết": "3808e503-c0c9-4411-b39a-1666647080e7",
+        "Bán hàng - chi tiết quick create form": "7425931c-3f12-ed11-b83e-000d3a80d3eb",
+        "Bán hàng chi tiết - DEV": "b04653b8-cd53-ed11-9562-000d3a856e52",
+        "Bán hàng chi tiết - Manager": "dc7991c8-cd53-ed11-9562-000d3a856e52",
+        "Information": "3242b105-4eac-4eb7-96c5-c6a296069ec6"
+      }
+    },
+    {
+      "Kind": "default.cds_cr1bb_sodxuatkho_forms",
+      "Namespace": "SOD - Xuất kho (Forms)",
+      "Values": {
+        "Information": "d479521c-7bcb-411e-93d7-df181e701b74"
+      }
+    },
+    {
+      "Kind": "default.cds_crdfd_sobaogia_forms",
+      "Namespace": "SO báo giá_1 (Forms)",
+      "Values": {
+        "Information": "d7e0bc7f-b6fe-45bc-8e11-d031181632cd",
+        "SO báo giá": "f3e9e38c-4398-42bd-b60c-ccd00e2f560e"
+      }
+    }
+  ]
+}

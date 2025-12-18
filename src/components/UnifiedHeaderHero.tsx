@@ -274,7 +274,7 @@ const UnifiedHeaderHero: React.FC<UnifiedHeaderHeroProps> = ({
     const encoded = encodeURIComponent(term);
     // Always navigate to slug route with original term in query for consistent behavior
     router.push(`/san-pham/${slug}?search=${encoded}`);
-  }, [searchTerm, searchType, onSearch]);
+  }, [searchTerm, searchType, router]);
 
   // Handle category toggle
   const handleCategoryToggle = useCallback(() => {

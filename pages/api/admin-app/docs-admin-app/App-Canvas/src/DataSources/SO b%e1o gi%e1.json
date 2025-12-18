@@ -1,0 +1,246 @@
+[
+  {
+    "CdsFCBContext": "{\"FileType\":true,\"ImageExternalStorage\":true}",
+    "EntitySetName": "crdfd_sobaogias",
+    "IsHidden": false,
+    "IsSampleData": false,
+    "IsWritable": true,
+    "LogicalName": "crdfd_sobaogia",
+    "MaxGetRowsCount": 2000,
+    "Name": "SO báo giá",
+    "NativeCDSDataSourceInfoNameMapping": {
+      "_ownerid_value": "Owner",
+      "cr1bb_hinhthucgiaohang": "Hình thức giao hàng",
+      "cr1bb_kenhtiepnhansobg": "Kênh tiếp nhận SOBG",
+      "cr1bb_khachhangngunggiaodich": "Khách hàng ngừng giao dịch",
+      "cr1bb_loaionhang": "Loại đơn hàng",
+      "cr1bb_soonchitietcopromotion": "Số đơn chi tiết có Promotion",
+      "cr1bb_trangthaikhcal": "Trạng thái KH Cal",
+      "cr1bb_Vitrikho": "Vị trí kho",
+      "crdfd_chietkhau": "Chiết khấu %",
+      "crdfd_chietkhauvn": "Chiết khấu VNĐ",
+      "crdfd_ChinhanhKH": "Chi nhánh KH",
+      "crdfd_dieukhoanthanhtoancal": "Điều khoản thanh toán CAL",
+      "crdfd_ghichu": "Ghi chú",
+      "crdfd_ghichukh": "Ghi chú KH",
+      "crdfd_gtgt": "GTGT",
+      "crdfd_ieukhoanthanhtoan": "Điều khoản thanh toán",
+      "crdfd_Khachhang": "Khách hàng",
+      "crdfd_loaihoadon": "Loại hóa đơn",
+      "crdfd_name": "Mã đơn hàng",
+      "crdfd_Nhanvienbanhang": "Nhân viên bán hàng",
+      "crdfd_Phaplykhachhang": "Pháp lý khách hàng",
+      "crdfd_sale_order_SObaogia_crdfd_sobaogia": "Sale_Orders",
+      "crdfd_soauto": "SO auto",
+      "crdfd_sobaogia_AsyncOperations": "System Jobs",
+      "crdfd_sobaogia_BulkDeleteFailures": "Bulk Delete Failures",
+      "crdfd_sobaogia_MailboxTrackingFolders": "Mailbox Auto Tracking Folders",
+      "crdfd_sobaogia_PrincipalObjectAttributeAccesses": "Field Sharing",
+      "crdfd_sobaogia_ProcessSession": "Process Sessions",
+      "crdfd_sobaogia_SOBG_Muakem_crdfd_sobaogia": "SO báo giá",
+      "crdfd_sobaogia_SyncErrors": "Sync Errors",
+      "crdfd_sobaogiaid": "ID",
+      "crdfd_sobaogiaxpromotion_SObaogia_crdfd_sobaogia": "SO báo giá x Promotion",
+      "crdfd_SOBG_Muakem": "SOBG Mua kèm",
+      "crdfd_socode": "SO code",
+      "crdfd_sodbaogia_Maonhang_crdfd_sobaogia": "SOD báo giá",
+      "crdfd_tenonhang": "Tên đơn hàng",
+      "crdfd_tenpromotion": "Tên Promotion",
+      "crdfd_Tenthuongmai": "Tên thương mại",
+      "crdfd_tienchietkhau": "Tiền chiết khấu",
+      "crdfd_tongtien": "Tổng tiền",
+      "crdfd_tongtienkhongvat": "Tổng tiền không VAT",
+      "crdfd_trangthaibaogia": "Trạng thái báo giá",
+      "crdfd_vat": "VAT",
+      "crdfd_vattext": "VAT text",
+      "crdfd_xuat_hoa_don": "Xuất hóa đơn",
+      "createdby": "Created By",
+      "createdon": "Created On",
+      "createdonbehalfby": "Created By (Delegate)",
+      "exchangerate": "Exchange Rate",
+      "importsequencenumber": "Import Sequence Number",
+      "modifiedby": "Modified By",
+      "modifiedon": "Modified On",
+      "modifiedonbehalfby": "Modified By (Delegate)",
+      "overriddencreatedon": "Record Created On",
+      "owningbusinessunit": "Owning Business Unit",
+      "owningteam": "Owning Team",
+      "owninguser": "Owning User",
+      "statecode": "Status",
+      "statuscode": "Status Reason",
+      "timezoneruleversionnumber": "Time Zone Rule Version Number",
+      "transactioncurrencyid": "Currency",
+      "utcconversiontimezonecode": "UTC Conversion Time Zone Code",
+      "versionnumber": "Version Number",
+      "wc001_khachhangtext": "Khách hàng text",
+      "wc001_local": "Local",
+      "wc001_tenthuongmaitext": "Tên thương mại text"
+    },
+    "PreferredName": "SO báo giá",
+    "Type": "NativeCDSDataSourceInfo"
+  },
+  {
+    "DisplayName": "SO báo giá (Views)",
+    "Name": "_crdfd_sobaogia_views",
+    "RelatedEntityName": "SO báo giá",
+    "TrimmedViewName": true,
+    "Type": "ViewInfo",
+    "ViewInfoNameMapping": {
+      "070aec01-d9b2-ef11-b8e8-6045bd1bcde5": "SO báo giá thất bại",
+      "4ed9e574-659e-49b2-94d9-2e2e296ee055": "SO báo giá Associated View",
+      "8fa7e47a-6ce2-4f7f-8a3b-0e02e1bf98a6": "SO báo giá Lookup View",
+      "94e5c1e7-d8b2-ef11-b8e8-6045bd20880c": "SO báo giá thành công",
+      "9fed8529-26ea-4137-bc70-566db225fcfc": "Inactive SO báo giá",
+      "b5cca3be-82b1-4437-bee0-a3e02c1c8c8b": "SO đang báo giá",
+      "c3a77217-88cd-4a60-a251-88f6b48d24dc": "SO báo giá Advanced Find View"
+    }
+  },
+  {
+    "DisplayName": "Khách hàng ngừng giao dịch (SO báo giá)",
+    "Name": "cr1bb_crdfd_sobaogia_cr1bb_khachhangngunggiaodich",
+    "OptionSetInfoNameMapping": {
+      "0": "No",
+      "1": "Yes"
+    },
+    "OptionSetIsBooleanValued": true,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_khachhangngunggiaodich",
+        "OptionSetReferenceEntityName": "SO báo giá"
+      }
+    },
+    "OptionSetTypeKey": "BooleanType",
+    "RelatedColumnInvariantName": "cr1bb_khachhangngunggiaodich",
+    "RelatedEntityName": "SO báo giá",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Loại đơn hàng (SO báo giá)",
+    "Name": "cr1bb_crdfd_sobaogia_cr1bb_loaionhang",
+    "OptionSetInfoNameMapping": {
+      "191920000": "Đơn bán",
+      "191920001": "Đơn hàng mẫu",
+      "191920002": "Đơn hàng khuyến mãi",
+      "191920003": "Đơn hàng thanh lý",
+      "191920004": "Đơn hàng tiêu huỷ",
+      "191920005": "Đơn dùng nội bộ",
+      "191920006": "Đơn xử lý vấn đề"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cr1bb_loaionhang",
+        "OptionSetReferenceEntityName": "SO báo giá"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "cr1bb_loaionhang",
+    "RelatedEntityName": "SO báo giá",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Loại hóa đơn (SO báo giá)",
+    "Name": "crdfd_sobaogia_crdfd_loaihoadon",
+    "OptionSetInfoNameMapping": {
+      "283640000": "VAT (Công ty)",
+      "283640001": "VAT (Khách không lấy)",
+      "283640002": "Hộ kinh doanh",
+      "283640003": "Không xuất hóa đơn"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_loaihoadon",
+        "OptionSetReferenceEntityName": "SO báo giá"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "crdfd_loaihoadon",
+    "RelatedEntityName": "SO báo giá",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Trạng thái báo giá (SO báo giá)",
+    "Name": "crdfd_sobaogia_crdfd_trangthaibaogia",
+    "OptionSetInfoNameMapping": {
+      "191920000": "Đang báo giá",
+      "191920001": "Báo giá thành công",
+      "191920002": "Báo giá thất bại"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_trangthaibaogia",
+        "OptionSetReferenceEntityName": "SO báo giá"
+      }
+    },
+    "OptionSetTypeKey": "PicklistType",
+    "RelatedColumnInvariantName": "crdfd_trangthaibaogia",
+    "RelatedEntityName": "SO báo giá",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Xuất hóa đơn (SO báo giá)",
+    "Name": "crdfd_sobaogia_crdfd_xuat_hoa_don",
+    "OptionSetInfoNameMapping": {
+      "0": "No",
+      "1": "Yes"
+    },
+    "OptionSetIsBooleanValued": true,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "crdfd_xuat_hoa_don",
+        "OptionSetReferenceEntityName": "SO báo giá"
+      }
+    },
+    "OptionSetTypeKey": "BooleanType",
+    "RelatedColumnInvariantName": "crdfd_xuat_hoa_don",
+    "RelatedEntityName": "SO báo giá",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status (SO báo giá)",
+    "Name": "crdfd_sobaogia_statecode",
+    "OptionSetInfoNameMapping": {
+      "0": "Active",
+      "1": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statecode",
+        "OptionSetReferenceEntityName": "SO báo giá"
+      }
+    },
+    "OptionSetTypeKey": "StateType",
+    "RelatedColumnInvariantName": "statecode",
+    "RelatedEntityName": "SO báo giá",
+    "Type": "OptionSetInfo"
+  },
+  {
+    "DisplayName": "Status Reason (SO báo giá)",
+    "Name": "crdfd_sobaogia_statuscode",
+    "OptionSetInfoNameMapping": {
+      "1": "Active",
+      "2": "Inactive"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": false,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "statuscode",
+        "OptionSetReferenceEntityName": "SO báo giá"
+      }
+    },
+    "OptionSetTypeKey": "StatusType",
+    "RelatedColumnInvariantName": "statuscode",
+    "RelatedEntityName": "SO báo giá",
+    "Type": "OptionSetInfo"
+  }
+]
