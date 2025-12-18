@@ -6,6 +6,9 @@ import { createPortal } from 'react-dom';
 interface DropdownOption {
   value: string;
   label: string;
+  dropdownTooltip?: string; // native title tooltip
+  dropdownMetaText?: string; // shown on hover (e.g. customer code)
+  dropdownCopyText?: string; // text copied when clicking copy button
   [key: string]: any;
 }
 
@@ -34,6 +37,7 @@ export default function Dropdown({
 }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [copiedValue, setCopiedValue] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -47,6 +51,15 @@ export default function Dropdown({
 
   const selectedOption = options.find((opt) => opt.value === value);
 
+  const clearCopyStateTimerRef = useRef<number | null>(null);
+  useEffect(() => {
+    return () => {
+      if (clearCopyStateTimerRef.current) {
+        window.clearTimeout(clearCopyStateTimerRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -58,6 +71,7 @@ export default function Dropdown({
         setIsOpen(false);
         setSearchTerm('');
         setMenuVars(null);
+        setCopiedValue(null);
       }
     };
 
@@ -125,6 +139,47 @@ export default function Dropdown({
     setIsOpen(false);
     setSearchTerm('');
     setMenuVars(null);
+    setCopiedValue(null);
+  };
+
+  const copyToClipboard = async (text: string) => {
+    const trimmed = (text || '').toString();
+    if (!trimmed) return false;
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(trimmed);
+        return true;
+      }
+    } catch {
+      // fall back below
+    }
+
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = trimmed;
+      ta.setAttribute('readonly', 'true');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      ta.style.top = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleCopy = async (e: React.MouseEvent, option: DropdownOption) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const text = option.dropdownCopyText || option.dropdownMetaText || '';
+    const ok = await copyToClipboard(text);
+    if (!ok) return;
+    setCopiedValue(option.value);
+    if (clearCopyStateTimerRef.current) window.clearTimeout(clearCopyStateTimerRef.current);
+    clearCopyStateTimerRef.current = window.setTimeout(() => setCopiedValue(null), 1200);
   };
 
   const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -133,11 +188,19 @@ export default function Dropdown({
     onSearch?.(term);
   };
 
-  const filteredOptions = searchable && searchTerm
-    ? options.filter((opt) =>
-        opt.label.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : options;
+  const filteredOptions =
+    searchable && searchTerm
+      ? options.filter((opt) => {
+          const term = searchTerm.toLowerCase();
+          const label = (opt.label || '').toLowerCase();
+          const meta = (
+            (opt.dropdownMetaText || opt.dropdownCopyText || opt.dropdownTooltip || '') as any
+          )
+            .toString()
+            .toLowerCase();
+          return label.includes(term) || meta.includes(term);
+        })
+      : options;
 
   const portalStyle: CSSProperties | undefined = menuVars
     ? ({
@@ -181,8 +244,33 @@ export default function Dropdown({
                     value === option.value ? 'selected' : ''
                   }`}
                   onClick={() => handleSelect(option)}
+                  title={option.dropdownTooltip}
                 >
-                  {option.label}
+                  <span className="admin-app-dropdown-option-label">
+                    {option.label}
+                  </span>
+                  {(option.dropdownMetaText || option.dropdownCopyText) && (
+                    <span
+                      className="admin-app-dropdown-option-meta"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                      title={option.dropdownTooltip}
+                    >
+                      <span className="admin-app-dropdown-option-meta-text">
+                        {option.dropdownMetaText || option.dropdownCopyText}
+                      </span>
+                      <button
+                        type="button"
+                        className="admin-app-dropdown-copy-btn"
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => handleCopy(e, option)}
+                        aria-label="Copy"
+                        title={copiedValue === option.value ? 'Đã copy' : 'Copy'}
+                      >
+                        {copiedValue === option.value ? '✓' : '⧉'}
+                      </button>
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
@@ -191,6 +279,12 @@ export default function Dropdown({
         document.body
       )
     : null;
+
+  const triggerTitle =
+    (selectedOption as any)?.dropdownTooltip ||
+    ((selectedOption as any)?.dropdownMetaText
+      ? `Mã KH: ${(selectedOption as any)?.dropdownMetaText}`
+      : undefined);
 
   return (
     <div
@@ -206,6 +300,7 @@ export default function Dropdown({
           setIsOpen((v) => !v);
         }}
         disabled={disabled}
+        title={triggerTitle}
       >
         <span className="admin-app-dropdown-value">
           {selectedOption ? selectedOption.label : placeholder}

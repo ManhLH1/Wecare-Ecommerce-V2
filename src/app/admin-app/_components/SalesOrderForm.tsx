@@ -483,9 +483,13 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                 <Dropdown
                   options={customers.map((c) => {
                     const regionText = c.cr1bb_vungmien_text ? ` - ${c.cr1bb_vungmien_text}` : '';
+                    const code = c.cr44a_makhachhang || c.cr44a_st || '';
                     return {
                       value: c.crdfd_customerid,
                       label: `${c.crdfd_name}${regionText}`,
+                      dropdownTooltip: code ? `Mã KH: ${code}` : undefined,
+                      dropdownMetaText: code || undefined,
+                      dropdownCopyText: code || undefined,
                       ...c,
                     };
                   })}

@@ -250,6 +250,34 @@ export default function ProductEntryForm({
     return String(id).trim();
   };
 
+  const copyToClipboard = async (text: string) => {
+    const trimmed = (text || '').toString().trim();
+    if (!trimmed) return false;
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(trimmed);
+        return true;
+      }
+    } catch {
+      // fall back below
+    }
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = trimmed;
+      ta.setAttribute('readonly', 'true');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      ta.style.top = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  };
+
   // Fetch data for dropdowns
   const { products, loading: productsLoading } = useProducts(productSearch);
   const { units, loading: unitsLoading } = useUnits(selectedProductCode);
@@ -813,6 +841,13 @@ export default function ProductEntryForm({
     });
   }, [promotions]);
 
+  const effectivePromotionId = normalizePromotionId(
+    selectedPromotionId || normalizePromotionId(promotions[0]?.id)
+  );
+  const selectedPromotion = promotions.find(
+    (p) => normalizePromotionId(p.id) === effectivePromotionId
+  ) || promotions[0];
+
   // Tính giá theo chiết khấu khi chọn "Theo chiết khấu"
   useEffect(() => {
     if (approvePrice && priceEntryMethod === 'Theo chiết khấu' && basePriceForDiscount > 0) {
@@ -1023,11 +1058,17 @@ export default function ProductEntryForm({
           <div className="admin-app-field-compact admin-app-field-product">
             <label className="admin-app-label-inline">{productLabel}</label>
             <Dropdown
-              options={products.map((p) => ({
-                value: p.crdfd_productsid,
-                label: p.crdfd_name || p.crdfd_fullname || '',
-                ...p,
-              }))}
+              options={products.map((p) => {
+                const code = p.crdfd_masanpham || '';
+                return {
+                  value: p.crdfd_productsid,
+                  label: p.crdfd_name || p.crdfd_fullname || '',
+                  dropdownTooltip: code ? `Mã SP: ${code}` : undefined,
+                  dropdownMetaText: code || undefined,
+                  dropdownCopyText: code || undefined,
+                  ...p,
+                };
+              })}
               value={productId}
               onChange={(value, option) => {
                 setProductId(value);
@@ -1153,35 +1194,51 @@ export default function ProductEntryForm({
               <div className="admin-app-hint-compact">Đang tải...</div>
             ) : promotions.length > 0 ? (
               <>
-                <select
-                  className="admin-app-input admin-app-input-compact"
-                  value={normalizePromotionId(selectedPromotionId || normalizePromotionId(promotions[0]?.id))}
-                  onChange={(e) => setSelectedPromotionId(normalizePromotionId(e.target.value))}
-                  disabled={isFormDisabled}
-                >
-                  {promotions.map((promo) => {
-                    const toNumber = (v: any) => {
-                      const n = Number(v);
-                      return isNaN(n) ? null : n;
-                    };
-                    const displayValue =
-                      toNumber(promo.valueWithVat) ??
-                      toNumber(promo.valueNoVat) ??
-                      toNumber(promo.value) ??
-                      toNumber(promo.value2) ??
-                      toNumber(promo.value3) ??
-                      toNumber(promo.valueBuyTogether);
-                    const valueLabel =
-                      displayValue !== null && displayValue !== undefined
-                        ? ` - ${displayValue}%`
-                        : '';
-                    return (
-                      <option key={normalizePromotionId(promo.id)} value={normalizePromotionId(promo.id)}>
-                        {`${promo.name}${valueLabel}`}
-                      </option>
-                    );
-                  })}
-                </select>
+                <div className="admin-app-select-with-copy">
+                  <select
+                    className="admin-app-input admin-app-input-compact"
+                    value={effectivePromotionId}
+                    onChange={(e) => setSelectedPromotionId(normalizePromotionId(e.target.value))}
+                    disabled={isFormDisabled}
+                    title={selectedPromotion?.name ? `Tên CTKM: ${selectedPromotion.name}` : undefined}
+                  >
+                    {promotions.map((promo) => {
+                      const toNumber = (v: any) => {
+                        const n = Number(v);
+                        return isNaN(n) ? null : n;
+                      };
+                      const displayValue =
+                        toNumber(promo.valueWithVat) ??
+                        toNumber(promo.valueNoVat) ??
+                        toNumber(promo.value) ??
+                        toNumber(promo.value2) ??
+                        toNumber(promo.value3) ??
+                        toNumber(promo.valueBuyTogether);
+                      const valueLabel =
+                        displayValue !== null && displayValue !== undefined
+                          ? ` - ${displayValue}%`
+                          : '';
+                      return (
+                        <option key={normalizePromotionId(promo.id)} value={normalizePromotionId(promo.id)}>
+                          {`${promo.name}${valueLabel}`}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <button
+                    type="button"
+                    className="admin-app-dropdown-copy-btn"
+                    disabled={!selectedPromotion?.name}
+                    title="Copy tên chương trình khuyến mãi"
+                    onClick={async () => {
+                      const ok = await copyToClipboard(selectedPromotion?.name || '');
+                      if (ok) showToast.success('Đã copy tên chương trình');
+                      else showToast.error('Copy thất bại');
+                    }}
+                  >
+                    ⧉
+                  </button>
+                </div>
                 {(promotionDiscountPercent || discountPercent) > 0 && (
                   <span className="admin-app-badge-promotion">
                     Giảm: {promotionDiscountPercent || discountPercent || 0}%

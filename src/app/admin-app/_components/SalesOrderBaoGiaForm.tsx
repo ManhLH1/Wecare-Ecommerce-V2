@@ -434,11 +434,17 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             <div className="admin-app-field-group admin-app-field-group-large">
               <label className="admin-app-label">Khách hàng <span className="admin-app-required">*</span></label>
               <Dropdown
-                options={customers.map((c) => ({
-                  value: c.crdfd_customerid,
-                  label: c.crdfd_name,
-                  ...c,
-                }))}
+                options={customers.map((c) => {
+                  const code = c.cr44a_makhachhang || c.cr44a_st || '';
+                  return {
+                    value: c.crdfd_customerid,
+                    label: c.crdfd_name,
+                    dropdownTooltip: code ? `Mã KH: ${code}` : undefined,
+                    dropdownMetaText: code || undefined,
+                    dropdownCopyText: code || undefined,
+                    ...c,
+                  };
+                })}
                 value={customerId}
                 onChange={(value, option) => {
                   setCustomerId(value);
