@@ -90,7 +90,7 @@ pipeline {
             echo 'Deployment failed!'
         }
         always {
-            cleanWs()
+            deleteDir()
         }
     }
 }
