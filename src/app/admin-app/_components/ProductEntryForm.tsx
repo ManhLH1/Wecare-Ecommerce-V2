@@ -764,8 +764,11 @@ export default function ProductEntryForm({
     const priceNum = parseFloat(String(priceValue)) || 0;
     const discountFactor = 1 - (promoDiscountPct > 0 ? promoDiscountPct / 100 : 0);
     const effectivePrice = priceNum * discountFactor;
+    const vatTextLower = (vatText || '').toLowerCase();
+    const isNonVatOrder = vatTextLower.includes('không vat');
+    const effectiveVat = isNonVatOrder ? 0 : vatPct;
     const newSubtotal = qty * effectivePrice;
-    const newVat = (newSubtotal * vatPct) / 100;
+    const newVat = (newSubtotal * effectiveVat) / 100;
     setSubtotal(newSubtotal);
     setVatAmount(newVat);
     setTotalAmount(newSubtotal + newVat);
@@ -802,6 +805,15 @@ export default function ProductEntryForm({
   // Derive promotion discount percent from selected promotion
   const derivePromotionPercent = (promo?: Promotion | null) => {
     if (!promo) return 0;
+
+    // Nếu khuyến mãi chỉ áp dụng cho đơn Không VAT (crdfd_salehangton = true)
+    // thì bỏ qua khi đơn hiện tại là Có VAT
+    const vatTextLower = (vatText || '').toLowerCase();
+    const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
+    if ((promo as any)?.crdfd_salehangton === true && isVatOrder) {
+      return 0;
+    }
+
     const candidates = [
       promo.valueWithVat,
       promo.valueNoVat,
@@ -839,6 +851,15 @@ export default function ProductEntryForm({
   useEffect(() => {
     recomputeTotals(price, quantity, discountPercent || promotionDiscountPercent, vatPercent);
   }, [discountPercent]);
+
+  // Force VAT = 0 for Non-VAT orders even if product VAT > 0
+  useEffect(() => {
+    const vatTextLower = (vatText || '').toLowerCase();
+    const isNonVatOrder = vatTextLower.includes('không vat');
+    if (isNonVatOrder && vatPercent !== 0) {
+      setVatPercent(0);
+    }
+  }, [vatText, vatPercent]);
 
   const productLabel = vatPercent === 0 ? 'Sản phẩm không VAT' : 'Sản phẩm có VAT';
 
@@ -1110,7 +1131,7 @@ export default function ProductEntryForm({
             <input
               type="number"
               className="admin-app-input admin-app-input-readonly"
-              value={vatPercent}
+              value={(vatText || '').toLowerCase().includes('không vat') ? 0 : vatPercent}
               readOnly
               placeholder="0"
             />
