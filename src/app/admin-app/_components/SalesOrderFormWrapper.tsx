@@ -14,6 +14,9 @@ export default function SalesOrderFormWrapper() {
   const router = useRouter();
 
   useEffect(() => {
+    // Ensure we're on the client side
+    if (typeof window === 'undefined') return;
+    
     const user = getStoredUser();
     setUserInfo(user);
   }, []);

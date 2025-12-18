@@ -35,12 +35,13 @@ export default async function handler(
       filter += ` and (contains(crdfd_name, '${searchTerm}') or contains(cr44a_st, '${searchTerm}') or contains(crdfd_phone2, '${searchTerm}'))`;
     }
 
-    const columns = "crdfd_customerid,crdfd_name,cr44a_st,crdfd_phone2,cr44a_makhachhang,crdfd_nganhnghe";
-    const query = `$select=${columns}&$filter=${encodeURIComponent(
+    const columns = "crdfd_customerid,crdfd_name,cr44a_st,crdfd_phone2,cr44a_makhachhang,crdfd_nganhnghe,_crdfd_tinhthanh_value";
+    const expand = "$expand=crdfd_Tinhthanh($select=crdfd_tinhthanhid,crdfd_name,new_vungmienfx)";
+    const query = `$select=${columns}&${expand}&$filter=${encodeURIComponent(
       filter
     )}&$orderby=crdfd_name&$top=100`;
-
     const endpoint = `${BASE_URL}${CUSTOMER_TABLE}?${query}`;
+    console.log("Customer query:", endpoint);
 
     const response = await axios.get(endpoint, { headers });
 
@@ -51,6 +52,10 @@ export default async function handler(
       crdfd_phone2: item.crdfd_phone2 || "",
       cr44a_makhachhang: item.cr44a_makhachhang || "",
       crdfd_nganhnghe: item.crdfd_nganhnghe ?? null,
+      crdfd_tinhthanh: item._crdfd_tinhthanh_value || null,
+      crdfd_tinhthanh_name: item.crdfd_Tinhthanh?.crdfd_name || "",
+      cr1bb_vungmien: item.crdfd_Tinhthanh?.new_vungmienfx || null,
+      cr1bb_vungmien_text: item.crdfd_Tinhthanh?.new_vungmienfx || "",
     }));
 
     res.status(200).json(customers);

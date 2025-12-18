@@ -36,6 +36,7 @@ interface ProductEntryFormProps {
   customerId?: string;
   customerCode?: string;
   customerName?: string;
+  customerRegion?: string; // NEW: Customer region for pricing
   soId?: string;
   orderType?: number | null; // Loại đơn hàng OptionSet value (optional)
   vatText?: string; // VAT text từ SO ("Có VAT" hoặc "Không VAT")
@@ -91,6 +92,7 @@ export default function ProductEntryForm({
   customerId,
   customerCode,
   customerName,
+  customerRegion,
   soId,
   orderType,
   vatText,
@@ -133,7 +135,7 @@ export default function ProductEntryForm({
   // Disable form if customer or SO is not selected
   // Check for both null/undefined and empty string
   const isFormDisabled = !customerId || customerId === '' || !soId || soId === '';
-  
+
   const [productSearch, setProductSearch] = useState('');
   const [productId, setProductId] = useState('');
   const [unitId, setUnitId] = useState('');
@@ -378,7 +380,7 @@ export default function ProductEntryForm({
 
   // Disable logic for Add/Save buttons mapped from the provided PowerApps expression
   const buttonsDisabled = useMemo(() => {
-    
+
     if (isFormDisabled) {
       return true;
     }
@@ -396,14 +398,14 @@ export default function ProductEntryForm({
     const isAllowedGroup = allowedProductGroupCodes.includes(productGroupCode);
     const isAllowedCustomer =
       customerNameNorm === 'kho wecare' || customerNameNorm === 'kho wecare (ho chi minh)';
-    
+
     console.log('📋 [Check 1] Product Group & Customer:', {
       productGroupCode,
       isAllowedGroup,
       customerNameNorm,
       isAllowedCustomer,
     });
-    
+
     if (isAllowedGroup || isAllowedCustomer) {
       console.log('✅ [Button Enabled] Allowed product group or customer');
       return false;
@@ -415,12 +417,12 @@ export default function ProductEntryForm({
       orderType === PROMO_ORDER_OPTION ||
       normalizeText(String(orderType)) === 'don hang khuyen mai' ||
       normalizeText(String(orderType)) === 'đon hang khuyen mai';
-    
+
     console.log('📋 [Check 2] Promotion Order:', {
       orderType,
       isPromoOrder,
     });
-    
+
     if (isPromoOrder) {
       console.log('✅ [Button Enabled] Promotion order');
       return false;
@@ -429,9 +431,9 @@ export default function ProductEntryForm({
     // Price warning equivalent of var_warning_gia
     // Ngoại lệ: "SO và sản phẩm không khớp GTGT" chỉ cảnh báo, không disable button
     const isVatMismatchWarning = priceWarningMessage === 'SO và sản phẩm không khớp GTGT';
-    const hasPriceWarning = 
-      priceWarningMessage && 
-      priceWarningMessage !== 'Giá bình thường' && 
+    const hasPriceWarning =
+      priceWarningMessage &&
+      priceWarningMessage !== 'Giá bình thường' &&
       !isVatMismatchWarning;
 
     const vatTextLower = (vatText || '').toLowerCase();
@@ -625,12 +627,22 @@ export default function ProductEntryForm({
     const loadPrice = async () => {
       if (!selectedProductCode) return;
       setPriceLoading(true);
-      const result = await fetchProductPrice(selectedProductCode, customerCode, unitId);
+
+      // Determine if this is a VAT order
+      const isVatOrder = vatPercent > 0 || (vatText?.toLowerCase().includes('có vat') ?? false);
+
+      // Pass region and isVatOrder to price API
+      const result = await fetchProductPrice(
+        selectedProductCode,
+        customerCode,
+        unitId,
+        customerRegion, // Regional pricing for non-VAT orders
+        isVatOrder       // VAT status
+      );
 
       // Determine which price field to use based on "Bản chất giá phát ra" from selected product
       const selectedProduct = products.find((p) => p.crdfd_masanpham === selectedProductCode);
       const priceNature = selectedProduct?.cr1bb_banchatgiaphatra; // OptionSet value
-      const isVatOrder = vatPercent > 0; // analogous to var_selected_VAT_SO = Có VAT
 
       let basePrice: number | null = null;
       const priceWithVat = result?.price;       // crdfd_gia
@@ -685,7 +697,7 @@ export default function ProductEntryForm({
     };
 
     loadPrice();
-  }, [selectedProductCode, customerCode, unitId]);
+  }, [selectedProductCode, customerCode, unitId, customerRegion, vatPercent, vatText]);
 
   // Fetch promotions based on product code and customer code
   useEffect(() => {

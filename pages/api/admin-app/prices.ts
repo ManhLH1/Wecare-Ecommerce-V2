@@ -14,7 +14,7 @@ export default async function handler(
   }
 
   try {
-    const { productCode, unitId } = req.query;
+    const { productCode, unitId, region, isVatOrder } = req.query;
     if (!productCode || typeof productCode !== "string" || !productCode.trim()) {
       return res.status(400).json({ error: "productCode is required" });
     }
@@ -44,6 +44,16 @@ export default async function handler(
       // Try both lookup and text field
       filters.push(`(crdfd_onvichuan eq '${safeUnit}' or crdfd_onvichuantext eq '${safeUnit}')`);
     }
+
+    // Add region filter for non-VAT orders
+    // For VAT orders (isVatOrder === 'true'), keep existing logic (no region filter)
+    // For non-VAT orders (isVatOrder === 'false') with region, filter by crdfd_nhomoituongtext
+    const isVatOrderBool = isVatOrder === "true";
+    if (!isVatOrderBool && region && typeof region === "string" && region.trim()) {
+      const safeRegion = region.replace(/'/g, "''");
+      filters.push(`crdfd_nhomoituongtext eq '${safeRegion}'`);
+    }
+
     const filter = filters.join(" and ");
     const columns =
       "crdfd_baogiachitietid,crdfd_masanpham,crdfd_gia,cr1bb_giakhongvat,crdfd_onvichuantext,crdfd_onvichuan";
@@ -57,10 +67,10 @@ export default async function handler(
     const first = response.data.value?.[0];
     const result = first
       ? {
-          price: first.crdfd_gia ?? null,
-          priceNoVat: first.cr1bb_giakhongvat ?? null,
-          unitName: first.crdfd_onvichuantext || first.crdfd_onvichuan || undefined,
-        }
+        price: first.crdfd_gia ?? null,
+        priceNoVat: first.cr1bb_giakhongvat ?? null,
+        unitName: first.crdfd_onvichuantext || first.crdfd_onvichuan || undefined,
+      }
       : { price: null, priceNoVat: null };
 
     res.status(200).json(result);

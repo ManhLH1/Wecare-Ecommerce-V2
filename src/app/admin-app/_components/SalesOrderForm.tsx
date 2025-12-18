@@ -51,6 +51,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const [customerId, setCustomerId] = useState('');
   const [customerCode, setCustomerCode] = useState('');
   const [customerSearch, setCustomerSearch] = useState('');
+  const [customerRegion, setCustomerRegion] = useState('');
   const [so, setSo] = useState('');
   const [soId, setSoId] = useState('');
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
@@ -176,19 +177,19 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     await new Promise(resolve => setTimeout(resolve, 100));
 
     const priceNum = parseFloat(price) || 0;
-    
+
     // Calculate invoice surcharge (Phụ phí hoá đơn)
     // 1.5% for "Hộ kinh doanh" + "Không VAT" orders
     const selectedSo = saleOrders.find((so) => so.crdfd_sale_orderid === soId);
     const isHoKinhDoanh = selectedSo?.cr1bb_loaihoaon === 191920001; // TODO: confirm OptionSet value
     const isNonVat = vatPercent === 0;
     const invoiceSurchargeRate = isHoKinhDoanh && isNonVat ? 0.015 : 0;
-    
+
     // Calculate discounted price (giá đã giảm)
     // For now, use price directly; in future integrate with promotion logic
     const discountedPriceCalc = priceNum * (1 - discountPercent / 100) - discountAmount;
     const finalPrice = discountedPriceCalc * (1 + invoiceSurchargeRate);
-    
+
     // Calculate amounts
     const subtotalCalc = quantity * finalPrice;
     const vatCalc = (subtotalCalc * vatPercent) / 100;
@@ -229,7 +230,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
 
     console.log('✅ Add Product Success:', newProduct);
     setProductList([...productList, newProduct]);
-    
+
     // Reset form fields (mimic PowerApps Reset())
     setProduct('');
     setProductCode('');
@@ -248,7 +249,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setPromotionText('');
     setNote('');
     // Keep warehouse, customer, SO, deliveryDate as they are reused
-    
+
     setIsAdding(false);
     showToast.success('Đã thêm sản phẩm vào danh sách!');
   };
@@ -336,7 +337,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       });
 
       showToast.success(result.message || 'Tạo đơn bán chi tiết thành công!');
-      
+
       // Reload sale order details
       if (soId) {
         setIsLoadingDetails(true);
@@ -369,7 +370,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           setIsLoadingDetails(false);
         }
       }
-      
+
       // Reset form after successful save
       handleRefresh();
     } catch (error: any) {
@@ -437,11 +438,14 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             <div className="admin-app-field-group admin-app-field-group-large">
               <label className="admin-app-label">Khách hàng <span className="admin-app-required">*</span></label>
               <Dropdown
-                options={customers.map((c) => ({
-                  value: c.crdfd_customerid,
-                  label: c.crdfd_name,
-                  ...c,
-                }))}
+                options={customers.map((c) => {
+                  const regionText = c.cr1bb_vungmien_text ? ` - ${c.cr1bb_vungmien_text}` : '';
+                  return {
+                    value: c.crdfd_customerid,
+                    label: `${c.crdfd_name}${regionText}`,
+                    ...c,
+                  };
+                })}
                 value={customerId}
                 onChange={(value, option) => {
                   setCustomerId(value);
@@ -450,6 +454,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                   setCustomerCode(option?.cr44a_makhachhang || option?.cr44a_st || '');
                   // Save industry for delivery date logic
                   setCustomerIndustry(option?.crdfd_nganhnghe ?? null);
+                  // Save customer region for pricing logic
+                  setCustomerRegion(option?.cr1bb_vungmien_text || '');
                   // Reset warehouse when customer changes
                   setWarehouse('');
                 }}
@@ -505,6 +511,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           customerId={customerId}
           customerCode={customerCode}
           customerName={customer}
+          customerRegion={customerRegion}
           vatText={selectedVatText}
           orderType={selectedSo?.crdfd_loai_don_hang}
           soId={soId}
