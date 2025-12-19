@@ -249,14 +249,96 @@
 .admin-app-spinner {
   width: 18px;
   height: 18px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
+  border: 2px solid rgba(37, 99, 235, 0.2);
+  border-top-color: #2563eb;
   border-radius: 50%;
-  animation: spin 0.6s linear infinite;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.admin-app-spinner-small {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.admin-app-spinner-medium {
+  width: 24px;
+  height: 24px;
+  border-width: 3px;
+}
+
+.admin-app-spinner-large {
+  width: 32px;
+  height: 32px;
+  border-width: 4px;
+}
+
+.admin-app-spinner-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+}
+
+.admin-app-spinner-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-app-spinner-text {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+/* Input loading spinner */
+.admin-app-input-loading-spinner {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Form loading overlay */
+.admin-app-form-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 100;
+  border-radius: 8px;
+  backdrop-filter: blur(2px);
+}
+
+.admin-app-form-loading-overlay .admin-app-spinner {
+  margin: 0;
+}
+
+.admin-app-form-loading-text {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
 }
 
 @keyframes spin {
-  to {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
     transform: rotate(360deg);
   }
 }
@@ -1268,13 +1350,14 @@
   cursor: pointer;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   font-size: 14px;
   color: #2c3e50;
   transition: all 0.2s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   font-family: inherit;
-  height: 42px;
+  min-height: 42px;
+  height: auto;
   box-sizing: border-box;
   line-height: 1.5;
   position: relative;
@@ -1306,9 +1389,14 @@
 .admin-app-dropdown-value {
   flex: 1;
   text-align: left;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  word-wrap: break-word;
+  word-break: break-word;
+  min-width: 0;
+  max-width: none;
+  line-height: 1.4;
 }
 
 .admin-app-dropdown-menu {
@@ -1323,10 +1411,11 @@
   z-index: 99999 !important;
   max-height: 300px;
   overflow-y: auto;
-  overflow-x: visible;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   margin-top: 4px;
+  word-wrap: break-word;
 }
 
 .admin-app-dropdown-menu.admin-app-dropdown-menu-portal {
@@ -1378,7 +1467,9 @@
 
 .admin-app-dropdown-options {
   overflow-y: auto;
+  overflow-x: hidden;
   max-height: 250px;
+  word-wrap: break-word;
 }
 
 .admin-app-dropdown-option {
@@ -1389,17 +1480,22 @@
   transition: background-color 0.2s;
   border-bottom: 1px solid #f0f0f0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
+  word-wrap: break-word;
+  overflow-x: hidden;
 }
 
 .admin-app-dropdown-option-label {
   flex: 1 1 auto;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  word-wrap: break-word;
+  word-break: break-word;
+  line-height: 1.4;
 }
 
 .admin-app-dropdown-option-meta {
@@ -1469,7 +1565,23 @@
   font-weight: 500;
 }
 
-.admin-app-dropdown-loading,
+.admin-app-dropdown-loading {
+  padding: 20px;
+  text-align: center;
+  color: #64748b;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 80px;
+}
+
+.admin-app-dropdown-loading .admin-app-spinner {
+  margin: 0 auto;
+}
+
 .admin-app-dropdown-empty {
   padding: 20px;
   text-align: center;
@@ -1636,6 +1748,11 @@
   border-color: var(--admin-hbtn-save-bg);
 }
 
+.admin-app-header-btn-save .admin-app-spinner {
+  border-color: rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+}
+
 .admin-app-header-btn-save:hover:not(:disabled) {
   background: var(--admin-hbtn-save-hover);
 }
@@ -1650,6 +1767,11 @@
   background: var(--admin-hbtn-submit-hover);
 }
 
+.admin-app-header-btn-submit .admin-app-spinner {
+  border-color: rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+}
+
 .admin-app-header-btn-create {
   background: var(--admin-hbtn-create-bg);
   color: white;
@@ -1658,6 +1780,11 @@
 
 .admin-app-header-btn-create:hover:not(:disabled) {
   background: var(--admin-hbtn-create-hover);
+}
+
+.admin-app-header-btn-create .admin-app-spinner {
+  border-color: rgba(255, 255, 255, 0.3);
+  border-top-color: white;
 }
 
 /* 2 Columns Layout */
@@ -1870,12 +1997,18 @@
 }
 
 .admin-app-mini-btn-add {
-  width: 28px;
-  padding: 0;
+  min-width: 28px;
+  width: auto;
+  padding: 0 8px;
   justify-content: center;
   font-size: 16px;
   font-weight: 800;
   color: #059669;
+}
+
+.admin-app-mini-btn-add:not(:has(.admin-app-spinner)) {
+  width: 28px;
+  padding: 0;
 }
 
 .admin-app-mini-btn-add:hover:not(:disabled) {
@@ -1905,6 +2038,11 @@
 
 .admin-app-mini-btn-primary:hover:not(:disabled) {
   background: var(--admin-mini-primary-hover);
+}
+
+.admin-app-mini-btn-primary .admin-app-spinner {
+  border-color: rgba(255, 255, 255, 0.3);
+  border-top-color: white;
 }
 
 .admin-app-mini-btn-secondary {
@@ -2051,7 +2189,7 @@
 .admin-app-inventory-under-product {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   margin-top: 4px;
   margin-bottom: 2px;
   font-size: 11px;
@@ -2061,6 +2199,7 @@
   min-height: 16px;
   visibility: visible;
   opacity: 1;
+  flex-wrap: wrap;
 }
 
 .admin-app-field-product .admin-app-badge-error {
@@ -2121,10 +2260,12 @@
 }
 
 .admin-app-field-compact .admin-app-dropdown .admin-app-dropdown-trigger {
-  height: 28px;
+  min-height: 28px;
+  height: auto;
   padding: 4px 8px;
   font-size: 11px;
   border-radius: 4px;
+  align-items: flex-start;
 }
 
 /* Input wrapper ở giữa - sau label */

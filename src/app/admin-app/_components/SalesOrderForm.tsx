@@ -413,6 +413,29 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     }
   };
 
+  // Clear các selected khi đổi SO (giữ lại customer, SO mới, deliveryDate)
+  const clearFormOnSoChange = () => {
+    setProduct('');
+    setProductCode('');
+    setUnit('');
+    setWarehouse('');
+    setQuantity(1);
+    setPrice('');
+    setSubtotal(0);
+    setVatAmount(0);
+    setTotalAmount(0);
+    setStockQuantity(0);
+    setApprovePrice(false);
+    setApproveSupPrice(false);
+    setUrgentOrder(false);
+    setApprover('');
+    setDiscountPercent(0);
+    setDiscountAmount(0);
+    setPromotionText('');
+    setNote('');
+    // Keep customer, SO (đang được set mới), deliveryDate as they are reused
+  };
+
   const handleRefresh = () => {
     // Reset all fields
     setCustomer('');
@@ -472,7 +495,14 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
               })()}
               title="Lưu"
             >
-              💾 Lưu
+              {isSaving ? (
+                <>
+                  <div className="admin-app-spinner admin-app-spinner-small" style={{ marginRight: '6px' }}></div>
+                  Đang lưu...
+                </>
+              ) : (
+                '💾 Lưu'
+              )}
             </button>
             <button
               className="admin-app-header-btn admin-app-header-btn-submit"
@@ -539,7 +569,27 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                     setCustomer(option?.label || '');
                     setCustomerCode(option?.cr44a_makhachhang || option?.cr44a_st || '');
                     setCustomerIndustry(option?.crdfd_nganhnghe ?? null);
+                    // Clear SO và các selected khi đổi customer
+                    setSo('');
+                    setSoId('');
+                    setProduct('');
+                    setProductCode('');
+                    setUnit('');
                     setWarehouse('');
+                    setQuantity(1);
+                    setPrice('');
+                    setSubtotal(0);
+                    setVatAmount(0);
+                    setTotalAmount(0);
+                    setStockQuantity(0);
+                    setApprovePrice(false);
+                    setApproveSupPrice(false);
+                    setUrgentOrder(false);
+                    setApprover('');
+                    setDiscountPercent(0);
+                    setDiscountAmount(0);
+                    setPromotionText('');
+                    setNote('');
                   }}
                   placeholder="Chọn khách hàng"
                   loading={customersLoading}
@@ -562,12 +612,47 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                 </label>
                 <Dropdown
                   options={saleOrders.map((so) => {
-                    const baseLabel = so.crdfd_name || so.crdfd_so_code || so.crdfd_so_auto || 'SO không tên';
+                    // Hiển thị đầy đủ thông tin: tên SO hoặc mã SO
+                    // Ưu tiên crdfd_so_code, nếu không có thì dùng crdfd_so_auto
+                    const soCode = so.crdfd_so_code || so.crdfd_so_auto || '';
+                    const soName = (so.crdfd_name || '').trim();
+                    
+                    // Kiểm tra xem soName đã chứa soCode chưa để tránh lặp
+                    let baseLabel: string;
+                    if (soName && soCode) {
+                      const soNameLower = soName.toLowerCase();
+                      const soCodeLower = soCode.toLowerCase();
+                      // Nếu name đã chứa code (hoặc code là substring của name) thì chỉ dùng name
+                      if (soNameLower.includes(soCodeLower)) {
+                        baseLabel = soName;
+                        console.log('🔍 [SO Label] Name contains code, using name only:', {
+                          soCode,
+                          soName,
+                          baseLabel,
+                        });
+                      } else {
+                        // Nếu name không chứa code, ghép lại: code - name
+                        baseLabel = `${soCode} - ${soName}`;
+                        console.log('🔍 [SO Label] Name does not contain code, concatenating:', {
+                          soCode,
+                          soName,
+                          baseLabel,
+                        });
+                      }
+                    } else if (soCode) {
+                      baseLabel = soCode;
+                    } else if (soName) {
+                      baseLabel = soName;
+                    } else {
+                      baseLabel = 'SO không tên';
+                    }
+                    
                     const vatLabelText = getVatLabelText(so) || 'Không VAT';
                     return {
                       value: so.crdfd_sale_orderid,
                       label: baseLabel,
                       vatLabelText,
+                      dropdownTooltip: baseLabel, // Tooltip để hiển thị đầy đủ khi hover
                       ...so,
                     };
                   })}
@@ -575,6 +660,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                   onChange={(value, option) => {
                     setSoId(value);
                     setSo(option?.label || '');
+                    // Clear các selected khi đổi SO
+                    clearFormOnSoChange();
                   }}
                   placeholder={customerId ? "Chọn SO" : "Chọn khách hàng trước"}
                   loading={soLoading}
@@ -627,7 +714,13 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                   <input
                     type="checkbox"
                     checked={approvePrice}
-                    onChange={(e) => setApprovePrice(e.target.checked)}
+                    onChange={(e) => {
+                      setApprovePrice(e.target.checked);
+                      // Reset approver when "Duyệt giá" is unchecked
+                      if (!e.target.checked) {
+                        setApprover('');
+                      }
+                    }}
                     disabled={!customerId || !soId}
                   />
                   <span>Duyệt giá</span>
@@ -701,6 +794,16 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       <div className="admin-app-table-wrapper">
         <ProductTable products={productList} setProducts={setProductList} />
       </div>
+      
+      {/* Loading overlay khi đang save/load details */}
+      {(isSaving || isLoadingDetails) && (
+        <div className="admin-app-form-loading-overlay">
+          <div className="admin-app-spinner admin-app-spinner-medium"></div>
+          <div className="admin-app-form-loading-text">
+            {isSaving ? 'Đang lưu đơn hàng...' : 'Đang tải chi tiết đơn hàng...'}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

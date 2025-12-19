@@ -1230,6 +1230,97 @@ export default function ProductEntryForm({
     }
   }, [hasSelectedProduct, quantity, setQuantity]);
 
+  // Reset internal states when product is cleared, SO changes, or customer changes
+  useEffect(() => {
+    // Reset when productCode is cleared (after add or manual clear)
+    if (!productCode || productCode === '') {
+      setProductId('');
+      setSelectedProductCode(undefined);
+      setSelectedProduct(null);
+      setUnitId('');
+      setInventoryTheoretical(0);
+      setInventoryMessage('Chọn sản phẩm và kho để xem tồn kho');
+      setInventoryColor(undefined);
+      setAccountingStock(null);
+      setPromotions([]);
+      setSelectedPromotionId('');
+      setPromotionError(null);
+      setPriceGroupText('');
+      setPriceEntryMethod('Nhập thủ công');
+      setDiscountRate('1');
+      setBasePriceForDiscount(0);
+      setPromotionDiscountPercent(0);
+      setApiPrice(null);
+      setShouldReloadPrice(0);
+      setProductSearch('');
+    }
+  }, [productCode]);
+
+  // Reset internal states when SO changes
+  useEffect(() => {
+    if (soId) {
+      // When SO changes, clear product-related states
+      setProductId('');
+      setSelectedProductCode(undefined);
+      setSelectedProduct(null);
+      setUnitId('');
+      setWarehouseId('');
+      setInventoryTheoretical(0);
+      setInventoryMessage('Chọn sản phẩm và kho để xem tồn kho');
+      setInventoryColor(undefined);
+      setAccountingStock(null);
+      setPromotions([]);
+      setSelectedPromotionId('');
+      setPromotionError(null);
+      setPriceGroupText('');
+      setPriceEntryMethod('Nhập thủ công');
+      setDiscountRate('1');
+      setBasePriceForDiscount(0);
+      setPromotionDiscountPercent(0);
+      setApiPrice(null);
+      setShouldReloadPrice(0);
+      setProductSearch('');
+    }
+  }, [soId]);
+
+  // Reset internal states when customer changes
+  useEffect(() => {
+    if (customerId) {
+      // When customer changes, clear product-related states
+      setProductId('');
+      setSelectedProductCode(undefined);
+      setSelectedProduct(null);
+      setUnitId('');
+      setWarehouseId('');
+      setInventoryTheoretical(0);
+      setInventoryMessage('Chọn sản phẩm và kho để xem tồn kho');
+      setInventoryColor(undefined);
+      setAccountingStock(null);
+      setPromotions([]);
+      setSelectedPromotionId('');
+      setPromotionError(null);
+      setPriceGroupText('');
+      setPriceEntryMethod('Nhập thủ công');
+      setDiscountRate('1');
+      setBasePriceForDiscount(0);
+      setPromotionDiscountPercent(0);
+      setApiPrice(null);
+      setShouldReloadPrice(0);
+      setProductSearch('');
+    }
+  }, [customerId]);
+
+  // Reset approval-related fields when approvePrice changes
+  useEffect(() => {
+    if (!approvePrice) {
+      // When "Duyệt giá" is unchecked, reset all approval-related fields
+      setApprover('');
+      setPriceEntryMethod('Nhập thủ công');
+      setDiscountRate('1');
+      setBasePriceForDiscount(0);
+    }
+  }, [approvePrice, setApprover]);
+
   return (
     <div className="admin-app-card-compact">
       <div className="admin-app-card-title-row">
@@ -1245,7 +1336,14 @@ export default function ProductEntryForm({
                 title="Thêm sản phẩm"
                 aria-label="Thêm sản phẩm"
               >
-                +
+                {isAdding ? (
+                  <>
+                    <div className="admin-app-spinner admin-app-spinner-small" style={{ marginRight: '4px' }}></div>
+                    Đang thêm...
+                  </>
+                ) : (
+                  '+'
+                )}
               </button>
               <button
                 type="button"
@@ -1263,7 +1361,14 @@ export default function ProductEntryForm({
                 disabled={buttonsDisabled || isSaving || isLoadingDetails}
                 title="Lưu đơn hàng"
               >
-                💾 Lưu
+                {isSaving ? (
+                  <>
+                    <div className="admin-app-spinner admin-app-spinner-small" style={{ marginRight: '4px' }}></div>
+                    Đang lưu...
+                  </>
+                ) : (
+                  '💾 Lưu'
+                )}
               </button>
             </div>
             {buttonsDisabled && addButtonDisabledReason && (
@@ -1318,6 +1423,9 @@ export default function ProductEntryForm({
               className="admin-app-inventory-under-product"
               style={inventoryColor ? { color: inventoryColor } : undefined}
             >
+              {inventoryLoading && (
+                <div className="admin-app-spinner admin-app-spinner-small" style={{ marginRight: '6px' }}></div>
+              )}
               <span className="admin-app-inventory-text">
                 {inventoryLoading ? 'Đang tải tồn kho...' : inventoryMessage || 'Chọn sản phẩm và kho để xem tồn kho'}
               </span>
@@ -1400,7 +1508,12 @@ export default function ProductEntryForm({
 
           <div className="admin-app-field-compact">
             <label className="admin-app-label-inline">Giá</label>
-            <div className="admin-app-input-wrapper">
+            <div className="admin-app-input-wrapper" style={{ position: 'relative' }}>
+              {priceLoading && (
+                <div className="admin-app-input-loading-spinner">
+                  <div className="admin-app-spinner admin-app-spinner-small"></div>
+                </div>
+              )}
               <input
                 type="text"
                 className={`admin-app-input admin-app-input-compact admin-app-input-money${priceLoading || (approvePrice && priceEntryMethod === 'Theo chiết khấu') ? ' admin-app-input-readonly' : ''}`}
@@ -1409,15 +1522,19 @@ export default function ProductEntryForm({
                 placeholder={priceLoading ? "Đang tải..." : "Giá"}
                 readOnly={priceLoading || (approvePrice && priceEntryMethod === 'Theo chiết khấu')}
                 disabled={isFormDisabled}
+                style={priceLoading ? { paddingRight: '32px' } : undefined}
               />
-              <span className="admin-app-dropdown-arrow">▼</span>
+              {!priceLoading && <span className="admin-app-dropdown-arrow">▼</span>}
             </div>
           </div>
 
           <div className="admin-app-field-compact admin-app-field-promotion">
             <label className="admin-app-label-inline">Khuyến mãi</label>
             {promotionLoading ? (
-              <div className="admin-app-hint-compact">Đang tải...</div>
+              <div className="admin-app-hint-compact" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className="admin-app-spinner admin-app-spinner-small"></div>
+                <span>Đang tải...</span>
+              </div>
             ) : promotions.length > 0 ? (
               <>
                 <div className="admin-app-select-with-copy">
@@ -1574,6 +1691,15 @@ export default function ProductEntryForm({
             {approvePrice && !approver && (
               <div className="admin-app-error-inline">Vui lòng chọn người duyệt</div>
             )}
+          </div>
+        </div>
+      )}
+      {/* Loading overlay khi đang save/load details */}
+      {(isSaving || isLoadingDetails) && (
+        <div className="admin-app-form-loading-overlay">
+          <div className="admin-app-spinner admin-app-spinner-medium"></div>
+          <div className="admin-app-form-loading-text">
+            {isSaving ? 'Đang lưu...' : 'Đang tải dữ liệu...'}
           </div>
         </div>
       )}

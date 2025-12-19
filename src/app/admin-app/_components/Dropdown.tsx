@@ -1,7 +1,55 @@
 'use client';
 
-import { useState, useRef, useEffect, type ChangeEvent, type CSSProperties } from 'react';
+import { useState, useRef, useEffect, useMemo, type ChangeEvent, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
+
+// Helper function to remove Vietnamese diacritics (bỏ dấu)
+function removeDiacritics(str: string): string {
+  if (!str) return '';
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D');
+}
+
+// Helper function to normalize text for search (lowercase + remove diacritics)
+function normalizeForSearch(str: string): string {
+  return removeDiacritics(str.toLowerCase().trim());
+}
+
+// Fuzzy search: check if search term matches text (allows partial matches, no diacritics)
+function fuzzyMatch(searchTerm: string, text: string): boolean {
+  if (!searchTerm) return true;
+  if (!text) return false;
+  
+  const normalizedSearch = normalizeForSearch(searchTerm);
+  const normalizedText = normalizeForSearch(text);
+  
+  // Fast path: exact substring match (most common case)
+  if (normalizedText.includes(normalizedSearch)) {
+    return true;
+  }
+  
+  // Fast path: if search term is longer than text, no match
+  if (normalizedSearch.length > normalizedText.length) {
+    return false;
+  }
+  
+  // Fuzzy match: check if all characters in search term appear in order in text
+  // This allows searching "nguyen" to match "Nguyễn" or "ng" to match "Nguyễn"
+  let searchIndex = 0;
+  const searchLen = normalizedSearch.length;
+  const textLen = normalizedText.length;
+  
+  for (let i = 0; i < textLen && searchIndex < searchLen; i++) {
+    if (normalizedText[i] === normalizedSearch[searchIndex]) {
+      searchIndex++;
+    }
+  }
+  
+  return searchIndex === searchLen;
+}
 
 interface DropdownOption {
   value: string;
@@ -188,19 +236,44 @@ export default function Dropdown({
     onSearch?.(term);
   };
 
-  const filteredOptions =
-    searchable && searchTerm
-      ? options.filter((opt) => {
-          const term = searchTerm.toLowerCase();
-          const label = (opt.label || '').toLowerCase();
-          const meta = (
-            (opt.dropdownMetaText || opt.dropdownCopyText || opt.dropdownTooltip || '') as any
-          )
-            .toString()
-            .toLowerCase();
-          return label.includes(term) || meta.includes(term);
-        })
-    : options;
+  // Memoize normalized options for better performance
+  const normalizedOptions = useMemo(() => {
+    return options.map((opt) => ({
+      ...opt,
+      _normalizedLabel: normalizeForSearch(opt.label || ''),
+      _normalizedMeta: normalizeForSearch(
+        (opt.dropdownMetaText || opt.dropdownCopyText || opt.dropdownTooltip || '').toString()
+      ),
+    }));
+  }, [options]);
+
+  // Optimized fuzzy search with memoized normalized text
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !searchTerm) {
+      return options;
+    }
+
+    const normalizedSearch = normalizeForSearch(searchTerm);
+    
+    // Fast path: if search term is empty after normalization, return all
+    if (!normalizedSearch) {
+      return options;
+    }
+
+    return normalizedOptions
+      .filter((opt) => {
+        // Check label
+        if (fuzzyMatch(normalizedSearch, opt._normalizedLabel)) {
+          return true;
+        }
+        // Check meta text (code, etc.)
+        if (opt._normalizedMeta && fuzzyMatch(normalizedSearch, opt._normalizedMeta)) {
+          return true;
+        }
+        return false;
+      })
+      .map(({ _normalizedLabel, _normalizedMeta, ...opt }) => opt); // Remove normalized fields from result
+  }, [searchable, searchTerm, normalizedOptions, options]);
 
   const portalStyle: CSSProperties | undefined = menuVars
     ? ({
@@ -232,7 +305,10 @@ export default function Dropdown({
           )}
 
           {loading ? (
-            <div className="admin-app-dropdown-loading">Đang tải...</div>
+            <div className="admin-app-dropdown-loading">
+              <div className="admin-app-spinner admin-app-spinner-small"></div>
+              <span>Đang tải...</span>
+            </div>
           ) : filteredOptions.length === 0 ? (
             <div className="admin-app-dropdown-empty">Không có dữ liệu</div>
           ) : (

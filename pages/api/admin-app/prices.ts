@@ -47,7 +47,7 @@ async function getCustomerId(
     return null;
   }
 }
-
+  
 // Helper function to get customer groups (nhóm khách hàng) from cr1bb_groupkh
 async function getCustomerGroups(
   customerId: string | null,
