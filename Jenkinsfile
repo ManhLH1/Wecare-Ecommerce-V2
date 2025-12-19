@@ -5,7 +5,7 @@ pipeline {
         APP_NAME = 'wecare-ecommerce'
         DOCKER_IMAGE = 'wecare-ecommerce'
         DOCKER_TAG = "${BUILD_NUMBER}"
-        VPS_HOST = '103.68.85.218'
+        VPS_HOST = "${env.VPS_HOST_IP}"
         VPS_USER = 'root'
         DEPLOY_PATH = '/home/wecare/app'
     }
@@ -42,7 +42,7 @@ pipeline {
         stage('Deploy to VPS') {
             steps {
                 echo 'Deploying to VPS...'
-                sshagent(credentials: ['vps-ssh']) {
+                sshagent(credentials: ['wecare-server-ssh']) {
                     sh """
                         ssh -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_HOST} 'mkdir -p ${DEPLOY_PATH}'
                         
