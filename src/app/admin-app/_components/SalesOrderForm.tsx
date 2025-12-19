@@ -8,6 +8,7 @@ import { useCustomers, useSaleOrders } from '../_hooks/useDropdownData';
 import { fetchSaleOrderDetails, SaleOrderDetail, saveSaleOrderDetails, updateInventory, fetchInventory, fetchUnits } from '../_api/adminApi';
 import { showToast } from '../../../components/ToastManager';
 import { getItem } from '../../../utils/SecureStorage';
+import { getStoredUser } from '../_utils/implicitAuthService';
 
 interface ProductItem {
   id: string;
@@ -437,6 +438,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         invoiceSurcharge: item.invoiceSurcharge,
       }));
 
+      // Lấy user info từ localStorage
+      const userInfo = getStoredUser();
+      
       const result = await saveSaleOrderDetails({
         soId,
         warehouseName: warehouse,
@@ -444,6 +448,11 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         customerIndustry: customerIndustry,
         customerLoginId,
         customerId: customerId || undefined,
+        userInfo: userInfo ? {
+          username: userInfo.username,
+          name: userInfo.name,
+          email: userInfo.email,
+        } : undefined,
         products: productsToSave,
       });
 

@@ -34,6 +34,8 @@ const CREATEDBY_LOOKUP_CANDIDATES = [
   "cr1bb_createdby_customer",
 ] as const;
 
+const SYSTEMUSER_TABLE = "systemusers";
+
 function normalizeGuid(value: any): string | null {
   if (!value) return null;
   const str = String(value).trim();
@@ -57,6 +59,80 @@ async function tryPatchCustomerLookup(
   } catch (err: any) {
     // Ignore unknown field errors; do not fail the whole save flow.
     return false;
+  }
+}
+
+// Helper function to lookup systemuser ID from username or email
+async function lookupSystemUserId(
+  headers: any,
+  username?: string,
+  email?: string
+): Promise<string | null> {
+  if (!username && !email) return null;
+
+  try {
+    let filter = '';
+    if (username) {
+      const safeUsername = username.trim().replace(/'/g, "''");
+      filter = `domainname eq '${safeUsername}'`;
+    } else if (email) {
+      const safeEmail = email.trim().replace(/'/g, "''");
+      filter = `internalemailaddress eq '${safeEmail}'`;
+    }
+
+    if (!filter) return null;
+
+    const query = `$select=systemuserid,domainname,internalemailaddress&$filter=${encodeURIComponent(filter)}&$top=1`;
+    const endpoint = `${BASE_URL}${SYSTEMUSER_TABLE}?${query}`;
+    
+    const response = await axios.get(endpoint, { headers });
+    const results = response.data.value || [];
+    
+    if (results.length > 0) {
+      return results[0].systemuserid;
+    }
+  } catch (error: any) {
+    console.error('[Save SOD] Error looking up systemuser:', error.message);
+  }
+  
+  return null;
+}
+
+// Helper function to set ownerid and createdbyid as systemuser
+async function trySetOwnerAndCreatedBySystemUser(
+  saleOrderDetailId: string,
+  systemUserId: string | null,
+  headers: any
+): Promise<void> {
+  if (!systemUserId) return;
+
+  const endpoint = `${BASE_URL}${SALE_ORDER_DETAILS_TABLE}(${saleOrderDetailId})`;
+  
+  try {
+    // Set ownerid (system field)
+    await axios.patch(
+      endpoint,
+      { [`ownerid@odata.bind`]: `/${SYSTEMUSER_TABLE}(${systemUserId})` },
+      { headers }
+    );
+    console.log('[Save SOD] ✅ Set ownerid to systemuser:', systemUserId);
+  } catch (error: any) {
+    console.warn('[Save SOD] ⚠️ Could not set ownerid:', error.message);
+  }
+
+  // Try to set createdby (may not be settable, but try custom fields)
+  for (const f of CREATEDBY_LOOKUP_CANDIDATES) {
+    try {
+      await axios.patch(
+        endpoint,
+        { [`${f}@odata.bind`]: `/${SYSTEMUSER_TABLE}(${systemUserId})` },
+        { headers }
+      );
+      console.log('[Save SOD] ✅ Set createdby to systemuser:', f, systemUserId);
+      break;
+    } catch (err: any) {
+      // Continue to next candidate
+    }
   }
 }
 
@@ -532,6 +608,7 @@ export default async function handler(
       customerIndustry,
       customerLoginId,
       customerId,
+      userInfo,
       products,
     } = req.body;
 
@@ -558,6 +635,24 @@ export default async function handler(
     // Customer id to stamp into lookup columns (owner/created by - lookup Customers)
     // Prefer login customerId, fallback to selected customerId if provided.
     const customerIdToStamp = normalizeGuid(customerLoginId) || normalizeGuid(customerId);
+
+    // Lookup systemuser ID từ userInfo (ưu tiên dùng systemuser thay vì customer)
+    let systemUserId: string | null = null;
+    if (userInfo && (userInfo.username || userInfo.email)) {
+      systemUserId = await lookupSystemUserId(headers, userInfo.username, userInfo.email);
+      if (systemUserId) {
+        console.log('[Save SOD] ✅ Found systemuser:', {
+          systemUserId,
+          username: userInfo.username,
+          email: userInfo.email
+        });
+      } else {
+        console.warn('[Save SOD] ⚠️ Could not find systemuser:', {
+          username: userInfo.username,
+          email: userInfo.email
+        });
+      }
+    }
 
     // ============ KIỂM TRA TỒN KHO CHO ĐƠN HÀNG KHÔNG VAT ============
     const isNonVatOrder = !isVatOrder;
@@ -792,8 +887,13 @@ export default async function handler(
           detailId = createResponse.data.crdfd_saleorderdetailid;
         }
 
-        // Stamp owner/created-by customer (custom lookup columns) if configured
-        await trySetOwnerAndCreatedByCustomer(detailId, customerIdToStamp, headers);
+        // Stamp owner/created-by: ưu tiên systemuser, fallback về customer
+        if (systemUserId) {
+          await trySetOwnerAndCreatedBySystemUser(detailId, systemUserId, headers);
+        } else if (customerIdToStamp) {
+          // Fallback: set customer nếu không tìm thấy systemuser
+          await trySetOwnerAndCreatedByCustomer(detailId, customerIdToStamp, headers);
+        }
 
         // Set cr44a_Tensanpham lookup (additional product lookup field)
         if (finalProductId) {

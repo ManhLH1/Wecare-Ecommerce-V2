@@ -291,6 +291,15 @@ export interface SaveSaleOrderDetailsRequest {
    * CustomerId đang chọn trên form (fallback nếu không có customerLoginId)
    */
   customerId?: string;
+  /**
+   * User info từ localStorage (admin_app_dynamics_user_info)
+   * Dùng để tìm systemuser trong Dynamics CRM và set owner/createdby
+   */
+  userInfo?: {
+    username?: string;
+    name?: string;
+    email?: string;
+  };
   products: Array<{
     id?: string;
     productId?: string;
