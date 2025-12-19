@@ -5,9 +5,9 @@ pipeline {
         APP_NAME = 'wecare-ecommerce'
         DOCKER_IMAGE = 'wecare-ecommerce'
         DOCKER_TAG = "${BUILD_NUMBER}"
-        VPS_HOST = "${env.VPS_HOST_IP}"
+        VPS_HOST = "20.127.187.150"
         VPS_USER = 'root'
-        DEPLOY_PATH = '/home/wecare/app'
+        DEPLOY_PATH = '/home/wecare/wecare-v2/Wecare-Ecommerce-V2'
     }
     
     stages {
