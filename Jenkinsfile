@@ -42,7 +42,7 @@ pipeline {
         stage('Deploy to VPS') {
             steps {
                 echo 'Deploying to VPS...'
-                sshagent(credentials: ["${env.CREDENTIALS_ID}"]) {
+                sshagent(credentials: ['37e445c2-5b34-467d-b14a-fcb94385dd57']) {
                     sh """
                         ssh -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_HOST} 'mkdir -p ${DEPLOY_PATH}'
                         
