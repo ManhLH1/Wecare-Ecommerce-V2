@@ -131,7 +131,7 @@ export default function ProductTable({
         <table className="admin-app-table-compact">
         <thead>
           <tr>
-              <th style={{ width: '40px' }}>SP</th>
+              <th style={{ width: '250px', minWidth: '200px' }}>SP</th>
               <th style={{ width: '80px' }}>ĐV</th>
               <th style={{ width: '70px' }}>SL</th>
               <th style={{ width: '100px' }}>Giá</th>
@@ -156,9 +156,7 @@ export default function ProductTable({
               return (
                 <tr key={product.id}>
                     <td className="admin-app-cell-product-name" title={product.productName}>
-                      {product.productName.length > 20 
-                        ? `${product.productName.substring(0, 20)}...` 
-                        : product.productName}
+                      {product.productName}
                     </td>
                   <td>{product.unit}</td>
                   <td className="admin-app-cell-right">{product.quantity}</td>

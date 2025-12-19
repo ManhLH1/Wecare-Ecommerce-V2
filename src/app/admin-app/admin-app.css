@@ -2641,7 +2641,8 @@
 
 .admin-app-table-compact tbody tr {
   border-bottom: 1px solid #e5e7eb;
-  height: 32px;
+  min-height: 32px;
+  height: auto;
   transition: background-color 0.15s;
 }
 
@@ -2662,10 +2663,11 @@
 }
 
 .admin-app-cell-product-name {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  max-width: 300px;
+  min-width: 200px;
+  word-wrap: break-word;
+  white-space: normal;
+  line-height: 1.4;
 }
 
 .admin-app-cell-right {
