@@ -5,8 +5,13 @@ import { useState, useMemo } from 'react';
 interface ProductItem {
   id: string;
   stt?: number;
+  productCode?: string;
+  productId?: string;
   productName: string;
+  productGroupCode?: string;
+  productCategoryLevel4?: string;
   unit: string;
+  unitId?: string;
   quantity: number;
   price: number;
   surcharge: number;
@@ -19,6 +24,17 @@ interface ProductItem {
   approver: string;
   deliveryDate: string;
   isSodCreated?: boolean;
+  warehouse?: string;
+  note?: string;
+  urgentOrder?: boolean;
+  approvePrice?: boolean;
+  approveSupPrice?: boolean;
+  approveSupPriceId?: string;
+  discountPercent?: number;
+  discountAmount?: number;
+  promotionText?: string;
+  invoiceSurcharge?: number;
+  createdOn?: string;
 }
 
 interface ProductTableProps {
@@ -27,6 +43,7 @@ interface ProductTableProps {
   invoiceType?: number | null;
   vatChoice?: number | null;
   customerIndustry?: number | null;
+  onDelete?: (product: ProductItem) => void; // Callback khi xóa sản phẩm
 }
 
 const ITEMS_PER_PAGE = 5;
@@ -36,12 +53,21 @@ export default function ProductTable({
   setProducts,
   invoiceType,
   vatChoice,
-  customerIndustry 
+  customerIndustry,
+  onDelete
 }: ProductTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
 
   const handleDelete = (id: string) => {
-    setProducts(products.filter((p) => p.id !== id));
+    const productToDelete = products.find((p) => p.id === id);
+    if (productToDelete) {
+      // Gọi callback để parent component xử lý (cộng lại tồn kho)
+      if (onDelete) {
+        onDelete(productToDelete);
+      }
+      // Xóa sản phẩm khỏi danh sách
+      setProducts(products.filter((p) => p.id !== id));
+    }
   };
 
   const showSurchargeColumn = 

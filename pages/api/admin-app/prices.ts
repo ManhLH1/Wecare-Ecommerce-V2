@@ -34,7 +34,6 @@ async function getCustomerId(
     const customer = customerResponse.data.value?.[0];
 
     if (!customer || !customer.crdfd_customerid) {
-      console.log("⚠️ [Get Customer ID] Customer not found:", { customerCode });
       return null;
     }
 
@@ -64,17 +63,11 @@ async function getCustomerGroups(
     const groupQuery = `$select=cr1bb_tennhomkh&$filter=${encodeURIComponent(groupFilter)}`;
     const groupEndpoint = `${BASE_URL}${GROUP_KH_TABLE}?${groupQuery}`;
     
-    console.log("🔍 [Get Customer Groups] Querying:", groupEndpoint);
     const groupResponse = await axios.get(groupEndpoint, { headers });
 
     const groups = (groupResponse.data.value || [])
       .map((item: any) => item.cr1bb_tennhomkh)
       .filter((text: any): text is string => !!text && typeof text === "string");
-
-    console.log("✅ [Get Customer Groups] Found groups:", {
-      customerId,
-      groups,
-    });
 
     return groups;
   } catch (error: any) {
@@ -150,19 +143,11 @@ export default async function handler(
         })
         .join(" or ");
       filters.push(`(${groupFilters})`);
-      console.log("✅ Applied customer group filter:", customerGroups);
     } else if (!isVatOrderBool && region && typeof region === "string" && region.trim()) {
       // Fallback: For non-VAT orders without customer groups, use region filter
       const safeRegion = region.replace(/'/g, "''");
       const priceGroupName = `${safeRegion} Không VAT`;
       filters.push(`crdfd_nhomoituongtext eq '${priceGroupName}'`);
-      console.log("✅ Applied regional filter (fallback):", priceGroupName);
-    } else {
-      console.log("⚠️ No customer group or region filter applied:", {
-        customerGroupsCount: customerGroups.length,
-        isVatOrder: isVatOrderBool,
-        hasRegion: !!region,
-      });
     }
 
     const filter = filters.join(" and ");
@@ -173,9 +158,7 @@ export default async function handler(
       filter
     )}&$orderby=crdfd_giatheovc asc&$top=1`;
 
-    console.log("Final filter:", filter);
     const endpoint = `${BASE_URL}${QUOTE_DETAIL_TABLE}?${query}`;
-    console.log("API Endpoint:", endpoint);
     const response = await axios.get(endpoint, { headers });
 
     const first = response.data.value?.[0];
@@ -190,11 +173,7 @@ export default async function handler(
 
     res.status(200).json(result);
   } catch (error: any) {
-    console.error("Error fetching product price:", error);
-
     if (error.response) {
-      console.error("Error response status:", error.response.status);
-      console.error("Error response data:", JSON.stringify(error.response.data, null, 2));
       return res.status(error.response.status || 500).json({
         error: "Error fetching product price",
         details: error.response.data?.error?.message || error.response.data?.error || error.message,
