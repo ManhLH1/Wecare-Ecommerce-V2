@@ -9,8 +9,116 @@ const INVENTORY_TABLE = "cr44a_inventoryweshops";
 const PRODUCT_TABLE = "crdfd_productses";
 const KHO_BD_TABLE = "crdfd_kho_binh_dinhs";
 const UNIT_CONVERSION_TABLE = "crdfd_unitconvertions";
+const CUSTOMER_TABLE = "crdfd_customers";
 const PROVINCE_TABLE = "crdfd_tinhthanhs"; // Tỉnh/Thành
 const DISTRICT_TABLE = "cr1bb_quanhuyens"; // Quận/Huyện
+
+const GUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const OWNER_LOOKUP_CANDIDATES = [
+  // Most likely custom lookup logical names
+  "crdfd_ownerid",
+  "crdfd_ownerid_customer",
+  "cr44a_ownerid",
+  "cr44a_ownerid_customer",
+  "cr1bb_ownerid",
+  "cr1bb_ownerid_customer",
+] as const;
+
+const CREATEDBY_LOOKUP_CANDIDATES = [
+  "crdfd_createdby",
+  "crdfd_createdby_customer",
+  "cr44a_createdby",
+  "cr44a_createdby_customer",
+  "cr1bb_createdby",
+  "cr1bb_createdby_customer",
+] as const;
+
+function normalizeGuid(value: any): string | null {
+  if (!value) return null;
+  const str = String(value).trim();
+  if (!str) return null;
+  return GUID_PATTERN.test(str) ? str : null;
+}
+
+async function tryPatchCustomerLookup(
+  saleOrderDetailId: string,
+  lookupFieldName: string,
+  customerId: string,
+  headers: any
+): Promise<boolean> {
+  const endpoint = `${BASE_URL}${SALE_ORDER_DETAILS_TABLE}(${saleOrderDetailId})`;
+  const payload: any = {
+    [`${lookupFieldName}@odata.bind`]: `/${CUSTOMER_TABLE}(${customerId})`,
+  };
+  try {
+    await axios.patch(endpoint, payload, { headers });
+    return true;
+  } catch (err: any) {
+    // Ignore unknown field errors; do not fail the whole save flow.
+    const msg = err?.response?.data?.error?.message || err?.message || "";
+    console.warn(`[Save SOD] Lookup patch failed for field ${lookupFieldName}: ${msg}`);
+    return false;
+  }
+}
+
+async function trySetOwnerAndCreatedByCustomer(
+  saleOrderDetailId: string,
+  customerId: string | null,
+  headers: any
+): Promise<void> {
+  if (!customerId) return;
+
+  // Try owner lookup
+  let ownerOk = false;
+  for (const f of OWNER_LOOKUP_CANDIDATES) {
+    ownerOk = await tryPatchCustomerLookup(saleOrderDetailId, f, customerId, headers);
+    if (ownerOk) break;
+  }
+
+  // Try created-by lookup (custom; system createdby is not settable)
+  let createdOk = false;
+  for (const f of CREATEDBY_LOOKUP_CANDIDATES) {
+    createdOk = await tryPatchCustomerLookup(saleOrderDetailId, f, customerId, headers);
+    if (createdOk) break;
+  }
+
+  if (!ownerOk || !createdOk) {
+    console.warn(`[Save SOD] Could not set owner/createdby customer lookups for SOD ${saleOrderDetailId}`, {
+      ownerOk,
+      createdOk,
+      customerId,
+    });
+  }
+}
+
+// Helper function to set cr44a_Tensanpham lookup (additional product lookup field)
+async function trySetTensanphamLookup(  
+  saleOrderDetailId: string,
+  productId: string | null,
+  headers: any
+): Promise<void> {
+  if (!productId) return;
+
+  const endpoint = `${BASE_URL}${SALE_ORDER_DETAILS_TABLE}(${saleOrderDetailId})`;
+  const payload: any = {
+    [`cr44a_Tensanpham@odata.bind`]: `/crdfd_productses(${productId})`,
+  };
+
+  try {
+    await axios.patch(endpoint, payload, { headers });
+    console.log(`[Save SOD] ✅ Set cr44a_Tensanpham lookup: ${productId} for SOD ${saleOrderDetailId}`);
+  } catch (err: any) {
+    // Log warning but don't fail the whole save if this lookup field doesn't exist
+    const msg = err?.response?.data?.error?.message || err?.message || "";
+    console.warn(`[Save SOD] ⚠️ Failed to set cr44a_Tensanpham lookup:`, {
+      error: msg,
+      response: err?.response?.data,
+      detailId: saleOrderDetailId,
+      productId,
+    });
+  }
+}
 
 // Ca OptionSet values
 const CA_SANG = 283640000; // "Ca sáng"
@@ -465,6 +573,8 @@ export default async function handler(
       warehouseName,
       isVatOrder,
       customerIndustry,
+      customerLoginId,
+      customerId,
       products,
     } = req.body;
 
@@ -487,6 +597,16 @@ export default async function handler(
       "OData-MaxVersion": "4.0",
       "OData-Version": "4.0",
     };
+
+    // Customer id to stamp into lookup columns (owner/created by - lookup Customers)
+    // Prefer login customerId, fallback to selected customerId if provided.
+    const customerIdToStamp = normalizeGuid(customerLoginId) || normalizeGuid(customerId);
+    if (!customerIdToStamp) {
+      console.warn("[Save SOD] customerLoginId/customerId is missing or invalid GUID - skip stamping owner/createdby (lookup Customers)", {
+        customerLoginId,
+        customerId,
+      });
+    }
 
     // ============ KIỂM TRA TỒN KHO CHO ĐƠN HÀNG KHÔNG VAT ============
     const isNonVatOrder = !isVatOrder;
@@ -770,6 +890,14 @@ export default async function handler(
           });
           detailId = createResponse.data.crdfd_saleorderdetailid;
           console.log(`[Save SOD] ✅ Created record with ID: ${detailId}`);
+        }
+
+        // Stamp owner/created-by customer (custom lookup columns) if configured
+        await trySetOwnerAndCreatedByCustomer(detailId, customerIdToStamp, headers);
+
+        // Set cr44a_Tensanpham lookup (additional product lookup field)
+        if (finalProductId) {
+          await trySetTensanphamLookup(detailId, finalProductId, headers);
         }
 
         savedDetails.push({ id: detailId, ...product });
