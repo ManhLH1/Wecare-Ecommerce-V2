@@ -34,7 +34,6 @@ const resolveCustomerCodeFromPhone = async (phone: string, headers: Record<strin
       if (item) {
         const code = item.crdfd_makhachhang || item.cr44a_st;
         if (code) {
-          console.log("[promotions] resolved phone -> customerCode", { phone, variant: v, code });
           return code;
         }
       }
@@ -43,7 +42,6 @@ const resolveCustomerCodeFromPhone = async (phone: string, headers: Record<strin
     }
   }
 
-  console.log("[promotions] resolve phone failed, fallback to phone", { phone, variants });
   return phone;
 };
 
@@ -131,13 +129,6 @@ export default async function handler(
         resolvedCustomerCodes.push(code);
       }
     }
-
-    // Debug logs
-    console.log("[promotions] raw productCode:", productCode);
-    console.log("[promotions] parsed productCodes:", productCodes);
-    console.log("[promotions] raw customerCode:", customerCode);
-    console.log("[promotions] raw customerCodes:", customerCodes);
-    console.log("[promotions] resolvedCustomerCodes:", resolvedCustomerCodes);
 
     if (resolvedCustomerCodes.length > 0) {
       const customerFilter = resolvedCustomerCodes

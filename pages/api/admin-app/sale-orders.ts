@@ -62,13 +62,7 @@ export default async function handler(
 
     const endpoint = `${BASE_URL}${SALE_ORDER_TABLE}?${query}`;
 
-    console.log('Fetching sale orders from:', endpoint);
-    console.log('Filter:', filter);
-    console.log('CustomerId:', customerId);
-
     const response = await axios.get(endpoint, { headers });
-
-    console.log('Sale orders response count:', response.data.value?.length || 0);
 
     const saleOrders = (response.data.value || []).map((item: any) => {
       // Try different possible field names for ID
@@ -82,8 +76,6 @@ export default async function handler(
         cr1bb_loaihoaon: item.cr1bb_loaihoaon ?? null
       };
     });
-
-    console.log('Mapped sale orders count:', saleOrders.length);
 
     res.status(200).json(saleOrders);
   } catch (error: any) {

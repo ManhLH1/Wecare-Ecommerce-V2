@@ -43,10 +43,6 @@ export default async function handler(
 
     const endpoint = `${BASE_URL}${UNIT_CONVERSION_TABLE}?${query}`;
 
-    console.log('Fetching units from:', endpoint);
-    console.log('ProductCode:', productCode);
-    console.log('Filter:', filter);
-
     const response = await axios.get(endpoint, { headers });
 
     // Map the response to get unit information
@@ -72,8 +68,6 @@ export default async function handler(
         }
         return acc;
       }, []);
-
-    console.log('Units response count:', units.length);
 
     res.status(200).json(units);
   } catch (error: any) {

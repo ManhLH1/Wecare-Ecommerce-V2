@@ -98,22 +98,12 @@ export default async function handler(
         )}&$top=1`;
         const endpoint = `${BASE_URL}${INVENTORY_TABLE}?${query}`;
         
-        console.log(`[Inventory API] Querying: ${endpoint}`);
         const response = await axios.get(endpoint, { headers });
         const results = response.data.value || [];
         const first = results[0];
         
-        console.log(`[Inventory API] Results count: ${results.length}`, {
-          productCode: safeCode,
-          warehouseName: safeWarehouse,
-          found: !!first,
-          theoreticalStock: first?.cr44a_soluongtonlythuyet,
-          actualStock: first?.cr44a_soluongtonthucte,
-        });
-        
         // If no result with warehouse filter, try without warehouse filter
         if (!first && safeWarehouse) {
-          console.log(`[Inventory API] No result with warehouse filter, trying without warehouse...`);
           const fallbackFilter = `${codeField} eq '${safeCode}' and statecode eq 0`;
           const fallbackQuery = `$select=${columns}&$filter=${encodeURIComponent(
             fallbackFilter
@@ -124,10 +114,6 @@ export default async function handler(
           const fallbackFirst = fallbackResults[0];
           
           if (fallbackFirst) {
-            console.log(`[Inventory API] Found result without warehouse filter:`, {
-              theoreticalStock: fallbackFirst?.cr44a_soluongtonlythuyet,
-              warehouseName: fallbackFirst?.cr1bb_vitrikhotext,
-            });
             return {
               productCode:
                 (preferCrdfd ? fallbackFirst?.crdfd_masanpham : fallbackFirst?.cr44a_masanpham) ||

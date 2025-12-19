@@ -343,3 +343,34 @@ export const saveSaleOrderDetails = async (
   }
 };
 
+// Update inventory (trừ/cộng tồn kho)
+export interface UpdateInventoryRequest {
+  productCode: string;
+  quantity: number;
+  warehouseName?: string;
+  operation: 'subtract' | 'add'; // 'subtract' để trừ, 'add' để cộng
+  isVatOrder?: boolean; // true = VAT order (Kho Bình Định), false = non-VAT (Inventory)
+}
+
+export interface UpdateInventoryResponse {
+  success: boolean;
+  message: string;
+  inventoryUpdated?: boolean;
+  khoBDUpdated?: boolean;
+}
+
+export const updateInventory = async (
+  data: UpdateInventoryRequest
+): Promise<UpdateInventoryResponse> => {
+  try {
+    const response = await axios.post(`${BASE_URL}/update-inventory`, data);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error updating inventory:', error);
+    if (error.response?.data) {
+      throw new Error(error.response.data.message || 'Failed to update inventory');
+    }
+    throw error;
+  }
+};
+
