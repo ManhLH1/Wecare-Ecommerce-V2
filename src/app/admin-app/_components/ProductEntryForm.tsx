@@ -226,23 +226,12 @@ export default function ProductEntryForm({
     const hasPriceFromApi = apiPrice !== null && apiPrice !== undefined && apiPrice > 0;
     const hasPrice = hasPriceInInput || hasPriceFromApi;
 
-    console.log('🔍 [Price Warning] Checking price:', {
-      priceInput: price,
-      normalizedPrice,
-      hasPriceInInput,
-      apiPrice,
-      hasPriceFromApi,
-      hasPrice,
-    });
-
     if (hasPrice) {
-      console.log('✅ [Price Warning] Price exists - returning "Giá bình thường"');
       return 'Giá bình thường';
     }
 
     const unitText = unit || 'đơn vị này';
     const warningMsg = `Sản phẩm chưa báo giá cho đơn vị ${unitText} !!`;
-    console.log(`❌ [Price Warning] No price found - returning: "${warningMsg}"`);
     return warningMsg;
   }, [vatText, vatPercent, warehouse, inventoryTheoretical, selectedProduct, price, unit, apiPrice]);
 
@@ -480,23 +469,12 @@ export default function ProductEntryForm({
 
   // Disable logic for Add/Save buttons mapped from the provided PowerApps expression
   const buttonsDisabled = useMemo(() => {
-    console.log('🔍 [Button Disable Check] Starting evaluation...', {
-      isFormDisabled,
-      approvePrice,
-      approver,
-      selectedProductCode,
-      warehouse,
-      quantity,
-    });
-
     if (isFormDisabled) {
-      console.log('❌ [Button Disabled] Form is disabled (missing customer or SO)');
       return true;
     }
 
     // Duyệt giá => bắt buộc chọn Người duyệt
     if (approvePrice && !approver) {
-      console.log('❌ [Button Disabled] Approve price is checked but no approver selected');
       return true;
     }
 
@@ -507,15 +485,7 @@ export default function ProductEntryForm({
     const isAllowedCustomer =
       customerNameNorm === 'kho wecare' || customerNameNorm === 'kho wecare (ho chi minh)';
 
-    console.log('📋 [Check 1] Product Group & Customer:', {
-      productGroupCode,
-      isAllowedGroup,
-      customerNameNorm,
-      isAllowedCustomer,
-    });
-
     if (isAllowedGroup || isAllowedCustomer) {
-      console.log('✅ [Button Enabled] Allowed product group or customer');
       return false;
     }
 
@@ -526,13 +496,7 @@ export default function ProductEntryForm({
       normalizeText(String(orderType)) === 'don hang khuyen mai' ||
       normalizeText(String(orderType)) === 'đon hang khuyen mai';
 
-    console.log('📋 [Check 2] Promotion Order:', {
-      orderType,
-      isPromoOrder,
-    });
-
     if (isPromoOrder) {
-      console.log('✅ [Button Enabled] Promotion order');
       return false;
     }
 
@@ -555,40 +519,14 @@ export default function ProductEntryForm({
     const inv = inventoryTheoretical ?? 0;
     const stockInvalid = inv <= 0 || requestedQty > inv;
 
-    console.log('📋 [Check 3] Price & Inventory:', {
-      priceWarningMessage,
-      isVatMismatchWarning,
-      hasPriceWarning,
-      vatTextLower,
-      isNonVatOrder,
-      warehouseNameNorm,
-      isKhoBinhDinh,
-      requestedQty,
-      inv,
-      stockInvalid,
-    });
-
     // Không chặn theo tồn kho cho đơn VAT
     const shouldBlockByStock = !isVatOrder && stockInvalid;
 
     // Kiểm tra tồn kho cho đơn Không VAT; VAT chỉ xét cảnh báo giá
     if (hasPriceWarning || shouldBlockByStock) {
-      console.log('❌ [Button Disabled] Price warning or stock invalid:', {
-        hasPriceWarning,
-        priceWarningMessage,
-        isVatMismatchWarning,
-        shouldBlockByStock,
-        isVatOrder,
-        isNonVatOrder,
-        requestedQty,
-        inv,
-        stockInvalid,
-        reason: hasPriceWarning ? 'Price warning' : shouldBlockByStock ? 'Stock invalid' : 'Unknown',
-      });
       return true;
     }
 
-    console.log('✅ [Button Enabled] All checks passed - button is enabled');
     return false;
   }, [
     isFormDisabled,
@@ -625,31 +563,26 @@ export default function ProductEntryForm({
 
     if (isFormDisabled) {
       const reason = 'Chọn KH và SO trước';
-      console.log(`❌ [Button Disabled Reason] ${reason}`);
       return reason;
     }
 
     // Duyệt giá => bắt buộc chọn Người duyệt
     if (approvePrice && !approver) {
       const reason = 'Vui lòng chọn Người duyệt';
-      console.log(`❌ [Button Disabled Reason] ${reason}`);
       return reason;
     }
 
     // Các điều kiện cơ bản để thêm sản phẩm
     if (!selectedProductCode) {
       const reason = 'Vui lòng chọn sản phẩm';
-      console.log(`❌ [Button Disabled Reason] ${reason}`);
       return reason;
     }
     if (!warehouse) {
       const reason = 'Vui lòng chọn kho';
-      console.log(`❌ [Button Disabled Reason] ${reason}`);
       return reason;
     }
     if (!quantity || quantity <= 0) {
       const reason = 'Số lượng phải > 0';
-      console.log(`❌ [Button Disabled Reason] ${reason}`);
       return reason;
     }
 
@@ -658,7 +591,6 @@ export default function ProductEntryForm({
     const hasPriceWarning =
       priceWarningMessage && priceWarningMessage !== 'Giá bình thường' && !isVatMismatchWarning;
     if (hasPriceWarning) {
-      console.log(`❌ [Button Disabled Reason] Price warning: ${priceWarningMessage}`);
       return priceWarningMessage;
     }
 
@@ -674,17 +606,10 @@ export default function ProductEntryForm({
       const reason = inv <= 0 
         ? 'Sản phẩm hết tồn kho'
         : `Không đủ tồn kho (còn ${inv.toLocaleString('vi-VN')} / cần ${requestedQty.toLocaleString('vi-VN')})`;
-      console.log(`❌ [Button Disabled Reason] Stock issue: ${reason}`, {
-        inv,
-        requestedQty,
-        isVatOrder,
-        stockInvalid,
-      });
       return reason;
     }
 
     const reason = 'Không đủ điều kiện';
-    console.log(`❌ [Button Disabled Reason] ${reason} (fallback)`);
     return reason;
   }, [
     buttonsDisabled,
@@ -721,14 +646,6 @@ export default function ProductEntryForm({
 
   // Function to load inventory
   const loadInventory = async () => {
-    console.log('🔍 [Load Inventory] Starting...', {
-      selectedProductCode,
-      warehouse,
-      vatText,
-      shouldBypassInventoryCheck,
-      selectedProductGroupCode,
-    });
-
     // Xác định nguồn tồn kho theo VAT của Sales Order:
     // - "Có VAT"  → Kho Bình Định
     // - "Không VAT" (hoặc còn lại) → Inventory Weshops
@@ -739,7 +656,6 @@ export default function ProductEntryForm({
 
     if (shouldBypassInventoryCheck) {
       const message = `Bỏ qua kiểm tra tồn kho (nhóm SP: ${selectedProductGroupCode || '—'})`;
-      console.log('✅ [Load Inventory] Bypass check:', message);
       setInventoryTheoretical(0);
       setStockQuantity(0);
       setInventoryMessage(message);
@@ -753,11 +669,6 @@ export default function ProductEntryForm({
         : !selectedProductCode && warehouse
         ? 'Chọn sản phẩm để xem tồn kho'
         : `${labelPrefix} 0`;
-      console.log('⚠️ [Load Inventory] Missing required fields:', {
-        selectedProductCode: !!selectedProductCode,
-        warehouse: !!warehouse,
-        message,
-      });
       setInventoryTheoretical(0);
       setStockQuantity(0);
       setInventoryMessage(message);
@@ -767,19 +678,11 @@ export default function ProductEntryForm({
 
     try {
       setInventoryLoading(true);
-      console.log('📡 [Load Inventory] Fetching from API...', {
-        selectedProductCode,
-        warehouse,
-        isVatOrder,
-        sourceText,
-      });
 
       const result = await fetchInventory(selectedProductCode, warehouse, isVatOrder);
-      console.log('📥 [Load Inventory] API response:', result);
 
       if (!result) {
         const message = `${sourceText} không có sản phẩm này`;
-        console.log('⚠️ [Load Inventory] No result from API:', message);
         setInventoryTheoretical(0);
         setStockQuantity(0);
         setInventoryMessage(message);
@@ -789,11 +692,6 @@ export default function ProductEntryForm({
 
       const theoretical = result.theoreticalStock ?? 0;
       const message = `${labelPrefix} ${theoretical.toLocaleString('vi-VN')}`;
-      console.log('✅ [Load Inventory] Success:', {
-        theoretical,
-        message,
-        color: theoretical <= 0 ? 'red' : undefined,
-      });
 
       setInventoryTheoretical(theoretical);
       setStockQuantity(theoretical);
@@ -903,15 +801,6 @@ export default function ProductEntryForm({
       // Determine if this is a VAT order
       const isVatOrder = vatPercent > 0 || (vatText?.toLowerCase().includes('có vat') ?? false);
 
-      console.log('🔍 [Load Price] Fetching price from API...', {
-        selectedProductCode,
-        customerCode,
-        unitId,
-        isVatOrder,
-        vatPercent,
-        vatText,
-      });
-
       // Pass isVatOrder to price API
       const result = await fetchProductPrice(
         selectedProductCode,
@@ -920,8 +809,6 @@ export default function ProductEntryForm({
         undefined, // region filter removed
         isVatOrder       // VAT status
       );
-
-      console.log('📥 [Load Price] API response:', result);
 
       // Determine which price field to use based on "Bản chất giá phát ra" from selected product
       const selectedProduct = products.find((p) => p.crdfd_masanpham === selectedProductCode);
@@ -966,25 +853,8 @@ export default function ProductEntryForm({
       // Lưu giá từ API để check warning (dù có set vào input hay không)
       if (roundedBase !== null && roundedBase !== undefined && roundedBase > 0) {
         setApiPrice(roundedBase);
-        console.log('✅ [Load Price] API returned price:', {
-          price: roundedBase,
-          priceWithVat,
-          priceNoVat,
-          priceNature,
-          isVatOrder,
-          displayPrice,
-          priceStr,
-        });
       } else {
         setApiPrice(null);
-        console.log('⚠️ [Load Price] API returned no valid price:', {
-          priceWithVat,
-          priceNoVat,
-          priceNature,
-          isVatOrder,
-          displayPrice,
-          priceStr,
-        });
       }
       
       if (priceStr !== '') {
@@ -1110,9 +980,6 @@ export default function ProductEntryForm({
       // If selectedProductCode still exists after add, reload price
       // This handles the case where form resets price but product selection remains
       if (selectedProductCode) {
-        console.log('🔄 [Add Product] Reloading price after add (product still selected)...', {
-          selectedProductCode,
-        });
         setShouldReloadPrice(prev => prev + 1); // Trigger reload
       }
     }, 150);

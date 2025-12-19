@@ -51,8 +51,6 @@ export default async function handler(
     const customerQuery = `$select=${customerColumns}&$filter=${encodeURIComponent(customerFilter)}&${customerExpand}`;
     const customerEndpoint = `${BASE_URL}${CUSTOMER_TABLE}?${customerQuery}`;
 
-    console.log('Fetching customer from:', customerEndpoint);
-
     const customerResponse = await axios.get(customerEndpoint, { headers });
     const customers = customerResponse.data.value || [];
 
@@ -100,10 +98,6 @@ export default async function handler(
       }
     }
 
-    console.log('Main warehouse:', mainWarehouseName);
-    console.log('Sub warehouses raw:', subWarehousesRaw);
-    console.log('Sub warehouse names:', subWarehouseNames);
-
     // Step 2: Filter Kho WECARE
     // Logic: 'Tên kho' = Vị trí kho chính OR 'Tên kho' in danh sách Vị trí kho phụ
     let warehouseFilter = "statecode eq 0";
@@ -131,9 +125,6 @@ export default async function handler(
     const warehouseQuery = `$select=${warehouseColumns}&$filter=${encodeURIComponent(warehouseFilter)}&$orderby=crdfd_name&$top=500`;
     const warehouseEndpoint = `${BASE_URL}${WAREHOUSE_TABLE}?${warehouseQuery}`;
 
-    console.log('Fetching warehouses from:', warehouseEndpoint);
-    console.log('Warehouse filter:', warehouseFilter);
-
     const warehouseResponse = await axios.get(warehouseEndpoint, { headers });
 
     const warehouses = (warehouseResponse.data.value || []).map((item: any) => ({
@@ -141,8 +132,6 @@ export default async function handler(
       crdfd_name: item.crdfd_name || "",
       crdfd_makho: item.crdfd_makho || "",
     }));
-
-    console.log('Warehouses response count:', warehouses.length);
 
     res.status(200).json(warehouses);
   } catch (error: any) {

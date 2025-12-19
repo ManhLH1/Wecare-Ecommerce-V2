@@ -41,7 +41,6 @@ export default async function handler(
       filter
     )}&$orderby=crdfd_name&$top=100`;
     const endpoint = `${BASE_URL}${CUSTOMER_TABLE}?${query}`;
-    console.log("Customer query:", endpoint);
 
     const response = await axios.get(endpoint, { headers });
 

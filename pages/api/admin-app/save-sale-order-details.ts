@@ -637,7 +637,7 @@ export default async function handler(
         crdfd_thue: product.vatAmount, // Thuế (GTGT amount)
         crdfd_tongtienchuavat: product.subtotal,
         crdfd_tongtiencovat: product.totalAmount,
-        crdfd_chieckhau: product.discountPercent ?? 0,
+        crdfd_chieckhau: product.discountPercent ? product.discountPercent / 100 : 0, // Chuyển từ phần trăm (4%) sang thập phân (0.04)
         crdfd_chieckhauvn: product.discountAmount ?? 0,
         crdfd_chieckhau2: 0,
         crdfd_phuphi_hoadon: product.invoiceSurcharge ?? 0,
@@ -703,9 +703,6 @@ export default async function handler(
       const tyleChuyenDoi = await lookupTyleChuyenDoi(finalUnitId, product.productCode, product.unit, headers);
       if (tyleChuyenDoi !== null && tyleChuyenDoi !== undefined) {
         payload.crdfd_tylechuyenoi = tyleChuyenDoi;
-        console.log(`[Save SOD] ✅ Setting crdfd_tylechuyenoi: ${tyleChuyenDoi} for product ${product.productCode}`);
-      } else {
-        console.log(`[Save SOD] ⚠️ No tyleChuyenDoi found for unitId: ${finalUnitId}, productCode: ${product.productCode}, unit: ${product.unit}`);
       }
 
       // Tính ngày giao mới (crdfd_exdeliverynew) và ca làm việc (cr1bb_ca) dựa trên lead time logic
@@ -719,12 +716,10 @@ export default async function handler(
       
       if (deliveryDateNew) {
         payload.crdfd_exdeliverynew = deliveryDateNew;
-        console.log(`[Save SOD] ✅ Setting crdfd_exdeliverynew: ${deliveryDateNew} for product ${product.productCode}`);
       }
       
       if (shift !== null) {
         payload.cr1bb_ca = shift;
-        console.log(`[Save SOD] ✅ Setting cr1bb_ca: ${shift === CA_SANG ? 'Ca sáng' : 'Ca chiều'} for product ${product.productCode}`);
       }
 
       // Add approver if available
@@ -753,19 +748,15 @@ export default async function handler(
         if (product.id) {
           // Update existing record
           const updateEndpoint = `${BASE_URL}${SALE_ORDER_DETAILS_TABLE}(${product.id})`;
-          console.log(`[Save SOD] Updating record ${product.id}:`, JSON.stringify(payload, null, 2));
           await axios.patch(updateEndpoint, payload, { headers });
           detailId = product.id;
-          console.log(`[Save SOD] ✅ Successfully updated record ${product.id}`);
         } else {
           // Create new record
           const createEndpoint = `${BASE_URL}${SALE_ORDER_DETAILS_TABLE}`;
-          console.log(`[Save SOD] Creating new record:`, JSON.stringify(payload, null, 2));
           const createResponse = await axios.post(createEndpoint, payload, {
             headers,
           });
           detailId = createResponse.data.crdfd_saleorderdetailid;
-          console.log(`[Save SOD] ✅ Created record with ID: ${detailId}`);
         }
 
         // Stamp owner/created-by customer (custom lookup columns) if configured
@@ -804,7 +795,6 @@ export default async function handler(
     // ============ KHÔNG CẬP NHẬT TỒN KHO KHI SAVE ============
     // Tồn kho đã được trừ khi add sản phẩm vào danh sách
     // Khi save chỉ lưu vào CRM, không động tới tồn kho nữa
-    console.log(`[Update Inventory] Skipping inventory update on save - inventory was already updated when products were added to the list`);
 
     const soUpdateEndpoint = `${BASE_URL}${SALE_ORDERS_TABLE}(${soId})`;
 
