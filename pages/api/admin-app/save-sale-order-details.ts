@@ -347,12 +347,14 @@ async function lookupTyleChuyenDoi(
   return null;
 }
 
-// Helper function to update inventory after saving SOD
-// This function uses optimistic locking: re-check inventory before update to prevent negative stock
+// Helper function to update inventory after saving SOD (Bước 3: Chốt đơn - Hard Locking)
+// This function uses atomic operation: re-check inventory right before update to prevent negative stock
+// Sử dụng hệ thống giữ hàng: CurrentInventory và ReservedQuantity
 async function updateInventoryAfterSale(
   productCode: string,
   quantity: number,
   warehouseName: string | undefined,
+  isVatOrder: boolean,
   headers: any
 ): Promise<void> {
   if (!productCode || !warehouseName) {
@@ -363,89 +365,120 @@ async function updateInventoryAfterSale(
   const safeWarehouse = warehouseName.trim().replace(/'/g, "''");
 
   try {
-    // 1. Update cr44a_inventoryweshops - cr44a_soluongtonlythuyet
-    // Sử dụng cr44a_masanpham để query inventory
-    // IMPORTANT: Re-check inventory right before update to prevent race condition
-    let invFilter = `cr44a_masanpham eq '${safeCode}' and statecode eq 0`;
-    if (safeWarehouse) {
-      invFilter += ` and cr1bb_vitrikhotext eq '${safeWarehouse}'`;
-    }
-    const invColumns = "cr44a_inventoryweshopid,cr44a_soluongtonlythuyet,cr1bb_vitrikhotext";
-    const invQuery = `$select=${invColumns}&$filter=${encodeURIComponent(invFilter)}&$top=1`;
-    const invEndpoint = `${BASE_URL}${INVENTORY_TABLE}?${invQuery}`;
-    
-    const invResponse = await axios.get(invEndpoint, { headers });
-    const invResults = invResponse.data.value || [];
-    
-    let invRecord = null;
-    if (invResults.length > 0) {
-      invRecord = invResults[0];
-    } else if (safeWarehouse) {
-      // Nếu không tìm thấy với warehouse filter, thử lại không có warehouse filter
-      const fallbackFilter = `cr44a_masanpham eq '${safeCode}' and statecode eq 0`;
-      const fallbackQuery = `$select=${invColumns}&$filter=${encodeURIComponent(fallbackFilter)}&$top=1`;
-      const fallbackEndpoint = `${BASE_URL}${INVENTORY_TABLE}?${fallbackQuery}`;
-      const fallbackResponse = await axios.get(fallbackEndpoint, { headers });
-      const fallbackResults = fallbackResponse.data.value || [];
-      if (fallbackResults.length > 0) {
-        invRecord = fallbackResults[0];
+    // 1. Update cr44a_inventoryweshops (for non-VAT orders)
+    if (!isVatOrder) {
+      // IMPORTANT: Re-check inventory right before update to prevent race condition
+      let invFilter = `cr44a_masanpham eq '${safeCode}' and statecode eq 0`;
+      if (safeWarehouse) {
+        invFilter += ` and cr1bb_vitrikhotext eq '${safeWarehouse}'`;
       }
-    }
-    
-    if (invRecord && invRecord.cr44a_inventoryweshopid) {
-      // RE-CHECK: Get fresh inventory value right before update (optimistic locking)
-      const currentStock = invRecord.cr44a_soluongtonlythuyet ?? 0;
+      // Query cả ReservedQuantity để release
+      const invColumns = "cr44a_inventoryweshopid,cr44a_soluongtonlythuyet,cr1bb_soluonglythuyetgiuathang,cr1bb_vitrikhotext";
+      const invQuery = `$select=${invColumns}&$filter=${encodeURIComponent(invFilter)}&$top=1`;
+      const invEndpoint = `${BASE_URL}${INVENTORY_TABLE}?${invQuery}`;
       
-      // Check if sufficient stock before updating
-      if (currentStock < quantity) {
-        const errorMessage = `Không đủ tồn kho! Sản phẩm ${productCode} có tồn kho: ${currentStock}, yêu cầu: ${quantity}`;
-        throw new Error(errorMessage);
+      // RE-CHECK: Get fresh inventory value right before update (atomic operation)
+      const invResponse = await axios.get(invEndpoint, { headers });
+      const invResults = invResponse.data.value || [];
+      
+      let invRecord = null;
+      if (invResults.length > 0) {
+        invRecord = invResults[0];
+      } else if (safeWarehouse) {
+        // Nếu không tìm thấy với warehouse filter, thử lại không có warehouse filter
+        const fallbackFilter = `cr44a_masanpham eq '${safeCode}' and statecode eq 0`;
+        const fallbackQuery = `$select=${invColumns}&$filter=${encodeURIComponent(fallbackFilter)}&$top=1`;
+        const fallbackEndpoint = `${BASE_URL}${INVENTORY_TABLE}?${fallbackQuery}`;
+        const fallbackResponse = await axios.get(fallbackEndpoint, { headers });
+        const fallbackResults = fallbackResponse.data.value || [];
+        if (fallbackResults.length > 0) {
+          invRecord = fallbackResults[0];
+        }
       }
+      
+      if (invRecord && invRecord.cr44a_inventoryweshopid) {
+        const currentInventory = invRecord.cr44a_soluongtonlythuyet ?? 0;
+        const reservedQuantity = invRecord.cr1bb_soluonglythuyetgiuathang ?? 0;
+        
+        // Atomic check: CurrentInventory >= quantity
+        if (currentInventory < quantity) {
+          const errorMessage = `Không đủ tồn kho để chốt đơn! Sản phẩm ${productCode} có tồn kho: ${currentInventory}, yêu cầu: ${quantity}`;
+          throw new Error(errorMessage);
+        }
 
-      const newStock = currentStock - quantity; // Đã check >= quantity ở trên nên không cần Math.max
+        // Update: CurrentInventory -= quantity, ReservedQuantity -= quantity (trả lại số giữ tồn)
+        const newCurrentInventory = currentInventory - quantity;
+        const newReservedQuantity = Math.max(0, reservedQuantity - quantity);
 
-      const updateInvEndpoint = `${BASE_URL}${INVENTORY_TABLE}(${invRecord.cr44a_inventoryweshopid})`;
+        const updateInvEndpoint = `${BASE_URL}${INVENTORY_TABLE}(${invRecord.cr44a_inventoryweshopid})`;
 
-      await axios.patch(
-        updateInvEndpoint,
-        { cr44a_soluongtonlythuyet: newStock },
-        { headers }
-      );
+        await axios.patch(
+          updateInvEndpoint,
+          { 
+            cr44a_soluongtonlythuyet: newCurrentInventory,
+            cr1bb_soluonglythuyetgiuathang: newReservedQuantity
+          },
+          { headers }
+        );
+      }
     }
 
-    // 2. Update crdfd_kho_binh_dinhs - crdfd_tonkholythuyet
-    // RE-CHECK: Query fresh data right before update
-    let khoBDFilter = `crdfd_masp eq '${safeCode}' and statecode eq 0`;
-    if (safeWarehouse) {
-      khoBDFilter += ` and crdfd_vitrikhofx eq '${safeWarehouse}'`;
-    }
-    const khoBDColumns = "crdfd_kho_binh_dinhid,crdfd_tonkholythuyet,crdfd_vitrikhofx";
-    const khoBDQuery = `$select=${khoBDColumns}&$filter=${encodeURIComponent(khoBDFilter)}&$top=1`;
-    const khoBDEndpoint = `${BASE_URL}${KHO_BD_TABLE}?${khoBDQuery}`;
+    // 2. Update crdfd_kho_binh_dinhs (for VAT orders)
+    // CurrentInventory = cr1bb_tonkholythuyetbomua (hoặc crdfd_tonkholythuyet)
+    // ReservedQuantity = cr1bb_soluonganggiuathang (cột giữ hàng ở Kho Bình Định)
+    if (isVatOrder) {
+      // RE-CHECK: Query fresh data right before update (atomic operation)
+      let khoBDFilter = `crdfd_masp eq '${safeCode}' and statecode eq 0`;
+      if (safeWarehouse) {
+        khoBDFilter += ` and crdfd_vitrikhofx eq '${safeWarehouse}'`;
+      }
+      const khoBDColumns = "crdfd_kho_binh_dinhid,cr1bb_tonkholythuyetbomua,crdfd_tonkholythuyet,cr1bb_soluonganggiuathang,crdfd_vitrikhofx";
+      const khoBDQuery = `$select=${khoBDColumns}&$filter=${encodeURIComponent(khoBDFilter)}&$top=1`;
+      const khoBDEndpoint = `${BASE_URL}${KHO_BD_TABLE}?${khoBDQuery}`;
 
-    const khoBDResponse = await axios.get(khoBDEndpoint, { headers });
-    const khoBDResults = khoBDResponse.data.value || [];
-    
-    if (khoBDResults.length > 0) {
-      const khoBDRecord = khoBDResults[0];
       // RE-CHECK: Get fresh inventory value right before update
-      const currentStockBD = khoBDRecord.crdfd_tonkholythuyet ?? 0;
+      const khoBDResponse = await axios.get(khoBDEndpoint, { headers });
+      const khoBDResults = khoBDResponse.data.value || [];
       
-      // Check if sufficient stock before updating
-      if (currentStockBD < quantity) {
-        const errorMessage = `Không đủ tồn kho (Kho Bình Định)! Sản phẩm ${productCode} có tồn kho: ${currentStockBD}, yêu cầu: ${quantity}`;
-        throw new Error(errorMessage);
+      if (khoBDResults.length > 0) {
+        const khoBDRecord = khoBDResults[0];
+        // CurrentInventory = cr1bb_tonkholythuyetbomua (ưu tiên), fallback về crdfd_tonkholythuyet
+        let currentInventory = khoBDRecord.cr1bb_tonkholythuyetbomua ?? 0;
+        if (currentInventory === 0 && khoBDRecord.crdfd_tonkholythuyet) {
+          currentInventory = khoBDRecord.crdfd_tonkholythuyet ?? 0;
+        }
+        const reservedQuantity = khoBDRecord.cr1bb_soluonganggiuathang ?? 0;
+        
+        // Atomic check: CurrentInventory >= quantity
+        if (currentInventory < quantity) {
+          const errorMessage = `Không đủ tồn kho để chốt đơn (Kho Bình Định)! Sản phẩm ${productCode} có tồn kho: ${currentInventory}, yêu cầu: ${quantity}`;
+          throw new Error(errorMessage);
+        }
+
+        // Update: CurrentInventory -= quantity, ReservedQuantity -= quantity (giải phóng đặt giữ)
+        const newCurrentInventory = currentInventory - quantity;
+        const newReservedQuantity = Math.max(0, reservedQuantity - quantity);
+
+        const updateKhoBDEndpoint = `${BASE_URL}${KHO_BD_TABLE}(${khoBDRecord.crdfd_kho_binh_dinhid})`;
+
+        // Update cả CurrentInventory và ReservedQuantity
+        // Sử dụng field tương ứng với CurrentInventory đã lấy
+        const updatePayload: any = {
+          cr1bb_soluonganggiuathang: newReservedQuantity
+        };
+        // Update field CurrentInventory tương ứng
+        if (khoBDRecord.cr1bb_tonkholythuyetbomua !== undefined) {
+          updatePayload.cr1bb_tonkholythuyetbomua = newCurrentInventory;
+        } else if (khoBDRecord.crdfd_tonkholythuyet !== undefined) {
+          updatePayload.crdfd_tonkholythuyet = newCurrentInventory;
+        }
+
+        await axios.patch(
+          updateKhoBDEndpoint,
+          updatePayload,
+          { headers }
+        );
       }
-
-      const newStockBD = currentStockBD - quantity; // Đã check >= quantity ở trên
-
-      const updateKhoBDEndpoint = `${BASE_URL}${KHO_BD_TABLE}(${khoBDRecord.crdfd_kho_binh_dinhid})`;
-
-      await axios.patch(
-        updateKhoBDEndpoint,
-        { crdfd_tonkholythuyet: newStockBD },
-        { headers }
-      );
     }
   } catch (error: any) {
     // Throw error để caller có thể xử lý (rollback SOD nếu cần)
@@ -792,9 +825,41 @@ export default async function handler(
       }
     }
 
-    // ============ KHÔNG CẬP NHẬT TỒN KHO KHI SAVE ============
-    // Tồn kho đã được trừ khi add sản phẩm vào danh sách
-    // Khi save chỉ lưu vào CRM, không động tới tồn kho nữa
+    // ============ CẬP NHẬT TỒN KHO KHI SAVE ĐƠN HÀNG (Bước 3: Chốt đơn) ============
+    // Khi save: Trả lại số giữ tồn cũ (release reserved quantity) và trừ tồn kho (final operation)
+    // Sử dụng atomic operation để đảm bảo tính nguyên tố
+    if (hasWarehouseName) {
+      // Atomic check và cập nhật tồn kho cho từng sản phẩm trong danh sách
+      for (const product of products) {
+        if (product.productCode && product.quantity > 0) {
+          try {
+            // updateInventoryAfterSale sẽ:
+            // 1. Release reserved quantity (trả lại số giữ tồn cũ)
+            // 2. Trừ tồn kho (final operation)
+            await updateInventoryAfterSale(
+              product.productCode,
+              product.quantity,
+              warehouseName,
+              !isNonVatOrder, // isVatOrder
+              headers
+            );
+            console.log(`✅ [Inventory] Đã chốt tồn kho cho ${product.productCode}: trả lại ${product.quantity} giữ tồn và trừ ${product.quantity} tồn kho`);
+          } catch (invError: any) {
+            // Nếu cập nhật tồn kho thất bại, rollback SOD đã tạo
+            console.error(`❌ [Inventory] Lỗi khi chốt tồn kho cho ${product.productCode}:`, invError);
+            throw {
+              message: `Không thể chốt tồn kho cho sản phẩm ${product.productName || product.productCode}`,
+              details: invError.message,
+              product: {
+                productCode: product.productCode,
+                productName: product.productName,
+                quantity: product.quantity
+              }
+            };
+          }
+        }
+      }
+    }
 
     const soUpdateEndpoint = `${BASE_URL}${SALE_ORDERS_TABLE}(${soId})`;
 

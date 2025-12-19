@@ -49,6 +49,9 @@ export default async function handler(
 
     if (useKhoBinhDinh) {
       // Query Kho Bình Định
+      // CurrentInventory = cr1bb_tonkholythuyetbomua (hoặc crdfd_tonkholythuyet)
+      // ReservedQuantity = cr1bb_soluonganggiuathang (cột giữ hàng ở Kho Bình Định)
+      // AvailableToSell = CurrentInventory - ReservedQuantity
       let filter = `crdfd_masp eq '${productCode.trim()}' and statecode eq 0`;
       if (
         warehouseName &&
@@ -58,22 +61,36 @@ export default async function handler(
         const safeName = warehouseName.trim().replace(/'/g, "''");
         filter += ` and crdfd_vitrikhofx eq '${safeName}'`;
       }
+      // Query với cr1bb_tonkholythuyetbomua (CurrentInventory) và cr1bb_soluonganggiuathang (ReservedQuantity)
       const columns =
-        "crdfd_kho_binh_dinhid,crdfd_masp,cr1bb_tonkholythuyetbomua,crdfd_vitrikhofx";
+        "crdfd_kho_binh_dinhid,crdfd_masp,cr1bb_tonkholythuyetbomua,crdfd_tonkholythuyet,cr1bb_soluonganggiuathang,crdfd_vitrikhofx";
       const query = `$select=${columns}&$filter=${encodeURIComponent(
         filter
       )}&$top=1`;
       const endpoint = `${BASE_URL}${KHO_BD_TABLE}?${query}`;
       const response = await axios.get(endpoint, { headers });
       const first = (response.data.value || [])[0];
+      
+      // CurrentInventory = cr1bb_tonkholythuyetbomua (ưu tiên), fallback về crdfd_tonkholythuyet
+      let currentInventory = first?.cr1bb_tonkholythuyetbomua ?? 0;
+      if (currentInventory === 0 && first?.crdfd_tonkholythuyet) {
+        currentInventory = first.crdfd_tonkholythuyet ?? 0;
+      }
+      // ReservedQuantity = cr1bb_soluonganggiuathang (cột giữ hàng ở Kho Bình Định)
+      let reservedQuantity = first?.cr1bb_soluonganggiuathang ?? 0;
+      
+      const availableToSell = currentInventory - reservedQuantity;
+      
       const result = {
         productCode: first?.crdfd_masp || productCode,
         warehouseName:
             first?.crdfd_vitrikhofx ||
           warehouseName ||
           null,
-        theoreticalStock: first?.cr1bb_tonkholythuyetbomua ?? 0,
+        theoreticalStock: currentInventory, // CurrentInventory
         actualStock: null,
+        reservedQuantity: reservedQuantity, // Số lượng đang giữ đơn
+        availableToSell: availableToSell, // AvailableToSell = CurrentInventory - ReservedQuantity
       };
       return res.status(200).json(result);
     } else {
@@ -90,9 +107,11 @@ export default async function handler(
         if (safeWarehouse) {
           filter += ` and cr1bb_vitrikhotext eq '${safeWarehouse}'`;
         }
+        // CurrentInventory = cr44a_soluongtonlythuyet
+        // ReservedQuantity = cr1bb_soluonglythuyetgiuathang (cột giữ hàng ở inventory)
         const columns = preferCrdfd
-          ? "cr44a_inventoryweshopid,crdfd_masanpham,cr44a_soluongtonlythuyet,cr44a_soluongtonthucte,cr1bb_vitrikhotext"
-          : "cr44a_inventoryweshopid,cr44a_masanpham,cr44a_soluongtonlythuyet,cr44a_soluongtonthucte,cr1bb_vitrikhotext";
+          ? "cr44a_inventoryweshopid,crdfd_masanpham,cr44a_soluongtonlythuyet,cr44a_soluongtonthucte,cr1bb_soluonglythuyetgiuathang,cr1bb_vitrikhotext"
+          : "cr44a_inventoryweshopid,cr44a_masanpham,cr44a_soluongtonlythuyet,cr44a_soluongtonthucte,cr1bb_soluonglythuyetgiuathang,cr1bb_vitrikhotext";
         const query = `$select=${columns}&$filter=${encodeURIComponent(
           filter
         )}&$top=1`;
@@ -114,17 +133,29 @@ export default async function handler(
           const fallbackFirst = fallbackResults[0];
           
           if (fallbackFirst) {
+            const theoretical = fallbackFirst?.cr44a_soluongtonlythuyet ?? 0;
+            // ReservedQuantity = cr1bb_soluonglythuyetgiuathang (cột giữ hàng ở inventory)
+            const reserved = fallbackFirst?.cr1bb_soluonglythuyetgiuathang ?? 0;
+            const available = theoretical - reserved;
+            
             return {
               productCode:
                 (preferCrdfd ? fallbackFirst?.crdfd_masanpham : fallbackFirst?.cr44a_masanpham) ||
                 fallbackFirst?.cr44a_masanpham ||
                 productCode,
               warehouseName: fallbackFirst?.cr1bb_vitrikhotext || warehouseName || null,
-              theoreticalStock: fallbackFirst?.cr44a_soluongtonlythuyet ?? 0,
+              theoreticalStock: theoretical,
               actualStock: fallbackFirst?.cr44a_soluongtonthucte ?? 0,
+              reservedQuantity: reserved,
+              availableToSell: available,
             };
           }
         }
+        
+        const theoretical = first?.cr44a_soluongtonlythuyet ?? 0;
+        // ReservedQuantity = cr1bb_soluonglythuyetgiuathang (cột giữ hàng ở inventory)
+        const reserved = first?.cr1bb_soluonglythuyetgiuathang ?? 0;
+        const available = theoretical - reserved;
         
         return {
           productCode:
@@ -132,8 +163,10 @@ export default async function handler(
             first?.cr44a_masanpham ||
             productCode,
           warehouseName: first?.cr1bb_vitrikhotext || warehouseName || null,
-          theoreticalStock: first?.cr44a_soluongtonlythuyet ?? 0,
+          theoreticalStock: theoretical,
           actualStock: first?.cr44a_soluongtonthucte ?? 0,
+          reservedQuantity: reserved,
+          availableToSell: available,
         };
       };
 

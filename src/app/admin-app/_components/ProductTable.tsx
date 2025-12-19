@@ -164,7 +164,15 @@ export default function ProductTable({
                   {showSurchargeColumn && (
                       <td className="admin-app-cell-right">{product.surcharge.toLocaleString('vi-VN')}</td>
                   )}
-                  <td className="admin-app-cell-right">{product.discount.toLocaleString('vi-VN')}</td>
+                  <td className="admin-app-cell-right">
+                    {product.discountPercent !== undefined && product.discountPercent !== null && product.discountPercent > 0
+                      ? `${product.discountPercent}%`
+                      : product.discountAmount !== undefined && product.discountAmount !== null && product.discountAmount > 0
+                      ? product.discountAmount.toLocaleString('vi-VN')
+                      : product.discount !== undefined && product.discount !== null && product.discount > 0
+                      ? product.discount.toLocaleString('vi-VN')
+                      : '-'}
+                  </td>
                   <td className="admin-app-cell-right">{product.vat}%</td>
                     <td className="admin-app-cell-right admin-app-cell-total">{product.totalAmount.toLocaleString('vi-VN')}</td>
                     <td className="admin-app-cell-center" title={`Người duyệt: ${product.approver || '-'}\nNgày giao: ${formatDate(product.deliveryDate)}`}>

@@ -21,12 +21,13 @@ const VAT_OPTION_MAP: Record<number, number> = {
   191920003: 10, // 10%
 };
 
-// Product groups that bypass inventory checks (PowerApps: item.'Mã nhóm SP' <> ... AND ...)
+// Product groups that bypass inventory checks and allow free ordering (PowerApps: item.'Mã nhóm SP' = ...)
 const INVENTORY_BYPASS_PRODUCT_GROUP_CODES = [
   'NSP-00027',
   'NSP-000872',
   'NSP-000409',
   'NSP-000474',
+  'NSP-000873',
 ] as const;
 
 interface ProductEntryFormProps {
@@ -83,6 +84,7 @@ interface ProductEntryFormProps {
   onAdd: () => void;
   onSave: () => void;
   onRefresh: () => void;
+  onInventoryReserved?: () => void; // Callback khi inventory được reserve để trigger reload
 }
 
 export default function ProductEntryForm({
@@ -139,6 +141,7 @@ export default function ProductEntryForm({
   onAdd,
   onSave,
   onRefresh,
+  onInventoryReserved,
 }: ProductEntryFormProps) {
   // Disable form if customer or SO is not selected
   // Check for both null/undefined and empty string
@@ -154,6 +157,9 @@ export default function ProductEntryForm({
   const [inventoryLoading, setInventoryLoading] = useState<boolean>(false);
   const [inventoryMessage, setInventoryMessage] = useState<string>('Tồn kho (inventory): 0');
   const [inventoryColor, setInventoryColor] = useState<string | undefined>(undefined);
+  const [reservedQuantity, setReservedQuantity] = useState<number>(0); // Số lượng đang giữ đơn
+  const [availableToSell, setAvailableToSell] = useState<number | undefined>(undefined); // Số lượng khả dụng
+  const [inventoryRefreshKey, setInventoryRefreshKey] = useState<number>(0); // Key để trigger reload inventory
   const [accountingStock, setAccountingStock] = useState<number | null>(null);
   const [accountingStockLoading, setAccountingStockLoading] = useState<boolean>(false);
   const [priceLoading, setPriceLoading] = useState(false);
@@ -168,6 +174,7 @@ export default function ProductEntryForm({
   const [promotionDiscountPercent, setPromotionDiscountPercent] = useState<number>(0);
   const [apiPrice, setApiPrice] = useState<number | null>(null); // Giá từ API để check warning
   const [shouldReloadPrice, setShouldReloadPrice] = useState<number>(0); // Counter to trigger reload
+  const [isProcessingAdd, setIsProcessingAdd] = useState<boolean>(false); // Flag để ngăn bấm liên tục
 
   const isVatSo = useMemo(() => {
     const vatTextLower = (vatText || '').toLowerCase();
@@ -399,26 +406,43 @@ export default function ProductEntryForm({
     return (INVENTORY_BYPASS_PRODUCT_GROUP_CODES as readonly string[]).includes(selectedProductGroupCode);
   }, [selectedProductGroupCode]);
 
-  const syncInventoryState = (theoretical: number, isVatOrder: boolean) => {
+  const syncInventoryState = (theoretical: number, reserved: number, available: number | undefined, isVatOrder: boolean) => {
     setInventoryTheoretical(theoretical);
-    setStockQuantity(theoretical);
+    setReservedQuantity(reserved);
+    const finalAvailable = available !== undefined ? available : (theoretical - reserved);
+    setAvailableToSell(finalAvailable);
+    
+    const stockToUse = finalAvailable;
+    setStockQuantity(stockToUse);
+    
     const sourceText = getInventorySourceText(isVatOrder);
     const labelPrefix = `Tồn kho (${sourceText}):`;
-    setInventoryMessage(`${labelPrefix} ${theoretical.toLocaleString('vi-VN')}`);
-    setInventoryColor(theoretical <= 0 ? 'red' : undefined);
+    // Format: Tồn kho: X | Đang giữ: Y | Khả dụng: Z
+    const message = `${labelPrefix} ${theoretical.toLocaleString('vi-VN')} | Đang giữ: ${reserved.toLocaleString('vi-VN')} | Khả dụng: ${finalAvailable.toLocaleString('vi-VN')}`;
+    
+    setInventoryMessage(message);
+    setInventoryColor(stockToUse <= 0 ? 'red' : undefined);
   };
 
   const checkInventoryBeforeAction = async () => {
     const vatTextLower = (vatText || '').toLowerCase();
     const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
 
-    // Đơn VAT: không chặn theo tồn kho
+    // Đơn VAT: không cần check tồn kho - cho phép lên đơn tự do
     if (isVatOrder) {
       return true;
     }
 
-    // Bỏ qua kiểm tra tồn kho cho các nhóm SP đặc thù
+    // Bỏ qua kiểm tra tồn kho cho các nhóm SP đặc thù hoặc khách hàng đặc biệt
     if (shouldBypassInventoryCheck) {
+      return true;
+    }
+
+    // Bỏ qua kiểm tra tồn kho cho khách hàng đặc biệt (cho phép lên đơn tự do)
+    const customerNameNorm = normalizeText(customerName);
+    const isAllowedCustomer =
+      customerNameNorm === 'kho wecare' || customerNameNorm === 'kho wecare (ho chi minh)';
+    if (isAllowedCustomer) {
       return true;
     }
 
@@ -444,12 +468,17 @@ export default function ProductEntryForm({
       }
 
       const latestStock = latest.theoreticalStock ?? 0;
-      syncInventoryState(latestStock, isVatOrder);
+      const latestReserved = latest.reservedQuantity ?? 0;
+      const latestAvailable = latest.availableToSell ?? undefined;
+      syncInventoryState(latestStock, latestReserved, latestAvailable, isVatOrder);
 
       const requestedQty = getRequestedBaseQuantity();
-      if (latestStock < requestedQty) {
+      // Sử dụng availableToSell nếu có, nếu không thì dùng theoreticalStock
+      // Lưu ý: Đơn VAT đã return true ở trên, không đến được đoạn này
+      const stockToCheck = latestAvailable !== undefined ? latestAvailable : latestStock;
+      if (stockToCheck < requestedQty) {
         showToast.warning(
-          `Tồn kho đã thay đổi, chỉ còn ${latestStock.toLocaleString(
+          `Tồn kho đã thay đổi, chỉ còn ${stockToCheck.toLocaleString(
             'vi-VN'
           )} (đơn vị chuẩn) - không đủ cho số lượng yêu cầu ${requestedQty.toLocaleString('vi-VN')}. Vui lòng điều chỉnh.`,
           { autoClose: 5000 }
@@ -478,6 +507,20 @@ export default function ProductEntryForm({
       return true;
     }
 
+    // Kiểm tra số lượng: bắt buộc phải > 0 cho tất cả các trường hợp
+    if (!quantity || quantity <= 0) {
+      return true;
+    }
+
+    // Kiểm tra đơn VAT trước - đơn VAT không cần check tồn kho và các ràng buộc khác
+    const vatTextLower = (vatText || '').toLowerCase();
+    const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
+    
+    // Đơn VAT: cho phép lên đơn tự do - không ràng buộc gì (trừ duyệt giá cần người duyệt và số lượng > 0)
+    if (isVatOrder) {
+      return false;
+    }
+
     // Allowed product groups or special customers → always enabled
     const productGroupCode = selectedProductGroupCode || '';
     const customerNameNorm = normalizeText(customerName);
@@ -486,6 +529,7 @@ export default function ProductEntryForm({
       customerNameNorm === 'kho wecare' || customerNameNorm === 'kho wecare (ho chi minh)';
 
     if (isAllowedGroup || isAllowedCustomer) {
+      // Cho phép lên đơn tự do - không ràng buộc gì (nhưng vẫn cần số lượng > 0)
       return false;
     }
 
@@ -508,9 +552,6 @@ export default function ProductEntryForm({
       priceWarningMessage !== 'Giá bình thường' &&
       !isVatMismatchWarning;
 
-    const vatTextLower = (vatText || '').toLowerCase();
-    const isNonVatOrder = vatTextLower.includes('không vat') || vatPercent === 0;
-    const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
     const warehouseNameNorm = normalizeText(warehouse);
     const isKhoBinhDinh =
       warehouseNameNorm === 'kho binh dinh' || warehouseNameNorm.includes('kho binh dinh');
@@ -519,10 +560,10 @@ export default function ProductEntryForm({
     const inv = inventoryTheoretical ?? 0;
     const stockInvalid = inv <= 0 || requestedQty > inv;
 
-    // Không chặn theo tồn kho cho đơn VAT
-    const shouldBlockByStock = !isVatOrder && stockInvalid;
+    // Đơn Không VAT: chặn theo tồn kho
+    const shouldBlockByStock = stockInvalid;
 
-    // Kiểm tra tồn kho cho đơn Không VAT; VAT chỉ xét cảnh báo giá
+    // Kiểm tra tồn kho cho đơn Không VAT
     if (hasPriceWarning || shouldBlockByStock) {
       return true;
     }
@@ -530,6 +571,9 @@ export default function ProductEntryForm({
     return false;
   }, [
     isFormDisabled,
+    approvePrice,
+    approver,
+    quantity,
     selectedProduct,
     selectedProductGroupCode,
     customerName,
@@ -572,17 +616,40 @@ export default function ProductEntryForm({
       return reason;
     }
 
-    // Các điều kiện cơ bản để thêm sản phẩm
+    // Kiểm tra số lượng: bắt buộc phải > 0 cho tất cả các trường hợp
+    if (!quantity || quantity <= 0) {
+      const reason = 'Số lượng phải > 0';
+      return reason;
+    }
+
+    // Kiểm tra đơn VAT trước - đơn VAT không cần check tồn kho và các ràng buộc khác
+    const vatTextLower = (vatText || '').toLowerCase();
+    const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
+    
+    // Đơn VAT: cho phép lên đơn tự do - không ràng buộc gì (trừ duyệt giá cần người duyệt và số lượng > 0)
+    if (isVatOrder) {
+      return '';
+    }
+
+    // Allowed product groups or special customers → bypass all validations
+    const productGroupCode = selectedProductGroupCode || '';
+    const customerNameNorm = normalizeText(customerName);
+    const isAllowedGroup = (INVENTORY_BYPASS_PRODUCT_GROUP_CODES as readonly string[]).includes(productGroupCode);
+    const isAllowedCustomer =
+      customerNameNorm === 'kho wecare' || customerNameNorm === 'kho wecare (ho chi minh)';
+
+    if (isAllowedGroup || isAllowedCustomer) {
+      // Cho phép lên đơn tự do - không ràng buộc gì (nhưng vẫn cần số lượng > 0)
+      return '';
+    }
+
+    // Các điều kiện cơ bản để thêm sản phẩm (chỉ cho đơn Không VAT)
     if (!selectedProductCode) {
       const reason = 'Vui lòng chọn sản phẩm';
       return reason;
     }
     if (!warehouse) {
       const reason = 'Vui lòng chọn kho';
-      return reason;
-    }
-    if (!quantity || quantity <= 0) {
-      const reason = 'Số lượng phải > 0';
       return reason;
     }
 
@@ -594,13 +661,11 @@ export default function ProductEntryForm({
       return priceWarningMessage;
     }
 
-    // Tồn kho: chỉ chặn theo tồn kho cho đơn Không VAT (theo logic gốc)
-    const vatTextLower = (vatText || '').toLowerCase();
-    const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
+    // Tồn kho: chỉ chặn theo tồn kho cho đơn Không VAT (đơn VAT đã return ở trên)
     const requestedQty = getRequestedBaseQuantity();
     const inv = inventoryTheoretical ?? 0;
     const stockInvalid = inv <= 0 || requestedQty > inv;
-    const shouldBlockByStock = !isVatOrder && stockInvalid;
+    const shouldBlockByStock = stockInvalid;
 
     if (shouldBlockByStock) {
       const reason = inv <= 0 
@@ -617,6 +682,8 @@ export default function ProductEntryForm({
     approvePrice,
     approver,
     selectedProductCode,
+    selectedProductGroupCode,
+    customerName,
     warehouse,
     quantity,
     priceWarningMessage,
@@ -691,12 +758,25 @@ export default function ProductEntryForm({
       }
 
       const theoretical = result.theoreticalStock ?? 0;
-      const message = `${labelPrefix} ${theoretical.toLocaleString('vi-VN')}`;
-
+      const reserved = result.reservedQuantity ?? 0;
+      const available = result.availableToSell ?? (theoretical - reserved);
+      
+      // Cập nhật state
       setInventoryTheoretical(theoretical);
-      setStockQuantity(theoretical);
+      setReservedQuantity(reserved);
+      setAvailableToSell(available);
+      
+      // Tạo message hiển thị theo format: Tồn kho: X | Đang giữ: Y | Khả dụng: Z
+      const message = `${labelPrefix} ${theoretical.toLocaleString('vi-VN')} | Đang giữ: ${reserved.toLocaleString('vi-VN')} | Khả dụng: ${available.toLocaleString('vi-VN')}`;
+      
+      // Sử dụng availableToSell nếu có, nếu không thì dùng theoretical
+      const stockToUse = available;
+      setStockQuantity(stockToUse);
       setInventoryMessage(message);
-      setInventoryColor(theoretical <= 0 ? 'red' : undefined);
+      
+      // Màu sắc: đỏ nếu không có tồn kho hoặc không đủ khả dụng
+      const hasStock = stockToUse > 0;
+      setInventoryColor(hasStock ? undefined : 'red');
     } catch (e) {
       console.error('❌ [Load Inventory] Error:', e);
       const message = `${sourceText} không có sản phẩm này`;
@@ -709,10 +789,26 @@ export default function ProductEntryForm({
     }
   };
 
-  // Load inventory when product code & warehouse change
+  // Load inventory when product code & warehouse change, or when refresh key changes
   useEffect(() => {
     loadInventory();
-  }, [selectedProductCode, warehouse, vatText, vatPercent, setStockQuantity, shouldBypassInventoryCheck, selectedProductGroupCode]);
+  }, [selectedProductCode, warehouse, vatText, vatPercent, setStockQuantity, shouldBypassInventoryCheck, selectedProductGroupCode, inventoryRefreshKey]);
+
+  // Expose reload function to parent via window object (temporary solution)
+  useEffect(() => {
+    if (onInventoryReserved) {
+      // Store reload function in window object so parent can call it
+      (window as any).__reloadInventory = () => {
+        setInventoryRefreshKey(prev => prev + 1); // Trigger reload by changing key
+      };
+    }
+    return () => {
+      // Cleanup
+      if ((window as any).__reloadInventory) {
+        delete (window as any).__reloadInventory;
+      }
+    };
+  }, [onInventoryReserved]);
 
   // Function to reload inventory manually
   const handleReloadInventory = async () => {
@@ -952,8 +1048,8 @@ export default function ProductEntryForm({
   };
 
   // Calculate subtotal when quantity or price changes
-  const handleQuantityChange = (value: number) => {
-    const next = value && value > 0 ? value : 1;
+  const handleQuantityChange = (value: number | null) => {
+    const next = value && value > 0 ? value : 0;
     setQuantity(next);
     recomputeTotals(price, next, discountPercent || promotionDiscountPercent, vatPercent);
   };
@@ -969,20 +1065,73 @@ export default function ProductEntryForm({
   };
 
   const handleAddWithInventoryCheck = async () => {
-    const ok = await checkInventoryBeforeAction();
-    if (!ok) return;
-    
-    onAdd();
-    
-    // After add, if product is still selected (selectedProductCode not reset), reload price
-    // Use setTimeout to ensure form reset completes first
-    setTimeout(() => {
-      // If selectedProductCode still exists after add, reload price
-      // This handles the case where form resets price but product selection remains
-      if (selectedProductCode) {
-        setShouldReloadPrice(prev => prev + 1); // Trigger reload
+    // Ngăn bấm liên tục
+    if (isProcessingAdd || isAdding) {
+      return;
+    }
+
+    setIsProcessingAdd(true);
+    try {
+      const ok = await checkInventoryBeforeAction();
+      if (!ok) {
+        setIsProcessingAdd(false);
+        return;
       }
-    }, 150);
+      
+      // Reserve inventory trước khi add sản phẩm vào đơn nháp
+      // Sử dụng baseQuantity (theo đơn vị chuẩn) để reserve
+      if (selectedProductCode && warehouse && quantity > 0) {
+        try {
+          const vatTextLower = (vatText || '').toLowerCase();
+          const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
+          const baseQuantity = getRequestedBaseQuantity(); // Số lượng theo đơn vị chuẩn
+          
+          // Chỉ reserve cho VAT orders (Kho Bình Định có trường ReservedQuantity)
+          // Non-VAT orders không có trường ReservedQuantity, nên không cần reserve
+          if (isVatOrder) {
+            const { updateInventory } = await import('../_api/adminApi');
+            // Đơn VAT và sản phẩm đặc biệt: bỏ qua kiểm tra tồn kho
+            const isSpecialProduct = shouldBypassInventoryCheck;
+            await updateInventory({
+              productCode: selectedProductCode,
+              quantity: baseQuantity, // Sử dụng baseQuantity
+              warehouseName: warehouse,
+              operation: 'reserve', // Reserve thay vì subtract
+              isVatOrder: true,
+              skipStockCheck: true, // Đơn VAT không cần check tồn kho
+              productGroupCode: selectedProductGroupCode, // Truyền mã nhóm SP để API kiểm tra
+            });
+            console.log(`✅ [Inventory] Đã giữ ${baseQuantity} tồn kho (đơn vị chuẩn) khi add sản phẩm`);
+            
+            // Reload inventory để cập nhật số lượng đang giữ - đợi một chút để đảm bảo dữ liệu đã được cập nhật
+            await new Promise(resolve => setTimeout(resolve, 300));
+            await loadInventory();
+          }
+        } catch (error: any) {
+          console.error('❌ [Inventory] Lỗi khi giữ tồn kho:', error);
+          showToast.error(error.message || 'Không thể giữ tồn kho. Vui lòng thử lại.');
+          setIsProcessingAdd(false);
+          return; // Không add sản phẩm nếu reserve thất bại
+        }
+      }
+      
+      onAdd();
+      
+      // After add, if product is still selected (selectedProductCode not reset), reload price
+      // Use setTimeout to ensure form reset completes first
+      setTimeout(() => {
+        // If selectedProductCode still exists after add, reload price
+        // This handles the case where form resets price but product selection remains
+        if (selectedProductCode) {
+          setShouldReloadPrice(prev => prev + 1); // Trigger reload
+        }
+      }, 150);
+    } finally {
+      // Reset flag sau khi tất cả operations hoàn tất
+      setTimeout(() => {
+        setIsProcessingAdd(false);
+      }, 500);
+    }
   };
 
   const handleSaveWithInventoryCheck = async () => {
@@ -1086,15 +1235,13 @@ export default function ProductEntryForm({
     setDeliveryDate(formatDate(target));
   }, [quantity, stockQuantity, setDeliveryDate]);
 
-  // Default quantity = 1, and keep quantity disabled until product is selected
+  // Keep quantity disabled until product is selected, default to empty (0)
   useEffect(() => {
     if (!hasSelectedProduct) {
-      if (quantity !== 1) setQuantity(1);
+      if (quantity !== 0) setQuantity(0);
       return;
     }
-    if (!quantity || quantity <= 0) {
-      setQuantity(1);
-    }
+    // Don't auto-set quantity when product is selected, let user input
   }, [hasSelectedProduct, quantity, setQuantity]);
 
   // Reset internal states when product is cleared, SO changes, or customer changes
@@ -1197,23 +1344,6 @@ export default function ProductEntryForm({
             <div className="admin-app-card-actions">
               <button
                 type="button"
-                className="admin-app-mini-btn admin-app-mini-btn-add"
-                onClick={handleAddWithInventoryCheck}
-                disabled={buttonsDisabled}
-                title="Thêm sản phẩm"
-                aria-label="Thêm sản phẩm"
-              >
-                {isAdding ? (
-                  <>
-                    <div className="admin-app-spinner admin-app-spinner-small" style={{ marginRight: '4px' }}></div>
-                    Đang thêm...
-                  </>
-                ) : (
-                  '+'
-                )}
-              </button>
-              <button
-                type="button"
                 className="admin-app-mini-btn admin-app-mini-btn-secondary"
                 onClick={handleResetAllWithConfirm}
                 disabled={isSaving || isAdding || isLoadingDetails}
@@ -1238,16 +1368,11 @@ export default function ProductEntryForm({
                 )}
               </button>
             </div>
-            {buttonsDisabled && addButtonDisabledReason && (
-              <div className="admin-app-disabled-reason admin-app-disabled-reason-actions" title={addButtonDisabledReason}>
-                {addButtonDisabledReason}
-              </div>
-            )}
           </div>
         )}
       </div>
       <div className="admin-app-form-compact">
-        {/* Row 1: Product, Warehouse, Unit */}
+        {/* Row 1: Product, Unit, Warehouse */}
         <div className="admin-app-form-row-compact admin-app-product-row-1">
           <div className="admin-app-field-compact admin-app-field-product">
             <label className="admin-app-label-inline">{productLabel}</label>
@@ -1317,25 +1442,6 @@ export default function ProductEntryForm({
           </div>
 
           <div className="admin-app-field-compact">
-            <label className="admin-app-label-inline">Kho</label>
-            <Dropdown
-              options={warehouses.map((w) => ({
-                value: w.crdfd_khowecareid,
-                label: w.crdfd_name,
-                ...w,
-              }))}
-              value={warehouseId}
-              onChange={(value, option) => {
-                setWarehouseId(value);
-                setWarehouse(option?.label || '');
-              }}
-              placeholder={isFormDisabled ? "Chọn KH và SO trước" : "Chọn kho"}
-              loading={warehousesLoading}
-              disabled={isFormDisabled}
-            />
-          </div>
-
-          <div className="admin-app-field-compact">
             <label className="admin-app-label-inline">Đơn vị</label>
             <Dropdown
               options={units.map((u) => ({
@@ -1353,9 +1459,28 @@ export default function ProductEntryForm({
               disabled={isFormDisabled}
             />
           </div>
+
+          <div className="admin-app-field-compact">
+            <label className="admin-app-label-inline">Kho</label>
+            <Dropdown
+              options={warehouses.map((w) => ({
+                value: w.crdfd_khowecareid,
+                label: w.crdfd_name,
+                ...w,
+              }))}
+              value={warehouseId}
+              onChange={(value, option) => {
+                setWarehouseId(value);
+                setWarehouse(option?.label || '');
+              }}
+              placeholder={isFormDisabled ? "Chọn KH và SO trước" : "Chọn kho"}
+              loading={warehousesLoading}
+              disabled={isFormDisabled}
+            />
+          </div>
         </div>
 
-        {/* Row 2: Quantity, Price, Promotion */}
+        {/* Row 2: Quantity, Price, Add Button */}
         <div className="admin-app-form-row-compact admin-app-product-row-2">
           <div className="admin-app-field-compact">
             <label className="admin-app-label-inline">Số lượng</label>
@@ -1363,13 +1488,15 @@ export default function ProductEntryForm({
               <input
                 type="number"
                 className="admin-app-input admin-app-input-compact admin-app-input-number"
-                value={quantity}
-                onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
-                placeholder="1"
+                value={quantity > 0 ? quantity : ''}
+                onChange={(e) => {
+                  const val = e.target.value === '' ? null : parseInt(e.target.value);
+                  handleQuantityChange(val);
+                }}
+                placeholder=""
                 min={1}
                 disabled={isFormDisabled || !hasSelectedProduct}
               />
-              <span className="admin-app-dropdown-arrow">▼</span>
             </div>
           </div>
 
@@ -1391,12 +1518,52 @@ export default function ProductEntryForm({
                 disabled={isFormDisabled}
                 style={priceLoading ? { paddingRight: '32px' } : undefined}
               />
-              {!priceLoading && <span className="admin-app-dropdown-arrow">▼</span>}
             </div>
           </div>
 
+          <div className="admin-app-field-compact admin-app-field-add-button">
+            <label className="admin-app-label-inline" style={{ visibility: 'hidden' }}>Add</label>
+            <button
+              type="button"
+              className="admin-app-mini-btn admin-app-mini-btn-add"
+              onClick={handleAddWithInventoryCheck}
+              disabled={buttonsDisabled || isAdding || isProcessingAdd}
+              title="Thêm sản phẩm"
+              aria-label="Thêm sản phẩm"
+              style={{ 
+                width: '100%',
+                height: '28px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '14px',
+                fontWeight: '600'
+              }}
+            >
+              {(isAdding || isProcessingAdd) ? (
+                <>
+                  <div className="admin-app-spinner admin-app-spinner-small" style={{ marginRight: '4px' }}></div>
+                  Đang thêm...
+                </>
+              ) : (
+                '+'
+              )}
+            </button>
+            {buttonsDisabled && addButtonDisabledReason && (
+              <div className="admin-app-disabled-reason" style={{ marginTop: '2px', fontSize: '9px' }} title={addButtonDisabledReason}>
+                {addButtonDisabledReason}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Row 3: Promotion */}
+        <div className="admin-app-form-row-compact admin-app-product-row-3">
           <div className="admin-app-field-compact admin-app-field-promotion">
-            <label className="admin-app-label-inline">Khuyến mãi</label>
+            <label className="admin-app-label-inline">
+              <span style={{ marginRight: '4px' }}>🎁</span>
+              Chương trình khuyến mãi
+            </label>
             {promotionLoading ? (
               <div className="admin-app-hint-compact" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div className="admin-app-spinner admin-app-spinner-small"></div>

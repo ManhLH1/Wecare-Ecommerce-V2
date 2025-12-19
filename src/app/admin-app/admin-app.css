@@ -2140,11 +2140,62 @@
 }
 
 .admin-app-product-row-2 {
-  grid-template-columns: minmax(120px, 0.9fr) minmax(160px, 1.1fr) minmax(220px, 1.6fr);
+  grid-template-columns: minmax(120px, 0.9fr) minmax(160px, 1.1fr) minmax(60px, 0.5fr);
+  align-items: start;
 }
 
-.admin-app-product-row-2 .admin-app-field-promotion {
-  grid-column: auto;
+.admin-app-product-row-3 {
+  grid-template-columns: 1fr;
+}
+
+.admin-app-field-add-button {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  min-width: 0;
+  min-height: fit-content;
+  position: relative;
+  margin-bottom: 0;
+  padding-bottom: 4px;
+  padding-top: 0;
+}
+
+.admin-app-field-add-button > .admin-app-label-inline {
+  position: relative;
+  z-index: 10;
+  display: block;
+  width: 100%;
+  margin-bottom: 4px;
+  margin-top: 0;
+  padding-bottom: 0;
+  line-height: 1.3;
+  min-height: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  order: 1;
+  pointer-events: none;
+}
+
+.admin-app-field-add-button > button {
+  order: 2;
+  margin-top: 0;
+  margin-bottom: 0;
+  flex-shrink: 0;
+  height: 28px;
+  min-height: 28px;
+}
+
+.admin-app-field-add-button > .admin-app-disabled-reason {
+  order: 3;
+  margin-top: 2px;
+  margin-bottom: 0;
+  min-height: 12px;
+}
+
+.admin-app-product-row-3 .admin-app-field-promotion {
+  grid-column: 1;
+  width: 100%;
 }
 
 @media (max-width: 1280px) {
@@ -2154,16 +2205,29 @@
   .admin-app-product-row-2 {
     grid-template-columns: 1fr 1fr;
   }
-  .admin-app-product-row-2 .admin-app-field-promotion {
-    grid-column: span 2;
+  .admin-app-product-row-2 .admin-app-field-add-button {
+    grid-column: span 1;
+  }
+  .admin-app-product-row-3 {
+    grid-template-columns: 1fr;
   }
 }
 
 /* Ensure rows have enough space for labels below */
 .admin-app-form-row-compact > .admin-app-field-compact {
   min-height: auto;
-  padding-bottom: 0;
+  padding-bottom: 4px;
   margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* Ensure all fields in row 2 align properly */
+.admin-app-product-row-2 > .admin-app-field-compact {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
 }
 
 .admin-app-form-row-mini {
@@ -2317,6 +2381,45 @@
 
 .admin-app-field-promotion {
   grid-column: span 2;
+  position: relative;
+  padding: 8px 10px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 50%, #fcd34d 100%);
+  border: 2px solid #f59e0b;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
+  margin-top: 2px;
+}
+
+.admin-app-field-promotion::before {
+  content: '🎁';
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 16px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.admin-app-field-promotion > .admin-app-label-inline {
+  color: #92400e;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.admin-app-field-promotion .admin-app-input,
+.admin-app-field-promotion select {
+  background: white;
+  border-color: #f59e0b;
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.15);
+}
+
+.admin-app-field-promotion .admin-app-input:focus,
+.admin-app-field-promotion select:focus {
+  border-color: #d97706;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+  outline: none;
 }
 
 .admin-app-select-with-copy {
@@ -2419,16 +2522,38 @@
 }
 
 .admin-app-badge-promotion {
-  display: inline-block;
-  padding: 1px 4px;
-  border-radius: 3px;
-  background: #ecfdf5;
-  color: #059669;
-  font-size: 9px;
-  font-weight: 600;
-  border: 1px solid #a7f3d0;
-  margin-top: 1px;
-  line-height: 1.2;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  border: 2px solid #b91c1c;
+  margin-top: 4px;
+  line-height: 1.3;
+  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  animation: pulse-promotion 2s ease-in-out infinite;
+}
+
+.admin-app-badge-promotion::before {
+  content: '🔥';
+  font-size: 12px;
+}
+
+@keyframes pulse-promotion {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 3px 6px rgba(220, 38, 38, 0.4);
+  }
 }
 
 .admin-app-reload-btn {

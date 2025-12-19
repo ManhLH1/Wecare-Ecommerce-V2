@@ -63,8 +63,10 @@ export interface Warehouse {
 export interface InventoryInfo {
   productCode: string;
   warehouseName?: string | null;
-  theoreticalStock: number; // Var_ton_kho_lythuyet_inventory (non VAT) hoặc tonkholythuyetbomuabd (VAT)
+  theoreticalStock: number; // CurrentInventory: Var_ton_kho_lythuyet_inventory (non VAT) hoặc cr1bb_soluonglythuyetgiuathang (VAT)
   actualStock: number | null;
+  reservedQuantity?: number; // Số lượng đang giữ đơn (cr1bb_soluonganggiuathang) - chỉ có cho VAT orders
+  availableToSell?: number; // AvailableToSell = CurrentInventory - ReservedQuantity - chỉ có cho VAT orders
 }
 
 export interface ProductPrice {
@@ -343,12 +345,19 @@ export const saveSaleOrderDetails = async (
   }
 };
 
-// Update inventory (trừ/cộng tồn kho)
+// Update inventory (trừ/cộng tồn kho, giữ hàng)
 export interface UpdateInventoryRequest {
+  skipStockCheck?: boolean; // true = bỏ qua kiểm tra tồn kho (cho đơn VAT và sản phẩm đặc biệt)
+  productGroupCode?: string; // Mã nhóm sản phẩm để kiểm tra điều kiện đặc biệt
   productCode: string;
-  quantity: number;
+  quantity: number; // Số lượng theo đơn vị chuẩn (base quantity)
   warehouseName?: string;
-  operation: 'subtract' | 'add'; // 'subtract' để trừ, 'add' để cộng
+  operation: 'subtract' | 'add' | 'reserve' | 'release' | 'final'; 
+  // 'subtract' = trừ tồn kho trực tiếp (legacy, tạm thời vô hiệu hóa)
+  // 'add' = cộng tồn kho trực tiếp (legacy, tạm thời vô hiệu hóa)
+  // 'reserve' = giữ hàng (tăng ReservedQuantity) - dùng khi add sản phẩm vào đơn nháp
+  // 'release' = giải phóng hàng (giảm ReservedQuantity) - dùng khi remove sản phẩm khỏi đơn nháp
+  // 'final' = chốt đơn (atomic check và trừ CurrentInventory, giải phóng ReservedQuantity) - dùng khi hoàn tất đơn hàng
   isVatOrder?: boolean; // true = VAT order (Kho Bình Định), false = non-VAT (Inventory)
 }
 

@@ -5,7 +5,7 @@ import ProductEntryForm from './ProductEntryForm';
 import ProductTable from './ProductTable';
 import Dropdown from './Dropdown';
 import { useCustomers, useSaleOrders } from '../_hooks/useDropdownData';
-import { fetchSaleOrderDetails, SaleOrderDetail, saveSaleOrderDetails, updateInventory } from '../_api/adminApi';
+import { fetchSaleOrderDetails, SaleOrderDetail, saveSaleOrderDetails, updateInventory, fetchInventory, fetchUnits } from '../_api/adminApi';
 import { showToast } from '../../../components/ToastManager';
 import { getItem } from '../../../utils/SecureStorage';
 
@@ -240,23 +240,81 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     console.log('✅ Add Product Success:', newProduct);
     setProductList([...productList, newProduct]);
 
-    // Trừ tồn kho khi add sản phẩm
+    // Giữ hàng khi add sản phẩm (Bước 1: Reserve inventory)
     if (productCode && warehouse && quantity > 0) {
       try {
-        const isVatOrder = !isNonVatSelected; // VAT order = true, non-VAT = false
+        // Xác định isVatOrder dựa trên VAT text của Sales Order:
+        // - "Có VAT" → isVatOrder = true → cập nhật Kho Bình Định
+        // - "Không VAT" → isVatOrder = false → cập nhật Inventory Weshops
+        const isVatOrder = !isNonVatSelected; // Dựa vào VAT text của Sales Order
+        
+        console.log('[Add Product] Inventory reservation:', {
+          productCode,
+          warehouse,
+          selectedVatText,
+          isNonVatSelected,
+          isVatOrder,
+          quantity
+        });
+        
+        // Lấy thông tin inventory hiện tại để biết ReservedQuantity
+        const currentInventory = await fetchInventory(productCode, warehouse, isVatOrder);
+        if (!currentInventory) {
+          throw new Error('Không thể lấy thông tin tồn kho');
+        }
+        
+        // Tính số lượng theo đơn vị chuẩn (base quantity)
+        // Lấy conversion factor từ unit
+        let baseQuantity = quantity;
+        if (unit) {
+          try {
+            const units = await fetchUnits(productCode);
+            const selectedUnit = units.find((u) => u.crdfd_name === unit);
+            if (selectedUnit) {
+              const conversionFactor = (selectedUnit as any)?.crdfd_giatrichuyenoi ?? 
+                                      (selectedUnit as any)?.crdfd_giatrichuyendoi ?? 
+                                      (selectedUnit as any)?.crdfd_conversionvalue ?? 
+                                      1;
+              const factorNum = Number(conversionFactor);
+              if (!isNaN(factorNum) && factorNum > 0) {
+                baseQuantity = quantity * factorNum;
+              }
+            }
+          } catch (unitError) {
+            console.warn('Không thể lấy conversion factor, sử dụng quantity trực tiếp:', unitError);
+          }
+        }
+        
+        // Giữ hàng: ReservedQuantity = ReservedQuantity hiện có + baseQuantity
         await updateInventory({
           productCode,
-          quantity,
+          quantity: baseQuantity, // Sử dụng base quantity (đã quy đổi về đơn vị chuẩn)
           warehouseName: warehouse,
-          operation: 'subtract',
+          operation: 'reserve',
           isVatOrder,
         });
-        console.log('✅ [Inventory] Đã trừ tồn kho khi add sản phẩm');
+        console.log(`✅ [Inventory] Đã giữ ${baseQuantity} tồn kho (đơn vị chuẩn) khi add sản phẩm`);
+        
+        // Reload inventory để hiển thị số lượng giữ đơn mới
+        // Đợi một chút để đảm bảo database đã cập nhật
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Trigger reload bằng cách gọi function từ ProductEntryForm
+        if ((window as any).__reloadInventory) {
+          try {
+            await (window as any).__reloadInventory();
+            console.log('✅ [Inventory] Đã reload inventory sau khi reserve');
+          } catch (reloadError) {
+            console.warn('⚠️ [Inventory] Không thể reload inventory:', reloadError);
+          }
+        } else {
+          console.warn('⚠️ [Inventory] __reloadInventory function không tồn tại');
+        }
       } catch (error: any) {
-        console.error('❌ [Inventory] Lỗi khi trừ tồn kho:', error);
-        // Rollback: xóa sản phẩm vừa add nếu trừ tồn kho thất bại
+        console.error('❌ [Inventory] Lỗi khi giữ tồn kho:', error);
+        // Rollback: xóa sản phẩm vừa add nếu giữ tồn kho thất bại
         setProductList(productList);
-        showToast.error(error.message || 'Không thể trừ tồn kho. Vui lòng thử lại.');
+        showToast.error(error.message || 'Không thể giữ tồn kho. Vui lòng thử lại.');
         setIsAdding(false);
         return;
       }
@@ -831,10 +889,11 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           setDiscountAmount={setDiscountAmount}
           promotionText={promotionText}
           setPromotionText={setPromotionText}
-          onAdd={handleAddProduct}
-          onSave={handleSave}
-          onRefresh={handleRefresh}
-        />
+            onAdd={handleAddProduct}
+            onSave={handleSave}
+            onRefresh={handleRefresh}
+            onInventoryReserved={() => {}} // Callback để trigger reload inventory
+          />
         </div>
       </div>
 
@@ -844,22 +903,44 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           products={productList} 
           setProducts={setProductList}
           onDelete={async (product) => {
-            // Cộng lại tồn kho khi xóa sản phẩm (chỉ cho sản phẩm chưa được save vào CRM)
+            // Giải phóng hàng khi xóa sản phẩm (chỉ cho sản phẩm chưa được save vào CRM)
             const productWithInventory = product as ProductItem;
             if (!productWithInventory.isSodCreated && productWithInventory.productCode && productWithInventory.warehouse && productWithInventory.quantity > 0) {
               try {
                 const isVatOrder = !isNonVatSelected;
+                
+                // Tính base quantity từ quantity và unit
+                let baseQuantity = productWithInventory.quantity;
+                if (productWithInventory.unit && productWithInventory.productCode) {
+                  try {
+                    const units = await fetchUnits(productWithInventory.productCode);
+                    const selectedUnit = units.find((u) => u.crdfd_name === productWithInventory.unit);
+                    if (selectedUnit) {
+                      const conversionFactor = (selectedUnit as any)?.crdfd_giatrichuyenoi ?? 
+                                              (selectedUnit as any)?.crdfd_giatrichuyendoi ?? 
+                                              (selectedUnit as any)?.crdfd_conversionvalue ?? 
+                                              1;
+                      const factorNum = Number(conversionFactor);
+                      if (!isNaN(factorNum) && factorNum > 0) {
+                        baseQuantity = productWithInventory.quantity * factorNum;
+                      }
+                    }
+                  } catch (unitError) {
+                    console.warn('Không thể lấy conversion factor, sử dụng quantity trực tiếp:', unitError);
+                  }
+                }
+                
                 await updateInventory({
                   productCode: productWithInventory.productCode,
-                  quantity: productWithInventory.quantity,
+                  quantity: baseQuantity, // Sử dụng base quantity
                   warehouseName: productWithInventory.warehouse,
-                  operation: 'add',
+                  operation: 'release', // Giải phóng hàng
                   isVatOrder,
                 });
-                console.log(`✅ [Inventory] Đã cộng lại tồn kho khi xóa ${productWithInventory.productCode}`);
+                console.log(`✅ [Inventory] Đã giải phóng ${baseQuantity} tồn kho khi xóa ${productWithInventory.productCode}`);
               } catch (error: any) {
-                console.error(`❌ [Inventory] Lỗi khi cộng lại tồn kho:`, error);
-                showToast.error(error.message || 'Không thể cộng lại tồn kho. Vui lòng thử lại.');
+                console.error(`❌ [Inventory] Lỗi khi giải phóng tồn kho:`, error);
+                showToast.error(error.message || 'Không thể giải phóng tồn kho. Vui lòng thử lại.');
               }
             }
           }}
