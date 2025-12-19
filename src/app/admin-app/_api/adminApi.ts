@@ -280,6 +280,15 @@ export interface SaveSaleOrderDetailsRequest {
   warehouseName?: string;
   isVatOrder?: boolean;
   customerIndustry?: number | null;
+  /**
+   * CustomerId của user đang đăng nhập (lấy từ storage).
+   * Dùng để ghi xuống các cột lookup kiểu "owner/created by" (lookup Customers) khi save SOD.
+   */
+  customerLoginId?: string;
+  /**
+   * CustomerId đang chọn trên form (fallback nếu không có customerLoginId)
+   */
+  customerId?: string;
   products: Array<{
     id?: string;
     productId?: string;

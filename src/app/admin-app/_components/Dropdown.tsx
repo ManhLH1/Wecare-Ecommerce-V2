@@ -200,7 +200,7 @@ export default function Dropdown({
             .toLowerCase();
           return label.includes(term) || meta.includes(term);
         })
-      : options;
+    : options;
 
   const portalStyle: CSSProperties | undefined = menuVars
     ? ({
@@ -247,7 +247,7 @@ export default function Dropdown({
                   title={option.dropdownTooltip}
                 >
                   <span className="admin-app-dropdown-option-label">
-                    {option.label}
+                  {option.label}
                   </span>
                   {(option.dropdownMetaText || option.dropdownCopyText) && (
                     <span

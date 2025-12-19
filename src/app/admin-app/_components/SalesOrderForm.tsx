@@ -7,6 +7,7 @@ import Dropdown from './Dropdown';
 import { useCustomers, useSaleOrders } from '../_hooks/useDropdownData';
 import { fetchSaleOrderDetails, SaleOrderDetail, saveSaleOrderDetails } from '../_api/adminApi';
 import { showToast } from '../../../components/ToastManager';
+import { getItem } from '../../../utils/SecureStorage';
 
 interface ProductItem {
   id: string;
@@ -258,19 +259,34 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   };
 
   const handleSave = async () => {
+    console.log('💾 [Save Button Clicked - SO] Starting save process...', {
+      productListLength: productList.length,
+      soId,
+      customerId,
+      isSaving,
+    });
+
     // Chỉ kiểm tra danh sách sản phẩm - không check các field input phía trên
     if (productList.length === 0) {
+      console.log('❌ [Save Button - SO] Validation failed: No products in list');
       showToast.error('Không có data để tạo đơn bán chi tiết!');
       return;
     }
 
     if (!soId) {
+      console.log('❌ [Save Button - SO] Validation failed: No SO selected');
       showToast.error('Vui lòng chọn Sales Order trước khi lưu.');
       return;
     }
 
+    console.log('✅ [Save Button - SO] Validation passed, proceeding with save...');
+
     setIsSaving(true);
     try {
+      const customerLoginIdRaw = getItem('id');
+      const customerLoginId =
+        (typeof customerLoginIdRaw === 'string' ? customerLoginIdRaw : String(customerLoginIdRaw || '')).trim() || undefined;
+
       // Load danh sách SOD hiện có từ CRM
       const existingSOD = await fetchSaleOrderDetails(soId);
       const existingProductIds = new Set(
@@ -345,6 +361,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         warehouseName: warehouse,
         isVatOrder,
         customerIndustry: customerIndustry,
+        customerLoginId,
+        customerId: customerId || undefined,
         products: productsToSave,
       });
 
@@ -440,7 +458,18 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             <button
               className="admin-app-header-btn admin-app-header-btn-save"
               onClick={handleSave}
-              disabled={isSaving || productList.length === 0}
+              disabled={(() => {
+                const disabled = isSaving || productList.length === 0;
+                console.log('🔍 [Save Button - SO] Disable check:', {
+                  isSaving,
+                  productListLength: productList.length,
+                  disabled,
+                  reason: disabled 
+                    ? (isSaving ? 'Đang lưu...' : productList.length === 0 ? 'Chưa có sản phẩm' : 'Unknown')
+                    : 'Enabled',
+                });
+                return disabled;
+              })()}
               title="Lưu"
             >
               💾 Lưu
@@ -468,6 +497,17 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
 
       {/* Main Content - 2 Columns Layout */}
       <div className="admin-app-content-compact">
+        {isOrderInfoCollapsed && (
+          <button
+            type="button"
+            className="admin-app-orderinfo-reveal"
+            onClick={() => setIsOrderInfoCollapsed(false)}
+            title="Mở Thông tin đơn hàng"
+            aria-label="Mở Thông tin đơn hàng"
+          >
+            ◀
+          </button>
+        )}
         {/* Left Column - Order Info (Slide Out) */}
         <div className={`admin-app-column-left ${isOrderInfoCollapsed ? 'admin-app-column-collapsed' : ''}`}>
           <div className="admin-app-card-compact">

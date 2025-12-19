@@ -27,7 +27,11 @@ export default function SalesOrderFormWrapper() {
   };
 
   return (
-    <div className="admin-app-wrapper">
+    <div
+      className={`admin-app-wrapper ${
+        activeForm === 'SO' ? 'admin-app-mode-so' : 'admin-app-mode-sobg'
+      }`}
+    >
       {/* Header with Toggle, User Info, and Version */}
       <div className="admin-app-header">
         {/* Left Section: Brand & Title */}
