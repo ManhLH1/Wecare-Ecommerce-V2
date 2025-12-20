@@ -67,6 +67,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   const { saleOrders, loading: soLoading, error: soError } = useSaleOrders(customerId || undefined);
   const [product, setProduct] = useState('');
   const [productCode, setProductCode] = useState('');
+  const [productGroupCode, setProductGroupCode] = useState('');
   const [unit, setUnit] = useState('');
   const [warehouse, setWarehouse] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -213,6 +214,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       stt: newStt,
       productCode: productCode,
       productName: product,
+      productGroupCode: productGroupCode,
       unit: unit,
       quantity,
       price: priceNum,
@@ -287,12 +289,19 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         }
         
         // Giữ hàng: ReservedQuantity = ReservedQuantity hiện có + baseQuantity
+        // Kiểm tra xem có phải sản phẩm đặc biệt không (nhóm SP cần bỏ qua check tồn kho)
+        const INVENTORY_BYPASS_PRODUCT_GROUP_CODES = ['NSP-00027', 'NSP-000872', 'NSP-000409', 'NSP-000474', 'NSP-000873'];
+        const isSpecialProduct = productGroupCode && INVENTORY_BYPASS_PRODUCT_GROUP_CODES.includes(productGroupCode);
+        const skipStockCheck = isVatOrder || isSpecialProduct;
+        
         await updateInventory({
           productCode,
           quantity: baseQuantity, // Sử dụng base quantity (đã quy đổi về đơn vị chuẩn)
           warehouseName: warehouse,
           operation: 'reserve',
           isVatOrder,
+          skipStockCheck: skipStockCheck, // Bỏ qua check tồn kho cho đơn VAT và sản phẩm đặc biệt
+          productGroupCode: productGroupCode, // Truyền mã nhóm SP để API kiểm tra
         });
         console.log(`✅ [Inventory] Đã giữ ${baseQuantity} tồn kho (đơn vị chuẩn) khi add sản phẩm`);
         
@@ -324,6 +333,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     // Reset form fields (mimic PowerApps Reset())
     setProduct('');
     setProductCode('');
+    setProductGroupCode('');
     setUnit('');
     setQuantity(1);
     setPrice('');
@@ -503,6 +513,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   const clearFormOnSoChange = () => {
     setProduct('');
     setProductCode('');
+    setProductGroupCode('');
     setUnit('');
     setWarehouse('');
     setQuantity(1);
@@ -554,6 +565,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     setSoId('');
     setProduct('');
     setProductCode('');
+    setProductGroupCode('');
     setUnit('');
     setWarehouse('');
     setQuantity(1);
@@ -689,6 +701,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
                   setSoId('');
                   setProduct('');
                   setProductCode('');
+                  setProductGroupCode('');
                   setUnit('');
                   setWarehouse('');
                   setQuantity(1);
@@ -902,6 +915,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             onSave={handleSave}
             onRefresh={handleRefresh}
             onInventoryReserved={() => {}} // Callback để trigger reload inventory
+            onProductGroupCodeChange={setProductGroupCode} // Callback để cập nhật productGroupCode
           />
         </div>
       </div>

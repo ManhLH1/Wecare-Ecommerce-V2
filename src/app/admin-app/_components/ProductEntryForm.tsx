@@ -85,6 +85,7 @@ interface ProductEntryFormProps {
   onSave: () => void;
   onRefresh: () => void;
   onInventoryReserved?: () => void; // Callback khi inventory được reserve để trigger reload
+  onProductGroupCodeChange?: (code: string) => void; // Callback khi productGroupCode thay đổi
 }
 
 export default function ProductEntryForm({
@@ -142,6 +143,7 @@ export default function ProductEntryForm({
   onSave,
   onRefresh,
   onInventoryReserved,
+  onProductGroupCodeChange,
 }: ProductEntryFormProps) {
   // Disable form if customer or SO is not selected
   // Check for both null/undefined and empty string
@@ -400,6 +402,13 @@ export default function ProductEntryForm({
         : undefined;
     return fromCode || '';
   }, [selectedProduct, products, productId, selectedProductCode]);
+
+  // Gọi callback khi productGroupCode thay đổi
+  useEffect(() => {
+    if (onProductGroupCodeChange) {
+      onProductGroupCodeChange(selectedProductGroupCode);
+    }
+  }, [selectedProductGroupCode, onProductGroupCodeChange]);
 
   const shouldBypassInventoryCheck = useMemo(() => {
     if (!selectedProductGroupCode) return false;
@@ -986,9 +995,30 @@ export default function ProductEntryForm({
       setPromotionError(null);
       try {
         const data = await fetchProductPromotions(selectedProductCode, customerCode);
-        setPromotions(data);
+        
+        // Filter promotions dựa trên saleInventoryOnly và loại đơn hàng
+        // Nếu saleInventoryOnly = true → chỉ áp dụng cho đơn Không VAT
+        const vatTextLower = (vatText || '').toLowerCase();
+        const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
+        
+        const filteredPromotions = data.filter((promo) => {
+          const saleInventoryOnly = promo.saleInventoryOnly;
+          // Kiểm tra saleInventoryOnly: có thể là boolean true, string "true", hoặc số 1
+          const isSaleInventoryOnly = saleInventoryOnly === true || 
+                                     saleInventoryOnly === 'true' || 
+                                     saleInventoryOnly === 1 || 
+                                     saleInventoryOnly === '1';
+          // Nếu saleInventoryOnly = true và đơn là VAT → loại bỏ
+          if (isSaleInventoryOnly && isVatOrder) {
+            return false;
+          }
+          // Các trường hợp khác: giữ lại
+          return true;
+        });
+        
+        setPromotions(filteredPromotions);
         // Auto-select the first promotion returned (PowerApps First(ListPromotion))
-        const firstId = normalizePromotionId(data[0]?.id);
+        const firstId = normalizePromotionId(filteredPromotions[0]?.id);
         setSelectedPromotionId(firstId);
       } catch (err: any) {
         console.error('Error loading promotions:', err);
@@ -1001,7 +1031,7 @@ export default function ProductEntryForm({
     };
 
     loadPromotions();
-  }, [selectedProductCode, customerCode]);
+  }, [selectedProductCode, customerCode, vatText, vatPercent]);
 
   // Ensure a promotion is always selected when data is available
   useEffect(() => {
@@ -1152,11 +1182,17 @@ export default function ProductEntryForm({
   const derivePromotionPercent = (promo?: Promotion | null) => {
     if (!promo) return 0;
 
-    // Nếu khuyến mãi chỉ áp dụng cho đơn Không VAT (crdfd_salehangton = true)
+    // Nếu khuyến mãi chỉ áp dụng cho đơn Không VAT (saleInventoryOnly = true)
     // thì bỏ qua khi đơn hiện tại là Có VAT
     const vatTextLower = (vatText || '').toLowerCase();
     const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
-    if ((promo as any)?.crdfd_salehangton === true && isVatOrder) {
+    const saleInventoryOnly = promo.saleInventoryOnly;
+    // Kiểm tra saleInventoryOnly: có thể là boolean true, string "true", hoặc số 1
+    const isSaleInventoryOnly = saleInventoryOnly === true || 
+                               saleInventoryOnly === 'true' || 
+                               saleInventoryOnly === 1 || 
+                               saleInventoryOnly === '1';
+    if (isSaleInventoryOnly && isVatOrder) {
       return 0;
     }
 
