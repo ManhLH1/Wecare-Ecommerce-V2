@@ -143,7 +143,8 @@ export default async function handler(
             }
             
             // Update: ReservedQuantity += quantity
-            const newReservedQuantity = reservedQuantity + quantity;
+            // Làm tròn thành số nguyên vì field yêu cầu Int32
+            const newReservedQuantity = Math.round(reservedQuantity + quantity);
             const updateInvEndpoint = `${BASE_URL}${INVENTORY_TABLE}(${invRecord.cr44a_inventoryweshopid})`;
             
             console.log('[Update Inventory] Reserving inventory (Inventory Weshops):', {
@@ -172,7 +173,8 @@ export default async function handler(
             }
           } else if (operation === 'release') {
             // Giải phóng hàng - ReservedQuantity -= quantity
-            const newReservedQuantity = Math.max(0, reservedQuantity - quantity);
+            // Làm tròn thành số nguyên vì field yêu cầu Int32
+            const newReservedQuantity = Math.max(0, Math.round(reservedQuantity - quantity));
             const updateInvEndpoint = `${BASE_URL}${INVENTORY_TABLE}(${invRecord.cr44a_inventoryweshopid})`;
             
             console.log('[Update Inventory] Releasing inventory (Inventory Weshops):', {
@@ -215,8 +217,9 @@ export default async function handler(
               }
               
               // Update: CurrentInventory -= quantity, ReservedQuantity -= quantity (giải phóng đặt giữ)
-              const newCurrentInventory = freshCurrentInventory - quantity;
-              const newReservedQuantity = Math.max(0, freshReservedQuantity - quantity);
+              // Làm tròn thành số nguyên vì field yêu cầu Int32
+              const newCurrentInventory = Math.round(freshCurrentInventory - quantity);
+              const newReservedQuantity = Math.max(0, Math.round(freshReservedQuantity - quantity));
               const updateInvEndpoint = `${BASE_URL}${INVENTORY_TABLE}(${freshRecord.cr44a_inventoryweshopid})`;
               
               console.log('[Update Inventory] Finalizing order (Inventory Weshops):', {
@@ -332,7 +335,8 @@ export default async function handler(
             }
             
             // Update: ReservedQuantity += quantity
-            const newReservedQuantity = reservedQuantity + quantity;
+            // Làm tròn thành số nguyên vì field yêu cầu Int32
+            const newReservedQuantity = Math.round(reservedQuantity + quantity);
             const updateKhoBDEndpoint = `${BASE_URL}${KHO_BD_TABLE}(${khoBDRecord.crdfd_kho_binh_dinhid})`;
             
             console.log('[Update Inventory] Reserving inventory:', {
@@ -361,7 +365,8 @@ export default async function handler(
             }
           } else if (operation === 'release') {
             // Giải phóng hàng - ReservedQuantity -= quantity
-            const newReservedQuantity = Math.max(0, reservedQuantity - quantity);
+            // Làm tròn thành số nguyên vì field yêu cầu Int32
+            const newReservedQuantity = Math.max(0, Math.round(reservedQuantity - quantity));
             const updateKhoBDEndpoint = `${BASE_URL}${KHO_BD_TABLE}(${khoBDRecord.crdfd_kho_binh_dinhid})`;
             
             console.log('[Update Inventory] Releasing inventory:', {
@@ -408,8 +413,9 @@ export default async function handler(
               }
               
               // Update: CurrentInventory -= quantity, ReservedQuantity -= quantity
-              const newCurrentInventory = freshCurrentInventory - quantity;
-              const newReservedQuantity = Math.max(0, freshReservedQuantity - quantity);
+              // Làm tròn thành số nguyên vì field yêu cầu Int32
+              const newCurrentInventory = Math.round(freshCurrentInventory - quantity);
+              const newReservedQuantity = Math.max(0, Math.round(freshReservedQuantity - quantity));
               const updateKhoBDEndpoint = `${BASE_URL}${KHO_BD_TABLE}(${freshRecord.crdfd_kho_binh_dinhid})`;
               
               console.log('[Update Inventory] Finalizing order (Kho Bình Định):', {
