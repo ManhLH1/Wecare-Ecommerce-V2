@@ -200,48 +200,104 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     const discountedPriceCalc = priceNum * (1 - discountPercent / 100) - discountAmount;
     const finalPrice = discountedPriceCalc * (1 + invoiceSurchargeRate);
     
-    // Calculate amounts
-    const subtotalCalc = quantity * finalPrice;
-    const vatCalc = (subtotalCalc * vatPercent) / 100;
-    const totalCalc = subtotalCalc + vatCalc;
+    // Check if product already exists with same productCode/productName, unit, and price
+    // Only combine products that haven't been saved to CRM (isSodCreated = false)
+    const existingProductIndex = productList.findIndex((p) => {
+      const sameProduct = (productCode && p.productCode === productCode) || 
+                         (!productCode && p.productName === product);
+      const sameUnit = p.unit === unit;
+      const samePrice = Math.abs(p.price - priceNum) < 0.01; // Compare with small tolerance for floating point
+      const notSaved = !p.isSodCreated; // Only combine unsaved products
+      
+      return sameProduct && sameUnit && samePrice && notSaved;
+    });
 
-    // Auto-increment STT
-    const maxStt = productList.length > 0 ? Math.max(...productList.map((p) => p.stt || 0)) : 0;
-    const newStt = maxStt + 1;
+    if (existingProductIndex !== -1) {
+      // Combine with existing product: add quantities and recalculate
+      const existingProduct = productList[existingProductIndex];
+      const newQuantity = existingProduct.quantity + quantity;
+      
+      // Recalculate amounts with new total quantity
+      const newSubtotal = newQuantity * finalPrice;
+      const newVatAmount = (newSubtotal * vatPercent) / 100;
+      const newTotalAmount = newSubtotal + newVatAmount;
 
-    const newProduct: ProductItem = {
-      id: `${Date.now()}-${newStt}`,
-      stt: newStt,
-      productCode: productCode,
-      productName: product,
-      productGroupCode: productGroupCode,
-      unit: unit,
-      quantity,
-      price: priceNum,
-      surcharge: 0,
-      discount: discountAmount,
-      discountedPrice: finalPrice,
-      discountPercent: discountPercent,
-      discountAmount: discountAmount,
-      vat: vatPercent,
-      subtotal: subtotalCalc,
-      vatAmount: vatCalc,
-      totalAmount: totalCalc,
-      approver: approver,
-      deliveryDate: deliveryDate,
-      warehouse: warehouse,
-      note: note,
-      urgentOrder: urgentOrder,
-      approvePrice: approvePrice,
-      approveSupPrice: approveSupPrice,
-      promotionText: promotionText,
-      invoiceSurcharge: invoiceSurchargeRate,
-      createdOn: new Date().toISOString(),
-      isSodCreated: false,
-    };
+      // Update existing product
+      const updatedProduct: ProductItem = {
+        ...existingProduct,
+        quantity: newQuantity,
+        subtotal: newSubtotal,
+        vatAmount: newVatAmount,
+        totalAmount: newTotalAmount,
+        // Update other fields from new input (in case they changed)
+        discount: discountAmount,
+        discountedPrice: finalPrice,
+        discountPercent: discountPercent,
+        discountAmount: discountAmount,
+        vat: vatPercent,
+        invoiceSurcharge: invoiceSurchargeRate,
+        // Merge notes if both have notes
+        note: existingProduct.note && note 
+          ? `${existingProduct.note}; ${note}` 
+          : existingProduct.note || note,
+      };
 
-    console.log('✅ Add Product Success:', newProduct);
-    setProductList([...productList, newProduct]);
+      console.log('✅ Combine Product with Existing:', {
+        existing: existingProduct,
+        addedQuantity: quantity,
+        newTotalQuantity: newQuantity,
+        updated: updatedProduct,
+      });
+
+      // Update product list
+      const updatedList = [...productList];
+      updatedList[existingProductIndex] = updatedProduct;
+      setProductList(updatedList);
+    } else {
+      // Add new product
+      // Calculate amounts
+      const subtotalCalc = quantity * finalPrice;
+      const vatCalc = (subtotalCalc * vatPercent) / 100;
+      const totalCalc = subtotalCalc + vatCalc;
+
+      // Auto-increment STT
+      const maxStt = productList.length > 0 ? Math.max(...productList.map((p) => p.stt || 0)) : 0;
+      const newStt = maxStt + 1;
+
+      const newProduct: ProductItem = {
+        id: `${Date.now()}-${newStt}`,
+        stt: newStt,
+        productCode: productCode,
+        productName: product,
+        productGroupCode: productGroupCode,
+        unit: unit,
+        quantity,
+        price: priceNum,
+        surcharge: 0,
+        discount: discountAmount,
+        discountedPrice: finalPrice,
+        discountPercent: discountPercent,
+        discountAmount: discountAmount,
+        vat: vatPercent,
+        subtotal: subtotalCalc,
+        vatAmount: vatCalc,
+        totalAmount: totalCalc,
+        approver: approver,
+        deliveryDate: deliveryDate,
+        warehouse: warehouse,
+        note: note,
+        urgentOrder: urgentOrder,
+        approvePrice: approvePrice,
+        approveSupPrice: approveSupPrice,
+        promotionText: promotionText,
+        invoiceSurcharge: invoiceSurchargeRate,
+        createdOn: new Date().toISOString(),
+        isSodCreated: false,
+      };
+
+      console.log('✅ Add Product Success:', newProduct);
+      setProductList([...productList, newProduct]);
+    }
 
     // Giữ hàng khi add sản phẩm (Bước 1: Reserve inventory)
     if (productCode && warehouse && quantity > 0) {

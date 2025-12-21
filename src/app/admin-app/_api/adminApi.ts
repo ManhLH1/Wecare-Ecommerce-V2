@@ -71,6 +71,7 @@ export interface InventoryInfo {
 
 export interface ProductPrice {
   price: number | null;
+  priceNoVat?: number | null; // Giá không VAT
   unitName?: string;
   priceGroupText?: string;
   priceGroupName?: string;
@@ -224,15 +225,14 @@ export const fetchProductPrice = async (
   customerCode?: string,
   unitId?: string,
   region?: string,
-  isVatOrder?: boolean
+  isVatOrder?: boolean // Không dùng nữa, nhưng giữ để không break code cũ
 ): Promise<ProductPrice | null> => {
   if (!productCode) return null;
   try {
     const params: Record<string, string> = { productCode };
     if (customerCode) params.customerCode = customerCode;
-    if (unitId) params.unitId = unitId;
+    // Không truyền unitId và isVatOrder nữa - API sẽ trả về tất cả giá
     if (region) params.region = region;
-    if (isVatOrder !== undefined) params.isVatOrder = String(isVatOrder);
     const response = await axios.get(`${BASE_URL}/prices`, { params });
     return response.data;
   } catch (error) {

@@ -88,7 +88,7 @@ export default async function handler(
   }
 
   try {
-    const { productCode, customerCode, customerId, unitId, region, isVatOrder } = req.query;
+    const { productCode, customerCode, customerId, region } = req.query;
     if (!productCode || typeof productCode !== "string" || !productCode.trim()) {
       return res.status(400).json({ error: "productCode is required" });
     }
@@ -115,7 +115,7 @@ export default async function handler(
     // Step 2: Get customer groups (nhóm khách hàng) from cr1bb_groupkh
     const customerGroups = await getCustomerGroups(finalCustomerId, headers);
 
-    // Step 3: Build price filters - first get all prices by product code
+    // Step 3: Build price filters - get all prices by product code (không filter theo unitId và isVatOrder)
     const safeCode = productCode.replace(/'/g, "''");
     const filters = [
       "statecode eq 0", // active
@@ -124,16 +124,8 @@ export default async function handler(
       "(crdfd_gia ne null or cr1bb_giakhongvat ne null)",
     ];
 
-    // Filter by unit if provided
-    if (unitId && typeof unitId === "string" && unitId.trim()) {
-      const safeUnit = unitId.replace(/'/g, "''");
-      // Try both lookup and text field
-      filters.push(`(crdfd_onvichuan eq '${safeUnit}' or crdfd_onvichuantext eq '${safeUnit}')`);
-    }
-
     // Step 4: Filter by customer groups (nhóm khách hàng) - priority
-    const isVatOrderBool = isVatOrder === "true";
-
+    // Không filter theo isVatOrder nữa, sẽ trả về tất cả giá
     if (customerGroups.length > 0) {
       // Filter by customer groups using crdfd_nhomoituongtext
       const groupFilters = customerGroups
@@ -143,11 +135,11 @@ export default async function handler(
         })
         .join(" or ");
       filters.push(`(${groupFilters})`);
-    } else if (!isVatOrderBool && region && typeof region === "string" && region.trim()) {
-      // Fallback: For non-VAT orders without customer groups, use region filter
+    } else if (region && typeof region === "string" && region.trim()) {
+      // Fallback: For orders without customer groups, try region filter (cả VAT và không VAT)
+      // Ưu tiên "Shop" nếu có
       const safeRegion = region.replace(/'/g, "''");
-      const priceGroupName = `${safeRegion} Không VAT`;
-      filters.push(`crdfd_nhomoituongtext eq '${priceGroupName}'`);
+      filters.push(`(crdfd_nhomoituongtext eq 'Shop' or crdfd_nhomoituongtext eq '${safeRegion} Không VAT')`);
     }
 
     const filter = filters.join(" and ");

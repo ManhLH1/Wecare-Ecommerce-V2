@@ -158,6 +158,7 @@ export default function ProductEntryForm({
   const [inventoryTheoretical, setInventoryTheoretical] = useState<number>(0);
   const [inventoryLoading, setInventoryLoading] = useState<boolean>(false);
   const [inventoryMessage, setInventoryMessage] = useState<string>('Tồn kho (inventory): 0');
+  const [bypassWarningMessage, setBypassWarningMessage] = useState<string>(''); // Cảnh báo bỏ qua kiểm tra tồn kho
   const [inventoryColor, setInventoryColor] = useState<string | undefined>(undefined);
   const [reservedQuantity, setReservedQuantity] = useState<number>(0); // Số lượng đang giữ đơn
   const [availableToSell, setAvailableToSell] = useState<number | undefined>(undefined); // Số lượng khả dụng
@@ -196,22 +197,14 @@ export default function ProductEntryForm({
 
   // Warning message for price based on PowerApps logic (var_warning_gia)
   const priceWarningMessage = useMemo(() => {
-    // --- Điều kiện kiểm tra tồn kho cho đơn hàng Không VAT ---
+    // --- Bỏ qua kiểm tra tồn kho (không chặn khi hết tồn kho) ---
+    // Vẫn hiển thị tồn kho nhưng không chặn
+
+    // --- Điều kiện kiểm tra VAT & GTGT không khớp ---
     const vatTextLower = (vatText || '').toLowerCase();
     const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
     const isNonVatOrder = vatTextLower.includes('không vat') || vatPercent === 0;
-    const warehouseNameLower = (warehouse || '').toLowerCase();
-    const isKhoBinhDinh = warehouseNameLower === 'kho bình định';
-
-    if (
-      isNonVatOrder &&
-      isKhoBinhDinh &&
-      (inventoryTheoretical <= 0 || inventoryTheoretical === null || inventoryTheoretical === undefined)
-    ) {
-      return 'Sản phẩm hết tồn kho';
-    }
-
-    // --- Điều kiện kiểm tra VAT & GTGT không khớp ---
+    
     const vatOptionValue = selectedProduct?.crdfd_gtgt_option ?? selectedProduct?.crdfd_gtgt;
     const productVatPercent = vatOptionValue !== undefined ? VAT_OPTION_MAP[Number(vatOptionValue)] : undefined;
 
@@ -429,6 +422,7 @@ export default function ProductEntryForm({
     // Format: Tồn kho: X | Đang giữ: Y | Khả dụng: Z
     const message = `${labelPrefix} ${theoretical.toLocaleString('vi-VN')} | Đang giữ: ${reserved.toLocaleString('vi-VN')} | Khả dụng: ${finalAvailable.toLocaleString('vi-VN')}`;
     
+    setBypassWarningMessage(''); // Reset cảnh báo khi sync state
     setInventoryMessage(message);
     setInventoryColor(stockToUse <= 0 ? 'red' : undefined);
   };
@@ -567,13 +561,11 @@ export default function ProductEntryForm({
 
     const requestedQty = getRequestedBaseQuantity();
     const inv = inventoryTheoretical ?? 0;
-    const stockInvalid = inv <= 0 || requestedQty > inv;
+    // Bỏ qua kiểm tra tồn kho - không chặn khi hết tồn kho
+    // Vẫn hiển thị tồn kho nhưng cho phép add sản phẩm
 
-    // Đơn Không VAT: chặn theo tồn kho
-    const shouldBlockByStock = stockInvalid;
-
-    // Kiểm tra tồn kho cho đơn Không VAT
-    if (hasPriceWarning || shouldBlockByStock) {
+    // Kiểm tra giá (vẫn giữ logic cảnh báo giá)
+    if (hasPriceWarning) {
       return true;
     }
 
@@ -670,18 +662,9 @@ export default function ProductEntryForm({
       return priceWarningMessage;
     }
 
-    // Tồn kho: chỉ chặn theo tồn kho cho đơn Không VAT (đơn VAT đã return ở trên)
-    const requestedQty = getRequestedBaseQuantity();
-    const inv = inventoryTheoretical ?? 0;
-    const stockInvalid = inv <= 0 || requestedQty > inv;
-    const shouldBlockByStock = stockInvalid;
-
-    if (shouldBlockByStock) {
-      const reason = inv <= 0 
-        ? 'Sản phẩm hết tồn kho'
-        : `Không đủ tồn kho (còn ${inv.toLocaleString('vi-VN')} / cần ${requestedQty.toLocaleString('vi-VN')})`;
-      return reason;
-    }
+    // Bỏ qua kiểm tra tồn kho - không chặn khi hết tồn kho
+    // Vẫn hiển thị tồn kho nhưng cho phép add sản phẩm
+    // Vẫn sử dụng "Kho Bình Định" để tính số giữ hàng
 
     const reason = 'Không đủ điều kiện';
     return reason;
@@ -722,22 +705,21 @@ export default function ProductEntryForm({
 
   // Function to load inventory
   const loadInventory = async () => {
-    // Xác định nguồn tồn kho theo VAT của Sales Order:
-    // - "Có VAT"  → Kho Bình Định
-    // - "Không VAT" (hoặc còn lại) → Inventory Weshops
+    // Xác định nguồn tồn kho:
+    // - Case đặc biệt (shouldBypassInventoryCheck) → luôn lấy từ "Kho Bình Định" (isVatOrder = true)
+    // - Case thường: theo VAT của Sales Order:
+    //   - "Có VAT"  → Kho Bình Định
+    //   - "Không VAT" (hoặc còn lại) → Inventory Weshops
     const vatTextLower = (vatText || '').toLowerCase();
-    const isVatOrder = vatTextLower.includes('có vat');
+    // Case đặc biệt: luôn lấy từ Kho Bình Định
+    const isVatOrder = shouldBypassInventoryCheck ? true : vatTextLower.includes('có vat');
     const sourceText = getInventorySourceText(isVatOrder);
     const labelPrefix = `Tồn kho (${sourceText}):`;
 
-    if (shouldBypassInventoryCheck) {
-      const message = `Bỏ qua kiểm tra tồn kho (nhóm SP: ${selectedProductGroupCode || '—'})`;
-      setInventoryTheoretical(0);
-      setStockQuantity(0);
-      setInventoryMessage(message);
-      setInventoryColor(undefined);
-      return;
-    }
+    // Vẫn load tồn kho cho các case đặc biệt, nhưng hiển thị cảnh báo
+    const bypassWarning = shouldBypassInventoryCheck 
+      ? `⚠️ Bỏ qua kiểm tra tồn kho (nhóm SP: ${selectedProductGroupCode || '—'})` 
+      : '';
 
     if (!selectedProductCode || !warehouse) {
       const message = selectedProductCode && !warehouse 
@@ -747,6 +729,7 @@ export default function ProductEntryForm({
         : `${labelPrefix} 0`;
       setInventoryTheoretical(0);
       setStockQuantity(0);
+      setBypassWarningMessage(''); // Reset cảnh báo
       setInventoryMessage(message);
       setInventoryColor(undefined);
       return;
@@ -761,6 +744,7 @@ export default function ProductEntryForm({
         const message = `${sourceText} không có sản phẩm này`;
         setInventoryTheoretical(0);
         setStockQuantity(0);
+        setBypassWarningMessage(''); // Reset cảnh báo
         setInventoryMessage(message);
         setInventoryColor('red');
         return;
@@ -775,13 +759,17 @@ export default function ProductEntryForm({
       setReservedQuantity(reserved);
       setAvailableToSell(available);
       
-      // Tạo message hiển thị theo format: Tồn kho: X | Đang giữ: Y | Khả dụng: Z
-      const message = `${labelPrefix} ${theoretical.toLocaleString('vi-VN')} | Đang giữ: ${reserved.toLocaleString('vi-VN')} | Khả dụng: ${available.toLocaleString('vi-VN')}`;
+      // Tách cảnh báo và thông tin tồn kho thành 2 dòng riêng
+      const bypassWarning = shouldBypassInventoryCheck 
+        ? `⚠️ Bỏ qua kiểm tra tồn kho (nhóm SP: ${selectedProductGroupCode || '—'})` 
+        : '';
+      const inventoryInfo = `${labelPrefix} ${theoretical.toLocaleString('vi-VN')} | Đang giữ: ${reserved.toLocaleString('vi-VN')} | Khả dụng: ${available.toLocaleString('vi-VN')}`;
       
       // Sử dụng availableToSell nếu có, nếu không thì dùng theoretical
       const stockToUse = available;
       setStockQuantity(stockToUse);
-      setInventoryMessage(message);
+      setBypassWarningMessage(bypassWarning);
+      setInventoryMessage(inventoryInfo);
       
       // Màu sắc: đỏ nếu không có tồn kho hoặc không đủ khả dụng
       const hasStock = stockToUse > 0;
@@ -791,6 +779,7 @@ export default function ProductEntryForm({
       const message = `${sourceText} không có sản phẩm này`;
       setInventoryTheoretical(0);
       setStockQuantity(0);
+      setBypassWarningMessage(''); // Reset cảnh báo
       setInventoryMessage(message);
       setInventoryColor('red');
     } finally {
@@ -894,10 +883,13 @@ export default function ProductEntryForm({
   }, [warehouse, warehouseId, warehouses]);
 
   // Auto-fetch price from crdfd_baogiachitiets by product code
+  // Chỉ load giá khi đã chọn sản phẩm (có selectedProductCode và product)
   useEffect(() => {
     const loadPrice = async () => {
-      if (!selectedProductCode) {
+      // Chỉ load giá khi đã chọn sản phẩm đầy đủ
+      if (!selectedProductCode || !product) {
         setApiPrice(null); // Reset khi không có sản phẩm
+        setPriceLoading(false);
         return;
       }
       setPriceLoading(true);
@@ -906,41 +898,63 @@ export default function ProductEntryForm({
       // Determine if this is a VAT order
       const isVatOrder = vatPercent > 0 || (vatText?.toLowerCase().includes('có vat') ?? false);
 
-      // Pass isVatOrder to price API
+      // API không cần unitId và isVatOrder - sẽ trả về tất cả giá
       const result = await fetchProductPrice(
         selectedProductCode,
         customerCode,
-        unitId,
+        undefined, // Không truyền unitId
         undefined, // region filter removed
-        isVatOrder       // VAT status
+        undefined  // Không truyền isVatOrder
       );
 
-      // Determine which price field to use based on "Bản chất giá phát ra" from selected product
-      const selectedProduct = products.find((p) => p.crdfd_masanpham === selectedProductCode);
-      const priceNature = selectedProduct?.cr1bb_banchatgiaphatra; // OptionSet value
-
+      // Logic chọn giá:
+      // - price: giá đơn có VAT
+      // - priceNoVat: giá đơn KHÔNG VAT
+      // - Đơn CÓ VAT → lấy price
+      // - Đơn KHÔNG VAT → lấy priceNoVat
+      // - Kiểm tra unitName từ API có khớp với đơn vị đã chọn không
+      const priceWithVat = result?.price;       // Giá có VAT
+      const priceNoVat = (result as any)?.priceNoVat; // Giá không VAT
+      const apiUnitName = result?.unitName;     // Đơn vị từ API
+      
+      // Lấy tên đơn vị đã chọn để so sánh
+      const selectedUnitName = unit || '';
+      
+      console.log('[Price API] Response:', {
+        result,
+        priceWithVat,
+        priceNoVat,
+        apiUnitName,
+        selectedUnitName,
+        isVatOrder,
+        selectedProductCode,
+      });
+      
+      // Kiểm tra đơn vị có khớp không
+      const unitMatches = !apiUnitName || !selectedUnitName || 
+                         apiUnitName.toLowerCase() === selectedUnitName.toLowerCase();
+      
+      // Chọn giá dựa vào loại đơn hàng (chỉ khi đơn vị khớp)
       let basePrice: number | null = null;
-      const priceWithVat = result?.price;       // crdfd_gia
-      const priceNoVat = (result as any)?.priceNoVat; // cr1bb_giakhongvat
-
-      switch (priceNature) {
-        // Giá đã bao gồm VAT (OptionSet 283640000)
-        case 283640000:
-          basePrice = isVatOrder ? priceNoVat ?? priceWithVat : priceWithVat ?? priceNoVat;
-          break;
-        // Giá chưa bao gồm VAT (OptionSet 283640001)
-        case 283640001:
-          basePrice = priceNoVat ?? priceWithVat;
-          break;
-        // Giá đã bao gồm VAT (VAT hỗ trợ) (OptionSet 283640002)
-        case 283640002:
-          basePrice = isVatOrder ? priceNoVat ?? priceWithVat : priceWithVat ?? priceNoVat;
-          break;
-        default:
-          // Mặc định dùng Giá (with VAT) nếu có, else non-VAT
-          basePrice = priceWithVat ?? priceNoVat;
-          break;
+      if (unitMatches) {
+        if (isVatOrder) {
+          // Đơn hàng CÓ VAT → lấy price (giá có VAT)
+          basePrice = priceWithVat ?? null;
+        } else {
+          // Đơn hàng KHÔNG VAT → lấy priceNoVat (giá không VAT)
+          basePrice = priceNoVat ?? null;
+        }
+      } else {
+        // Đơn vị không khớp → không hiển thị giá
+        console.warn('[Price API] Unit mismatch:', { apiUnitName, selectedUnitName });
+        basePrice = null;
       }
+
+      console.log('[Price API] Selected basePrice:', {
+        basePrice,
+        isVatOrder,
+        logic: isVatOrder ? 'CÓ VAT → price' : 'KHÔNG VAT → priceNoVat'
+      });
 
       // Làm tròn & format giống PowerApps Text(..., "#,###")
       const roundedBase =
@@ -955,6 +969,15 @@ export default function ProductEntryForm({
 
       const priceStr = normalizePriceInput(displayPrice);
       
+      console.log('[Price API] Final values:', {
+        basePrice,
+        roundedBase,
+        displayPrice,
+        priceStr,
+        priceEntryMethod,
+        approvePrice,
+      });
+      
       // Lưu giá từ API để check warning (dù có set vào input hay không)
       if (roundedBase !== null && roundedBase !== undefined && roundedBase > 0) {
         setApiPrice(roundedBase);
@@ -962,12 +985,24 @@ export default function ProductEntryForm({
         setApiPrice(null);
       }
       
-      if (priceStr !== '') {
+      if (priceStr !== '' && roundedBase !== null && roundedBase > 0) {
         // Lưu basePrice để tính chiết khấu
-        setBasePriceForDiscount(roundedBase ?? 0);
-        // Chỉ set giá nếu không đang dùng "Theo chiết khấu"
-        if (priceEntryMethod === 'Nhập thủ công' || !approvePrice) {
+        setBasePriceForDiscount(roundedBase);
+        // Set giá từ API, trừ khi đang ở chế độ "Theo chiết khấu" và đã bật "Duyệt giá"
+        // (trong trường hợp đó, giá sẽ được tính từ chiết khấu)
+        if (priceEntryMethod !== 'Theo chiết khấu' || !approvePrice) {
           handlePriceChange(priceStr);
+          console.log('[Price API] Set price to input:', priceStr);
+        } else {
+          console.log('[Price API] Skip setting price - using discount method');
+        }
+      } else {
+        // API trả về null hoặc giá = 0 - clear giá cũ nếu không đang ở chế độ nhập thủ công với duyệt giá
+        // Nếu đang nhập thủ công và đã bật duyệt giá, giữ giá cũ (người dùng đang nhập)
+        if (!(approvePrice && priceEntryMethod === 'Nhập thủ công')) {
+          handlePriceChange('');
+          setBasePriceForDiscount(0);
+          console.log('[Price API] Cleared price - no price from API');
         }
       }
       setPriceGroupText(
@@ -980,7 +1015,7 @@ export default function ProductEntryForm({
     };
 
     loadPrice();
-  }, [selectedProductCode, customerCode, unitId, vatPercent, vatText, shouldReloadPrice]);
+  }, [selectedProductCode, product, customerCode, unitId, vatPercent, vatText, shouldReloadPrice]);
 
   // Fetch promotions based on product code and customer code
   useEffect(() => {
@@ -1243,7 +1278,15 @@ export default function ProductEntryForm({
     }
   }, [vatText, vatPercent]);
 
-  const productLabel = vatPercent === 0 ? 'Sản phẩm không VAT' : 'Sản phẩm có VAT';
+  // Hiển thị label dựa trên VAT của sản phẩm (crdfd_gtgt), không phải VAT của SO
+  // Tìm sản phẩm từ selectedProduct hoặc từ products list nếu chưa có
+  const currentProduct = selectedProduct || 
+    (productCode ? products.find((p) => p.crdfd_masanpham === productCode) : null);
+  const productVatOptionValue = currentProduct?.crdfd_gtgt_option ?? currentProduct?.crdfd_gtgt;
+  const productVatPercent = productVatOptionValue !== undefined ? VAT_OPTION_MAP[Number(productVatOptionValue)] : undefined;
+  const productLabel = (productVatPercent === 0 || productVatPercent === undefined) 
+    ? 'Sản phẩm không VAT' 
+    : 'Sản phẩm có VAT';
 
   const formatDate = (date: Date) => {
     const d = date.getDate().toString().padStart(2, '0');
@@ -1289,6 +1332,7 @@ export default function ProductEntryForm({
       setSelectedProduct(null);
       setUnitId('');
       setInventoryTheoretical(0);
+      setBypassWarningMessage(''); // Reset cảnh báo
       setInventoryMessage('Chọn sản phẩm và kho để xem tồn kho');
       setInventoryColor(undefined);
       setAccountingStock(null);
@@ -1316,6 +1360,7 @@ export default function ProductEntryForm({
       setUnitId('');
       setWarehouseId('');
       setInventoryTheoretical(0);
+      setBypassWarningMessage(''); // Reset cảnh báo
       setInventoryMessage('Chọn sản phẩm và kho để xem tồn kho');
       setInventoryColor(undefined);
       setAccountingStock(null);
@@ -1343,6 +1388,7 @@ export default function ProductEntryForm({
       setUnitId('');
       setWarehouseId('');
       setInventoryTheoretical(0);
+      setBypassWarningMessage(''); // Reset cảnh báo
       setInventoryMessage('Chọn sản phẩm và kho để xem tồn kho');
       setInventoryColor(undefined);
       setAccountingStock(null);
@@ -1454,9 +1500,16 @@ export default function ProductEntryForm({
               {inventoryLoading && (
                 <div className="admin-app-spinner admin-app-spinner-small" style={{ marginRight: '6px' }}></div>
               )}
-              <span className="admin-app-inventory-text">
-                {inventoryLoading ? 'Đang tải tồn kho...' : inventoryMessage || 'Chọn sản phẩm và kho để xem tồn kho'}
-              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {bypassWarningMessage && (
+                  <span className="admin-app-inventory-text" style={{ color: '#f59e0b' }}>
+                    {bypassWarningMessage}
+                  </span>
+                )}
+                <span className="admin-app-inventory-text">
+                  {inventoryLoading ? 'Đang tải tồn kho...' : inventoryMessage || 'Chọn sản phẩm và kho để xem tồn kho'}
+                </span>
+              </div>
               {!shouldBypassInventoryCheck && 
                selectedProductCode && 
                warehouse && 
@@ -1546,12 +1599,12 @@ export default function ProductEntryForm({
               )}
               <input
                 type="text"
-                className={`admin-app-input admin-app-input-compact admin-app-input-money${priceLoading || (approvePrice && priceEntryMethod === 'Theo chiết khấu') ? ' admin-app-input-readonly' : ''}`}
+                className={`admin-app-input admin-app-input-compact admin-app-input-money${priceLoading || !approvePrice || (approvePrice && priceEntryMethod === 'Theo chiết khấu') ? ' admin-app-input-readonly' : ''}`}
                 value={price}
                 onChange={(e) => handlePriceChange(e.target.value)}
                 placeholder={priceLoading ? "Đang tải..." : "Giá"}
-                readOnly={priceLoading || (approvePrice && priceEntryMethod === 'Theo chiết khấu')}
-                disabled={isFormDisabled}
+                readOnly={priceLoading || !approvePrice || (approvePrice && priceEntryMethod === 'Theo chiết khấu')}
+                disabled={isFormDisabled || !approvePrice}
                 style={priceLoading ? { paddingRight: '32px' } : undefined}
               />
             </div>
