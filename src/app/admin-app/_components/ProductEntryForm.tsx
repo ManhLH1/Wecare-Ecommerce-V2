@@ -323,6 +323,30 @@ export default function ProductEntryForm({
     loadAccountingStock();
   }, [selectedProductCode, vatText]);
 
+  // Lấy tên đơn vị chuẩn từ sản phẩm
+  const getBaseUnitName = () => {
+    // Ưu tiên lấy từ selectedProduct
+    if (selectedProduct?.crdfd_onvichuantext) {
+      return selectedProduct.crdfd_onvichuantext;
+    }
+    
+    // Fallback: tìm từ products list
+    const productFromList = products.find((p) => p.crdfd_masanpham === selectedProductCode);
+    if (productFromList?.crdfd_onvichuantext) {
+      return productFromList.crdfd_onvichuantext;
+    }
+    
+    // Fallback: lấy từ unit hiện tại nếu có
+    const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
+    if (currentUnit) {
+      return (currentUnit as any)?.crdfd_onvichuan || 
+             (currentUnit as any)?.crdfd_onvichuantext || 
+             'đơn vị chuẩn';
+    }
+    
+    return 'đơn vị chuẩn';
+  };
+
   // Label "SL theo kho" = Số lượng * Giá trị chuyển đổi, hiển thị theo đơn vị chuẩn
   const warehouseQuantityLabel = useMemo(() => {
     if (!quantity || quantity <= 0) return '';
@@ -343,14 +367,11 @@ export default function ProductEntryForm({
       maximumFractionDigits: 2,
     });
 
-    const baseUnitText =
-      (currentUnit as any)?.crdfd_onvichuan ||
-      (currentUnit as any)?.crdfd_onvichuantext ||
-      (selectedProduct as any)?.crdfd_onvichuantext ||
-      'đơn vị chuẩn';
+    // Lấy đơn vị chuẩn từ sản phẩm
+    const baseUnitText = getBaseUnitName();
 
     return `SL theo kho: ${formatted} ${baseUnitText}`;
-  }, [quantity, units, unitId, selectedProduct]);
+  }, [quantity, units, unitId, selectedProduct, selectedProductCode, products]);
 
   const getConversionFactor = () => {
     const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
@@ -476,6 +497,7 @@ export default function ProductEntryForm({
       syncInventoryState(latestStock, latestReserved, latestAvailable, isVatOrder);
 
       const requestedQty = getRequestedBaseQuantity();
+      const baseUnitName = getBaseUnitName();
       // Sử dụng availableToSell nếu có, nếu không thì dùng theoreticalStock
       // Lưu ý: Đơn VAT đã return true ở trên, không đến được đoạn này
       const stockToCheck = latestAvailable !== undefined ? latestAvailable : latestStock;
@@ -483,7 +505,7 @@ export default function ProductEntryForm({
         showToast.warning(
           `Tồn kho đã thay đổi, chỉ còn ${stockToCheck.toLocaleString(
             'vi-VN'
-          )} (đơn vị chuẩn) - không đủ cho số lượng yêu cầu ${requestedQty.toLocaleString('vi-VN')}. Vui lòng điều chỉnh.`,
+          )} ${baseUnitName} - không đủ cho số lượng yêu cầu ${requestedQty.toLocaleString('vi-VN')} ${baseUnitName}. Vui lòng điều chỉnh.`,
           { autoClose: 5000 }
         );
         return false;
@@ -688,12 +710,8 @@ export default function ProductEntryForm({
   const accountingStockLabel = useMemo(() => {
     if (accountingStock === null || accountingStock === undefined) return '';
 
-    const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
-    const baseUnitText =
-      (currentUnit as any)?.crdfd_onvichuan ||
-      (currentUnit as any)?.crdfd_onvichuantext ||
-      (selectedProduct as any)?.crdfd_onvichuantext ||
-      'đơn vị chuẩn';
+    // Lấy đơn vị chuẩn từ sản phẩm
+    const baseUnitText = getBaseUnitName();
 
     const formatted = accountingStock.toLocaleString('vi-VN', {
       minimumFractionDigits: 0,
@@ -701,7 +719,7 @@ export default function ProductEntryForm({
     });
 
     return `Tồn LT kế toán: ${formatted} ${baseUnitText}`;
-  }, [accountingStock, units, unitId, selectedProduct]);
+  }, [accountingStock, selectedProduct, selectedProductCode, products, units, unitId]);
 
   // Function to load inventory
   const loadInventory = async () => {
@@ -912,12 +930,35 @@ export default function ProductEntryForm({
       // - priceNoVat: giá đơn KHÔNG VAT
       // - Đơn CÓ VAT → lấy price
       // - Đơn KHÔNG VAT → lấy priceNoVat
-      // - Kiểm tra unitName từ API có khớp với đơn vị đã chọn không
       const priceWithVat = result?.price;       // Giá có VAT
       const priceNoVat = (result as any)?.priceNoVat; // Giá không VAT
       const apiUnitName = result?.unitName;     // Đơn vị từ API
       
-      // Lấy tên đơn vị đã chọn để so sánh
+      // Tự động set đơn vị từ API nếu có
+      if (apiUnitName && units.length > 0) {
+        const foundUnit = units.find((u) => 
+          u.crdfd_name.toLowerCase() === apiUnitName.toLowerCase()
+        );
+        if (foundUnit) {
+          // Chỉ set nếu chưa có đơn vị hoặc đơn vị hiện tại khác với API
+          if (!unitId || unit !== foundUnit.crdfd_name) {
+            setUnitId(foundUnit.crdfd_unitsid);
+            setUnit(foundUnit.crdfd_name);
+            console.log('[Price API] Auto-set unit from API:', {
+              apiUnitName,
+              unitId: foundUnit.crdfd_unitsid,
+              unit: foundUnit.crdfd_name,
+            });
+          }
+        } else {
+          console.warn('[Price API] Unit from API not found in units list:', {
+            apiUnitName,
+            availableUnits: units.map(u => u.crdfd_name),
+          });
+        }
+      }
+      
+      // Lấy tên đơn vị đã chọn để so sánh (sau khi đã auto-set)
       const selectedUnitName = unit || '';
       
       console.log('[Price API] Response:', {
@@ -930,24 +971,14 @@ export default function ProductEntryForm({
         selectedProductCode,
       });
       
-      // Kiểm tra đơn vị có khớp không
-      const unitMatches = !apiUnitName || !selectedUnitName || 
-                         apiUnitName.toLowerCase() === selectedUnitName.toLowerCase();
-      
-      // Chọn giá dựa vào loại đơn hàng (chỉ khi đơn vị khớp)
+      // Chọn giá dựa vào loại đơn hàng
       let basePrice: number | null = null;
-      if (unitMatches) {
-        if (isVatOrder) {
-          // Đơn hàng CÓ VAT → lấy price (giá có VAT)
-          basePrice = priceWithVat ?? null;
-        } else {
-          // Đơn hàng KHÔNG VAT → lấy priceNoVat (giá không VAT)
-          basePrice = priceNoVat ?? null;
-        }
+      if (isVatOrder) {
+        // Đơn hàng CÓ VAT → lấy price (giá có VAT)
+        basePrice = priceWithVat ?? null;
       } else {
-        // Đơn vị không khớp → không hiển thị giá
-        console.warn('[Price API] Unit mismatch:', { apiUnitName, selectedUnitName });
-        basePrice = null;
+        // Đơn hàng KHÔNG VAT → lấy priceNoVat (giá không VAT)
+        basePrice = priceNoVat ?? null;
       }
 
       console.log('[Price API] Selected basePrice:', {
@@ -1015,7 +1046,7 @@ export default function ProductEntryForm({
     };
 
     loadPrice();
-  }, [selectedProductCode, product, customerCode, unitId, vatPercent, vatText, shouldReloadPrice]);
+  }, [selectedProductCode, product, customerCode, unitId, vatPercent, vatText, shouldReloadPrice, units]);
 
   // Fetch promotions based on product code and customer code
   useEffect(() => {
