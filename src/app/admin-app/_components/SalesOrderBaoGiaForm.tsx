@@ -347,7 +347,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         // Giữ hàng: ReservedQuantity = ReservedQuantity hiện có + baseQuantity
         // Kiểm tra xem có phải sản phẩm đặc biệt không (nhóm SP cần bỏ qua check tồn kho)
         const INVENTORY_BYPASS_PRODUCT_GROUP_CODES = ['NSP-00027', 'NSP-000872', 'NSP-000409', 'NSP-000474', 'NSP-000873'];
-        const isSpecialProduct = productGroupCode && INVENTORY_BYPASS_PRODUCT_GROUP_CODES.includes(productGroupCode);
+        const isSpecialProduct = !!(productGroupCode && INVENTORY_BYPASS_PRODUCT_GROUP_CODES.includes(productGroupCode));
         const skipStockCheck = isVatOrder || isSpecialProduct;
         
         await updateInventory({
