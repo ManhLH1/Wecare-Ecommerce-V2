@@ -1031,10 +1031,15 @@ export default function ProductEntryForm({
         }
       }
 
-      // TẤT CẢ LOẠI ĐƠN ĐỀU LẤY price (giá có VAT)
-      // Không phân biệt đơn VAT hay không VAT - luôn lấy price
+      // Chọn giá dựa vào VAT của SẢN PHẨM
+      // TẤT CẢ SẢN PHẨM (có VAT và không VAT) ĐỀU DÙNG priceNoVat (giá trước VAT)
+      // Theo PDF: "Đơn giá" = giá trước VAT, "Đơn giá sau VAT" = giá sau VAT
+      // "Thành tiền" được tính từ "Đơn giá" (giá trước VAT) * số lượng
       let basePrice: number | null = null;
-      basePrice = priceWithVat ?? null;
+      
+      // Luôn dùng priceNoVat (giá trước VAT) để hiển thị trong "Đơn giá"
+      // VAT sẽ được tính riêng trong phần tính tổng tiền
+      basePrice = priceNoVat ?? null;
 
       // Làm tròn & format giống PowerApps Text(..., "#,###")
       const roundedBase =
