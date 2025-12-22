@@ -159,6 +159,9 @@ export default function ProductEntryForm({
   const [inventoryLoading, setInventoryLoading] = useState<boolean>(false);
   const [inventoryMessage, setInventoryMessage] = useState<string>('Tồn kho (inventory): 0');
   const [bypassWarningMessage, setBypassWarningMessage] = useState<string>(''); // Cảnh báo bỏ qua kiểm tra tồn kho
+  const [inventoryInventoryMessage, setInventoryInventoryMessage] = useState<string>(''); // Tồn kho Inventory
+  const [khoBinhDinhMessage, setKhoBinhDinhMessage] = useState<string>(''); // Tồn kho Kho Bình Định
+  const [isUsingInventory, setIsUsingInventory] = useState<boolean>(false); // Đang dùng Inventory hay Kho Bình Định
   const [inventoryColor, setInventoryColor] = useState<string | undefined>(undefined);
   const [reservedQuantity, setReservedQuantity] = useState<number>(0); // Số lượng đang giữ đơn
   const [availableToSell, setAvailableToSell] = useState<number | undefined>(undefined); // Số lượng khả dụng
@@ -748,6 +751,9 @@ export default function ProductEntryForm({
       setInventoryTheoretical(0);
       setStockQuantity(0);
       setBypassWarningMessage(''); // Reset cảnh báo
+      setInventoryInventoryMessage(''); // Reset
+      setKhoBinhDinhMessage(''); // Reset
+      setIsUsingInventory(false); // Reset
       setInventoryMessage(message);
       setInventoryColor(undefined);
       return;
@@ -756,23 +762,27 @@ export default function ProductEntryForm({
     try {
       setInventoryLoading(true);
 
-      const result = await fetchInventory(selectedProductCode, warehouse, isVatOrder);
+      // Load cả hai tồn kho: Inventory và Kho Bình Định
+      const [inventoryResult, khoBinhDinhResult] = await Promise.all([
+        fetchInventory(selectedProductCode, warehouse, false), // Inventory (không VAT)
+        fetchInventory(selectedProductCode, warehouse, true),  // Kho Bình Định (có VAT)
+      ]);
 
-      if (!result) {
-        const message = `${sourceText} không có sản phẩm này`;
-        setInventoryTheoretical(0);
-        setStockQuantity(0);
-        setBypassWarningMessage(''); // Reset cảnh báo
-        setInventoryMessage(message);
-        setInventoryColor('red');
-        return;
-      }
-
-      const theoretical = result.theoreticalStock ?? 0;
-      const reserved = result.reservedQuantity ?? 0;
-      const available = result.availableToSell ?? (theoretical - reserved);
+      // Xử lý tồn kho Inventory
+      const inventoryTheoretical = inventoryResult?.theoreticalStock ?? 0;
+      const inventoryReserved = inventoryResult?.reservedQuantity ?? 0;
+      const inventoryAvailable = inventoryResult?.availableToSell ?? (inventoryTheoretical - inventoryReserved);
       
-      // Cập nhật state
+      // Xử lý tồn kho Kho Bình Định
+      const khoBinhDinhTheoretical = khoBinhDinhResult?.theoreticalStock ?? 0;
+      const khoBinhDinhReserved = khoBinhDinhResult?.reservedQuantity ?? 0;
+      const khoBinhDinhAvailable = khoBinhDinhResult?.availableToSell ?? (khoBinhDinhTheoretical - khoBinhDinhReserved);
+      
+      // Cập nhật state với tồn kho chính (theo logic hiện tại)
+      const theoretical = isVatOrder ? khoBinhDinhTheoretical : inventoryTheoretical;
+      const reserved = isVatOrder ? khoBinhDinhReserved : inventoryReserved;
+      const available = isVatOrder ? khoBinhDinhAvailable : inventoryAvailable;
+      
       setInventoryTheoretical(theoretical);
       setReservedQuantity(reserved);
       setAvailableToSell(available);
@@ -781,23 +791,38 @@ export default function ProductEntryForm({
       const bypassWarning = shouldBypassInventoryCheck 
         ? `⚠️ Bỏ qua kiểm tra tồn kho (nhóm SP: ${selectedProductGroupCode || '—'})` 
         : '';
-      const inventoryInfo = `${labelPrefix} ${theoretical.toLocaleString('vi-VN')} | Đang giữ: ${reserved.toLocaleString('vi-VN')} | Khả dụng: ${available.toLocaleString('vi-VN')}`;
+      
+      // Tách thành 2 message riêng cho 2 dòng tồn kho
+      const inventoryInfo = `Tồn kho (Inventory): ${inventoryTheoretical.toLocaleString('vi-VN')} | Đang giữ: ${inventoryReserved.toLocaleString('vi-VN')} | Khả dụng: ${inventoryAvailable.toLocaleString('vi-VN')}`;
+      const khoBinhDinhInfo = `Tồn kho (Kho Bình Định): ${khoBinhDinhTheoretical.toLocaleString('vi-VN')} | Đang giữ: ${khoBinhDinhReserved.toLocaleString('vi-VN')} | Khả dụng: ${khoBinhDinhAvailable.toLocaleString('vi-VN')}`;
+      
+      // Xác định dòng nào đang được tính (dựa vào isVatOrder)
+      // isVatOrder = false → dùng Inventory (bình thường), Kho Bình Định (nghiêng)
+      // isVatOrder = true → dùng Kho Bình Định (bình thường), Inventory (nghiêng)
+      const usingInventory = !isVatOrder;
       
       // Sử dụng availableToSell nếu có, nếu không thì dùng theoretical
       const stockToUse = available;
       setStockQuantity(stockToUse);
       setBypassWarningMessage(bypassWarning);
-      setInventoryMessage(inventoryInfo);
+      setInventoryInventoryMessage(inventoryInfo);
+      setKhoBinhDinhMessage(khoBinhDinhInfo);
+      setIsUsingInventory(usingInventory);
+      // Giữ inventoryMessage cho backward compatibility
+      setInventoryMessage(`${inventoryInfo}\n${khoBinhDinhInfo}`);
       
       // Màu sắc: đỏ nếu không có tồn kho hoặc không đủ khả dụng
       const hasStock = stockToUse > 0;
       setInventoryColor(hasStock ? undefined : 'red');
     } catch (e) {
       console.error('❌ [Load Inventory] Error:', e);
-      const message = `${sourceText} không có sản phẩm này`;
+      const message = `Lỗi khi tải tồn kho: ${e instanceof Error ? e.message : 'Unknown error'}`;
       setInventoryTheoretical(0);
       setStockQuantity(0);
       setBypassWarningMessage(''); // Reset cảnh báo
+      setInventoryInventoryMessage(''); // Reset
+      setKhoBinhDinhMessage(''); // Reset
+      setIsUsingInventory(false); // Reset
       setInventoryMessage(message);
       setInventoryColor('red');
     } finally {
@@ -1364,6 +1389,9 @@ export default function ProductEntryForm({
       setUnitId('');
       setInventoryTheoretical(0);
       setBypassWarningMessage(''); // Reset cảnh báo
+      setInventoryInventoryMessage(''); // Reset
+      setKhoBinhDinhMessage(''); // Reset
+      setIsUsingInventory(false); // Reset
       setInventoryMessage('Chọn sản phẩm và kho để xem tồn kho');
       setInventoryColor(undefined);
       setAccountingStock(null);
@@ -1392,6 +1420,9 @@ export default function ProductEntryForm({
       setWarehouseId('');
       setInventoryTheoretical(0);
       setBypassWarningMessage(''); // Reset cảnh báo
+      setInventoryInventoryMessage(''); // Reset
+      setKhoBinhDinhMessage(''); // Reset
+      setIsUsingInventory(false); // Reset
       setInventoryMessage('Chọn sản phẩm và kho để xem tồn kho');
       setInventoryColor(undefined);
       setAccountingStock(null);
@@ -1420,6 +1451,9 @@ export default function ProductEntryForm({
       setWarehouseId('');
       setInventoryTheoretical(0);
       setBypassWarningMessage(''); // Reset cảnh báo
+      setInventoryInventoryMessage(''); // Reset
+      setKhoBinhDinhMessage(''); // Reset
+      setIsUsingInventory(false); // Reset
       setInventoryMessage('Chọn sản phẩm và kho để xem tồn kho');
       setInventoryColor(undefined);
       setAccountingStock(null);
@@ -1537,9 +1571,20 @@ export default function ProductEntryForm({
                     {bypassWarningMessage}
                   </span>
                 )}
-                <span className="admin-app-inventory-text">
-                  {inventoryLoading ? 'Đang tải tồn kho...' : inventoryMessage || 'Chọn sản phẩm và kho để xem tồn kho'}
-                </span>
+                {inventoryLoading ? (
+                  <div className="admin-app-inventory-text">Đang tải tồn kho...</div>
+                ) : inventoryInventoryMessage || khoBinhDinhMessage ? (
+                  <>
+                    <div className="admin-app-inventory-text" style={{ fontStyle: isUsingInventory ? 'normal' : 'italic' }}>
+                      {inventoryInventoryMessage}
+                    </div>
+                    <div className="admin-app-inventory-text" style={{ fontStyle: isUsingInventory ? 'italic' : 'normal' }}>
+                      {khoBinhDinhMessage}
+                    </div>
+                  </>
+                ) : (
+                  <div className="admin-app-inventory-text">Chọn sản phẩm và kho để xem tồn kho</div>
+                )}
               </div>
               {!shouldBypassInventoryCheck && 
                selectedProductCode && 
@@ -1652,21 +1697,21 @@ export default function ProductEntryForm({
               aria-label="Thêm sản phẩm"
               style={{ 
                 width: '100%',
-                height: '28px',
+                height: '36px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '14px',
-                fontWeight: '600'
+                fontWeight: '700'
               }}
             >
               {(isAdding || isProcessingAdd) ? (
                 <>
-                  <div className="admin-app-spinner admin-app-spinner-small" style={{ marginRight: '4px' }}></div>
+                  <div className="admin-app-spinner admin-app-spinner-small" style={{ marginRight: '6px', borderColor: 'rgba(255, 255, 255, 0.3)', borderTopColor: 'white' }}></div>
                   Đang thêm...
                 </>
               ) : (
-                '+'
+                '➕ Thêm sản phẩm'
               )}
             </button>
             {buttonsDisabled && addButtonDisabledReason && (
@@ -1677,7 +1722,8 @@ export default function ProductEntryForm({
           </div>
         </div>
 
-        {/* Row 3: Promotion */}
+        {/* Row 3: Promotion - Chỉ hiển thị khi có chương trình khuyến mãi */}
+        {(promotionLoading || promotions.length > 0) && (
         <div className="admin-app-form-row-compact admin-app-product-row-3">
           <div className="admin-app-field-compact admin-app-field-promotion">
             <label className="admin-app-label-inline">
@@ -1742,11 +1788,10 @@ export default function ProductEntryForm({
                   </span>
                 )}
               </>
-            ) : (
-              <div className="admin-app-hint-compact">Không có KM</div>
-            )}
+            ) : null}
           </div>
         </div>
+        )}
 
         {/* Row 3: VAT% (only for VAT SO), Subtotal/Total (only after product selected) */}
         <div className="admin-app-form-row-compact admin-app-form-row-summary admin-app-form-row-summary-no-stock">

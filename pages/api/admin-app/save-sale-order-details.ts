@@ -525,13 +525,11 @@ async function updateInventoryAfterSale(
         }
         const reservedQuantity = khoBDRecord.cr1bb_soluonganggiuathang ?? 0;
         
-        // Atomic check: CurrentInventory >= quantity
-        if (currentInventory < quantity) {
-          const errorMessage = `Không đủ tồn kho để chốt đơn (Kho Bình Định)! Sản phẩm ${productCode} có tồn kho: ${currentInventory}, yêu cầu: ${quantity}`;
-          throw new Error(errorMessage);
-        }
-
+        // Đơn VAT được phép lên lớn hơn số tồn kho ở Kho Bình Định
+        // Không kiểm tra tồn kho, chỉ cập nhật trực tiếp (cho phép số âm nếu cần)
+        
         // Update: CurrentInventory -= quantity, ReservedQuantity -= quantity (giải phóng đặt giữ)
+        // Cho phép số âm nếu quantity > currentInventory (đơn VAT được phép vượt tồn kho)
         const newCurrentInventory = currentInventory - quantity;
         const newReservedQuantity = Math.max(0, reservedQuantity - quantity);
 
@@ -772,6 +770,11 @@ export default async function handler(
         cr1bb_donhanggap: product.urgentOrder ?? false,
         crdfd_promotiontext: product.promotionText || "",
       };
+
+      // Add note (ghi chú) if available
+      if (product.note) {
+        payload.crdfd_notes = product.note;
+      }
 
       // Add delivery date if available
       // CRM requires Edm.Date format (YYYY-MM-DD), not ISO string with time

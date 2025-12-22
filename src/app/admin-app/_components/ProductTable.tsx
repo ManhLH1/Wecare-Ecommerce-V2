@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 
 interface ProductItem {
   id: string;
@@ -46,8 +46,6 @@ interface ProductTableProps {
   onDelete?: (product: ProductItem) => void; // Callback khi xóa sản phẩm
 }
 
-const ITEMS_PER_PAGE = 5;
-
 export default function ProductTable({ 
   products, 
   setProducts,
@@ -56,7 +54,6 @@ export default function ProductTable({
   customerIndustry,
   onDelete
 }: ProductTableProps) {
-  const [currentPage, setCurrentPage] = useState(1);
 
   const handleDelete = (id: string) => {
     const productToDelete = products.find((p) => p.id === id);
@@ -75,16 +72,20 @@ export default function ProductTable({
     vatChoice === 191920001 &&
     customerIndustry === 191920004;
 
-  const totalPages = Math.ceil(products.length / ITEMS_PER_PAGE);
-  const paginatedProducts = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return products.slice(start, start + ITEMS_PER_PAGE);
-  }, [products, currentPage]);
-
-  // Reset to page 1 if current page is out of bounds
-  if (currentPage > totalPages && totalPages > 0) {
-    setCurrentPage(1);
-  }
+  // Sắp xếp theo thời gian add (createdOn) - mới nhất lên đầu
+  const sortedProducts = useMemo(() => {
+    return [...products].sort((a, b) => {
+      // Nếu không có createdOn, đặt xuống cuối
+      if (!a.createdOn && !b.createdOn) return 0;
+      if (!a.createdOn) return 1;
+      if (!b.createdOn) return -1;
+      
+      // Sắp xếp theo thời gian (mới nhất lên đầu)
+      const dateA = new Date(a.createdOn).getTime();
+      const dateB = new Date(b.createdOn).getTime();
+      return dateB - dateA; // Descending order
+    });
+  }, [products]);
 
   const formatDate = (dateStr: string): string => {
     if (!dateStr || dateStr.trim() === '') return '-';
@@ -151,8 +152,7 @@ export default function ProductTable({
               </td>
             </tr>
           ) : (
-              paginatedProducts.map((product, idx) => {
-                const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + idx;
+              sortedProducts.map((product, idx) => {
               return (
                 <tr key={product.id}>
                     <td className="admin-app-cell-product-name" title={product.productName}>
@@ -194,35 +194,6 @@ export default function ProductTable({
         </tbody>
       </table>
       </div>
-
-      {/* Pagination */}
-      {products.length > ITEMS_PER_PAGE && (
-        <div className="admin-app-pagination">
-          <button
-            className="admin-app-pagination-btn"
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-          >
-            ‹
-          </button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-            <button
-              key={page}
-              className={`admin-app-pagination-btn ${currentPage === page ? 'admin-app-pagination-active' : ''}`}
-              onClick={() => setCurrentPage(page)}
-            >
-              {page}
-            </button>
-          ))}
-          <button
-            className="admin-app-pagination-btn"
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
-          >
-            ›
-          </button>
-        </div>
-      )}
     </div>
   );
 }

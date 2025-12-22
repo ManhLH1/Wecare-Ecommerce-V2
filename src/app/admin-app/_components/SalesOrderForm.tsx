@@ -218,6 +218,11 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       const newVatAmount = (newSubtotal * vatPercent) / 100;
       const newTotalAmount = newSubtotal + newVatAmount;
 
+      // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [người duyệt]", ngược lại lấy từ input
+      const formattedNoteForMerge = approvePrice && approver 
+        ? `Duyệt giá bởi ${approver}`
+        : note;
+      
       // Update existing product
       const updatedProduct: ProductItem = {
         ...existingProduct,
@@ -233,9 +238,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         vat: vatPercent,
         invoiceSurcharge: invoiceSurchargeRate,
         // Merge notes if both have notes
-        note: existingProduct.note && note 
-          ? `${existingProduct.note}; ${note}` 
-          : existingProduct.note || note,
+        note: existingProduct.note && formattedNoteForMerge 
+          ? `${existingProduct.note}; ${formattedNoteForMerge}` 
+          : existingProduct.note || formattedNoteForMerge,
       };
 
       console.log('✅ Combine Product with Existing:', {
@@ -260,6 +265,11 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       const maxStt = productList.length > 0 ? Math.max(...productList.map((p) => p.stt || 0)) : 0;
       const newStt = maxStt + 1;
 
+      // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [người duyệt]", ngược lại lấy từ input
+      const formattedNote = approvePrice && approver 
+        ? `Duyệt giá bởi ${approver}`
+        : note;
+
       const newProduct: ProductItem = {
         id: `${Date.now()}-${newStt}`,
         stt: newStt,
@@ -281,7 +291,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         approver: approver,
         deliveryDate: deliveryDate,
         warehouse: warehouse,
-        note: note,
+        note: formattedNote,
         urgentOrder: urgentOrder,
         approvePrice: approvePrice,
         approveSupPrice: approveSupPrice,
@@ -378,6 +388,24 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         setProductList(productList);
         showToast.error(error.message || 'Không thể giữ tồn kho. Vui lòng thử lại.');
         setIsAdding(false);
+        // Clear form fields even on error (since we rolled back the product)
+        setProduct('');
+        setProductCode('');
+        setProductGroupCode('');
+        setUnit('');
+        setQuantity(1);
+        setPrice('');
+        setSubtotal(0);
+        setVatAmount(0);
+        setTotalAmount(0);
+        setApprovePrice(false);
+        setApproveSupPrice(false);
+        setUrgentOrder(false);
+        setApprover('');
+        setDiscountPercent(0);
+        setDiscountAmount(0);
+        setPromotionText('');
+        setNote('');
         return;
       }
     }
@@ -473,36 +501,43 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
 
       // Map chỉ các sản phẩm mới (chưa có trong SOD) to API format
       // Không gửi ID vì đây là sản phẩm mới, chưa có trong CRM
-      const productsToSave = newProducts.map((item) => ({
-        id: undefined, // Không gửi ID cho sản phẩm mới - sẽ được tạo mới trong CRM
-        productId: item.productId,
-        productCode: item.productCode,
-        productName: item.productName,
-        productGroupCode: item.productGroupCode,
-        productCategoryLevel4: item.productCategoryLevel4,
-        unitId: item.unitId,
-        unit: item.unit,
-        quantity: item.quantity,
-        price: item.price,
-        discountedPrice: item.discountedPrice ?? item.price,
-        originalPrice: item.price,
-        vat: item.vat,
-        vatAmount: item.vatAmount,
-        subtotal: item.subtotal,
-        totalAmount: item.totalAmount,
-        stt: item.stt || 0,
-        deliveryDate: item.deliveryDate,
-        note: item.note,
-        urgentOrder: item.urgentOrder,
-        approvePrice: item.approvePrice,
-        approveSupPrice: item.approveSupPrice,
-        approveSupPriceId: item.approveSupPriceId,
-        approver: item.approver,
-        discountPercent: item.discountPercent,
-        discountAmount: item.discountAmount,
-        promotionText: item.promotionText,
-        invoiceSurcharge: item.invoiceSurcharge,
-      }));
+      const productsToSave = newProducts.map((item) => {
+        // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [người duyệt]", ngược lại lấy từ item.note
+        const formattedNote = item.approvePrice && item.approver 
+          ? `Duyệt giá bởi ${item.approver}`
+          : item.note || '';
+        
+        return {
+          id: undefined, // Không gửi ID cho sản phẩm mới - sẽ được tạo mới trong CRM
+          productId: item.productId,
+          productCode: item.productCode,
+          productName: item.productName,
+          productGroupCode: item.productGroupCode,
+          productCategoryLevel4: item.productCategoryLevel4,
+          unitId: item.unitId,
+          unit: item.unit,
+          quantity: item.quantity,
+          price: item.price,
+          discountedPrice: item.discountedPrice ?? item.price,
+          originalPrice: item.price,
+          vat: item.vat,
+          vatAmount: item.vatAmount,
+          subtotal: item.subtotal,
+          totalAmount: item.totalAmount,
+          stt: item.stt || 0,
+          deliveryDate: item.deliveryDate,
+          note: formattedNote,
+          urgentOrder: item.urgentOrder,
+          approvePrice: item.approvePrice,
+          approveSupPrice: item.approveSupPrice,
+          approveSupPriceId: item.approveSupPriceId,
+          approver: item.approver,
+          discountPercent: item.discountPercent,
+          discountAmount: item.discountAmount,
+          promotionText: item.promotionText,
+          invoiceSurcharge: item.invoiceSurcharge,
+        };
+      });
 
       // Lấy user info từ localStorage
       const userInfo = getStoredUser();
@@ -524,42 +559,36 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
 
       showToast.success(result.message || 'Tạo đơn bán chi tiết thành công!');
 
-      // Reload sale order details
-      if (soId) {
-        setIsLoadingDetails(true);
-        try {
-          const details = await fetchSaleOrderDetails(soId);
-          const mappedProducts: ProductItem[] = details.map((detail: SaleOrderDetail) => {
-            const subtotal = (detail.discountedPrice || detail.price) * detail.quantity;
-            const vatAmount = (subtotal * detail.vat) / 100;
-            return {
-              id: detail.id,
-              stt: detail.stt,
-              productName: detail.productName,
-              unit: detail.unit,
-              quantity: detail.quantity,
-              price: detail.price,
-              surcharge: detail.surcharge,
-              discount: detail.discount,
-              discountedPrice: detail.discountedPrice,
-              vat: detail.vat,
-              subtotal,
-              vatAmount,
-              totalAmount: detail.totalAmount,
-              approver: detail.approver,
-              deliveryDate: detail.deliveryDate || '',
-              isSodCreated: true,
-            };
-          });
-          mappedProducts.sort((a, b) => (b.stt || 0) - (a.stt || 0));
-          setProductList(mappedProducts);
-        } finally {
-          setIsLoadingDetails(false);
-        }
-      }
-
-      // Reset form after successful save
-      handleRefresh();
+      // Clear all form fields after successful save
+      setProduct('');
+      setProductCode('');
+      setProductGroupCode('');
+      setUnit('');
+      setUnitId('');
+      setWarehouse('');
+      setQuantity(1);
+      setPrice('');
+      setSubtotal(0);
+      setVatPercent(0);
+      setVatAmount(0);
+      setTotalAmount(0);
+      setStockQuantity(0);
+      setApprovePrice(false);
+      setApproveSupPrice(false);
+      setUrgentOrder(false);
+      setDeliveryDate('');
+      setNote('');
+      setApprover('');
+      setDiscountPercent(0);
+      setDiscountAmount(0);
+      setPromotionText('');
+      setCustomer('');
+      setCustomerId('');
+      setCustomerCode('');
+      setCustomerIndustry(null);
+      setSo('');
+      setSoId('');
+      setProductList([]);
     } catch (error: any) {
       console.error('Error saving sale order details:', error);
       const errorMessage = error.message || 'Có lỗi xảy ra khi lưu đơn hàng. Vui lòng thử lại.';
@@ -662,18 +691,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             <button
               className="admin-app-header-btn admin-app-header-btn-save"
               onClick={handleSave}
-              disabled={(() => {
-                const disabled = isSaving || productList.length === 0;
-                console.log('🔍 [Save Button - SO] Disable check:', {
-                  isSaving,
-                  productListLength: productList.length,
-                  disabled,
-                  reason: disabled 
-                    ? (isSaving ? 'Đang lưu...' : productList.length === 0 ? 'Chưa có sản phẩm' : 'Unknown')
-                    : 'Enabled',
-                });
-                return disabled;
-              })()}
+              disabled={isSaving}
               title="Lưu"
             >
               {isSaving ? (
