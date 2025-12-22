@@ -1031,15 +1031,10 @@ export default function ProductEntryForm({
         }
       }
 
-      // Chọn giá dựa vào loại đơn hàng
+      // TẤT CẢ LOẠI ĐƠN ĐỀU LẤY price (giá có VAT)
+      // Không phân biệt đơn VAT hay không VAT - luôn lấy price
       let basePrice: number | null = null;
-      if (isVatOrder) {
-        // Đơn hàng CÓ VAT → lấy price (giá có VAT)
-        basePrice = priceWithVat ?? null;
-      } else {
-        // Đơn hàng KHÔNG VAT → lấy priceNoVat (giá không VAT)
-        basePrice = priceNoVat ?? null;
-      }
+      basePrice = priceWithVat ?? null;
 
       // Làm tròn & format giống PowerApps Text(..., "#,###")
       const roundedBase =
