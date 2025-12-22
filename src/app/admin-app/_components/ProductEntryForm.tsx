@@ -35,6 +35,7 @@ interface ProductEntryFormProps {
   isSaving?: boolean;
   isLoadingDetails?: boolean;
   showInlineActions?: boolean;
+  hasUnsavedProducts?: boolean; // Có sản phẩm mới chưa lưu trong danh sách
   product: string;
   setProduct: (value: string) => void;
   productCode: string;
@@ -93,6 +94,7 @@ export default function ProductEntryForm({
   isSaving = false,
   isLoadingDetails = false,
   showInlineActions = true,
+  hasUnsavedProducts = false,
   product,
   setProduct,
   productCode,
@@ -540,6 +542,12 @@ export default function ProductEntryForm({
       return true;
     }
 
+    // Kiểm tra giá: phải có giá > 0 (bắt buộc, kể cả khi bật "Duyệt giá")
+    const priceNum = parseFloat(price || '0') || 0;
+    if (priceNum <= 0) {
+      return true;
+    }
+
     // Kiểm tra đơn VAT trước - đơn VAT không cần check tồn kho và các ràng buộc khác
     const vatTextLower = (vatText || '').toLowerCase();
     const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
@@ -600,6 +608,7 @@ export default function ProductEntryForm({
     approvePrice,
     approver,
     quantity,
+    price,
     selectedProduct,
     selectedProductGroupCode,
     customerName,
@@ -614,11 +623,11 @@ export default function ProductEntryForm({
 
   const addButtonDisabledReason = useMemo(() => {
     if (!buttonsDisabled) {
-      console.log('✅ [Button Disabled Reason] Button is enabled - no reason needed');
       return '';
     }
 
-    console.log('🔍 [Button Disabled Reason] Evaluating reason...', {
+    // Evaluate reason
+    const _debug = {
       isFormDisabled,
       approvePrice,
       approver,
@@ -645,6 +654,13 @@ export default function ProductEntryForm({
     // Kiểm tra số lượng: bắt buộc phải > 0 cho tất cả các trường hợp
     if (!quantity || quantity <= 0) {
       const reason = 'Số lượng phải > 0';
+      return reason;
+    }
+
+    // Kiểm tra giá: phải có giá > 0 (bắt buộc, kể cả khi bật "Duyệt giá")
+    const priceNum = parseFloat(price || '0') || 0;
+    if (priceNum <= 0) {
+      const reason = 'Vui lòng nhập giá';
       return reason;
     }
 
@@ -969,32 +985,9 @@ export default function ProductEntryForm({
           if (!unitId || unit !== foundUnit.crdfd_name) {
             setUnitId(foundUnit.crdfd_unitsid);
             setUnit(foundUnit.crdfd_name);
-            console.log('[Price API] Auto-set unit from API:', {
-              apiUnitName,
-              unitId: foundUnit.crdfd_unitsid,
-              unit: foundUnit.crdfd_name,
-            });
           }
-        } else {
-          console.warn('[Price API] Unit from API not found in units list:', {
-            apiUnitName,
-            availableUnits: units.map(u => u.crdfd_name),
-          });
         }
       }
-      
-      // Lấy tên đơn vị đã chọn để so sánh (sau khi đã auto-set)
-      const selectedUnitName = unit || '';
-      
-      console.log('[Price API] Response:', {
-        result,
-        priceWithVat,
-        priceNoVat,
-        apiUnitName,
-        selectedUnitName,
-        isVatOrder,
-        selectedProductCode,
-      });
       
       // Chọn giá dựa vào loại đơn hàng
       let basePrice: number | null = null;
@@ -1005,12 +998,6 @@ export default function ProductEntryForm({
         // Đơn hàng KHÔNG VAT → lấy priceNoVat (giá không VAT)
         basePrice = priceNoVat ?? null;
       }
-
-      console.log('[Price API] Selected basePrice:', {
-        basePrice,
-        isVatOrder,
-        logic: isVatOrder ? 'CÓ VAT → price' : 'KHÔNG VAT → priceNoVat'
-      });
 
       // Làm tròn & format giống PowerApps Text(..., "#,###")
       const roundedBase =
@@ -1024,15 +1011,6 @@ export default function ProductEntryForm({
         roundedBase;
 
       const priceStr = normalizePriceInput(displayPrice);
-      
-      console.log('[Price API] Final values:', {
-        basePrice,
-        roundedBase,
-        displayPrice,
-        priceStr,
-        priceEntryMethod,
-        approvePrice,
-      });
       
       // Lưu giá từ API để check warning (dù có set vào input hay không)
       if (roundedBase !== null && roundedBase !== undefined && roundedBase > 0) {
@@ -1048,9 +1026,6 @@ export default function ProductEntryForm({
         // (trong trường hợp đó, giá sẽ được tính từ chiết khấu)
         if (priceEntryMethod !== 'Theo chiết khấu' || !approvePrice) {
           handlePriceChange(priceStr);
-          console.log('[Price API] Set price to input:', priceStr);
-        } else {
-          console.log('[Price API] Skip setting price - using discount method');
         }
       } else {
         // API trả về null hoặc giá = 0 - clear giá cũ nếu không đang ở chế độ nhập thủ công với duyệt giá
@@ -1058,7 +1033,6 @@ export default function ProductEntryForm({
         if (!(approvePrice && priceEntryMethod === 'Nhập thủ công')) {
           handlePriceChange('');
           setBasePriceForDiscount(0);
-          console.log('[Price API] Cleared price - no price from API');
         }
       }
       setPriceGroupText(
@@ -1207,29 +1181,27 @@ export default function ProductEntryForm({
           const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
           const baseQuantity = getRequestedBaseQuantity(); // Số lượng theo đơn vị chuẩn
           
-          // Chỉ reserve cho VAT orders (Kho Bình Định có trường ReservedQuantity)
-          // Non-VAT orders không có trường ReservedQuantity, nên không cần reserve
-          if (isVatOrder) {
-            const { updateInventory } = await import('../_api/adminApi');
-            // Đơn VAT và sản phẩm đặc biệt: bỏ qua kiểm tra tồn kho
-            const isSpecialProduct = shouldBypassInventoryCheck;
-            await updateInventory({
-              productCode: selectedProductCode,
-              quantity: baseQuantity, // Sử dụng baseQuantity
-              warehouseName: warehouse,
-              operation: 'reserve', // Reserve thay vì subtract
-              isVatOrder: true,
-              skipStockCheck: true, // Đơn VAT không cần check tồn kho
-              productGroupCode: selectedProductGroupCode, // Truyền mã nhóm SP để API kiểm tra
-            });
-            console.log(`✅ [Inventory] Đã giữ ${baseQuantity} tồn kho (đơn vị chuẩn) khi add sản phẩm`);
-            
-            // Reload inventory để cập nhật số lượng đang giữ - đợi một chút để đảm bảo dữ liệu đã được cập nhật
-            await new Promise(resolve => setTimeout(resolve, 300));
-            await loadInventory();
-          }
+          // Reserve cho cả VAT và non-VAT orders
+          // VAT orders: Kho Bình Định có trường ReservedQuantity (cr1bb_soluonganggiuathang)
+          // Non-VAT orders: Inventory Weshops có trường ReservedQuantity (cr1bb_soluonglythuyetgiuathang)
+          const { updateInventory } = await import('../_api/adminApi');
+          const isSpecialProduct = shouldBypassInventoryCheck;
+          const skipStockCheck = isVatOrder || isSpecialProduct; // Bỏ qua kiểm tra tồn kho cho đơn VAT và sản phẩm đặc biệt
+          
+          await updateInventory({
+            productCode: selectedProductCode,
+            quantity: baseQuantity, // Sử dụng baseQuantity
+            warehouseName: warehouse,
+            operation: 'reserve', // Reserve thay vì subtract
+            isVatOrder: isVatOrder,
+            skipStockCheck: skipStockCheck,
+            productGroupCode: selectedProductGroupCode, // Truyền mã nhóm SP để API kiểm tra
+          });
+          
+          // Reload inventory để cập nhật số lượng đang giữ
+          await new Promise(resolve => setTimeout(resolve, 300));
+          await loadInventory();
         } catch (error: any) {
-          console.error('❌ [Inventory] Lỗi khi giữ tồn kho:', error);
           showToast.error(error.message || 'Không thể giữ tồn kho. Vui lòng thử lại.');
           setIsProcessingAdd(false);
           return; // Không add sản phẩm nếu reserve thất bại
@@ -1502,8 +1474,8 @@ export default function ProductEntryForm({
                 type="button"
                 className="admin-app-mini-btn admin-app-mini-btn-primary"
                 onClick={handleSaveWithInventoryCheck}
-                disabled={buttonsDisabled || isSaving || isLoadingDetails}
-                title="Lưu đơn hàng"
+                disabled={isSaving || !hasUnsavedProducts}
+                title={!hasUnsavedProducts ? "Chưa có sản phẩm mới cần lưu" : "Lưu đơn hàng"}
               >
                 {isSaving ? (
                   <>

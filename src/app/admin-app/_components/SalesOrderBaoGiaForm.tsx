@@ -89,6 +89,11 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   const [promotionText, setPromotionText] = useState('');
   const [productList, setProductList] = useState<ProductItem[]>([]);
 
+  // Kiểm tra có sản phẩm chưa lưu để enable nút Save
+  // Sản phẩm mới = isSodCreated không phải true (có thể là false, undefined, null)
+  const hasUnsavedProducts = productList.some(p => p.isSodCreated !== true);
+  const isSaveDisabled = isSaving || !hasUnsavedProducts;
+
   // Tổng hợp tiền toàn đơn hàng
   const orderSummary = productList.reduce(
     (acc, item) => {
@@ -165,15 +170,30 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   }, [soId]);
 
   const handleAddProduct = async () => {
-    // Validation: product, unit, quantity, price (or approve price checked)
-    if (!product || !unit || quantity <= 0 || (!price && !approvePrice)) {
+    // Validation: product, unit, quantity, price (bắt buộc phải có giá > 0)
+    const priceNum = parseFloat(price || '0') || 0;
+    const hasValidPrice = priceNum > 0;
+    
+    if (!product || !unit || quantity <= 0 || !hasValidPrice) {
       console.warn('❌ Add Product Failed: Missing required fields', {
         product: !!product,
         unit: !!unit,
         quantity,
-        price: !!price,
+        price: priceNum,
+        hasValidPrice,
         approvePrice,
       });
+      
+      // Hiển thị thông báo lỗi cụ thể
+      if (!product) {
+        showToast.error('Vui lòng chọn sản phẩm');
+      } else if (!unit) {
+        showToast.error('Vui lòng chọn đơn vị');
+      } else if (quantity <= 0) {
+        showToast.error('Số lượng phải lớn hơn 0');
+      } else if (!hasValidPrice) {
+        showToast.error('Vui lòng nhập giá');
+      }
       return;
     }
 
@@ -185,8 +205,6 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       setIsAdding(false);
       return;
     }
-
-    const priceNum = parseFloat(price) || 0;
     
     // Calculate invoice surcharge (Phụ phí hoá đơn)
     // 1.5% for "Hộ kinh doanh" + "Không VAT" orders
@@ -245,14 +263,9 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         note: existingProduct.note && formattedNoteForMerge 
           ? `${existingProduct.note}; ${formattedNoteForMerge}` 
           : existingProduct.note || formattedNoteForMerge,
+        // Đảm bảo isSodCreated = false khi combine (vì chỉ combine với sản phẩm chưa lưu)
+        isSodCreated: false,
       };
-
-      console.log('✅ Combine Product with Existing:', {
-        existing: existingProduct,
-        addedQuantity: quantity,
-        newTotalQuantity: newQuantity,
-        updated: updatedProduct,
-      });
 
       // Update product list
       const updatedList = [...productList];
@@ -305,114 +318,11 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         isSodCreated: false,
       };
 
-      console.log('✅ Add Product Success:', newProduct);
       setProductList([...productList, newProduct]);
     }
 
-    // Giữ hàng khi add sản phẩm (Bước 1: Reserve inventory)
-    if (productCode && warehouse && quantity > 0) {
-      try {
-        // Xác định isVatOrder dựa trên VAT text của Sales Order:
-        // - "Có VAT" → isVatOrder = true → cập nhật Kho Bình Định
-        // - "Không VAT" → isVatOrder = false → cập nhật Inventory Weshops
-        const isVatOrder = !isNonVatSelected; // Dựa vào VAT text của Sales Order
-        
-        console.log('[Add Product] Inventory reservation:', {
-          productCode,
-          warehouse,
-          selectedVatText,
-          isNonVatSelected,
-          isVatOrder,
-          quantity
-        });
-        
-        // Lấy thông tin inventory hiện tại để biết ReservedQuantity
-        const currentInventory = await fetchInventory(productCode, warehouse, isVatOrder);
-        if (!currentInventory) {
-          throw new Error('Không thể lấy thông tin tồn kho');
-        }
-        
-        // Tính số lượng theo đơn vị chuẩn (base quantity)
-        // Lấy conversion factor từ unit
-        let baseQuantity = quantity;
-        if (unit) {
-          try {
-            const units = await fetchUnits(productCode);
-            const selectedUnit = units.find((u) => u.crdfd_name === unit);
-            if (selectedUnit) {
-              const conversionFactor = (selectedUnit as any)?.crdfd_giatrichuyenoi ?? 
-                                      (selectedUnit as any)?.crdfd_giatrichuyendoi ?? 
-                                      (selectedUnit as any)?.crdfd_conversionvalue ?? 
-                                      1;
-              const factorNum = Number(conversionFactor);
-              if (!isNaN(factorNum) && factorNum > 0) {
-                baseQuantity = quantity * factorNum;
-              }
-            }
-          } catch (unitError) {
-            console.warn('Không thể lấy conversion factor, sử dụng quantity trực tiếp:', unitError);
-          }
-        }
-        
-        // Giữ hàng: ReservedQuantity = ReservedQuantity hiện có + baseQuantity
-        // Kiểm tra xem có phải sản phẩm đặc biệt không (nhóm SP cần bỏ qua check tồn kho)
-        const INVENTORY_BYPASS_PRODUCT_GROUP_CODES = ['NSP-00027', 'NSP-000872', 'NSP-000409', 'NSP-000474', 'NSP-000873'];
-        const isSpecialProduct = !!(productGroupCode && INVENTORY_BYPASS_PRODUCT_GROUP_CODES.includes(productGroupCode));
-        const skipStockCheck = isVatOrder || isSpecialProduct;
-        
-        await updateInventory({
-          productCode,
-          quantity: baseQuantity, // Sử dụng base quantity (đã quy đổi về đơn vị chuẩn)
-          warehouseName: warehouse,
-          operation: 'reserve',
-          isVatOrder,
-          skipStockCheck: skipStockCheck, // Bỏ qua check tồn kho cho đơn VAT và sản phẩm đặc biệt
-          productGroupCode: productGroupCode, // Truyền mã nhóm SP để API kiểm tra
-        });
-        console.log(`✅ [Inventory] Đã giữ ${baseQuantity} tồn kho (đơn vị chuẩn) khi add sản phẩm`);
-        
-        // Reload inventory để hiển thị số lượng giữ đơn mới
-        // Đợi một chút để đảm bảo database đã cập nhật
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        // Trigger reload bằng cách gọi function từ ProductEntryForm
-        if ((window as any).__reloadInventory) {
-          try {
-            await (window as any).__reloadInventory();
-            console.log('✅ [Inventory] Đã reload inventory sau khi reserve');
-          } catch (reloadError) {
-            console.warn('⚠️ [Inventory] Không thể reload inventory:', reloadError);
-          }
-        } else {
-          console.warn('⚠️ [Inventory] __reloadInventory function không tồn tại');
-        }
-      } catch (error: any) {
-        console.error('❌ [Inventory] Lỗi khi giữ tồn kho:', error);
-        // Rollback: xóa sản phẩm vừa add nếu giữ tồn kho thất bại
-        setProductList(productList);
-        showToast.error(error.message || 'Không thể giữ tồn kho. Vui lòng thử lại.');
-        setIsAdding(false);
-        // Clear form fields even on error (since we rolled back the product)
-        setProduct('');
-        setProductCode('');
-        setProductGroupCode('');
-        setUnit('');
-        setQuantity(1);
-        setPrice('');
-        setSubtotal(0);
-        setVatAmount(0);
-        setTotalAmount(0);
-        setApprovePrice(false);
-        setApproveSupPrice(false);
-        setUrgentOrder(false);
-        setApprover('');
-        setDiscountPercent(0);
-        setDiscountAmount(0);
-        setPromotionText('');
-        setNote('');
-        return;
-      }
-    }
+    // NOTE: Inventory reservation đã được xử lý trong ProductEntryForm.tsx (handleAddWithInventoryCheck)
+    // Không cần reserve lại ở đây để tránh reserve 2 lần
     
     // Reset form fields (mimic PowerApps Reset())
     setProduct('');
@@ -437,27 +347,17 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   };
 
   const handleSave = async () => {
-    console.log('💾 [Save Button Clicked - SOBG] Starting save process...', {
-      productListLength: productList.length,
-      soId,
-      customerId,
-      isSaving,
-    });
-
-    // Chỉ kiểm tra danh sách sản phẩm - không check các field input phía trên
-    if (productList.length === 0) {
-      console.log('❌ [Save Button - SOBG] Validation failed: No products in list');
-      showToast.error('Không có data để tạo đơn bán chi tiết!');
+    // Chỉ kiểm tra có sản phẩm chưa lưu (isSodCreated = false)
+    const unsavedProducts = productList.filter(p => !p.isSodCreated);
+    if (unsavedProducts.length === 0) {
+      showToast.warning('Không có sản phẩm mới để lưu.');
       return;
     }
 
     if (!soId) {
-      console.log('❌ [Save Button - SOBG] Validation failed: No SOBG selected');
       showToast.error('Vui lòng chọn Sales Order Báo Giá trước khi lưu.');
       return;
     }
-
-    console.log('✅ [Save Button - SOBG] Validation passed, proceeding with save...');
 
     setIsSaving(true);
     try {
@@ -565,7 +465,6 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       setProductCode('');
       setProductGroupCode('');
       setUnit('');
-      setUnitId('');
       setWarehouse('');
       setQuantity(1);
       setPrice('');
@@ -638,10 +537,8 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
               operation: 'add',
               isVatOrder,
             });
-            console.log(`✅ [Inventory] Đã cộng lại tồn kho cho ${product.productCode}`);
           } catch (error: any) {
-            console.error(`❌ [Inventory] Lỗi khi cộng lại tồn kho cho ${product.productCode}:`, error);
-            // Continue với các sản phẩm khác
+            // Silent error - continue với các sản phẩm khác
           }
         }
       }
@@ -694,7 +591,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             <button
               className="admin-app-header-btn admin-app-header-btn-save"
               onClick={handleSave}
-              disabled={isSaving}
+              disabled={isSaveDisabled}
               title="Lưu"
             >
               {isSaving ? (
@@ -828,19 +725,9 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
                     // Nếu name đã chứa code (hoặc code là substring của name) thì chỉ dùng name
                     if (soNameLower.includes(soCodeLower)) {
                       baseLabel = soName;
-                      console.log('🔍 [SOBG Label] Name contains code, using name only:', {
-                        soCode,
-                        soName,
-                        baseLabel,
-                      });
                     } else {
                       // Nếu name không chứa code, ghép lại: code - name
                       baseLabel = `${soCode} - ${soName}`;
-                      console.log('🔍 [SOBG Label] Name does not contain code, concatenating:', {
-                        soCode,
-                        soName,
-                        baseLabel,
-                      });
                     }
                   } else if (soCode) {
                     baseLabel = soCode;
@@ -940,6 +827,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             isSaving={isSaving}
             isLoadingDetails={isLoadingDetails}
             showInlineActions={hideHeader}
+            hasUnsavedProducts={hasUnsavedProducts}
           product={product}
           setProduct={setProduct}
           productCode={productCode}
@@ -1035,9 +923,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
                   operation: 'release', // Giải phóng hàng
                   isVatOrder,
                 });
-                console.log(`✅ [Inventory] Đã giải phóng ${baseQuantity} tồn kho khi xóa ${productWithInventory.productCode}`);
               } catch (error: any) {
-                console.error(`❌ [Inventory] Lỗi khi giải phóng tồn kho:`, error);
                 showToast.error(error.message || 'Không thể giải phóng tồn kho. Vui lòng thử lại.');
               }
             }

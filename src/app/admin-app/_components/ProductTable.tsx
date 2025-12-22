@@ -132,6 +132,7 @@ export default function ProductTable({
         <table className="admin-app-table-compact">
         <thead>
           <tr>
+              <th style={{ width: '40px' }}>STT</th>
               <th style={{ width: '250px', minWidth: '200px' }}>SP</th>
               <th style={{ width: '80px' }}>ĐV</th>
               <th style={{ width: '70px' }}>SL</th>
@@ -147,7 +148,7 @@ export default function ProductTable({
         <tbody>
           {products.length === 0 ? (
             <tr>
-                <td colSpan={showSurchargeColumn ? 10 : 9} className="admin-app-table-empty-compact">
+                <td colSpan={showSurchargeColumn ? 11 : 10} className="admin-app-table-empty-compact">
                 Chưa có đơn hàng
               </td>
             </tr>
@@ -155,6 +156,7 @@ export default function ProductTable({
               sortedProducts.map((product, idx) => {
               return (
                 <tr key={product.id}>
+                    <td className="admin-app-cell-center">{idx + 1}</td>
                     <td className="admin-app-cell-product-name" title={product.productName}>
                       {product.productName}
                     </td>

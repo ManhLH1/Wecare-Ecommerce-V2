@@ -482,7 +482,10 @@ async function updateInventoryAfterSale(
           throw new Error(errorMessage);
         }
 
-        // Update: CurrentInventory -= quantity, ReservedQuantity -= quantity (trả lại số giữ tồn)
+        // Update: 
+        // - CurrentInventory -= quantity (trừ tồn kho)
+        // - ReservedQuantity -= quantity (giữ lại phần còn lại: giữ đặt = giữ đặt hàng - số lượng lên đơn)
+        // Ví dụ: Giữ đặt 40, save đơn 20 → Giữ đặt còn lại 20 (40 - 20 = 20)
         const newCurrentInventory = currentInventory - quantity;
         const newReservedQuantity = Math.max(0, reservedQuantity - quantity);
 
@@ -528,8 +531,10 @@ async function updateInventoryAfterSale(
         // Đơn VAT được phép lên lớn hơn số tồn kho ở Kho Bình Định
         // Không kiểm tra tồn kho, chỉ cập nhật trực tiếp (cho phép số âm nếu cần)
         
-        // Update: CurrentInventory -= quantity, ReservedQuantity -= quantity (giải phóng đặt giữ)
-        // Cho phép số âm nếu quantity > currentInventory (đơn VAT được phép vượt tồn kho)
+        // Update:
+        // - CurrentInventory -= quantity (trừ tồn kho, cho phép số âm nếu đơn VAT vượt tồn kho)
+        // - ReservedQuantity -= quantity (giữ lại phần còn lại: giữ đặt = giữ đặt hàng - số lượng lên đơn)
+        // Ví dụ: Giữ đặt 40, save đơn 20 → Giữ đặt còn lại 20 (40 - 20 = 20)
         const newCurrentInventory = currentInventory - quantity;
         const newReservedQuantity = Math.max(0, reservedQuantity - quantity);
 
