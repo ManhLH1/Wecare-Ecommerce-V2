@@ -143,25 +143,71 @@ export default async function handler(
     }
 
     const filter = filters.join(" and ");
+    // Expand lookup crdfd_onvi để lấy tên đơn vị
+    // crdfd_onvi có thể là lookup đến crdfd_unitses hoặc crdfd_unitconversions
+    // Cần expand để lấy cả crdfd_name (từ units) và crdfd_onvichuyenoitransfome (từ unit conversions)
     const columns =
-      "crdfd_baogiachitietid,crdfd_masanpham,crdfd_gia,cr1bb_giakhongvat,crdfd_onvichuantext,crdfd_onvichuan,crdfd_nhomoituongtext,crdfd_giatheovc";
+      "crdfd_baogiachitietid,crdfd_masanpham,crdfd_gia,cr1bb_giakhongvat,crdfd_onvichuantext,crdfd_onvichuan,crdfd_nhomoituongtext,crdfd_giatheovc,crdfd_onvi";
     // Order by crdfd_giatheovc asc to get cheapest price first (per unit)
+    // BỎ $top=1 để lấy TẤT CẢ các dòng báo giá (theo các đơn vị khác nhau)
+    // Expand lookup để lấy tên đơn vị - thử cả units và unit conversions
+    // crdfd_onvi có thể là lookup đến crdfd_unitses (crdfd_name) hoặc crdfd_unitconversions (crdfd_onvichuyenoitransfome)
+    const expand = "$expand=crdfd_onvi($select=crdfd_name,crdfd_onvichuyenoitransfome)";
     const query = `$select=${columns}&$filter=${encodeURIComponent(
       filter
-    )}&$orderby=crdfd_giatheovc asc&$top=1`;
+    )}&${expand}&$orderby=crdfd_giatheovc asc`;
 
     const endpoint = `${BASE_URL}${QUOTE_DETAIL_TABLE}?${query}`;
     const response = await axios.get(endpoint, { headers });
 
-    const first = response.data.value?.[0];
-    const result = first
-      ? {
-        price: first.crdfd_gia ?? null,
-        priceNoVat: first.cr1bb_giakhongvat ?? null,
-        unitName: first.crdfd_onvichuantext || first.crdfd_onvichuan || undefined,
-        priceGroupText: first.crdfd_nhomoituongtext || undefined,
-      }
-      : { price: null, priceNoVat: null };
+    const allPrices = response.data.value || [];
+    
+    // Trả về mảng tất cả các giá (mỗi giá theo 1 đơn vị)
+    // Bao gồm crdfd_masanpham và crdfd_onvichuan trong mỗi item
+    // Lấy tên đơn vị từ expanded lookup hoặc từ field text
+    const prices = allPrices.map((item: any) => {
+      // Ưu tiên lấy từ expanded lookup:
+      // - crdfd_onvi.crdfd_onvichuyenoitransfome (từ unit conversions) - chính xác nhất
+      // - crdfd_onvi.crdfd_name (từ units)
+      // Nếu không có, lấy từ crdfd_onvichuantext hoặc crdfd_onvichuan
+      const unitName = 
+        item.crdfd_onvi?.crdfd_onvichuyenoitransfome ||  // Từ unit conversions (ưu tiên)
+        item.crdfd_onvi?.crdfd_name ||                   // Từ units
+        item.crdfd_onvichuantext || 
+        item.crdfd_onvichuan || 
+        undefined;
+      
+      return {
+        price: item.crdfd_gia ?? null,
+        priceNoVat: item.cr1bb_giakhongvat ?? null,
+        unitName: unitName,
+        priceGroupText: item.crdfd_nhomoituongtext || undefined,
+        crdfd_masanpham: item.crdfd_masanpham || productCode, // Thêm mã sản phẩm
+        crdfd_onvichuan: item.crdfd_onvichuan || undefined, // Thêm đơn vị chuẩn để map
+      };
+    });
+
+    // Backward compatibility: Trả về cả object đầu tiên (để code cũ vẫn hoạt động)
+    // VÀ mảng prices để code mới có thể xử lý nhiều đơn vị
+    const first = allPrices[0];
+    const firstUnitName = 
+      first?.crdfd_onvi?.crdfd_onvichuyenoitransfome ||  // Từ unit conversions (ưu tiên)
+      first?.crdfd_onvi?.crdfd_name ||                   // Từ units
+      first?.crdfd_onvichuantext || 
+      first?.crdfd_onvichuan || 
+      undefined;
+    
+    const result = {
+      // Object đầu tiên (backward compatibility)
+      price: first?.crdfd_gia ?? null,
+      priceNoVat: first?.cr1bb_giakhongvat ?? null,
+      unitName: firstUnitName,
+      priceGroupText: first?.crdfd_nhomoituongtext || undefined,
+      crdfd_masanpham: first?.crdfd_masanpham || productCode,
+      crdfd_onvichuan: first?.crdfd_onvichuan || undefined,
+      // Mảng tất cả các giá (theo các đơn vị khác nhau)
+      prices: prices,
+    };
 
     res.status(200).json(result);
   } catch (error: any) {
