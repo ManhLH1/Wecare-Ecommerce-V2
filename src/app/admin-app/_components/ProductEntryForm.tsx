@@ -353,29 +353,45 @@ export default function ProductEntryForm({
   };
 
   // Label "SL theo kho" = Số lượng * Giá trị chuyển đổi, hiển thị theo đơn vị chuẩn
+  // Công thức PowerApps: "SL theo kho: " & Text(IfError(Value(txt_So_luong.Text) * dp_Don_vi.Selected.'Giá trị chuyển đổi', 0), "#,##0.##") & " " & cb_san_pham.Selected.'Đơn vị chuẩn text'
   const warehouseQuantityLabel = useMemo(() => {
+    // Nếu không có số lượng hoặc số lượng <= 0, không hiển thị
     if (!quantity || quantity <= 0) return '';
 
-    const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
-    const rawFactor =
-      (currentUnit as any)?.crdfd_giatrichuyenoi ??
-      (currentUnit as any)?.crdfd_giatrichuyendoi ??
-      (currentUnit as any)?.crdfd_conversionvalue ??
-      1;
+    try {
+      // Lấy giá trị chuyển đổi từ đơn vị đã chọn
+      const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
+      const rawFactor =
+        (currentUnit as any)?.crdfd_giatrichuyenoi ??
+        (currentUnit as any)?.crdfd_giatrichuyendoi ??
+        (currentUnit as any)?.crdfd_conversionvalue ??
+        null;
 
-    const factorNum = Number(rawFactor);
-    const conversionFactor = !isNaN(factorNum) && factorNum > 0 ? factorNum : 1;
+      // IfError: Nếu không có giá trị chuyển đổi hoặc lỗi, dùng 0
+      let conversionFactor = 0;
+      if (rawFactor !== null && rawFactor !== undefined) {
+        const factorNum = Number(rawFactor);
+        conversionFactor = !isNaN(factorNum) && factorNum > 0 ? factorNum : 0;
+      }
 
-    const converted = quantity * conversionFactor;
-    const formatted = converted.toLocaleString('en-US', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    });
+      // Tính số lượng theo kho: quantity * conversionFactor
+      const converted = quantity * conversionFactor;
 
-    // Lấy đơn vị chuẩn từ sản phẩm
-    const baseUnitText = getBaseUnitName();
+      // Format theo "#,##0.##" (tối đa 2 chữ số thập phân, có dấu phẩy phân cách hàng nghìn)
+      const formatted = converted.toLocaleString('en-US', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+        useGrouping: true,
+      });
 
-    return `SL theo kho: ${formatted} ${baseUnitText}`;
+      // Lấy đơn vị chuẩn từ sản phẩm (cb_san_pham.Selected.'Đơn vị chuẩn text')
+      const baseUnitText = getBaseUnitName();
+
+      return `SL theo kho: ${formatted} ${baseUnitText}`;
+    } catch (error) {
+      // Nếu có lỗi, trả về chuỗi rỗng
+      return '';
+    }
   }, [quantity, units, unitId, selectedProduct, selectedProductCode, products]);
 
   const getConversionFactor = () => {
@@ -1622,6 +1638,11 @@ export default function ProductEntryForm({
                 disabled={isFormDisabled || !hasSelectedProduct}
               />
             </div>
+            {warehouseQuantityLabel && (
+              <div className="admin-app-hint-compact" style={{ marginTop: '8px', fontSize: '12px', color: '#6B7280' }}>
+                {warehouseQuantityLabel}
+              </div>
+            )}
           </div>
 
           <div className="admin-app-field-compact">
