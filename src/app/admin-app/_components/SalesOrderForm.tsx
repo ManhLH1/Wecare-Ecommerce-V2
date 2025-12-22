@@ -358,6 +358,14 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       return;
     }
 
+    // KIỂM TRA SỐ LƯỢNG Ở NÚT SAVE - tất cả sản phẩm phải có số lượng > 0
+    const productsWithInvalidQuantity = unsavedProducts.filter(p => !p.quantity || p.quantity <= 0);
+    if (productsWithInvalidQuantity.length > 0) {
+      const productNames = productsWithInvalidQuantity.map(p => p.productName).join(', ');
+      showToast.error(`Số lượng phải lớn hơn 0 cho các sản phẩm: ${productNames}`);
+      return;
+    }
+
     if (!soId) {
       showToast.error('Vui lòng chọn Sales Order trước khi lưu.');
       return;

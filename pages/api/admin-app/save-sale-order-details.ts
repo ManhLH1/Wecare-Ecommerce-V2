@@ -482,23 +482,28 @@ async function updateInventoryAfterSale(
           throw new Error(errorMessage);
         }
 
-        // Update: 
-        // - CurrentInventory -= quantity (trừ tồn kho)
-        // - ReservedQuantity -= quantity (giữ lại phần còn lại: giữ đặt = giữ đặt hàng - số lượng lên đơn)
+        // ============ ATOMIC UPDATE: Trừ tồn kho lý thuyết VÀ tính lại số giữ tồn kho CÙNG LÚC ============
+        // Đảm bảo cả 2 field được update trong cùng 1 PATCH request để tránh race condition
+        // - CurrentInventory -= quantity (trừ tồn kho lý thuyết)
+        // - ReservedQuantity -= quantity (tính lại số giữ tồn kho: giữ đặt = giữ đặt hàng - số lượng lên đơn)
         // Ví dụ: Giữ đặt 40, save đơn 20 → Giữ đặt còn lại 20 (40 - 20 = 20)
         const newCurrentInventory = currentInventory - quantity;
         const newReservedQuantity = Math.max(0, reservedQuantity - quantity);
 
         const updateInvEndpoint = `${BASE_URL}${INVENTORY_TABLE}(${invRecord.cr44a_inventoryweshopid})`;
 
+        // ATOMIC OPERATION: Update cả 2 field trong cùng 1 request
+        // Dynamics 365 đảm bảo tính nguyên tố (atomic) cho mỗi PATCH request
         await axios.patch(
           updateInvEndpoint,
           { 
-            cr44a_soluongtonlythuyet: newCurrentInventory,
-            cr1bb_soluonglythuyetgiuathang: newReservedQuantity
+            cr44a_soluongtonlythuyet: newCurrentInventory,      // Trừ tồn kho lý thuyết
+            cr1bb_soluonglythuyetgiuathang: newReservedQuantity // Tính lại số giữ tồn kho
           },
           { headers }
         );
+        
+        console.log(`✅ [Inventory Non-VAT] Atomic update: ${productCode} - Tồn kho: ${currentInventory} → ${newCurrentInventory}, Giữ tồn: ${reservedQuantity} → ${newReservedQuantity}`);
       }
     }
 
@@ -511,7 +516,9 @@ async function updateInventoryAfterSale(
       if (safeWarehouse) {
         khoBDFilter += ` and crdfd_vitrikhofx eq '${safeWarehouse}'`;
       }
-      const khoBDColumns = "crdfd_kho_binh_dinhid,cr1bb_tonkholythuyetbomua,crdfd_tonkholythuyet,cr1bb_soluonganggiuathang,crdfd_vitrikhofx";
+      // CHỈ query các cột cần thiết: ID, số lượng đang giữ hàng, vị trí kho
+      // KHÔNG query tồn kho lý thuyết bỏ mua vì đơn VAT không cập nhật các cột này
+      const khoBDColumns = "crdfd_kho_binh_dinhid,cr1bb_soluonganggiuathang,crdfd_vitrikhofx";
       const khoBDQuery = `$select=${khoBDColumns}&$filter=${encodeURIComponent(khoBDFilter)}&$top=1`;
       const khoBDEndpoint = `${BASE_URL}${KHO_BD_TABLE}?${khoBDQuery}`;
 
@@ -521,42 +528,28 @@ async function updateInventoryAfterSale(
       
       if (khoBDResults.length > 0) {
         const khoBDRecord = khoBDResults[0];
-        // CurrentInventory = cr1bb_tonkholythuyetbomua (ưu tiên), fallback về crdfd_tonkholythuyet
-        let currentInventory = khoBDRecord.cr1bb_tonkholythuyetbomua ?? 0;
-        if (currentInventory === 0 && khoBDRecord.crdfd_tonkholythuyet) {
-          currentInventory = khoBDRecord.crdfd_tonkholythuyet ?? 0;
-        }
         const reservedQuantity = khoBDRecord.cr1bb_soluonganggiuathang ?? 0;
         
-        // Đơn VAT được phép lên lớn hơn số tồn kho ở Kho Bình Định
-        // Không kiểm tra tồn kho, chỉ cập nhật trực tiếp (cho phép số âm nếu cần)
-        
-        // Update:
-        // - CurrentInventory -= quantity (trừ tồn kho, cho phép số âm nếu đơn VAT vượt tồn kho)
-        // - ReservedQuantity -= quantity (giữ lại phần còn lại: giữ đặt = giữ đặt hàng - số lượng lên đơn)
+        // ============ ĐƠN VAT: Chỉ cập nhật số lượng đang giữ hàng ============
+        // Đơn VAT KHÔNG cập nhật tồn kho lý thuyết bỏ mua (cr1bb_tonkholythuyetbomua hoặc crdfd_tonkholythuyet)
+        // Chỉ cập nhật ReservedQuantity -= quantity (giữ lại phần còn lại: giữ đặt = giữ đặt hàng - số lượng lên đơn)
         // Ví dụ: Giữ đặt 40, save đơn 20 → Giữ đặt còn lại 20 (40 - 20 = 20)
-        const newCurrentInventory = currentInventory - quantity;
         const newReservedQuantity = Math.max(0, reservedQuantity - quantity);
 
         const updateKhoBDEndpoint = `${BASE_URL}${KHO_BD_TABLE}(${khoBDRecord.crdfd_kho_binh_dinhid})`;
 
-        // Update cả CurrentInventory và ReservedQuantity
-        // Sử dụng field tương ứng với CurrentInventory đã lấy
+        // CHỈ cập nhật ReservedQuantity, KHÔNG cập nhật tồn kho lý thuyết bỏ mua
         const updatePayload: any = {
           cr1bb_soluonganggiuathang: newReservedQuantity
         };
-        // Update field CurrentInventory tương ứng
-        if (khoBDRecord.cr1bb_tonkholythuyetbomua !== undefined) {
-          updatePayload.cr1bb_tonkholythuyetbomua = newCurrentInventory;
-        } else if (khoBDRecord.crdfd_tonkholythuyet !== undefined) {
-          updatePayload.crdfd_tonkholythuyet = newCurrentInventory;
-        }
 
         await axios.patch(
           updateKhoBDEndpoint,
           updatePayload,
           { headers }
         );
+        
+        console.log(`✅ [Inventory VAT] Update: ${productCode} - Giữ tồn: ${reservedQuantity} → ${newReservedQuantity} (KHÔNG cập nhật tồn kho lý thuyết bỏ mua)`);
       }
     }
   } catch (error: any) {

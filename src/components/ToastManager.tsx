@@ -182,7 +182,7 @@ const ToastManager: React.FC = () => {
       className="toast-container"
       toastClassName="toast-item"
       style={{
-        top: '90px',
+        top: '140px',
         right: '16px',
       }}
     />
