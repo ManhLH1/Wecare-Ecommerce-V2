@@ -392,3 +392,92 @@ export const updateInventory = async (
   }
 };
 
+// ============ Promotion Order APIs ============
+
+export interface PromotionOrderItem {
+  id: string;
+  name: string;
+  type?: string;
+  value?: number;
+  vndOrPercent?: string; // "VNĐ" or "%"
+  chietKhau2?: number; // 191920000 = No, 191920001 = Yes
+  productCodes?: string;
+  productGroupCodes?: string;
+  totalAmountCondition?: number;
+}
+
+export interface PromotionOrderResponse {
+  existingPromotionOrders: {
+    id: string;
+    name: string;
+    promotionId: string;
+    type: string;
+  }[];
+  hasExistingPromotionOrder: boolean;
+  availablePromotions: PromotionOrderItem[];
+  allPromotions: PromotionOrderItem[];
+}
+
+/**
+ * Lấy danh sách Promotion Order cho một SO
+ */
+export const fetchPromotionOrders = async (
+  soId: string,
+  customerCode?: string,
+  totalAmount?: number,
+  productCodes?: string[],
+  productGroupCodes?: string[]
+): Promise<PromotionOrderResponse> => {
+  try {
+    const params: Record<string, string> = { soId };
+    if (customerCode) params.customerCode = customerCode;
+    if (totalAmount !== undefined) params.totalAmount = String(totalAmount);
+    if (productCodes && productCodes.length > 0) params.productCodes = productCodes.join(",");
+    if (productGroupCodes && productGroupCodes.length > 0) params.productGroupCodes = productGroupCodes.join(",");
+    
+    const response = await axios.get(`${BASE_URL}/promotion-orders`, { params });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching promotion orders:', error);
+    return {
+      existingPromotionOrders: [],
+      hasExistingPromotionOrder: false,
+      availablePromotions: [],
+      allPromotions: [],
+    };
+  }
+};
+
+export interface ApplyPromotionOrderRequest {
+  soId: string;
+  promotionId: string;
+  promotionName?: string;
+  promotionValue?: number;
+  vndOrPercent?: string;
+  chietKhau2?: boolean;
+  productCodes?: string;
+  productGroupCodes?: string;
+}
+
+export interface ApplyPromotionOrderResponse {
+  success: boolean;
+  ordersXPromotionId?: string;
+  updatedSodCount?: number;
+  message?: string;
+}
+
+/**
+ * Áp dụng Promotion Order cho SO
+ */
+export const applyPromotionOrder = async (
+  data: ApplyPromotionOrderRequest
+): Promise<ApplyPromotionOrderResponse> => {
+  try {
+    const response = await axios.post(`${BASE_URL}/apply-promotion-order`, data);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error applying promotion order:', error);
+    throw new Error(error.response?.data?.details || 'Failed to apply promotion order');
+  }
+};
+

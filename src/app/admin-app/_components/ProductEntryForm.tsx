@@ -626,20 +626,6 @@ export default function ProductEntryForm({
       return '';
     }
 
-    // Evaluate reason
-    const _debug = {
-      isFormDisabled,
-      approvePrice,
-      approver,
-      selectedProductCode,
-      warehouse,
-      quantity,
-      priceWarningMessage,
-      vatText,
-      vatPercent,
-      inventoryTheoretical,
-    });
-
     if (isFormDisabled) {
       const reason = 'Chọn KH và SO trước';
       return reason;
