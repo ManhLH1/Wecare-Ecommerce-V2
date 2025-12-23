@@ -663,6 +663,7 @@ export default function ProductEntryForm({
     warehouse,
     inventoryTheoretical,
     getRequestedBaseQuantity,
+    priceLoading, // Thêm priceLoading vào dependency để đảm bảo buttonsDisabled được tính lại khi đang load giá
   ]);
 
   const addButtonDisabledReason = useMemo(() => {
@@ -1004,168 +1005,198 @@ export default function ProductEntryForm({
         setPriceLoading(false);
         hasSetUnitFromApiRef.current = false; // Reset flag khi không có sản phẩm
         userSelectedUnitRef.current = false; // Reset flag khi không có sản phẩm
-        return;
-      }
-      setPriceLoading(true);
-      setApiPrice(null); // Reset trước khi load giá mới
-
-      // Determine if this is a VAT order
-      const isVatOrder = vatPercent > 0 || (vatText?.toLowerCase().includes('có vat') ?? false);
-
-      // API không cần unitId và isVatOrder - sẽ trả về tất cả giá
-      const result = await fetchProductPrice(
-        selectedProductCode,
-        customerCode,
-        undefined, // Không truyền unitId
-        undefined, // region filter removed
-        undefined  // Không truyền isVatOrder
-      );
-
-      // API trả về TẤT CẢ giá cho tất cả đơn vị
-      const allPrices = (result as any)?.prices || [];
-      
-      // Lấy đơn vị hiện tại để lọc giá
-      const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
-      const currentUnitName = currentUnit?.crdfd_name || unit;
-      // Lấy đơn vị chuẩn (crdfd_onvichuan) từ unit đã chọn để map chính xác
-      const currentUnitOnvichuan = (currentUnit as any)?.crdfd_onvichuan || undefined;
-
-      // Tìm giá theo đơn vị đã chọn (nếu có)
-      // Ưu tiên map theo unitName từ API (đã được lấy từ crdfd_onvi lookup)
-      // Sau đó mới map theo crdfd_onvichuan
-      let selectedPrice: any = null;
-      if (allPrices.length > 0 && currentUnitName) {
-        // Bước 1: Tìm theo unitName từ API (đã được lấy từ crdfd_onvi lookup) - chính xác nhất
-        selectedPrice = allPrices.find((p: any) => {
-          if (!p.unitName) return false;
-          // So sánh không phân biệt hoa thường và normalize
-          const apiUnitName = normalizeText(p.unitName);
-          const selectedUnitName = normalizeText(currentUnitName);
-          return apiUnitName === selectedUnitName;
-        });
-        
-        // Bước 2: Nếu không tìm thấy theo unitName, thử tìm theo crdfd_onvichuan
-        if (!selectedPrice && currentUnitOnvichuan) {
-          selectedPrice = allPrices.find((p: any) => {
-            if (!p.crdfd_onvichuan) return false;
-            const apiOnvichuan = normalizeText(p.crdfd_onvichuan);
-            const selectedOnvichuan = normalizeText(currentUnitOnvichuan);
-            return apiOnvichuan === selectedOnvichuan;
-          });
-        }
-      }
-      
-      // Nếu không tìm thấy giá theo đơn vị đã chọn, lấy giá đầu tiên (backward compatibility)
-      if (!selectedPrice && allPrices.length > 0) {
-        selectedPrice = allPrices[0];
-      }
-      
-      // Fallback về format cũ nếu API chưa có prices array
-      const priceWithVat = selectedPrice?.price ?? result?.price ?? null;
-      const priceNoVat = selectedPrice?.priceNoVat ?? (result as any)?.priceNoVat ?? null;
-      const apiUnitName = selectedPrice?.unitName ?? result?.unitName ?? undefined;
-      const apiPriceGroupText = selectedPrice?.priceGroupText ?? result?.priceGroupText ?? undefined;
-
-      // Tự động set đơn vị từ API CHỈ KHI:
-      // 1. CHƯA CÓ ĐƠN VỊ ĐƯỢC CHỌN (unitId và unit đều trống)
-      // 2. NGƯỜI DÙNG CHƯA CHỌN ĐƠN VỊ THỦ CÔNG (userSelectedUnitRef.current = false)
-      // 3. CHƯA SET TỪ API LẦN NÀO (hasSetUnitFromApiRef.current = false)
-      // KHÔNG BAO GIỜ set đơn vị nếu người dùng đã chọn đơn vị thủ công
-      if (apiUnitName && units.length > 0 && !hasSetUnitFromApiRef.current && !userSelectedUnitRef.current) {
-        const foundUnit = units.find((u) =>
-          u.crdfd_name.toLowerCase() === apiUnitName.toLowerCase()
-        );
-        if (foundUnit) {
-          // CHỈ set nếu CHƯA CÓ unitId VÀ CHƯA CÓ unit (hoàn toàn chưa chọn đơn vị)
-          // VÀ người dùng chưa chọn đơn vị thủ công
-          const unitIdIsEmpty = !unitId || unitId === '' || unitId === null || unitId === undefined;
-          const unitIsEmpty = !unit || unit === '' || unit === null || unit === undefined;
-          if (unitIdIsEmpty && unitIsEmpty) {
-            setUnitId(foundUnit.crdfd_unitsid);
-            setUnit(foundUnit.crdfd_name);
-            hasSetUnitFromApiRef.current = true; // Đánh dấu đã set từ API
-          }
-        }
-      }
-
-      // Chọn giá dựa vào VAT của SO và SẢN PHẨM
-      // Logic:
-      // 1. SO có VAT + Sản phẩm có VAT → dùng priceNoVat
-      // 2. SO có VAT + Sản phẩm không VAT → dùng price
-      // 3. SO không VAT + Sản phẩm có VAT → dùng price
-      // 4. SO không VAT + Sản phẩm không VAT → dùng price
-      let basePrice: number | null = null;
-      
-      // Xác định SO có VAT hay không
-      const vatTextLower = (vatText || '').toLowerCase();
-      const soIsVat = vatTextLower.includes('có vat') || vatPercent > 0;
-      
-      // Xác định sản phẩm có VAT hay không (dựa vào crdfd_gtgt)
-      // Tìm sản phẩm từ selectedProduct hoặc từ products list
-      const currentProduct = selectedProduct || (selectedProductCode ? products.find((p) => p.crdfd_masanpham === selectedProductCode) : null);
-      const productVatOptionValue = currentProduct?.crdfd_gtgt_option ?? currentProduct?.crdfd_gtgt;
-      const productVatPercent = productVatOptionValue !== undefined ? VAT_OPTION_MAP[Number(productVatOptionValue)] : undefined;
-      const productIsVat = productVatPercent !== undefined && productVatPercent > 0;
-      
-      // Áp dụng logic chọn giá
-      if (soIsVat && productIsVat) {
-        // SO có VAT + Sản phẩm có VAT → dùng priceNoVat
-        basePrice = priceNoVat ?? null;
-      } else if (soIsVat && !productIsVat) {
-        // SO có VAT + Sản phẩm không VAT → dùng price
-        basePrice = priceWithVat ?? null;
-      } else if (!soIsVat && productIsVat) {
-        // SO không VAT + Sản phẩm có VAT → dùng price
-        basePrice = priceWithVat ?? null;
-      } else {
-        // SO không VAT + Sản phẩm không VAT → dùng price
-        basePrice = priceWithVat ?? null;
-      }
-
-      // Làm tròn & format giống PowerApps Text(..., "#,###")
-      const roundedBase =
-        basePrice !== null && basePrice !== undefined
-          ? Math.round(Number(basePrice))
-          : null;
-
-      const displayPrice =
-        result?.giaFormat ??
-        result?.priceFormatted ??
-        roundedBase;
-
-      const priceStr = normalizePriceInput(displayPrice);
-
-      // Lưu giá từ API để check warning (dù có set vào input hay không)
-      if (roundedBase !== null && roundedBase !== undefined && roundedBase > 0) {
-        setApiPrice(roundedBase);
-      } else {
-        setApiPrice(null);
-      }
-
-      if (priceStr !== '' && roundedBase !== null && roundedBase > 0) {
-        // Lưu basePrice để tính chiết khấu
-        setBasePriceForDiscount(roundedBase);
-        // Set giá từ API, trừ khi đang ở chế độ "Theo chiết khấu" và đã bật "Duyệt giá"
-        // (trong trường hợp đó, giá sẽ được tính từ chiết khấu)
-        if (priceEntryMethod !== 'Theo chiết khấu' || !approvePrice) {
-          handlePriceChange(priceStr);
-        }
-      } else {
-        // API trả về null hoặc giá = 0 - clear giá cũ nếu không đang ở chế độ nhập thủ công với duyệt giá
-        // Nếu đang nhập thủ công và đã bật duyệt giá, giữ giá cũ (người dùng đang nhập)
+        // Clear giá khi không có sản phẩm (trừ khi đang ở chế độ nhập thủ công với duyệt giá)
         if (!(approvePrice && priceEntryMethod === 'Nhập thủ công')) {
           handlePriceChange('');
           setBasePriceForDiscount(0);
         }
+        return;
       }
-      setPriceGroupText(
-        apiPriceGroupText ||
-        result?.priceGroupText ||
-        result?.priceGroupName ||
-        result?.priceGroup ||
-        ''
-      );
-      setPriceLoading(false);
+      
+      // QUAN TRỌNG: Clear giá ngay khi chọn sản phẩm mới (trước khi load giá mới)
+      // Để tránh hiển thị giá của sản phẩm trước trong khi đang load giá mới
+      // Chỉ clear nếu không đang ở chế độ nhập thủ công với duyệt giá
+      if (!(approvePrice && priceEntryMethod === 'Nhập thủ công')) {
+        handlePriceChange('');
+        setBasePriceForDiscount(0);
+      }
+      
+      setPriceLoading(true);
+      setApiPrice(null); // Reset trước khi load giá mới
+      
+      // Lưu productCode hiện tại để kiểm tra sau khi load xong
+      const currentProductCode = selectedProductCode;
+
+      try {
+        // Determine if this is a VAT order
+        const isVatOrder = vatPercent > 0 || (vatText?.toLowerCase().includes('có vat') ?? false);
+
+        // API không cần unitId và isVatOrder - sẽ trả về tất cả giá
+        const result = await fetchProductPrice(
+          selectedProductCode,
+          customerCode,
+          undefined, // Không truyền unitId
+          undefined, // region filter removed
+          undefined  // Không truyền isVatOrder
+        );
+
+        // API trả về TẤT CẢ giá cho tất cả đơn vị
+        const allPrices = (result as any)?.prices || [];
+        
+        // Lấy đơn vị hiện tại để lọc giá
+        const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
+        const currentUnitName = currentUnit?.crdfd_name || unit;
+        // Lấy đơn vị chuẩn (crdfd_onvichuan) từ unit đã chọn để map chính xác
+        const currentUnitOnvichuan = (currentUnit as any)?.crdfd_onvichuan || undefined;
+
+        // Tìm giá theo đơn vị đã chọn (nếu có)
+        // Ưu tiên map theo unitName từ API (đã được lấy từ crdfd_onvi lookup)
+        // Sau đó mới map theo crdfd_onvichuan
+        let selectedPrice: any = null;
+        if (allPrices.length > 0 && currentUnitName) {
+          // Bước 1: Tìm theo unitName từ API (đã được lấy từ crdfd_onvi lookup) - chính xác nhất
+          selectedPrice = allPrices.find((p: any) => {
+            if (!p.unitName) return false;
+            // So sánh không phân biệt hoa thường và normalize
+            const apiUnitName = normalizeText(p.unitName);
+            const selectedUnitName = normalizeText(currentUnitName);
+            return apiUnitName === selectedUnitName;
+          });
+          
+          // Bước 2: Nếu không tìm thấy theo unitName, thử tìm theo crdfd_onvichuan
+          if (!selectedPrice && currentUnitOnvichuan) {
+            selectedPrice = allPrices.find((p: any) => {
+              if (!p.crdfd_onvichuan) return false;
+              const apiOnvichuan = normalizeText(p.crdfd_onvichuan);
+              const selectedOnvichuan = normalizeText(currentUnitOnvichuan);
+              return apiOnvichuan === selectedOnvichuan;
+            });
+          }
+        }
+        
+        // Nếu không tìm thấy giá theo đơn vị đã chọn, lấy giá đầu tiên (backward compatibility)
+        if (!selectedPrice && allPrices.length > 0) {
+          selectedPrice = allPrices[0];
+        }
+        
+        // Fallback về format cũ nếu API chưa có prices array
+        const priceWithVat = selectedPrice?.price ?? result?.price ?? null;
+        const priceNoVat = selectedPrice?.priceNoVat ?? (result as any)?.priceNoVat ?? null;
+        const apiUnitName = selectedPrice?.unitName ?? result?.unitName ?? undefined;
+        const apiPriceGroupText = selectedPrice?.priceGroupText ?? result?.priceGroupText ?? undefined;
+
+        // Tự động set đơn vị từ API CHỈ KHI:
+        // 1. CHƯA CÓ ĐƠN VỊ ĐƯỢC CHỌN (unitId và unit đều trống)
+        // 2. NGƯỜI DÙNG CHƯA CHỌN ĐƠN VỊ THỦ CÔNG (userSelectedUnitRef.current = false)
+        // 3. CHƯA SET TỪ API LẦN NÀO (hasSetUnitFromApiRef.current = false)
+        // KHÔNG BAO GIỜ set đơn vị nếu người dùng đã chọn đơn vị thủ công
+        if (apiUnitName && units.length > 0 && !hasSetUnitFromApiRef.current && !userSelectedUnitRef.current) {
+          const foundUnit = units.find((u) =>
+            u.crdfd_name.toLowerCase() === apiUnitName.toLowerCase()
+          );
+          if (foundUnit) {
+            // CHỈ set nếu CHƯA CÓ unitId VÀ CHƯA CÓ unit (hoàn toàn chưa chọn đơn vị)
+            // VÀ người dùng chưa chọn đơn vị thủ công
+            const unitIdIsEmpty = !unitId || unitId === '' || unitId === null || unitId === undefined;
+            const unitIsEmpty = !unit || unit === '' || unit === null || unit === undefined;
+            if (unitIdIsEmpty && unitIsEmpty) {
+              setUnitId(foundUnit.crdfd_unitsid);
+              setUnit(foundUnit.crdfd_name);
+              hasSetUnitFromApiRef.current = true; // Đánh dấu đã set từ API
+            }
+          }
+        }
+
+        // Chọn giá dựa vào VAT của SO và SẢN PHẨM
+        // Logic:
+        // 1. SO có VAT + Sản phẩm có VAT → dùng priceNoVat
+        // 2. SO có VAT + Sản phẩm không VAT → dùng price
+        // 3. SO không VAT + Sản phẩm có VAT → dùng price
+        // 4. SO không VAT + Sản phẩm không VAT → dùng price
+        let basePrice: number | null = null;
+        
+        // Xác định SO có VAT hay không
+        const vatTextLower = (vatText || '').toLowerCase();
+        const soIsVat = vatTextLower.includes('có vat') || vatPercent > 0;
+        
+        // Xác định sản phẩm có VAT hay không (dựa vào crdfd_gtgt)
+        // Tìm sản phẩm từ selectedProduct hoặc từ products list
+        const currentProduct = selectedProduct || (selectedProductCode ? products.find((p) => p.crdfd_masanpham === selectedProductCode) : null);
+        const productVatOptionValue = currentProduct?.crdfd_gtgt_option ?? currentProduct?.crdfd_gtgt;
+        const productVatPercent = productVatOptionValue !== undefined ? VAT_OPTION_MAP[Number(productVatOptionValue)] : undefined;
+        const productIsVat = productVatPercent !== undefined && productVatPercent > 0;
+        
+        // Áp dụng logic chọn giá
+        if (soIsVat && productIsVat) {
+          // SO có VAT + Sản phẩm có VAT → dùng priceNoVat
+          basePrice = priceNoVat ?? null;
+        } else if (soIsVat && !productIsVat) {
+          // SO có VAT + Sản phẩm không VAT → dùng price
+          basePrice = priceWithVat ?? null;
+        } else if (!soIsVat && productIsVat) {
+          // SO không VAT + Sản phẩm có VAT → dùng price
+          basePrice = priceWithVat ?? null;
+        } else {
+          // SO không VAT + Sản phẩm không VAT → dùng price
+          basePrice = priceWithVat ?? null;
+        }
+
+        // Làm tròn & format giống PowerApps Text(..., "#,###")
+        const roundedBase =
+          basePrice !== null && basePrice !== undefined
+            ? Math.round(Number(basePrice))
+            : null;
+
+        const displayPrice =
+          result?.giaFormat ??
+          result?.priceFormatted ??
+          roundedBase;
+
+        const priceStr = normalizePriceInput(displayPrice);
+
+        // QUAN TRỌNG: Kiểm tra xem sản phẩm có còn là sản phẩm hiện tại không
+        // Nếu user đã chọn sản phẩm khác trong khi đang load giá, không set giá này vào
+        if (currentProductCode !== selectedProductCode) {
+          console.log(`[Price Load] Ignoring price for ${currentProductCode} - product changed to ${selectedProductCode}`);
+          return; // Không set giá nếu sản phẩm đã thay đổi
+        }
+
+        // Lưu giá từ API để check warning (dù có set vào input hay không)
+        if (roundedBase !== null && roundedBase !== undefined && roundedBase > 0) {
+          setApiPrice(roundedBase);
+        } else {
+          setApiPrice(null);
+        }
+
+        if (priceStr !== '' && roundedBase !== null && roundedBase > 0) {
+          // Lưu basePrice để tính chiết khấu
+          setBasePriceForDiscount(roundedBase);
+          // Set giá từ API, trừ khi đang ở chế độ "Theo chiết khấu" và đã bật "Duyệt giá"
+          // (trong trường hợp đó, giá sẽ được tính từ chiết khấu)
+          if (priceEntryMethod !== 'Theo chiết khấu' || !approvePrice) {
+            handlePriceChange(priceStr);
+          }
+        } else {
+          // API trả về null hoặc giá = 0 - clear giá cũ nếu không đang ở chế độ nhập thủ công với duyệt giá
+          // Nếu đang nhập thủ công và đã bật duyệt giá, giữ giá cũ (người dùng đang nhập)
+          if (!(approvePrice && priceEntryMethod === 'Nhập thủ công')) {
+            handlePriceChange('');
+            setBasePriceForDiscount(0);
+          }
+        }
+        setPriceGroupText(
+          apiPriceGroupText ||
+          result?.priceGroupText ||
+          result?.priceGroupName ||
+          result?.priceGroup ||
+          ''
+        );
+      } catch (error) {
+        console.error('Error loading price:', error);
+        // Giữ giá cũ nếu có lỗi, không clear
+      } finally {
+        setPriceLoading(false);
+      }
     };
 
     loadPrice();
@@ -1253,7 +1284,7 @@ export default function ProductEntryForm({
 
   // Calculate totals with promotion discount
   const recomputeTotals = (priceValue: string | number, qty: number, promoDiscountPct: number, vatPct: number) => {
-    const priceNum = parseFloat(String(priceValue)) || 0;
+    const priceNum = parseFloat(String(priceValue).replace(/,/g, '')) || 0;
     const discountFactor = 1 - (promoDiscountPct > 0 ? promoDiscountPct / 100 : 0);
     const effectivePrice = priceNum * discountFactor;
     const vatTextLower = (vatText || '').toLowerCase();
@@ -1261,9 +1292,13 @@ export default function ProductEntryForm({
     const effectiveVat = isNonVatOrder ? 0 : vatPct;
     const newSubtotal = qty * effectivePrice;
     const newVat = (newSubtotal * effectiveVat) / 100;
-    setSubtotal(newSubtotal);
-    setVatAmount(newVat);
-    setTotalAmount(newSubtotal + newVat);
+    // Làm tròn đến hàng đơn vị
+    const roundedSubtotal = Math.round(newSubtotal);
+    const roundedVat = Math.round(newVat);
+    const roundedTotal = Math.round(newSubtotal + newVat);
+    setSubtotal(roundedSubtotal);
+    setVatAmount(roundedVat);
+    setTotalAmount(roundedTotal);
   };
 
   // Calculate subtotal when quantity or price changes
@@ -1273,9 +1308,19 @@ export default function ProductEntryForm({
     recomputeTotals(price, next, discountPercent || promotionDiscountPercent, vatPercent);
   };
 
+  // Format price for display with thousand separators
+  const formatPriceForDisplay = (priceValue: string): string => {
+    if (!priceValue || priceValue.trim() === '') return '';
+    const numValue = Number(priceValue.replace(/,/g, ''));
+    if (isNaN(numValue) || numValue === 0) return '';
+    return numValue.toLocaleString('vi-VN');
+  };
+
   const handlePriceChange = (value: string) => {
-    setPrice(value);
-    recomputeTotals(value, quantity, discountPercent || promotionDiscountPercent, vatPercent);
+    // Remove all non-numeric characters (including thousand separators) for internal storage
+    const cleaned = value.replace(/[^\d]/g, '');
+    setPrice(cleaned);
+    recomputeTotals(cleaned, quantity, discountPercent || promotionDiscountPercent, vatPercent);
   };
 
   const handleVatChange = (value: number) => {
@@ -1833,7 +1878,7 @@ export default function ProductEntryForm({
               <input
                 type="text"
                 className={`admin-app-input admin-app-input-compact admin-app-input-money admin-app-input-small${priceLoading || !approvePrice || (approvePrice && priceEntryMethod === 'Theo chiết khấu') ? ' admin-app-input-readonly' : ''}`}
-                value={price}
+                value={formatPriceForDisplay(price)}
                 onChange={(e) => handlePriceChange(e.target.value)}
                 placeholder={priceLoading ? "Đang tải..." : "Giá"}
                 readOnly={priceLoading || !approvePrice || (approvePrice && priceEntryMethod === 'Theo chiết khấu')}
@@ -1878,9 +1923,9 @@ export default function ProductEntryForm({
               type="button"
               className="admin-app-mini-btn admin-app-mini-btn-add"
               onClick={handleAddWithInventoryCheck}
-              disabled={buttonsDisabled || isAdding || isProcessingAdd}
-              title="Thêm sản phẩm"
-              aria-label="Thêm sản phẩm"
+              disabled={buttonsDisabled || isAdding || isProcessingAdd || priceLoading}
+              title={priceLoading ? "Đang tải giá..." : "Thêm sản phẩm"}
+              aria-label={priceLoading ? "Đang tải giá..." : "Thêm sản phẩm"}
               style={{
                 width: '100%',
                 height: '36px',
@@ -1895,6 +1940,11 @@ export default function ProductEntryForm({
                 <>
                   <div className="admin-app-spinner admin-app-spinner-small" style={{ marginRight: '6px', borderColor: 'rgba(255, 255, 255, 0.3)', borderTopColor: 'white' }}></div>
                   Đang thêm...
+                </>
+              ) : priceLoading ? (
+                <>
+                  <div className="admin-app-spinner admin-app-spinner-small" style={{ marginRight: '6px', borderColor: 'rgba(255, 255, 255, 0.3)', borderTopColor: 'white' }}></div>
+                  Đang tải giá...
                 </>
               ) : (
                 '➕ Thêm sản phẩm'

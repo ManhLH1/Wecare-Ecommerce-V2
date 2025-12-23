@@ -112,7 +112,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   // Promotion Order Popup state
   const [showPromotionOrderPopup, setShowPromotionOrderPopup] = useState(false);
   const [promotionOrderList, setPromotionOrderList] = useState<PromotionOrderItem[]>([]);
-  const [selectedPromotionOrder, setSelectedPromotionOrder] = useState<PromotionOrderItem | null>(null);
+  const [selectedPromotionOrders, setSelectedPromotionOrders] = useState<PromotionOrderItem[]>([]); // Multi-select
   const [isApplyingPromotion, setIsApplyingPromotion] = useState(false);
 
   // Kiểm tra có sản phẩm chưa lưu để enable nút Save
@@ -362,8 +362,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setDiscountPercent(0);
     setDiscountAmount(0);
     setPromotionText('');
-    setNote('');
-    // Keep warehouse, customer, SO, deliveryDate as they are reused
+    // Keep note, warehouse, customer, SO, deliveryDate as they are reused
 
     setIsAdding(false);
     showToast.success('Đã thêm sản phẩm vào danh sách!');
@@ -499,7 +498,24 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         products: productsToSave,
       });
 
-      showToast.success(result.message || 'Tạo đơn bán chi tiết thành công!');
+      // Kiểm tra nếu có sản phẩm thất bại
+      if (result.partialSuccess || (result.totalFailed && result.totalFailed > 0)) {
+        const totalSaved = result.totalSaved ?? 0;
+        const totalRequested = result.totalRequested ?? 0;
+        const totalFailed = result.totalFailed ?? 0;
+        const message = result.message || `Đã lưu ${totalSaved}/${totalRequested} sản phẩm. ${totalFailed} sản phẩm thất bại.`;
+        showToast.warning(message);
+        
+        // Log chi tiết các sản phẩm thất bại
+        if (result.failedProducts && result.failedProducts.length > 0) {
+          console.error('Các sản phẩm thất bại:', result.failedProducts);
+          result.failedProducts.forEach((failed: any) => {
+            console.error(`- ${failed.productName || failed.productCode}: ${failed.error}`);
+          });
+        }
+      } else {
+        showToast.success(result.message || 'Tạo đơn bán chi tiết thành công!');
+      }
 
       // Lưu lại soId và customerCode để check promotion order
       const savedSoId = soId;
@@ -509,46 +525,65 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       const savedTotalAmount = orderSummary.total;
 
       // Reload danh sách SOD từ CRM để cập nhật isSodCreated cho các sản phẩm vừa save
-      try {
-        const updatedDetails = await fetchSaleOrderDetails(soId);
-        const mappedProducts: ProductItem[] = updatedDetails.map((detail: SaleOrderDetail) => {
-          const subtotal = (detail.discountedPrice || detail.price) * detail.quantity;
-          const vatAmount = (subtotal * detail.vat) / 100;
-          return {
-            id: detail.id,
-            stt: detail.stt,
-            productName: detail.productName,
-            unit: detail.unit,
-            quantity: detail.quantity,
-            price: detail.price,
-            surcharge: detail.surcharge,
-            discount: detail.discount,
-            discountedPrice: detail.discountedPrice,
-            vat: detail.vat,
-            subtotal,
-            vatAmount,
-            totalAmount: detail.totalAmount,
-            approver: detail.approver,
-            deliveryDate: detail.deliveryDate || '',
-            isSodCreated: true, // Đánh dấu là đã save vào CRM
-          };
-        });
-        // Sort by STT descending
-        mappedProducts.sort((a, b) => (b.stt || 0) - (a.stt || 0));
-        setProductList(mappedProducts);
-      } catch (error) {
-        console.error('Error reloading sale order details after save:', error);
-        // Nếu reload thất bại, vẫn cập nhật isSodCreated cho các sản phẩm vừa save
-        setProductList(prevList => {
-          const savedProductCodesSet = new Set(savedProductCodes);
-          return prevList.map(item => {
-            // Nếu sản phẩm vừa được save (có productCode trong danh sách vừa save)
-            if (item.productCode && savedProductCodesSet.has(item.productCode)) {
-              return { ...item, isSodCreated: true };
-            }
-            return item;
+      // CHỈ reload nếu tất cả sản phẩm đã save thành công
+      if (!result.partialSuccess && result.totalFailed === 0) {
+        try {
+          const updatedDetails = await fetchSaleOrderDetails(soId);
+          const mappedProducts: ProductItem[] = updatedDetails.map((detail: SaleOrderDetail) => {
+            const subtotal = (detail.discountedPrice || detail.price) * detail.quantity;
+            const vatAmount = (subtotal * detail.vat) / 100;
+            return {
+              id: detail.id,
+              stt: detail.stt,
+              productName: detail.productName,
+              unit: detail.unit,
+              quantity: detail.quantity,
+              price: detail.price,
+              surcharge: detail.surcharge,
+              discount: detail.discount,
+              discountedPrice: detail.discountedPrice,
+              vat: detail.vat,
+              subtotal,
+              vatAmount,
+              totalAmount: detail.totalAmount,
+              approver: detail.approver,
+              deliveryDate: detail.deliveryDate || '',
+              isSodCreated: true, // Đánh dấu là đã save vào CRM
+            };
           });
-        });
+          // Sort by STT descending
+          mappedProducts.sort((a, b) => (b.stt || 0) - (a.stt || 0));
+          setProductList(mappedProducts);
+        } catch (error) {
+          console.error('Error reloading sale order details after save:', error);
+          // Nếu reload thất bại, vẫn cập nhật isSodCreated cho các sản phẩm đã save thành công
+          if (result.savedDetails && result.savedDetails.length > 0) {
+            setProductList(prevList => {
+              const savedProductCodesSet = new Set(result.savedDetails.map((p: any) => p.productCode).filter(Boolean));
+              return prevList.map(item => {
+                // Nếu sản phẩm vừa được save thành công
+                if (item.productCode && savedProductCodesSet.has(item.productCode)) {
+                  return { ...item, isSodCreated: true };
+                }
+                return item;
+              });
+            });
+          }
+        }
+      } else {
+        // Nếu có sản phẩm thất bại, chỉ cập nhật isSodCreated cho các sản phẩm đã save thành công
+        if (result.savedDetails && result.savedDetails.length > 0) {
+          setProductList(prevList => {
+            const savedProductCodesSet = new Set(result.savedDetails.map((p: any) => p.productCode).filter(Boolean));
+            return prevList.map(item => {
+              // Nếu sản phẩm vừa được save thành công
+              if (item.productCode && savedProductCodesSet.has(item.productCode)) {
+                return { ...item, isSodCreated: true };
+              }
+              return item;
+            });
+          });
+        }
       }
 
       // Clear form fields after successful save (giữ lại SO và customer)
@@ -568,31 +603,61 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       setApproveSupPrice(false);
       setUrgentOrder(false);
       setDeliveryDate('');
-      setNote('');
+      // Keep note - không clear ghi chú
       setApprover('');
       setDiscountPercent(0);
       setDiscountAmount(0);
       setPromotionText('');
 
-      // Check promotion order sau khi save thành công
-      try {
-        const promotionOrderResult = await fetchPromotionOrders(
-          savedSoId,
-          savedCustomerCode,
-          savedTotalAmount,
-          savedProductCodes,
-          savedProductGroupCodes
-        );
-        
-        // Nếu chưa có promotion order nào được áp dụng VÀ có promotion order khả dụng
-        if (!promotionOrderResult.hasExistingPromotionOrder && promotionOrderResult.availablePromotions.length > 0) {
-          // Lưu lại soId để dùng khi apply promotion
-          setSoId(savedSoId);
-          setPromotionOrderList(promotionOrderResult.availablePromotions);
-          setShowPromotionOrderPopup(true);
+      // LUÔN hiển thị popup chiết khấu 2 sau khi lưu thành công
+      // Đảm bảo popup hiển thị cho sale chọn promotion bổ sung chiết khấu 2
+      // Chỉ check khi có soId và customerCode (đã save thành công)
+      if (savedSoId && savedCustomerCode) {
+        try {
+          console.log('[Promotion Order] Checking promotion orders after save:', {
+            soId: savedSoId,
+            customerCode: savedCustomerCode,
+            totalAmount: savedTotalAmount,
+            productCodes: savedProductCodes,
+            productGroupCodes: savedProductGroupCodes
+          });
+
+          const promotionOrderResult = await fetchPromotionOrders(
+            savedSoId,
+            savedCustomerCode,
+            savedTotalAmount,
+            savedProductCodes,
+            savedProductGroupCodes
+          );
+          
+          console.log('[Promotion Order] Result:', {
+            hasExistingPromotionOrder: promotionOrderResult.hasExistingPromotionOrder,
+            availablePromotionsCount: promotionOrderResult.availablePromotions?.length || 0,
+            allPromotionsCount: promotionOrderResult.allPromotions?.length || 0,
+            availablePromotions: promotionOrderResult.availablePromotions
+          });
+          
+          // LUÔN hiển thị popup nếu có promotion khả dụng (bất kể đã có promotion order hay chưa)
+          if (promotionOrderResult.availablePromotions && promotionOrderResult.availablePromotions.length > 0) {
+            console.log('[Promotion Order] ✅ Showing popup - có promotion khả dụng');
+            setSoId(savedSoId);
+            setPromotionOrderList(promotionOrderResult.availablePromotions);
+            setShowPromotionOrderPopup(true);
+          } else if (promotionOrderResult.allPromotions && promotionOrderResult.allPromotions.length > 0) {
+            // Fallback: nếu availablePromotions rỗng nhưng allPromotions có data, dùng allPromotions
+            console.log('[Promotion Order] ✅ Showing popup với allPromotions - fallback');
+            setSoId(savedSoId);
+            setPromotionOrderList(promotionOrderResult.allPromotions);
+            setShowPromotionOrderPopup(true);
+          } else {
+            console.log('[Promotion Order] ❌ Không có promotion khả dụng - không hiển thị popup');
+          }
+        } catch (error) {
+          console.error('[Promotion Order] ❌ Error checking promotion orders:', error);
+          // Nếu có lỗi khi fetch, vẫn không hiển thị popup
         }
-      } catch (error) {
-        // Silent error - promotion order is optional
+      } else {
+        console.log('[Promotion Order] ❌ Không có soId hoặc customerCode - không hiển thị popup');
       }
     } catch (error: any) {
       console.error('Error saving sale order details:', error);
@@ -623,8 +688,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setDiscountPercent(0);
     setDiscountAmount(0);
     setPromotionText('');
-    setNote('');
-    // Keep customer, SO (đang được set mới), deliveryDate as they are reused
+    // Keep note, customer, SO (đang được set mới), deliveryDate as they are reused
   };
 
   const handleRefresh = async () => {
@@ -672,7 +736,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setApproveSupPrice(false);
     setUrgentOrder(false);
     setDeliveryDate('14/12/2025');
-    setNote('');
+    // Keep note - không clear ghi chú
     setApprover('');
     setDiscountPercent(0);
     setDiscountAmount(0);
@@ -680,32 +744,45 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setProductList([]);
   };
 
-  // Xử lý khi xác nhận chọn Promotion Order
+  // Xử lý khi xác nhận chọn Promotion Order (multi-select)
   const handleApplyPromotionOrder = async () => {
-    if (!selectedPromotionOrder || !soId) {
-      showToast.warning('Vui lòng chọn Promotion Order');
+    if (selectedPromotionOrders.length === 0 || !soId) {
+      showToast.warning('Vui lòng chọn ít nhất một Promotion Order');
       return;
     }
 
     setIsApplyingPromotion(true);
     try {
-      const result = await applyPromotionOrder({
-        soId: soId,
-        promotionId: selectedPromotionOrder.id,
-        promotionName: selectedPromotionOrder.name,
-        promotionValue: selectedPromotionOrder.value,
-        vndOrPercent: selectedPromotionOrder.vndOrPercent,
-        chietKhau2: selectedPromotionOrder.chietKhau2 === 191920001, // 191920001 = Yes
-        productCodes: selectedPromotionOrder.productCodes,
-        productGroupCodes: selectedPromotionOrder.productGroupCodes,
-      });
+      // Áp dụng từng promotion order
+      const results = [];
+      for (const promo of selectedPromotionOrders) {
+        try {
+          const result = await applyPromotionOrder({
+            soId: soId,
+            promotionId: promo.id,
+            promotionName: promo.name,
+            promotionValue: promo.value,
+            vndOrPercent: promo.vndOrPercent,
+            chietKhau2: promo.chietKhau2 === 191920001, // 191920001 = Yes
+            productCodes: promo.productCodes,
+            productGroupCodes: promo.productGroupCodes,
+          });
+          results.push(result);
+        } catch (error: any) {
+          console.error(`Error applying promotion ${promo.name}:`, error);
+          results.push({ success: false, message: `Lỗi khi áp dụng ${promo.name}` });
+        }
+      }
 
-      if (result.success) {
-        showToast.success(result.message || 'Đã áp dụng Promotion Order thành công!');
+      const successCount = results.filter(r => r.success).length;
+      if (successCount > 0) {
+        showToast.success(`Đã áp dụng ${successCount}/${selectedPromotionOrders.length} Promotion Order thành công!`);
         setShowPromotionOrderPopup(false);
-        setSelectedPromotionOrder(null);
+        setSelectedPromotionOrders([]);
         setPromotionOrderList([]);
         setSoId(''); // Clear soId sau khi apply
+      } else {
+        showToast.error('Không thể áp dụng Promotion Order');
       }
     } catch (error: any) {
       showToast.error(error.message || 'Không thể áp dụng Promotion Order');
@@ -717,7 +794,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   // Đóng popup promotion order
   const handleClosePromotionOrderPopup = () => {
     setShowPromotionOrderPopup(false);
-    setSelectedPromotionOrder(null);
+    setSelectedPromotionOrders([]);
     setPromotionOrderList([]);
     setSoId(''); // Clear soId
   };
@@ -733,22 +810,53 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             </div>
             <div className="admin-app-popup-content">
               <div className="admin-app-field-compact">
-                <label className="admin-app-label-inline">Chọn Promotion Order</label>
-                <select
-                  className="admin-app-input admin-app-input-compact"
-                  value={selectedPromotionOrder?.id || ''}
-                  onChange={(e) => {
-                    const promo = promotionOrderList.find(p => p.id === e.target.value);
-                    setSelectedPromotionOrder(promo || null);
-                  }}
-                >
-                  <option value="">-- Chọn Promotion --</option>
-                  {promotionOrderList.map((promo) => (
-                    <option key={promo.id} value={promo.id}>
-                      {promo.name} ({promo.vndOrPercent === '%' ? `${promo.value}%` : `${promo.value?.toLocaleString('vi-VN')} VNĐ`})
-                    </option>
-                  ))}
-                </select>
+                <label className="admin-app-label-inline">Chọn Promotion Order (có thể chọn nhiều)</label>
+                <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '4px', padding: '8px' }}>
+                  {promotionOrderList.map((promo) => {
+                    const isSelected = selectedPromotionOrders.some(p => p.id === promo.id);
+                    return (
+                      <label
+                        key={promo.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '8px',
+                          cursor: 'pointer',
+                          borderRadius: '4px',
+                          marginBottom: '4px',
+                          backgroundColor: isSelected ? '#f0f9ff' : 'transparent',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isSelected) e.currentTarget.style.backgroundColor = '#f8fafc';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedPromotionOrders([...selectedPromotionOrders, promo]);
+                            } else {
+                              setSelectedPromotionOrders(selectedPromotionOrders.filter(p => p.id !== promo.id));
+                            }
+                          }}
+                          style={{ marginRight: '8px', cursor: 'pointer' }}
+                        />
+                        <span style={{ fontSize: '13px', flex: 1 }}>
+                          {promo.name} ({promo.vndOrPercent === '%' ? `${promo.value}%` : `${promo.value?.toLocaleString('vi-VN')} VNĐ`})
+                          {promo.chietKhau2 === 191920001 && (
+                            <span style={{ marginLeft: '8px', color: '#059669', fontSize: '11px', fontWeight: '600' }}>
+                              [Chiết khấu 2]
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             </div>
             <div className="admin-app-popup-actions">
@@ -764,7 +872,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                 type="button"
                 className="admin-app-btn admin-app-btn-primary"
                 onClick={handleApplyPromotionOrder}
-                disabled={!selectedPromotionOrder || isApplyingPromotion}
+                disabled={selectedPromotionOrders.length === 0 || isApplyingPromotion}
               >
                 {isApplyingPromotion ? 'Đang xử lý...' : 'Xác nhận'}
               </button>
@@ -884,7 +992,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                     setDiscountPercent(0);
                     setDiscountAmount(0);
                     setPromotionText('');
-                    setNote('');
+                    // Keep note - không clear ghi chú khi đổi khách hàng
                   }}
                   placeholder="Chọn khách hàng"
                   loading={customersLoading}

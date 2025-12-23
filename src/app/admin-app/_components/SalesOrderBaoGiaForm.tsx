@@ -560,8 +560,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     setDiscountPercent(0);
     setDiscountAmount(0);
     setPromotionText('');
-    setNote('');
-    // Keep customer, SO (đang được set mới), deliveryDate as they are reused
+    // Keep note, customer, SO (đang được set mới), deliveryDate as they are reused
   };
 
   const handleRefresh = async () => {
@@ -608,7 +607,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     setApproveSupPrice(false);
     setUrgentOrder(false);
     setDeliveryDate('14/12/2025');
-    setNote('');
+    // Keep note - không clear ghi chú
     setApprover('');
     setDiscountPercent(0);
     setDiscountAmount(0);

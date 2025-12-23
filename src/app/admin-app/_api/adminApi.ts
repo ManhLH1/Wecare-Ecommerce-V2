@@ -337,6 +337,17 @@ export interface SaveSaleOrderDetailsResponse {
   message: string;
   savedDetails: any[];
   totalAmount: number;
+  partialSuccess?: boolean;
+  failedProducts?: Array<{
+    productCode?: string;
+    productName?: string;
+    quantity?: number;
+    error?: string;
+    fullError?: any;
+  }>;
+  totalRequested?: number;
+  totalSaved?: number;
+  totalFailed?: number;
 }
 
 export const saveSaleOrderDetails = async (

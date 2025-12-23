@@ -1798,7 +1798,7 @@
   padding: 8px 8px 0 8px;
   flex: 1;
   min-height: 0;
-  max-height: calc(100vh - 40px - 200px - 16px); /* Header(40px) - Table(200px, reduced) - Padding(16px) */
+  max-height: calc(100vh - 40px - 350px - 16px); /* Header(40px) - Table(350px, increased) - Padding(16px) */
   overflow: visible;
   align-items: stretch;
   position: relative;
@@ -2789,9 +2789,9 @@
   flex-shrink: 0;
   padding: 0 8px 8px;
   margin-top: 0;
-  height: 200px;
-  min-height: 200px;
-  max-height: 200px;
+  height: 350px;
+  min-height: 350px;
+  max-height: 350px;
   display: flex;
   flex-direction: column;
 }
@@ -3018,9 +3018,9 @@
   }
   
   .admin-app-table-wrapper {
-    height: 240px;
-    min-height: 240px;
-    max-height: 240px;
+    height: 350px;
+    min-height: 350px;
+    max-height: 350px;
   }
   
   .admin-app-table-compact tbody tr {
@@ -3226,8 +3226,8 @@
     order: 3;
     flex: 0 0 auto !important;
     height: auto !important;
-    min-height: 300px !important;
-    max-height: 400px !important;
+    min-height: 350px !important;
+    max-height: 450px !important;
     margin-top: 12px;
   }
 
@@ -3440,8 +3440,8 @@
 /* Landscape mobile - tối ưu cho màn hình ngang */
 @media (max-width: 768px) and (orientation: landscape) {
   .admin-app-table-wrapper {
-    min-height: 200px !important;
-    max-height: 250px !important;
+    min-height: 300px !important;
+    max-height: 350px !important;
   }
 
   .admin-app-content-compact {

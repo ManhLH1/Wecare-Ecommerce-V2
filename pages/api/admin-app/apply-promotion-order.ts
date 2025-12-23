@@ -60,12 +60,21 @@ export default async function handler(
     };
 
     // 1. Tạo record Orders x Promotion
-    const ordersXPromotionPayload = {
+    // Tính Loại và Chiết khấu theo logic PowerApps:
+    // Loại: If(VND_Percent='VNĐ/% (Promotion)'.VNĐ,"Tiền","Phần trăm")
+    // Chiết khấu: If(VND_Percent='VNĐ/% (Promotion)'.VNĐ,ValuePromotion,ValuePromotion/100)
+    const loai = vndOrPercent === "VNĐ" ? "Tiền" : "Phần trăm";
+    const chietKhau2Value = vndOrPercent === "VNĐ" 
+      ? (promotionValue || 0) 
+      : ((promotionValue || 0) / 100);
+    
+    const ordersXPromotionPayload: any = {
       crdfd_name: promotionName || "Promotion Order",
-      "crdfd_SO@odata.bind": `/crdfd_sale_orderses(${soId})`,
+      "crdfd_SO@odata.bind": `/crdfd_sale_orders(${soId})`,
       "crdfd_Promotion@odata.bind": `/crdfd_promotions(${promotionId})`,
       crdfd_type: "Order",
-      crdfd_value: promotionValue || 0,
+      crdfd_loai: loai,
+      crdfd_chieckhau2: chietKhau2Value,
       statecode: 0, // Active
     };
 

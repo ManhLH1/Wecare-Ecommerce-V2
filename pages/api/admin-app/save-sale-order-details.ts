@@ -774,6 +774,7 @@ export default async function handler(
 
     // ============ PATCH SALE ORDER DETAILS ============
     const savedDetails: any[] = [];
+    const failedProducts: any[] = [];
 
     for (const product of products) {
       const vatOptionSet = VAT_TO_IEUCHINHGTGT_MAP[product.vat] ?? 191920000;
@@ -950,55 +951,78 @@ export default async function handler(
           payload: JSON.stringify(payload, null, 2)
         });
         
-        // Throw error để dừng và trả về lỗi cho client
-        throw {
-          message: `Error saving product ${product.productName || product.productCode || 'unknown'}`,
-          details: saveError.response?.data?.error?.message || saveError.response?.data?.error || saveError.message,
-          fullError: saveError.response?.data,
-          product: {
-            productCode: product.productCode,
-            productName: product.productName,
-            quantity: product.quantity
-          }
-        };
+        // Lưu thông tin sản phẩm thất bại thay vì throw ngay
+        failedProducts.push({
+          productCode: product.productCode,
+          productName: product.productName,
+          quantity: product.quantity,
+          error: saveError.response?.data?.error?.message || saveError.response?.data?.error || saveError.message,
+          fullError: saveError.response?.data
+        });
       }
+    }
+
+    // Nếu có sản phẩm thất bại, trả về thông báo chi tiết
+    if (failedProducts.length > 0) {
+      const successCount = savedDetails.length;
+      const failCount = failedProducts.length;
+      const failedProductNames = failedProducts.map(p => p.productName || p.productCode).join(', ');
+      
+      return res.status(207).json({ // 207 Multi-Status
+        success: false,
+        partialSuccess: successCount > 0,
+        message: `Đã lưu ${successCount}/${products.length} sản phẩm. ${failCount} sản phẩm thất bại: ${failedProductNames}`,
+        savedDetails,
+        failedProducts,
+        totalRequested: products.length,
+        totalSaved: successCount,
+        totalFailed: failCount
+      });
     }
 
     // ============ CẬP NHẬT TỒN KHO KHI SAVE ĐƠN HÀNG (Bước 3: Chốt đơn) ============
     // Khi save: Trả lại số giữ tồn cũ (release reserved quantity) và trừ tồn kho (final operation)
     // Sử dụng atomic operation để đảm bảo tính nguyên tố
-    if (hasWarehouseName) {
-      // Atomic check và cập nhật tồn kho cho từng sản phẩm trong danh sách
-      for (const product of products) {
-        if (product.productCode && product.quantity > 0) {
+    // CHỈ update inventory cho các sản phẩm đã save thành công
+    if (hasWarehouseName && savedDetails.length > 0) {
+      const inventoryErrors: any[] = [];
+      
+      // Atomic check và cập nhật tồn kho cho từng sản phẩm ĐÃ SAVE THÀNH CÔNG
+      for (const savedProduct of savedDetails) {
+        if (savedProduct.productCode && savedProduct.quantity > 0) {
           try {
             // updateInventoryAfterSale sẽ:
             // 1. Release reserved quantity (trả lại số giữ tồn cũ)
             // 2. Trừ tồn kho (final operation)
             await updateInventoryAfterSale(
-              product.productCode,
-              product.quantity,
+              savedProduct.productCode,
+              savedProduct.quantity,
               warehouseName,
               !isNonVatOrder, // isVatOrder
               headers,
-              product.productGroupCode, // productGroupCode để kiểm tra nhóm đặc biệt
+              savedProduct.productGroupCode, // productGroupCode để kiểm tra nhóm đặc biệt
               false // skipStockCheck - sẽ được xác định trong hàm
             );
-            console.log(`✅ [Inventory] Đã chốt tồn kho cho ${product.productCode}: trả lại ${product.quantity} giữ tồn và trừ ${product.quantity} tồn kho`);
+            console.log(`✅ [Inventory] Đã chốt tồn kho cho ${savedProduct.productCode}: trả lại ${savedProduct.quantity} giữ tồn và trừ ${savedProduct.quantity} tồn kho`);
           } catch (invError: any) {
-            // Nếu cập nhật tồn kho thất bại, rollback SOD đã tạo
-            console.error(`❌ [Inventory] Lỗi khi chốt tồn kho cho ${product.productCode}:`, invError);
-            throw {
-              message: `Không thể chốt tồn kho cho sản phẩm ${product.productName || product.productCode}`,
-              details: invError.message,
-              product: {
-                productCode: product.productCode,
-                productName: product.productName,
-                quantity: product.quantity
-              }
-            };
+            // Lưu lỗi inventory nhưng không throw để tiếp tục xử lý các sản phẩm khác
+            console.error(`❌ [Inventory] Lỗi khi chốt tồn kho cho ${savedProduct.productCode}:`, invError);
+            inventoryErrors.push({
+              productCode: savedProduct.productCode,
+              productName: savedProduct.productName,
+              quantity: savedProduct.quantity,
+              error: invError.message
+            });
           }
         }
+      }
+      
+      // Nếu có lỗi inventory, thêm vào failedProducts
+      if (inventoryErrors.length > 0) {
+        failedProducts.push(...inventoryErrors.map(err => ({
+          ...err,
+          error: `Lỗi cập nhật tồn kho: ${err.error}`
+        })));
       }
     }
 
