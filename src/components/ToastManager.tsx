@@ -210,8 +210,6 @@ const ToastManager: React.FC = () => {
       limit={3}
       className="toast-container"
       toastClassName="toast-item"
-      enableMultiContainer={false}
-      onClose={() => {}} // Prevent errors on close
       style={{
         top: '140px',
         right: '16px',
