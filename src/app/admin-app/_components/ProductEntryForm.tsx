@@ -1321,14 +1321,32 @@ export default function ProductEntryForm({
       return 0;
     }
 
-    const candidates = [
-      promo.valueWithVat,
-      promo.valueNoVat,
-      promo.value,
-      promo.value2,
-      promo.value3,
-      promo.valueBuyTogether,
-    ];
+    // Ưu tiên lấy giá trị promotion theo loại đơn hàng:
+    // - SO có VAT: ưu tiên crdfd_value_co_vat (valueWithVat)
+    // - SO không VAT: ưu tiên crdfd_value_khong_vat (valueNoVat)
+    let candidates: (number | string | null | undefined)[];
+    if (isVatOrder) {
+      // SO có VAT: ưu tiên valueWithVat trước
+      candidates = [
+        promo.valueWithVat,  // crdfd_value_co_vat - ưu tiên cho SO có VAT
+        promo.valueNoVat,    // crdfd_value_khong_vat - fallback
+        promo.value,
+        promo.value2,
+        promo.value3,
+        promo.valueBuyTogether,
+      ];
+    } else {
+      // SO không VAT: ưu tiên valueNoVat trước
+      candidates = [
+        promo.valueNoVat,    // crdfd_value_khong_vat - ưu tiên cho SO không VAT
+        promo.valueWithVat,   // crdfd_value_co_vat - fallback
+        promo.value,
+        promo.value2,
+        promo.value3,
+        promo.valueBuyTogether,
+      ];
+    }
+
     for (const c of candidates) {
       const num = Number(c);
       if (isNaN(num)) continue;
@@ -1812,13 +1830,29 @@ export default function ProductEntryForm({
                           const n = Number(v);
                           return isNaN(n) ? null : n;
                         };
-                        const displayValue =
-                          toNumber(promo.valueWithVat) ??
-                          toNumber(promo.valueNoVat) ??
-                          toNumber(promo.value) ??
-                          toNumber(promo.value2) ??
-                          toNumber(promo.value3) ??
-                          toNumber(promo.valueBuyTogether);
+                        // Ưu tiên hiển thị giá trị promotion theo loại đơn hàng (giống derivePromotionPercent)
+                        const vatTextLower = (vatText || '').toLowerCase();
+                        const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
+                        let displayValue: number | null = null;
+                        if (isVatOrder) {
+                          // SO có VAT: ưu tiên valueWithVat
+                          displayValue =
+                            toNumber(promo.valueWithVat) ??
+                            toNumber(promo.valueNoVat) ??
+                            toNumber(promo.value) ??
+                            toNumber(promo.value2) ??
+                            toNumber(promo.value3) ??
+                            toNumber(promo.valueBuyTogether);
+                        } else {
+                          // SO không VAT: ưu tiên valueNoVat
+                          displayValue =
+                            toNumber(promo.valueNoVat) ??
+                            toNumber(promo.valueWithVat) ??
+                            toNumber(promo.value) ??
+                            toNumber(promo.value2) ??
+                            toNumber(promo.value3) ??
+                            toNumber(promo.valueBuyTogether);
+                        }
                         const valueLabel =
                           displayValue !== null && displayValue !== undefined
                             ? ` - ${displayValue}%`

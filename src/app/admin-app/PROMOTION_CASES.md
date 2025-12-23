@@ -48,9 +48,19 @@ Mỗi option render label:
 
 - `promo.name` + ` - <value>%` (nếu tìm được value hợp lệ)
 
-Giá trị % hiển thị trong option được chọn theo thứ tự fallback:
-1. `promo.valueWithVat`
-2. `promo.valueNoVat`
+Giá trị % hiển thị trong option được chọn theo thứ tự fallback **phụ thuộc vào loại đơn hàng**:
+
+#### SO có VAT (isVatOrder = true):
+1. `promo.valueWithVat` (crdfd_value_co_vat) - **ưu tiên**
+2. `promo.valueNoVat` (crdfd_value_khong_vat) - fallback
+3. `promo.value`
+4. `promo.value2`
+5. `promo.value3`
+6. `promo.valueBuyTogether`
+
+#### SO không VAT (isVatOrder = false):
+1. `promo.valueNoVat` (crdfd_value_khong_vat) - **ưu tiên**
+2. `promo.valueWithVat` (crdfd_value_co_vat) - fallback
 3. `promo.value`
 4. `promo.value2`
 5. `promo.value3`
@@ -70,15 +80,25 @@ Hàm lõi: `derivePromotionPercent(promo)`
 
 ### 5.2 Ưu tiên field để lấy % giảm
 
-`derivePromotionPercent` duyệt candidates theo thứ tự:
-1. `promo.valueWithVat`
-2. `promo.valueNoVat`
+`derivePromotionPercent` duyệt candidates theo thứ tự **phụ thuộc vào loại đơn hàng**:
+
+#### SO có VAT (isVatOrder = true):
+1. `promo.valueWithVat` (crdfd_value_co_vat) - **ưu tiên**
+2. `promo.valueNoVat` (crdfd_value_khong_vat) - fallback
 3. `promo.value`
 4. `promo.value2`
 5. `promo.value3`
 6. `promo.valueBuyTogether`
 
-Rule:
+#### SO không VAT (isVatOrder = false):
+1. `promo.valueNoVat` (crdfd_value_khong_vat) - **ưu tiên**
+2. `promo.valueWithVat` (crdfd_value_co_vat) - fallback
+3. `promo.value`
+4. `promo.value2`
+5. `promo.value3`
+6. `promo.valueBuyTogether`
+
+**Rule:**
 - Nếu `num` trong (0, 1] → coi là **tỉ lệ dạng 0.x** → convert sang %: `Math.round(num * 100)`
   - Ví dụ: `0.15` → `15%`
 - Nếu `num > 0` → coi là **% trực tiếp** → dùng `num` luôn
