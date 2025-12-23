@@ -85,6 +85,7 @@ docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
 Vào **Manage Jenkins** → **Plugins** → **Available plugins** và cài đặt:
 
 - **Git Plugin** - Kết nối với Git repositories
+- **Pipeline**
 - **Docker Pipeline** - Hỗ trợ Docker trong pipeline
 - **Pipeline** - Jenkins Pipeline (thường đã có sẵn)
 - **SSH Agent** - Kết nối SSH đến VPS

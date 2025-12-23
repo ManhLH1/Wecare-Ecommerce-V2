@@ -280,6 +280,15 @@ export interface SaveSaleOrderDetailsRequest {
   warehouseName?: string;
   isVatOrder?: boolean;
   customerIndustry?: number | null;
+  /**
+   * CustomerId của user đang đăng nhập (lấy từ storage).
+   * Dùng để ghi xuống các cột lookup kiểu "owner/created by" (lookup Customers) khi save SOD.
+   */
+  customerLoginId?: string;
+  /**
+   * CustomerId đang chọn trên form (fallback nếu không có customerLoginId)
+   */
+  customerId?: string;
   products: Array<{
     id?: string;
     productId?: string;
@@ -329,6 +338,37 @@ export const saveSaleOrderDetails = async (
     console.error('Error saving sale order details:', error);
     if (error.response?.data) {
       throw new Error(error.response.data.details || error.response.data.error || 'Failed to save sale order details');
+    }
+    throw error;
+  }
+};
+
+// Update inventory (trừ/cộng tồn kho)
+export interface UpdateInventoryRequest {
+  productCode: string;
+  quantity: number;
+  warehouseName?: string;
+  operation: 'subtract' | 'add'; // 'subtract' để trừ, 'add' để cộng
+  isVatOrder?: boolean; // true = VAT order (Kho Bình Định), false = non-VAT (Inventory)
+}
+
+export interface UpdateInventoryResponse {
+  success: boolean;
+  message: string;
+  inventoryUpdated?: boolean;
+  khoBDUpdated?: boolean;
+}
+
+export const updateInventory = async (
+  data: UpdateInventoryRequest
+): Promise<UpdateInventoryResponse> => {
+  try {
+    const response = await axios.post(`${BASE_URL}/update-inventory`, data);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error updating inventory:', error);
+    if (error.response?.data) {
+      throw new Error(error.response.data.message || 'Failed to update inventory');
     }
     throw error;
   }

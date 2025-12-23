@@ -5,8 +5,9 @@ import ProductEntryForm from './ProductEntryForm';
 import ProductTable from './ProductTable';
 import Dropdown from './Dropdown';
 import { useCustomers, useSaleOrders } from '../_hooks/useDropdownData';
-import { fetchSaleOrderDetails, SaleOrderDetail, saveSaleOrderDetails } from '../_api/adminApi';
+import { fetchSaleOrderDetails, SaleOrderDetail, saveSaleOrderDetails, updateInventory } from '../_api/adminApi';
 import { showToast } from '../../../components/ToastManager';
+import { getItem } from '../../../utils/SecureStorage';
 
 interface ProductItem {
   id: string;
@@ -54,6 +55,10 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   const [customerSearch, setCustomerSearch] = useState('');
   const [so, setSo] = useState('');
   const [soId, setSoId] = useState('');
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [isOrderInfoCollapsed, setIsOrderInfoCollapsed] = useState(false);
 
   // Fetch data for dropdowns
   const { customers, loading: customersLoading } = useCustomers(customerSearch);
@@ -63,7 +68,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   const [productCode, setProductCode] = useState('');
   const [unit, setUnit] = useState('');
   const [warehouse, setWarehouse] = useState('');
-  const [quantity, setQuantity] = useState(0);
+  const [quantity, setQuantity] = useState(1);
   const [price, setPrice] = useState('');
   const [subtotal, setSubtotal] = useState(0);
   const [vatPercent, setVatPercent] = useState(0);
@@ -117,6 +122,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         return;
       }
 
+      setIsLoadingDetails(true);
       try {
         const details = await fetchSaleOrderDetails(soId);
         // Map SaleOrderDetail to ProductItem
@@ -148,13 +154,15 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       } catch (error) {
         console.error('Error loading sale order details:', error);
         setProductList([]);
+      } finally {
+        setIsLoadingDetails(false);
       }
     };
 
     loadSaleOrderDetails();
   }, [soId]);
 
-  const handleAddProduct = () => {
+  const handleAddProduct = async () => {
     // Validation: product, unit, quantity, price (or approve price checked)
     if (!product || !unit || quantity <= 0 || (!price && !approvePrice)) {
       console.warn('❌ Add Product Failed: Missing required fields', {
@@ -164,6 +172,15 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         price: !!price,
         approvePrice,
       });
+      return;
+    }
+
+    setIsAdding(true);
+
+    // Validation: If approvePrice is true, approver is required
+    if (approvePrice && !approver) {
+      showToast.error('Vui lòng chọn người duyệt khi bật "Duyệt giá"');
+      setIsAdding(false);
       return;
     }
 
@@ -222,12 +239,34 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
 
     console.log('✅ Add Product Success:', newProduct);
     setProductList([...productList, newProduct]);
+
+    // Trừ tồn kho khi add sản phẩm
+    if (productCode && warehouse && quantity > 0) {
+      try {
+        const isVatOrder = !isNonVatSelected; // VAT order = true, non-VAT = false
+        await updateInventory({
+          productCode,
+          quantity,
+          warehouseName: warehouse,
+          operation: 'subtract',
+          isVatOrder,
+        });
+        console.log('✅ [Inventory] Đã trừ tồn kho khi add sản phẩm');
+      } catch (error: any) {
+        console.error('❌ [Inventory] Lỗi khi trừ tồn kho:', error);
+        // Rollback: xóa sản phẩm vừa add nếu trừ tồn kho thất bại
+        setProductList(productList);
+        showToast.error(error.message || 'Không thể trừ tồn kho. Vui lòng thử lại.');
+        setIsAdding(false);
+        return;
+      }
+    }
     
     // Reset form fields (mimic PowerApps Reset())
     setProduct('');
     setProductCode('');
     setUnit('');
-    setQuantity(0);
+    setQuantity(1);
     setPrice('');
     setSubtotal(0);
     setVatAmount(0);
@@ -241,21 +280,38 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     setPromotionText('');
     setNote('');
     // Keep warehouse, customer, SO, deliveryDate as they are reused
+    setIsAdding(false);
   };
 
   const handleSave = async () => {
+    console.log('💾 [Save Button Clicked - SOBG] Starting save process...', {
+      productListLength: productList.length,
+      soId,
+      customerId,
+      isSaving,
+    });
+
     // Chỉ kiểm tra danh sách sản phẩm - không check các field input phía trên
     if (productList.length === 0) {
+      console.log('❌ [Save Button - SOBG] Validation failed: No products in list');
       showToast.error('Không có data để tạo đơn bán chi tiết!');
       return;
     }
 
     if (!soId) {
+      console.log('❌ [Save Button - SOBG] Validation failed: No SOBG selected');
       showToast.error('Vui lòng chọn Sales Order Báo Giá trước khi lưu.');
       return;
     }
 
+    console.log('✅ [Save Button - SOBG] Validation passed, proceeding with save...');
+
+    setIsSaving(true);
     try {
+      const customerLoginIdRaw = getItem('id');
+      const customerLoginId =
+        (typeof customerLoginIdRaw === 'string' ? customerLoginIdRaw : String(customerLoginIdRaw || '')).trim() || undefined;
+
       // Load danh sách SOD hiện có từ CRM
       const existingSOD = await fetchSaleOrderDetails(soId);
       const existingProductIds = new Set(
@@ -329,6 +385,8 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         warehouseName: warehouse,
         isVatOrder,
         customerIndustry: customerIndustry,
+        customerLoginId,
+        customerId: customerId || undefined,
         products: productsToSave,
       });
 
@@ -369,10 +427,58 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       console.error('Error saving sale order details:', error);
       const errorMessage = error.message || 'Có lỗi xảy ra khi lưu đơn hàng. Vui lòng thử lại.';
       showToast.error(errorMessage);
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleRefresh = () => {
+  // Clear các selected khi đổi SO (giữ lại customer, SO mới, deliveryDate)
+  const clearFormOnSoChange = () => {
+    setProduct('');
+    setProductCode('');
+    setUnit('');
+    setWarehouse('');
+    setQuantity(1);
+    setPrice('');
+    setSubtotal(0);
+    setVatAmount(0);
+    setTotalAmount(0);
+    setStockQuantity(0);
+    setApprovePrice(false);
+    setApproveSupPrice(false);
+    setUrgentOrder(false);
+    setApprover('');
+    setDiscountPercent(0);
+    setDiscountAmount(0);
+    setPromotionText('');
+    setNote('');
+    // Keep customer, SO (đang được set mới), deliveryDate as they are reused
+  };
+
+  const handleRefresh = async () => {
+    // Cộng lại tồn kho cho tất cả sản phẩm trong danh sách (chỉ những sản phẩm chưa được save vào CRM)
+    const productsToRestore = productList.filter(p => !p.isSodCreated);
+    if (productsToRestore.length > 0) {
+      const isVatOrder = !isNonVatSelected;
+      for (const product of productsToRestore) {
+        if (product.productCode && product.warehouse && product.quantity > 0) {
+          try {
+            await updateInventory({
+              productCode: product.productCode,
+              quantity: product.quantity,
+              warehouseName: product.warehouse,
+              operation: 'add',
+              isVatOrder,
+            });
+            console.log(`✅ [Inventory] Đã cộng lại tồn kho cho ${product.productCode}`);
+          } catch (error: any) {
+            console.error(`❌ [Inventory] Lỗi khi cộng lại tồn kho cho ${product.productCode}:`, error);
+            // Continue với các sản phẩm khác
+          }
+        }
+      }
+    }
+
     // Reset all fields
     setCustomer('');
     setCustomerId('');
@@ -383,7 +489,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     setProductCode('');
     setUnit('');
     setWarehouse('');
-    setQuantity(0);
+    setQuantity(1);
     setPrice('');
     setSubtotal(0);
     setVatPercent(0);
@@ -402,16 +508,64 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     setProductList([]);
   };
 
+  const isNonVatSelected = (selectedVatText || '').toLowerCase().includes('không');
+
   return (
-    <>
-      {/* Header with Version - Only show if not hidden */}
+    <div className="admin-app-compact-layout">
+      {/* Compact Header */}
       {!hideHeader && (
-        <div className="admin-app-header">
-          <div className="admin-app-header-left">
-            <div className="admin-app-title">Admin App</div>
-            <div className="admin-app-subtitle">Quản lý đơn hàng báo giá</div>
+        <div className="admin-app-header-compact">
+          <div className="admin-app-header-compact-left">
+            <div className="admin-app-title-compact">Admin</div>
+            <div className="admin-app-status-badge">
+              {soId ? 'SOBG ✓' : 'Chưa SOBG'}
+            </div>
           </div>
-          <div className="admin-app-header-right">
+          <div className="admin-app-header-compact-right">
+            <button
+              className="admin-app-header-btn admin-app-header-btn-save"
+              onClick={handleSave}
+              disabled={(() => {
+                const disabled = isSaving || productList.length === 0 || !soId;
+                console.log('🔍 [Save Button - SOBG] Disable check:', {
+                  isSaving,
+                  productListLength: productList.length,
+                  soId,
+                  disabled,
+                  reason: disabled 
+                    ? (isSaving ? 'Đang lưu...' 
+                        : productList.length === 0 ? 'Chưa có sản phẩm' 
+                        : !soId ? 'Chưa chọn SOBG' 
+                        : 'Unknown')
+                    : 'Enabled',
+                });
+                return disabled;
+              })()}
+              title="Lưu"
+            >
+              {isSaving ? (
+                <>
+                  <div className="admin-app-spinner admin-app-spinner-small" style={{ marginRight: '6px' }}></div>
+                  Đang lưu...
+                </>
+              ) : (
+                '💾 Lưu'
+              )}
+            </button>
+            <button
+              className="admin-app-header-btn admin-app-header-btn-submit"
+              disabled
+              title="Gửi duyệt"
+            >
+              ✔ Gửi duyệt
+            </button>
+            <button
+              className="admin-app-header-btn admin-app-header-btn-create"
+              disabled
+              title="Tạo đơn"
+            >
+              🧾 Tạo đơn
+            </button>
             <span className="admin-app-badge admin-app-badge-version">
               V0
             </span>
@@ -419,52 +573,134 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         </div>
       )}
 
-      {/* Main Content */}
-      <div className="admin-app-content">
-        {/* Customer and SO Section */}
-        <div className="admin-app-section">
-          <h3 className="admin-app-section-title">Thông tin đơn hàng</h3>
-          <div className="admin-app-form-row">
-            <div className="admin-app-field-group admin-app-field-group-large">
-              <label className="admin-app-label">Khách hàng <span className="admin-app-required">*</span></label>
+      {/* Main Content - 2 Columns Layout */}
+      <div className="admin-app-content-compact">
+        {isOrderInfoCollapsed && (
+          <button
+            type="button"
+            className="admin-app-orderinfo-reveal"
+            onClick={() => setIsOrderInfoCollapsed(false)}
+            title="Mở Thông tin đơn hàng"
+            aria-label="Mở Thông tin đơn hàng"
+          >
+            ◀
+          </button>
+        )}
+        {/* Left Column - Order Info (Slide Out) */}
+        <div className={`admin-app-column-left ${isOrderInfoCollapsed ? 'admin-app-column-collapsed' : ''}`}>
+          <div className="admin-app-card-compact">
+            <div className="admin-app-card-header-collapsible" onClick={() => setIsOrderInfoCollapsed(!isOrderInfoCollapsed)}>
+              <h3 className="admin-app-card-title">Thông tin đơn hàng</h3>
+              <button className="admin-app-collapse-btn" title={isOrderInfoCollapsed ? 'Mở rộng' : 'Ẩn sang trái'}>
+                {isOrderInfoCollapsed ? '◀' : '▶'}
+              </button>
+            </div>
+            <div className="admin-app-form-compact">
+              <div className="admin-app-field-compact">
+                <label className="admin-app-label-inline">Khách hàng <span className="admin-app-required">*</span></label>
               <Dropdown
-                options={customers.map((c) => ({
+                  options={customers.map((c) => {
+                    const regionText = c.cr1bb_vungmien_text ? ` - ${c.cr1bb_vungmien_text}` : '';
+                    const code = c.cr44a_makhachhang || c.cr44a_st || '';
+                    return {
                   value: c.crdfd_customerid,
-                  label: c.crdfd_name,
+                      label: `${c.crdfd_name}${regionText}`,
+                      dropdownTooltip: code ? `Mã KH: ${code}` : undefined,
+                      dropdownMetaText: code || undefined,
+                      dropdownCopyText: code || undefined,
                   ...c,
-                }))}
+                    };
+                  })}
                 value={customerId}
                 onChange={(value, option) => {
                   setCustomerId(value);
                   setCustomer(option?.label || '');
-                  // Use cr44a_makhachhang (mã khách hàng) instead of cr44a_st
                   setCustomerCode(option?.cr44a_makhachhang || option?.cr44a_st || '');
-                  // Save industry for delivery date logic
                   setCustomerIndustry(option?.crdfd_nganhnghe ?? null);
-                  // Reset warehouse when customer changes
+                  // Clear SO và các selected khi đổi customer
+                  setSo('');
+                  setSoId('');
+                  setProduct('');
+                  setProductCode('');
+                  setUnit('');
                   setWarehouse('');
+                  setQuantity(1);
+                  setPrice('');
+                  setSubtotal(0);
+                  setVatAmount(0);
+                  setTotalAmount(0);
+                  setStockQuantity(0);
+                  setApprovePrice(false);
+                  setApproveSupPrice(false);
+                  setUrgentOrder(false);
+                  setApprover('');
+                  setDiscountPercent(0);
+                  setDiscountAmount(0);
+                  setPromotionText('');
+                  setNote('');
                 }}
                 placeholder="Chọn khách hàng"
                 loading={customersLoading}
                 searchable
                 onSearch={setCustomerSearch}
               />
-              <div className="admin-app-hint" style={{ marginTop: 4 }}>
-                Mã khách hàng: {customerCode || '—'}
-              </div>
             </div>
 
-            <div className="admin-app-field-group admin-app-field-group-large">
-              <label className="admin-app-label">{soLabelText}</label>
+              <div className="admin-app-field-compact">
+                <label className="admin-app-label-inline">
+                  {soLabelText}
+                  {selectedVatText && (
+                    <span
+                      className={`admin-app-badge-vat ${isNonVatSelected ? 'is-non-vat' : 'is-vat'}`}
+                      title={selectedVatText}
+                    >
+                      {selectedVatText}
+                    </span>
+                  )}
+                </label>
               <Dropdown
                 options={saleOrders.map((so) => {
-                  const baseLabel = so.crdfd_name || so.crdfd_so_code || so.crdfd_so_auto || 'SOBG không tên';
+                  // Hiển thị đầy đủ thông tin: tên SO hoặc mã SO
+                  // Ưu tiên crdfd_so_code, nếu không có thì dùng crdfd_so_auto
+                  const soCode = so.crdfd_so_code || so.crdfd_so_auto || '';
+                  const soName = (so.crdfd_name || '').trim();
+                  
+                  // Kiểm tra xem soName đã chứa soCode chưa để tránh lặp
+                  let baseLabel: string;
+                  if (soName && soCode) {
+                    const soNameLower = soName.toLowerCase();
+                    const soCodeLower = soCode.toLowerCase();
+                    // Nếu name đã chứa code (hoặc code là substring của name) thì chỉ dùng name
+                    if (soNameLower.includes(soCodeLower)) {
+                      baseLabel = soName;
+                      console.log('🔍 [SOBG Label] Name contains code, using name only:', {
+                        soCode,
+                        soName,
+                        baseLabel,
+                      });
+                    } else {
+                      // Nếu name không chứa code, ghép lại: code - name
+                      baseLabel = `${soCode} - ${soName}`;
+                      console.log('🔍 [SOBG Label] Name does not contain code, concatenating:', {
+                        soCode,
+                        soName,
+                        baseLabel,
+                      });
+                    }
+                  } else if (soCode) {
+                    baseLabel = soCode;
+                  } else if (soName) {
+                    baseLabel = soName;
+                  } else {
+                    baseLabel = 'SOBG không tên';
+                  }
+                  
                   const vatLabelText = getVatLabelText(so) || 'Không VAT';
-                  const label = `${baseLabel} - ${vatLabelText}`;
                   return {
                     value: so.crdfd_sale_orderid,
-                    label,
+                    label: baseLabel,
                     vatLabelText,
+                    dropdownTooltip: baseLabel, // Tooltip để hiển thị đầy đủ khi hover
                     ...so,
                   };
                 })}
@@ -472,22 +708,83 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
                 onChange={(value, option) => {
                   setSoId(value);
                   setSo(option?.label || '');
+                  // Clear các selected khi đổi SO
+                  clearFormOnSoChange();
                 }}
                 placeholder={customerId ? "Chọn SOBG" : "Chọn khách hàng trước"}
                 loading={soLoading}
                 disabled={!customerId}
               />
               {soError && (
-                <div className="admin-app-error" style={{ fontSize: '11px', color: '#ff4444', marginTop: '4px' }}>
-                  {soError}
+                  <div className="admin-app-error-inline">{soError}</div>
+                )}
+              </div>
+
+              <div className="admin-app-form-row-mini">
+                <div className="admin-app-field-compact admin-app-field-mini">
+                  <label className="admin-app-label-inline">Ngày giao</label>
+                  <div className="admin-app-input-wrapper">
+                    <input
+                      type="text"
+                      className="admin-app-input admin-app-input-compact"
+                      value={deliveryDate}
+                      onChange={(e) => setDeliveryDate(e.target.value)}
+                      placeholder="dd/mm/yyyy"
+                      disabled={!customerId || !soId}
+                    />
+                    <span className="admin-app-calendar-icon">📅</span>
+                  </div>
                 </div>
-              )}
+                <div className="admin-app-field-compact admin-app-field-mini admin-app-field-span-2">
+                  <label className="admin-app-label-inline">Ghi chú</label>
+                  <input
+                    type="text"
+                    className="admin-app-input admin-app-input-compact"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="Ghi chú"
+                    disabled={!customerId || !soId}
+                  />
+                </div>
+              </div>
+
+              <div className="admin-app-checkboxes-inline admin-app-checkboxes-inline-right">
+                <label className={`admin-app-chip-toggle ${urgentOrder ? 'is-active' : ''} ${(!customerId || !soId) ? 'is-disabled' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={urgentOrder}
+                    onChange={(e) => setUrgentOrder(e.target.checked)}
+                    disabled={!customerId || !soId}
+                  />
+                  <span>Đơn hàng gấp</span>
+                </label>
+                <label className={`admin-app-chip-toggle ${approvePrice ? 'is-active' : ''} ${(!customerId || !soId) ? 'is-disabled' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={approvePrice}
+                    onChange={(e) => {
+                      setApprovePrice(e.target.checked);
+                      // Reset approver when "Duyệt giá" is unchecked
+                      if (!e.target.checked) {
+                        setApprover('');
+                      }
+                    }}
+                    disabled={!customerId || !soId}
+                  />
+                  <span>Duyệt giá</span>
+                </label>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Product Entry Section */}
+        {/* Right Column - Product Info */}
+        <div className="admin-app-column-right">
         <ProductEntryForm
+            isAdding={isAdding}
+            isSaving={isSaving}
+            isLoadingDetails={isLoadingDetails}
+            showInlineActions={hideHeader}
           product={product}
           setProduct={setProduct}
           productCode={productCode}
@@ -538,11 +835,47 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           onSave={handleSave}
           onRefresh={handleRefresh}
         />
+        </div>
+      </div>
 
         {/* Product Table */}
-        <ProductTable products={productList} setProducts={setProductList} />
+      <div className="admin-app-table-wrapper">
+        <ProductTable 
+          products={productList} 
+          setProducts={setProductList}
+          onDelete={async (product) => {
+            // Cộng lại tồn kho khi xóa sản phẩm (chỉ cho sản phẩm chưa được save vào CRM)
+            const productWithInventory = product as ProductItem;
+            if (!productWithInventory.isSodCreated && productWithInventory.productCode && productWithInventory.warehouse && productWithInventory.quantity > 0) {
+              try {
+                const isVatOrder = !isNonVatSelected;
+                await updateInventory({
+                  productCode: productWithInventory.productCode,
+                  quantity: productWithInventory.quantity,
+                  warehouseName: productWithInventory.warehouse,
+                  operation: 'add',
+                  isVatOrder,
+                });
+                console.log(`✅ [Inventory] Đã cộng lại tồn kho khi xóa ${productWithInventory.productCode}`);
+              } catch (error: any) {
+                console.error(`❌ [Inventory] Lỗi khi cộng lại tồn kho:`, error);
+                showToast.error(error.message || 'Không thể cộng lại tồn kho. Vui lòng thử lại.');
+              }
+            }
+          }}
+        />
       </div>
-    </>
+      
+      {/* Loading overlay khi đang save/load details */}
+      {(isSaving || isLoadingDetails) && (
+        <div className="admin-app-form-loading-overlay">
+          <div className="admin-app-spinner admin-app-spinner-medium"></div>
+          <div className="admin-app-form-loading-text">
+            {isSaving ? 'Đang lưu đơn hàng...' : 'Đang tải chi tiết đơn hàng...'}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

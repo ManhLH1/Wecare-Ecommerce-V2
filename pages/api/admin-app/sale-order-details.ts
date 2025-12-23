@@ -98,7 +98,7 @@ export default async function handler(
       quantity: item.crdfd_productnum || item.crdfd_soluong || 0,
       price: item.crdfd_gia || 0,
       surcharge: item.crdfd_phuphi_hoadon || item.crdfd_phuphi || 0,
-      discount: item.crdfd_chieckhau || 0,
+      discount: item.crdfd_chieckhau ? item.crdfd_chieckhau * 100 : 0, // Chuyển từ thập phân (0.04) sang phần trăm (4%)
       discountedPrice: item.crdfd_giagoc || item.crdfd_gia || 0,
       vat: getVatFromIeuChinhGtgt(item.crdfd_ieuchinhgtgt),
       totalAmount: item.crdfd_tongtiencovat || item.crdfd_tongtienchuavat || 0,
