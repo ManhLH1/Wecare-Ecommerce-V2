@@ -1852,10 +1852,25 @@ export default function ProductEntryForm({
                   className="admin-app-input admin-app-input-compact admin-app-input-readonly admin-app-input-small"
                   value={vatPercent}
                   readOnly
+                  style={{ width: '50px' }}
                 />
               </div>
             </div>
           )}
+
+          <div className="admin-app-field-compact">
+            <label className="admin-app-label-inline">Ngày giao</label>
+            <div className="admin-app-input-wrapper">
+              <input
+                type="text"
+                className="admin-app-input admin-app-input-compact admin-app-input-small"
+                value={deliveryDate}
+                onChange={(e) => setDeliveryDate(e.target.value)}
+                placeholder="dd/mm/yyyy"
+                disabled={isFormDisabled}
+              />
+            </div>
+          </div>
 
           <div className="admin-app-field-compact admin-app-field-add-button">
             <label className="admin-app-label-inline" style={{ visibility: 'hidden' }}>Add</label>
@@ -1914,7 +1929,7 @@ export default function ProductEntryForm({
                       value={effectivePromotionId}
                       onChange={(e) => setSelectedPromotionId(normalizePromotionId(e.target.value))}
                       disabled={isFormDisabled}
-                      title={selectedPromotion?.name ? `Tên CTKM: ${selectedPromotion.name}` : undefined}
+                      title={selectedPromotion?.name || undefined}
                     >
                       {promotions.map((promo) => {
                         const toNumber = (v: any) => {

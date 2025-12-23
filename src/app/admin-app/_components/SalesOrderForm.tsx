@@ -957,23 +957,6 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                 )}
               </div>
 
-              <div className="admin-app-form-row-mini">
-                <div className="admin-app-field-compact admin-app-field-mini">
-                  <label className="admin-app-label-inline">Ngày giao</label>
-                  <div className="admin-app-input-wrapper">
-                    <input
-                      type="text"
-                      className="admin-app-input admin-app-input-compact"
-                      value={deliveryDate}
-                      onChange={(e) => setDeliveryDate(e.target.value)}
-                      placeholder="dd/mm/yyyy"
-                      disabled={!customerId || !soId}
-                    />
-                    <span className="admin-app-calendar-icon">📅</span>
-                  </div>
-                </div>
-              </div>
-
               <div className="admin-app-checkboxes-inline admin-app-checkboxes-inline-right">
                 <label className={`admin-app-chip-toggle ${urgentOrder ? 'is-active' : ''} ${(!customerId || !soId) ? 'is-disabled' : ''}`}>
                   <input
