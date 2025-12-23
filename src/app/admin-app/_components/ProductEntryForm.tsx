@@ -580,11 +580,23 @@ export default function ProductEntryForm({
       return true;
     }
 
-    // Kiểm tra đơn VAT trước - đơn VAT không cần check tồn kho và các ràng buộc khác
+    // Kiểm tra đơn VAT trước - đơn VAT không cho thêm sản phẩm không VAT
     const vatTextLower = (vatText || '').toLowerCase();
     const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
 
-    // Đơn VAT: cho phép lên đơn tự do - không ràng buộc gì (trừ duyệt giá cần người duyệt và số lượng > 0)
+    // Đơn VAT: không cho thêm sản phẩm không VAT
+    if (isVatOrder && selectedProduct) {
+      const vatOptionValue = selectedProduct?.crdfd_gtgt_option ?? selectedProduct?.crdfd_gtgt;
+      const productVatPercent = vatOptionValue !== undefined ? VAT_OPTION_MAP[Number(vatOptionValue)] : undefined;
+      const productVatIsZero = productVatPercent === 0 || productVatPercent === undefined;
+      
+      // Nếu SO có VAT và sản phẩm không VAT thì chặn
+      if (productVatIsZero) {
+        return true; // Disable button
+      }
+    }
+
+    // Đơn VAT với sản phẩm có VAT: cho phép lên đơn tự do - không ràng buộc gì (trừ duyệt giá cần người duyệt và số lượng > 0)
     if (isVatOrder) {
       return false;
     }
@@ -682,11 +694,24 @@ export default function ProductEntryForm({
       return reason;
     }
 
-    // Kiểm tra đơn VAT trước - đơn VAT không cần check tồn kho và các ràng buộc khác
+    // Kiểm tra đơn VAT trước - đơn VAT không cho thêm sản phẩm không VAT
     const vatTextLower = (vatText || '').toLowerCase();
     const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
 
-    // Đơn VAT: cho phép lên đơn tự do - không ràng buộc gì (trừ duyệt giá cần người duyệt và số lượng > 0)
+    // Đơn VAT: không cho thêm sản phẩm không VAT
+    if (isVatOrder && selectedProduct) {
+      const vatOptionValue = selectedProduct?.crdfd_gtgt_option ?? selectedProduct?.crdfd_gtgt;
+      const productVatPercent = vatOptionValue !== undefined ? VAT_OPTION_MAP[Number(vatOptionValue)] : undefined;
+      const productVatIsZero = productVatPercent === 0 || productVatPercent === undefined;
+      
+      // Nếu SO có VAT và sản phẩm không VAT thì chặn
+      if (productVatIsZero) {
+        const reason = 'Đơn SO có VAT không được thêm sản phẩm không VAT';
+        return reason;
+      }
+    }
+
+    // Đơn VAT với sản phẩm có VAT: cho phép lên đơn tự do - không ràng buộc gì (trừ duyệt giá cần người duyệt và số lượng > 0)
     if (isVatOrder) {
       return '';
     }
@@ -1262,6 +1287,20 @@ export default function ProductEntryForm({
     // Ngăn bấm liên tục
     if (isProcessingAdd || isAdding) {
       return;
+    }
+
+    // Kiểm tra: Đơn SO có VAT không được thêm sản phẩm không VAT
+    const vatTextLower = (vatText || '').toLowerCase();
+    const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
+    if (isVatOrder && selectedProduct) {
+      const vatOptionValue = selectedProduct?.crdfd_gtgt_option ?? selectedProduct?.crdfd_gtgt;
+      const productVatPercent = vatOptionValue !== undefined ? VAT_OPTION_MAP[Number(vatOptionValue)] : undefined;
+      const productVatIsZero = productVatPercent === 0 || productVatPercent === undefined;
+      
+      if (productVatIsZero) {
+        showToast.error('Đơn SO có VAT không được thêm sản phẩm không VAT');
+        return;
+      }
     }
 
     setIsProcessingAdd(true);
