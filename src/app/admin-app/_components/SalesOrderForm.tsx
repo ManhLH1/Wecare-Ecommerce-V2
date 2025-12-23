@@ -85,7 +85,26 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const [customerIndustry, setCustomerIndustry] = useState<number | null>(null);
   const [note, setNote] = useState('');
   const [approver, setApprover] = useState('');
+  const [priceEntryMethod, setPriceEntryMethod] = useState<'Nhập thủ công' | 'Theo chiết khấu'>('Nhập thủ công');
+  const [discountRate, setDiscountRate] = useState<string>('1');
   const [discountPercent, setDiscountPercent] = useState(0);
+  
+  // Danh sách người duyệt
+  const approversList = [
+    'Bùi Tuấn Dũng',
+    'Lê Sinh Thông',
+    'Lê Thị Ngọc Anh',
+    'Nguyễn Quốc Chinh',
+    'Phạm Quốc Hưng',
+    'Huỳnh Minh Trung',
+    'Bùi Thị Mỹ Trang',
+    'Hà Bông',
+    'Vũ Thành Minh',
+    'Phạm Thị Mỹ Hương',
+    'Hoàng Thị Mỹ Linh',
+  ];
+  
+  const discountRates = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '20'];
   const [discountAmount, setDiscountAmount] = useState(0);
   const [promotionText, setPromotionText] = useState('');
   const [productList, setProductList] = useState<ProductItem[]>([]);
@@ -909,17 +928,6 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                     <span className="admin-app-calendar-icon">📅</span>
                   </div>
                 </div>
-                <div className="admin-app-field-compact admin-app-field-mini admin-app-field-span-2">
-                  <label className="admin-app-label-inline">Ghi chú</label>
-                  <input
-                    type="text"
-                    className="admin-app-input admin-app-input-compact"
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    placeholder="Ghi chú"
-                    disabled={!customerId || !soId}
-                  />
-                </div>
               </div>
 
               <div className="admin-app-checkboxes-inline admin-app-checkboxes-inline-right">
@@ -948,6 +956,63 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                   <span>Duyệt giá</span>
                 </label>
               </div>
+
+              {/* Price Approval Section - Moved from ProductEntryForm */}
+              {approvePrice && (
+                <div className="admin-app-form-row-compact admin-app-form-row-approval" style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
+                  <div className="admin-app-field-compact">
+                    <label className="admin-app-label-inline">Phương thức</label>
+                    <Dropdown
+                      options={[
+                        { value: 'Nhập thủ công', label: 'Nhập thủ công' },
+                        { value: 'Theo chiết khấu', label: 'Theo chiết khấu' },
+                      ]}
+                      value={priceEntryMethod}
+                      onChange={(value) => {
+                        setPriceEntryMethod(value as 'Nhập thủ công' | 'Theo chiết khấu');
+                      }}
+                      placeholder="Chọn phương thức"
+                      disabled={!customerId || !soId}
+                    />
+                  </div>
+
+                  {priceEntryMethod === 'Theo chiết khấu' && (
+                    <div className="admin-app-field-compact">
+                      <label className="admin-app-label-inline">Chiết khấu (%)</label>
+                      <Dropdown
+                        options={discountRates.map((rate) => ({
+                          value: rate,
+                          label: rate,
+                        }))}
+                        value={discountRate}
+                        onChange={(value) => setDiscountRate(value)}
+                        placeholder="Chọn tỉ lệ"
+                        disabled={!customerId || !soId}
+                      />
+                    </div>
+                  )}
+
+                  <div className="admin-app-field-compact">
+                    <label className="admin-app-label-inline">
+                      Người duyệt
+                      {approvePrice && <span className="admin-app-required">*</span>}
+                    </label>
+                    <Dropdown
+                      options={approversList.map((name) => ({
+                        value: name,
+                        label: name,
+                      }))}
+                      value={approver}
+                      onChange={(value) => setApprover(value)}
+                      placeholder="Chọn người duyệt"
+                      disabled={!customerId || !soId}
+                    />
+                    {approvePrice && !approver && (
+                      <div className="admin-app-error-inline">Vui lòng chọn người duyệt</div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

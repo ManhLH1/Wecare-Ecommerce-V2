@@ -76,6 +76,10 @@ interface ProductEntryFormProps {
   setNote: (value: string) => void;
   approver: string;
   setApprover: (value: string) => void;
+  priceEntryMethod?: 'Nhập thủ công' | 'Theo chiết khấu';
+  setPriceEntryMethod?: (value: 'Nhập thủ công' | 'Theo chiết khấu') => void;
+  discountRate?: string;
+  setDiscountRate?: (value: string) => void;
   discountPercent: number;
   setDiscountPercent: (value: number) => void;
   discountAmount: number;
@@ -135,6 +139,10 @@ export default function ProductEntryForm({
   setNote,
   approver,
   setApprover,
+  priceEntryMethod: priceEntryMethodProp,
+  setPriceEntryMethod: setPriceEntryMethodProp,
+  discountRate: discountRateProp,
+  setDiscountRate: setDiscountRateProp,
   discountPercent,
   setDiscountPercent,
   discountAmount,
@@ -176,8 +184,14 @@ export default function ProductEntryForm({
   const [promotionError, setPromotionError] = useState<string | null>(null);
   const [selectedPromotionId, setSelectedPromotionId] = useState<string>('');
   const [priceGroupText, setPriceGroupText] = useState<string>('');
-  const [priceEntryMethod, setPriceEntryMethod] = useState<'Nhập thủ công' | 'Theo chiết khấu'>('Nhập thủ công');
-  const [discountRate, setDiscountRate] = useState<string>('1');
+  const [priceEntryMethodInternal, setPriceEntryMethodInternal] = useState<'Nhập thủ công' | 'Theo chiết khấu'>('Nhập thủ công');
+  const [discountRateInternal, setDiscountRateInternal] = useState<string>('1');
+  
+  // Use props if provided, otherwise use internal state
+  const priceEntryMethod = priceEntryMethodProp ?? priceEntryMethodInternal;
+  const setPriceEntryMethod = setPriceEntryMethodProp ?? setPriceEntryMethodInternal;
+  const discountRate = discountRateProp ?? discountRateInternal;
+  const setDiscountRate = setDiscountRateProp ?? setDiscountRateInternal;
   const [basePriceForDiscount, setBasePriceForDiscount] = useState<number>(0);
   const [promotionDiscountPercent, setPromotionDiscountPercent] = useState<number>(0);
   const [apiPrice, setApiPrice] = useState<number | null>(null); // Giá từ API để check warning
@@ -1793,12 +1807,14 @@ export default function ProductEntryForm({
           {isVatSo && (
             <div className="admin-app-field-compact admin-app-field-vat">
               <label className="admin-app-label-inline">VAT (%)</label>
-              <input
-                type="number"
-                className="admin-app-input admin-app-input-compact admin-app-input-readonly admin-app-input-small"
-                value={vatPercent}
-                readOnly
-              />
+              <div className="admin-app-input-wrapper">
+                <input
+                  type="number"
+                  className="admin-app-input admin-app-input-compact admin-app-input-readonly admin-app-input-small"
+                  value={vatPercent}
+                  readOnly
+                />
+              </div>
             </div>
           )}
 
@@ -1838,8 +1854,8 @@ export default function ProductEntryForm({
           </div>
         </div>
 
-        {/* Row 3: Promotion - Chỉ hiển thị khi có chương trình khuyến mãi */}
-        {(promotionLoading || promotions.length > 0) && (
+        {/* Row 3: Promotion - Chỉ hiển thị khi có chương trình khuyến mãi và không bật duyệt giá */}
+        {!approvePrice && (promotionLoading || promotions.length > 0) && (
           <div className="admin-app-form-row-compact admin-app-product-row-3">
             <div className="admin-app-field-compact admin-app-field-promotion">
               <label className="admin-app-label-inline">
@@ -1973,68 +1989,24 @@ export default function ProductEntryForm({
             </div>
           )}
 
-        </div>
-      </div>
-
-      {/* Price Approval Section - Collapsible */}
-      {approvePrice && (
-        <div className="admin-app-form-row-compact admin-app-form-row-approval">
-          <div className="admin-app-field-compact">
-            <label className="admin-app-label-inline">Phương thức</label>
-            <Dropdown
-              options={[
-                { value: 'Nhập thủ công', label: 'Nhập thủ công' },
-                { value: 'Theo chiết khấu', label: 'Theo chiết khấu' },
-              ]}
-              value={priceEntryMethod}
-              onChange={(value) => {
-                setPriceEntryMethod(value as 'Nhập thủ công' | 'Theo chiết khấu');
-                if (value === 'Nhập thủ công' && basePriceForDiscount > 0) {
-                  handlePriceChange(String(Math.round(basePriceForDiscount)));
-                }
-              }}
-              placeholder="Chọn phương thức"
-              disabled={isFormDisabled}
-            />
-          </div>
-
-          {priceEntryMethod === 'Theo chiết khấu' && (
-            <div className="admin-app-field-compact">
-              <label className="admin-app-label-inline">Chiết khấu (%)</label>
-              <Dropdown
-                options={discountRates.map((rate) => ({
-                  value: rate,
-                  label: rate,
-                }))}
-                value={discountRate}
-                onChange={(value) => setDiscountRate(value)}
-                placeholder="Chọn tỉ lệ"
+          {/* Ghi chú - Thu nhỏ và đặt sau Tổng tiền */}
+          <div className="admin-app-field-compact admin-app-field-note" style={{ minWidth: '120px' }}>
+            <label className="admin-app-label-inline">Ghi chú</label>
+            <div className="admin-app-input-wrapper">
+              <input
+                type="text"
+                className="admin-app-input admin-app-input-compact admin-app-input-small"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Ghi chú"
                 disabled={isFormDisabled}
               />
             </div>
-          )}
-
-          <div className="admin-app-field-compact">
-            <label className="admin-app-label-inline">
-              Người duyệt
-              {approvePrice && <span className="admin-app-required">*</span>}
-            </label>
-            <Dropdown
-              options={approversList.map((name) => ({
-                value: name,
-                label: name,
-              }))}
-              value={approver}
-              onChange={(value) => setApprover(value)}
-              placeholder="Chọn người duyệt"
-              disabled={isFormDisabled}
-            />
-            {approvePrice && !approver && (
-              <div className="admin-app-error-inline">Vui lòng chọn người duyệt</div>
-            )}
           </div>
+
         </div>
-      )}
+      </div>
+
       {/* Loading overlay khi đang save/load details */}
       {(isSaving || isLoadingDetails) && (
         <div className="admin-app-form-loading-overlay">

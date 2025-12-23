@@ -443,19 +443,19 @@
 }
 
 .admin-app-toggle-btn {
-  padding: 4px 10px;
-  border-radius: 4px;
+  padding: 2px 8px;
+  border-radius: 3px;
   border: none;
   background: transparent;
   color: #64748b;
   cursor: pointer;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
   position: relative;
   letter-spacing: 0.02em;
-  line-height: 1.2;
+  line-height: 1.1;
 }
 
 .admin-app-toggle-btn:hover:not(.admin-app-toggle-btn-active) {
@@ -481,13 +481,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
+  padding: 4px 8px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%);
-  border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.03);
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 1px 1px rgba(15, 23, 42, 0.02);
   border: 1px solid rgba(148, 163, 184, 0.2);
   backdrop-filter: blur(12px);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   position: relative;
   overflow: hidden;
 }
@@ -521,34 +521,34 @@
 .admin-app-header-left {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   flex: 1;
 }
 
 .admin-app-header-brand {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
 }
 
 .admin-app-title {
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 700;
   background: linear-gradient(135deg, #0f172a 0%, #475569 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  letter-spacing: -0.3px;
-  line-height: 1.2;
+  letter-spacing: -0.2px;
+  line-height: 1.1;
 }
 
 .admin-app-subtitle {
-  font-size: 10px;
+  font-size: 8px;
   color: #64748b;
   font-weight: 500;
   letter-spacing: 0.01em;
-  line-height: 1.2;
+  line-height: 1.1;
 }
 
 .admin-app-version {
@@ -559,7 +559,7 @@
 .admin-app-header-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
@@ -567,14 +567,14 @@
 .admin-app-user-info {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
+  gap: 4px;
+  padding: 2px 6px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%);
-  border-radius: 6px;
+  border-radius: 4px;
   border: 1px solid rgba(148, 163, 184, 0.2);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
   transition: all 0.2s ease;
-  max-width: 240px;
+  max-width: 200px;
 }
 
 .admin-app-user-info:hover {
@@ -583,8 +583,8 @@
 }
 
 .admin-app-user-avatar {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--admin-accent-1) 0%, var(--admin-accent-2) 70%, #ec4899 100%);
   color: white;
@@ -592,9 +592,9 @@
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 11px;
+  font-size: 9px;
   flex-shrink: 0;
-  box-shadow: 0 1px 4px var(--admin-accent-shadow);
+  box-shadow: 0 1px 3px var(--admin-accent-shadow);
   position: relative;
 }
 
@@ -626,22 +626,22 @@
 }
 
 .admin-app-user-name {
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 600;
   color: #0f172a;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.2;
+  line-height: 1.1;
 }
 
 .admin-app-user-email {
-  font-size: 9px;
+  font-size: 7px;
   color: #64748b;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.2;
+  line-height: 1.1;
 }
 
 .admin-app-logout-btn {
@@ -649,15 +649,15 @@
   border: 1px solid rgba(239, 68, 68, 0.2);
   color: #dc2626;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
+  padding: 2px;
+  border-radius: 3px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
 }
 
 .admin-app-logout-btn:hover {
@@ -674,8 +674,8 @@
 }
 
 .admin-app-logout-btn svg {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
 }
 
 /* Responsive Header */
@@ -769,12 +769,12 @@
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
   color: #6366f1;
   border: 1px solid rgba(99, 102, 241, 0.25);
-  font-size: 9px;
-  padding: 2px 6px;
+  font-size: 8px;
+  padding: 1px 4px;
   font-weight: 600;
   letter-spacing: 0.05em;
   box-shadow: 0 1px 2px rgba(99, 102, 241, 0.1);
-  line-height: 1.2;
+  line-height: 1.1;
 }
 
 .admin-app-badge-vat {
@@ -1794,7 +1794,7 @@
   padding: 8px 8px 0 8px;
   flex: 1;
   min-height: 0;
-  max-height: calc(100vh - 40px - 260px - 16px); /* Header(40px) - Table(260px) - Padding(16px) */
+  max-height: calc(100vh - 40px - 200px - 16px); /* Header(40px) - Table(200px, reduced) - Padding(16px) */
   overflow: visible;
   align-items: stretch;
   position: relative;
@@ -1890,20 +1890,35 @@
   background: white;
   border-radius: 6px;
   padding: 10px;
+  padding-bottom: 20px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   border: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
   gap: 12px;
   height: 100%;
-  overflow-y: hidden;
+  overflow-y: auto;
   overflow-x: visible;
   position: relative;
   min-height: 0;
   flex: 1;
-  /* No vertical scroll - content should fit */
+  box-sizing: border-box;
+  /* Allow vertical scroll if needed */
   /* Allow dropdown to overflow horizontally */
   /* Applied to both "Thông tin đơn hàng" and "Thông tin sản phẩm" */
+}
+
+/* Ensure note field at bottom doesn't overlap */
+.admin-app-card-compact > .admin-app-form-row-compact.admin-app-note-field {
+  margin-top: 16px !important;
+  padding-top: 16px !important;
+  padding-bottom: 8px !important;
+  margin-bottom: 0;
+  border-top: 1px solid #e2e8f0;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+  order: 999;
 }
 
 /* Collapsed card - no longer needed, using column collapse instead */
@@ -2128,6 +2143,7 @@
   overflow: visible;
   flex: 1;
   min-height: 0;
+  flex-shrink: 0;
 }
 
 .admin-app-form-row-compact {
@@ -2250,6 +2266,11 @@
   grid-column: span 2;
 }
 
+.admin-app-form-row-compact .admin-app-field-span-full {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
 .admin-app-form-row-summary {
   grid-template-columns: 1fr auto auto auto auto;
   align-items: center;
@@ -2287,9 +2308,11 @@
 }
 
 .admin-app-form-row-approval {
-  margin-top: 4px;
-  padding-top: 4px;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top: 1px solid #e2e8f0;
+  gap: 10px;
+  align-items: start;
 }
 
 .admin-app-field-compact {
@@ -2452,7 +2475,10 @@
 }
 
 .admin-app-field-vat {
-  min-width: 60px;
+  min-width: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
 }
 
 .admin-app-field-discounted-price {
@@ -2714,9 +2740,9 @@
   flex-shrink: 0;
   padding: 0 8px 8px;
   margin-top: 0;
-  height: 260px;
-  min-height: 260px;
-  max-height: 260px;
+  height: 200px;
+  min-height: 200px;
+  max-height: 200px;
   display: flex;
   flex-direction: column;
 }
