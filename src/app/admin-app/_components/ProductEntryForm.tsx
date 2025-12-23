@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Dropdown from './Dropdown';
 import { useProducts, useUnits, useWarehouses } from '../_hooks/useDropdownData';
 import {
@@ -183,6 +183,8 @@ export default function ProductEntryForm({
   const [apiPrice, setApiPrice] = useState<number | null>(null); // Giá từ API để check warning
   const [shouldReloadPrice, setShouldReloadPrice] = useState<number>(0); // Counter to trigger reload
   const [isProcessingAdd, setIsProcessingAdd] = useState<boolean>(false); // Flag để ngăn bấm liên tục
+  const hasSetUnitFromApiRef = useRef<boolean>(false); // Track nếu đã set đơn vị từ API để không reset lại
+  const userSelectedUnitRef = useRef<boolean>(false); // Track nếu người dùng đã chọn đơn vị thủ công
 
   const isVatSo = useMemo(() => {
     const vatTextLower = (vatText || '').toLowerCase();
@@ -903,8 +905,16 @@ export default function ProductEntryForm({
     const unitIdIsEmpty = unitId === '' || unitId === null || unitId === undefined;
     const currentUnitExists = units.some((u) => u.crdfd_unitsid === unitId);
 
-    if (unit && unitIdIsEmpty) {
+    // Nếu đã có unitId được chọn và unitId vẫn tồn tại trong danh sách units, KHÔNG làm gì cả
+    // Chỉ xử lý khi unitId trống hoặc unitId không còn tồn tại
+    if (!unitIdIsEmpty && currentUnitExists) {
+      // Người dùng đã chọn đơn vị và đơn vị vẫn hợp lệ, giữ nguyên
+      return;
+    }
+
+    if (unit && unitIdIsEmpty && !userSelectedUnitRef.current) {
       // If unit is set from parent but unitId is not, try to find it; otherwise fallback to first
+      // CHỈ chạy nếu người dùng chưa chọn đơn vị thủ công
       const found = units.find((u) => u.crdfd_name === unit);
       if (found) {
         setUnitId(found.crdfd_unitsid);
@@ -915,8 +925,9 @@ export default function ProductEntryForm({
       return;
     }
 
-    if (!unit && unitIdIsEmpty && units.length > 0) {
-      // Auto-select first unit when available (chỉ khi chưa có unit và unitId)
+    if (!unit && unitIdIsEmpty && units.length > 0 && !userSelectedUnitRef.current) {
+      // Auto-select first unit when available (chỉ khi chưa có unit và unitId VÀ người dùng chưa chọn)
+      // CHỈ chạy khi CẢ unit và unitId đều trống VÀ người dùng chưa chọn đơn vị thủ công
       setUnitId(units[0].crdfd_unitsid);
       setUnit(units[0].crdfd_name);
       return;
@@ -952,6 +963,8 @@ export default function ProductEntryForm({
       if (!selectedProductCode || !product) {
         setApiPrice(null); // Reset khi không có sản phẩm
         setPriceLoading(false);
+        hasSetUnitFromApiRef.current = false; // Reset flag khi không có sản phẩm
+        userSelectedUnitRef.current = false; // Reset flag khi không có sản phẩm
         return;
       }
       setPriceLoading(true);
@@ -1014,19 +1027,24 @@ export default function ProductEntryForm({
       const apiUnitName = selectedPrice?.unitName ?? result?.unitName ?? undefined;
       const apiPriceGroupText = selectedPrice?.priceGroupText ?? result?.priceGroupText ?? undefined;
 
-      // Tự động set đơn vị từ API CHỈ KHI CHƯA CÓ ĐƠN VỊ ĐƯỢC CHỌN
-      // Nếu người dùng đã chọn đơn vị, giữ nguyên lựa chọn của họ
-      if (apiUnitName && units.length > 0) {
+      // Tự động set đơn vị từ API CHỈ KHI:
+      // 1. CHƯA CÓ ĐƠN VỊ ĐƯỢC CHỌN (unitId và unit đều trống)
+      // 2. NGƯỜI DÙNG CHƯA CHỌN ĐƠN VỊ THỦ CÔNG (userSelectedUnitRef.current = false)
+      // 3. CHƯA SET TỪ API LẦN NÀO (hasSetUnitFromApiRef.current = false)
+      // KHÔNG BAO GIỜ set đơn vị nếu người dùng đã chọn đơn vị thủ công
+      if (apiUnitName && units.length > 0 && !hasSetUnitFromApiRef.current && !userSelectedUnitRef.current) {
         const foundUnit = units.find((u) =>
           u.crdfd_name.toLowerCase() === apiUnitName.toLowerCase()
         );
         if (foundUnit) {
-          // CHỈ set nếu CHƯA CÓ unitId (người dùng chưa chọn đơn vị)
-          // Nếu đã có unitId, giữ nguyên lựa chọn của người dùng
+          // CHỈ set nếu CHƯA CÓ unitId VÀ CHƯA CÓ unit (hoàn toàn chưa chọn đơn vị)
+          // VÀ người dùng chưa chọn đơn vị thủ công
           const unitIdIsEmpty = !unitId || unitId === '' || unitId === null || unitId === undefined;
-          if (unitIdIsEmpty) {
+          const unitIsEmpty = !unit || unit === '' || unit === null || unit === undefined;
+          if (unitIdIsEmpty && unitIsEmpty) {
             setUnitId(foundUnit.crdfd_unitsid);
             setUnit(foundUnit.crdfd_name);
+            hasSetUnitFromApiRef.current = true; // Đánh dấu đã set từ API
           }
         }
       }
@@ -1418,6 +1436,8 @@ export default function ProductEntryForm({
       setInventoryInventoryMessage(''); // Reset
       setKhoBinhDinhMessage(''); // Reset
       setIsUsingInventory(false); // Reset
+      hasSetUnitFromApiRef.current = false; // Reset flag khi clear sản phẩm
+      userSelectedUnitRef.current = false; // Reset flag khi clear sản phẩm
       setInventoryMessage('Chọn sản phẩm và kho để xem tồn kho');
       setInventoryColor(undefined);
       setAccountingStock(null);
@@ -1449,6 +1469,7 @@ export default function ProductEntryForm({
       setInventoryInventoryMessage(''); // Reset
       setKhoBinhDinhMessage(''); // Reset
       setIsUsingInventory(false); // Reset
+      hasSetUnitFromApiRef.current = false; // Reset flag khi SO thay đổi
       setInventoryMessage('Chọn sản phẩm và kho để xem tồn kho');
       setInventoryColor(undefined);
       setAccountingStock(null);
@@ -1480,6 +1501,7 @@ export default function ProductEntryForm({
       setInventoryInventoryMessage(''); // Reset
       setKhoBinhDinhMessage(''); // Reset
       setIsUsingInventory(false); // Reset
+      hasSetUnitFromApiRef.current = false; // Reset flag khi customer thay đổi
       setInventoryMessage('Chọn sản phẩm và kho để xem tồn kho');
       setInventoryColor(undefined);
       setAccountingStock(null);
@@ -1582,6 +1604,8 @@ export default function ProductEntryForm({
                 }
                 setUnitId('');
                 setUnit('');
+                userSelectedUnitRef.current = false; // Reset khi chọn sản phẩm mới
+                hasSetUnitFromApiRef.current = false; // Reset khi chọn sản phẩm mới
               }}
               placeholder={isFormDisabled ? "Chọn KH và SO trước" : "Chọn sản phẩm"}
               loading={productsLoading}
@@ -1650,6 +1674,7 @@ export default function ProductEntryForm({
               onChange={(value, option) => {
                 setUnitId(value);
                 setUnit(option?.label || '');
+                userSelectedUnitRef.current = true; // Đánh dấu người dùng đã chọn đơn vị
               }}
               placeholder={isFormDisabled ? "Chọn KH và SO trước" : "Chọn đơn vị"}
               loading={unitsLoading}
