@@ -1003,13 +1003,13 @@ const HomeContent = () => {
           onCartClick={openCart}
         />
 
-        {/* Main Layout - Hero section dịch sang phải để không bị dropdown che */}
-        <div className="w-full mx-auto px-0" style={{ marginTop: '115px' }}>
-          <div className="flex flex-col lg:flex-row gap-3">
-            {/* Spacer cho category dropdown trên Desktop - chiều rộng 280px = collapsed width của CategoryMenu */}
+        {/* Main Layout */}
+        <div className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 xl:px-16" style={{ marginTop: '115px' }}>
+          <div className="flex flex-col lg:flex-row">
+            {/* Spacer for CategoryMenu dropdown on Desktop */}
             <div className="hidden lg:block w-[280px] flex-shrink-0" />
-            {/* Main Content - nằm bên phải của category dropdown */}
-            <div className="flex-1">
+            {/* Main Content */}
+            <div className="flex-1 min-w-0">
               <JDStyleMainContent
                 categoryGroups={categoryGroups}
                 onCategorySelect={handleCategorySelect}
@@ -1020,7 +1020,7 @@ const HomeContent = () => {
         </div>
       </div>
 
-      <main className="px-1 md:px-2 pt-0">
+      <main className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 xl:px-16 pt-0">
 
         {/* DESKTOP Feature Cards dưới Hero (ẩn theo yêu cầu) */}
         <section id="features-b2b" className="hidden">
@@ -1229,7 +1229,7 @@ const HomeContent = () => {
           {/* Viền mảnh, trung tính */}
           <div aria-hidden className="pointer-events-none absolute -top-px left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] h-px w-screen bg-slate-200/70" />
           <div aria-hidden className="pointer-events-none absolute -bottom-px left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] h-px w-screen bg-slate-200/70" />
-          <div className="relative px-2 md:px-4">
+          <div className="relative">
             <Reveal as="div" direction="up">
               <BusinessOpportunitySection />
             </Reveal>
@@ -1340,8 +1340,7 @@ const HomeContent = () => {
             </div>
           </Reveal>
         </section> */}
-        {/* News Section - DESKTOP UI giữ nguyên */}
-        {/* <section className="hidden md:block py-4 px-2 bg-white mb-3 drop-shadow-lg inset-shadow-3xs rounded-lg shadow-sm"> */}
+        {/* </section> */}
         <Reveal as="div" direction="up">
           <NewsSection />
         </Reveal>

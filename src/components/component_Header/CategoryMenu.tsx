@@ -403,10 +403,9 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
       style={{
         scrollbarWidth: "none",
         msOverflowStyle: "none",
-        left: "clamp(0vw, 0rem, 0px)",
         width: showRightPanel ? `${expandedWidth}px` : `${collapsedWidth}px`,
         minWidth: showRightPanel ? `${expandedWidth}px` : `${collapsedWidth}px`,
-        maxWidth: showRightPanel ? `${expandedWidth}px` : `${collapsedWidth}px`,
+        maxWidth: "100%",
       }}
       onMouseLeave={handleMouseLeavePanel}
     >
@@ -416,9 +415,9 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
           <div>
             <ul className="mt-1 p-2">
               {sortedCategories.map((group, idx) => (
-                <li key={group.crdfd_productgroupid || idx} className="mb-0">
+                <li key={group.crdfd_productgroupid || idx} className={`${idx !== sortedCategories.length - 1 ? 'border-b border-gray-200' : ''}`}>
                   <button
-                    className={`flex items-center w-full px-3 py-1.5 text-base font-medium transition-all duration-200 group ${selectedMainCategory?.crdfd_productgroupid ===
+                    className={`flex items-center w-full px-3 py-2.5 text-sm transition-all duration-200 group ${selectedMainCategory?.crdfd_productgroupid ===
                       group.crdfd_productgroupid
                       ? "bg-amber-50 text-amber-700 border-l-4 border-amber-500"
                       : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
@@ -426,29 +425,18 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
                     onClick={() => handleCategoryClick(group)}
                     onMouseEnter={() => handleCategoryHover(group)}
                   >
-                    <span className={`flex items-center justify-center w-6 h-6 mr-2 transition-colors ${selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
-                      ? "bg-amber-100"
-                      : "bg-white group-hover:bg-gray-50"
+                    <span className={`flex items-center justify-center w-5 h-5 mr-2.5 transition-colors ${selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
+                      ? "text-amber-600"
+                      : "text-gray-500"
                       }`}>
-                      <span className={`text-base ${selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
-                        ? "text-amber-600"
-                        : "text-gray-600"
-                        }`}>
-                        {getIcon(group.crdfd_productname)}
-                      </span>
+                      {getIcon(group.crdfd_productname)}
                     </span>
-                    <span className="flex-1 text-left truncate font-medium">
+                    <span className={`flex-1 text-left truncate ${selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
+                      ? "font-semibold"
+                      : "font-normal"
+                      }`}>
                       {group.crdfd_productname}
                     </span>
-                    {group.productCount !== undefined &&
-                      group.productCount > 0 && (
-                        <span className={`text-sm ml-2 ${selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
-                          ? "text-amber-600"
-                          : "text-gray-400"
-                          }`}>
-                          ({group.productCount})
-                        </span>
-                      )}
                     <FaChevronRight className={`w-3 h-3 ml-2 transition-transform duration-200 ${selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
                       ? 'text-amber-600 transform rotate-90'
                       : 'text-gray-400'

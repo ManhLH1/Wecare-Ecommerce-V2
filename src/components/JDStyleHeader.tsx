@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FaSearch, FaShoppingCart, FaCamera, FaChevronDown, FaTag, FaBoxOpen, FaFire, FaGem, FaClock, FaMoneyBillWave, FaNewspaper, FaUserCircle, FaQuestionCircle, FaBars, FaTh } from 'react-icons/fa';
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import LogoSvg from "@/assets/img/Logo-Wecare.png";
 import UserIconWithMenu from "@/components/LoginMenu";
 import { getItem } from "@/utils/SecureStorage";
@@ -26,6 +26,8 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const router = useRouter();
+  const pathname = usePathname();
+  const isHomePage = pathname === "/" || pathname === "";
   const [showImageModal, setShowImageModal] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -320,44 +322,36 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
     return () => window.removeEventListener("resize", updateViewport);
   }, []);
 
-  // Auto-open panel on desktop, close on mobile
+  // Auto-open CategoryMenu when at top of page, auto-close when scrolled down
+  // This behavior ONLY applies on homepage. Other pages use hover behavior.
   useEffect(() => {
-    if (isDesktop) {
-      setShowCategoryMenu(true);
-    } else {
-      setShowCategoryMenu(false);
+    if (typeof window === "undefined" || !isDesktop || !isHomePage) {
+      // On non-homepage, don't auto-show based on scroll
+      if (!isHomePage) {
+        setShowCategoryMenu(false);
+      }
+      return;
     }
-  }, [isDesktop]);
-
-  // Scroll direction handler - close on scroll down, open on scroll up (desktop only)
-  useEffect(() => {
-    if (typeof window === "undefined" || !isDesktop) return;
 
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      const scrollThreshold = 10; // Minimum scroll distance to trigger
+      const topThreshold = 50; // Open when scrollY < 50px (at top of page)
 
-      if (Math.abs(currentScrollY - lastScrollY.current) < scrollThreshold) {
-        return; // Ignore small scroll movements
-      }
-
-      if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
-        // Scrolling DOWN - close dropdown
-        setShowCategoryMenu(false);
-      } else if (currentScrollY < lastScrollY.current) {
-        // Scrolling UP - open dropdown
+      if (currentScrollY < topThreshold) {
+        // At top of page - open CategoryMenu
         setShowCategoryMenu(true);
+      } else {
+        // Scrolled down - close CategoryMenu
+        setShowCategoryMenu(false);
       }
-
-      lastScrollY.current = currentScrollY;
     };
 
-    // Initialize last scroll position
-    lastScrollY.current = window.scrollY;
+    // Initial check on mount
+    handleScroll();
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [isDesktop]);
+  }, [isDesktop, isHomePage]);
 
   // Fetch category data
   useEffect(() => {
@@ -562,9 +556,9 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
           </div>
         </div>
 
-        {/* Main Header with Search - Layout giống sieuthihaiminh.vn - Compact */}
+        {/* Main Header with Search */}
         <div className="w-full bg-white border-b border-gray-200">
-          <div className="w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 py-2">
+          <div className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 xl:px-16 py-2">
             <div className="flex items-center justify-between gap-2 sm:gap-3 md:gap-4 lg:gap-6">
               {/* Logo - Bên trái - Compact */}
               <Link
@@ -587,7 +581,6 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
                     textDecoration: "none",
                     borderBottom: "none",
                     color: '#3492ab',
-                    fontFamily: '"Nunito Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
                     fontWeight: 700,
                     letterSpacing: '0.04em',
                     textTransform: 'uppercase',
@@ -613,21 +606,13 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder="Bạn cần tìm gì hôm nay ?"
-                        className="flex-1 pl-10 pr-3 py-1.5 text-gray-800 placeholder-gray-400 focus:outline-none bg-transparent text-lg"
-                        style={{
-                          fontFamily: '"Nunito Sans", "Roboto", "Work Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                          fontWeight: 400
-                        }}
+                        className="flex-1 pl-10 pr-3 py-1.5 text-gray-800 placeholder-gray-400 focus:outline-none bg-transparent text-base font-normal"
                         aria-label="Tìm kiếm"
                       />
                       {/* Search Button - Màu cam/amber như reference */}
                       <button
                         type="submit"
                         className="px-3 md:px-4 bg-amber-500 hover:bg-amber-600 text-white font-semibold transition-all duration-200 flex items-center justify-center hover:shadow-md active:scale-95"
-                        style={{
-                          fontFamily: '"Nunito Sans", "Roboto", "Work Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                          fontWeight: 500
-                        }}
                         aria-label="Tìm kiếm"
                       >
                         <FaSearch className="h-3.5 w-3.5" />
@@ -649,11 +634,7 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
                   >
                     <FaShoppingCart className="text-xl sm:text-2xl group-hover:scale-110 transition-transform" />
                     <span
-                      className="text-sm sm:text-base font-semibold text-gray-600 group-hover:text-cyan-600 whitespace-nowrap hidden sm:block"
-                      style={{
-                        fontFamily: '"Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                        fontWeight: 500
-                      }}
+                      className="text-sm font-medium text-gray-600 group-hover:text-cyan-600 whitespace-nowrap hidden sm:block"
                     >
                       Giỏ hàng
                     </span>
@@ -677,11 +658,7 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
                       <UserIconWithMenu />
                     </div>
                     <span
-                      className="text-sm sm:text-base font-semibold text-gray-600 whitespace-nowrap hidden sm:block"
-                      style={{
-                        fontFamily: '"Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                        fontWeight: 500
-                      }}
+                      className="text-sm font-medium text-gray-600 whitespace-nowrap hidden sm:block"
                     >
                       Tài khoản
                     </span>
@@ -694,11 +671,7 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
                   >
                     <FaUserCircle className="text-xl sm:text-2xl group-hover:scale-110 transition-transform" />
                     <span
-                      className="text-sm sm:text-base font-semibold text-gray-600 group-hover:text-cyan-600 whitespace-nowrap hidden sm:block"
-                      style={{
-                        fontFamily: '"Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                        fontWeight: 500
-                      }}
+                      className="text-sm font-medium text-gray-600 group-hover:text-cyan-600 whitespace-nowrap hidden sm:block"
                     >
                       Đăng nhập
                     </span>
@@ -714,11 +687,7 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
                   >
                     <FaQuestionCircle className="text-xl sm:text-2xl group-hover:scale-110 transition-transform" />
                     <span
-                      className="text-sm sm:text-base font-semibold text-gray-600 group-hover:text-cyan-600 flex items-center gap-0.5"
-                      style={{
-                        fontFamily: '"Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                        fontWeight: 500
-                      }}
+                      className="text-sm font-medium text-gray-600 group-hover:text-cyan-600 flex items-center gap-0.5"
                     >
                       Hỗ trợ
                       <FaChevronDown className={`h-3 w-3 text-gray-400 transition-transform duration-200 ${showSupportMenu ? 'rotate-180' : ''}`} />
@@ -734,11 +703,7 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
                           key={index}
                           href={item.href}
                           onClick={() => setShowSupportMenu(false)}
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-cyan-50 hover:text-cyan-600 transition-colors duration-200 no-underline font-semibold"
-                          style={{
-                            fontFamily: '"Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                            fontWeight: 500
-                          }}
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-cyan-50 hover:text-cyan-600 transition-colors duration-200 no-underline font-normal hover:font-medium"
                         >
                           {item.label}
                         </Link>
@@ -751,55 +716,35 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
                       <Link
                         href="/tra-cuu-don-hang"
                         onClick={() => setShowSupportMenu(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-cyan-50 hover:text-cyan-600 transition-colors duration-200 no-underline font-semibold"
-                        style={{
-                          fontFamily: '"Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                          fontWeight: 500
-                        }}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-cyan-50 hover:text-cyan-600 transition-colors duration-200 no-underline font-medium"
                       >
                         Tra cứu đơn hàng
                       </Link>
                       <Link
                         href="/hinh-thuc-thanh-toan"
                         onClick={() => setShowSupportMenu(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-cyan-50 hover:text-cyan-600 transition-colors duration-200 no-underline font-semibold"
-                        style={{
-                          fontFamily: '"Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                          fontWeight: 500
-                        }}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-cyan-50 hover:text-cyan-600 transition-colors duration-200 no-underline font-medium"
                       >
                         Hình thức thanh toán
                       </Link>
                       <Link
                         href="/huong-dan-mua-hang"
                         onClick={() => setShowSupportMenu(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-cyan-50 hover:text-cyan-600 transition-colors duration-200 no-underline font-semibold"
-                        style={{
-                          fontFamily: '"Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                          fontWeight: 500
-                        }}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-cyan-50 hover:text-cyan-600 transition-colors duration-200 no-underline font-medium"
                       >
                         Hướng dẫn mua hàng
                       </Link>
                       <Link
                         href="/trung-tam-bao-hanh"
                         onClick={() => setShowSupportMenu(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-cyan-50 hover:text-cyan-600 transition-colors duration-200 no-underline font-semibold"
-                        style={{
-                          fontFamily: '"Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                          fontWeight: 500
-                        }}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-cyan-50 hover:text-cyan-600 transition-colors duration-200 no-underline font-medium"
                       >
                         Trung tâm bảo hành
                       </Link>
                       <Link
                         href="/kinh-nghiem-hay"
                         onClick={() => setShowSupportMenu(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-cyan-50 hover:text-cyan-600 transition-colors duration-200 no-underline font-semibold"
-                        style={{
-                          fontFamily: '"Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                          fontWeight: 500
-                        }}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-cyan-50 hover:text-cyan-600 transition-colors duration-200 no-underline font-medium"
                       >
                         Kinh nghiệm hay
                       </Link>
@@ -811,24 +756,24 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
           </div>
         </div>
 
-        {/* Sub Header - Danh mục sản phẩm - Giống sieuthihaiminh.vn */}
+        {/* Sub Header - Danh mục sản phẩm */}
         <div className="w-full border-b" style={{ backgroundColor: '#3492ab' }}>
-          <div className="w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12">
+          <div className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 xl:px-16">
             <div className="flex items-center">
               {/* Nút Danh mục sản phẩm - Style giống sieuthihaiminh.vn */}
-              <div className="relative" ref={categoryMenuRef}>
-                <button
-                  onClick={() => setShowCategoryMenu(!showCategoryMenu)}
-                  className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-none transition-all duration-200 font-semibold text-base shadow-sm hover:shadow-md h-[45px] leading-tight"
-                  style={{
-                    fontFamily: '"Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                    fontWeight: 600
-                  }}
+              <div
+                className="relative"
+                ref={categoryMenuRef}
+                onMouseEnter={() => !isHomePage && setShowCategoryMenu(true)}
+                onMouseLeave={() => !isHomePage && setShowCategoryMenu(false)}
+              >
+                <div
+                  className="flex items-center gap-2 bg-amber-500 text-white px-4 py-2.5 rounded-none font-medium text-sm shadow-sm h-[45px] leading-tight cursor-pointer select-none"
                 >
                   <FaBars className="text-base" />
                   <span className="whitespace-nowrap">Danh mục sản phẩm</span>
                   <FaChevronDown className={`text-xs transition-transform duration-200 ${showCategoryMenu ? 'rotate-180' : ''}`} />
-                </button>
+                </div>
 
                 {/* Dropdown Menu - Style giống sieuthihaiminh.vn */}
                 {showCategoryMenu && (
@@ -855,11 +800,7 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
                   <Link
                     key={index}
                     href={item.href}
-                    className="flex items-center gap-1.5 text-white hover:bg-white/10 px-3 py-2 rounded transition-all duration-200 no-underline text-base font-medium whitespace-nowrap"
-                    style={{
-                      fontFamily: '"Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                      fontWeight: 500
-                    }}
+                    className="flex items-center gap-1.5 text-white hover:bg-white/10 px-3 py-2 rounded transition-all duration-200 no-underline text-sm font-medium whitespace-nowrap"
                   >
                     {item.label === "Sản phẩm bán chạy" && <FaFire className="text-orange-400" />}
                     {item.label === "Khuyến mãi" && <FaTag className="text-yellow-400" />}

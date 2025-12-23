@@ -491,7 +491,7 @@ const BusinessOpportunitySection: React.FC<BusinessOpportunitySectionProps> = ({
 
   return (
     // <section className={`bg-transparent shadow-none px-0 md:px-0 mt-2 mb-3 ${className}`}>
-    <div className="p-1 md:p-6 lg:p-8">
+    <div className="p-2 md:p-4 lg:p-6">
       {/* Main Title */}
 
       {/* Three Columns Layout */}

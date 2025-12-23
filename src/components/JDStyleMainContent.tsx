@@ -9,6 +9,9 @@ import { useProductGroupHierarchy } from '@/hooks/useProductGroupHierarchy';
 import { generateProductUrl } from '@/utils/urlGenerator';
 import { usePermission } from '@/hooks/usePermission';
 import HeroBannerImage from '@/assets/img/sample hero-section wecare.png';
+import NewsImage1 from '@/assets/img/Artboard 1.png';
+import NewsImage2 from '@/assets/img/Artboard 2.png';
+import NewsImage3 from '@/assets/img/Artboard 3.png';
 
 interface JDStyleMainContentProps {
   categoryGroups: any[];
@@ -251,19 +254,19 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
         )}
       </div>
       <div className="text-left">
-        <div className="text-sm font-semibold text-gray-800 line-clamp-2">
+        <div className="text-sm font-medium text-gray-800 line-clamp-2">
           {product.crdfd_name || product.crdfd_tensanphamtext}
         </div>
         {product.crdfd_masanpham && (
-          <div className="text-xs text-gray-500 mt-1">{product.crdfd_masanpham}</div>
+          <div className="text-xs font-normal text-gray-500 mt-1">{product.crdfd_masanpham}</div>
         )}
         {product.cr1bb_giaban && (
-          <div className="text-sm text-cyan-600 font-bold mt-1">
+          <div className="text-sm text-cyan-600 font-semibold mt-1">
             {Number(product.cr1bb_giaban).toLocaleString()}₫
           </div>
         )}
         {product.has_promotion && product.promotion?.value && (
-          <div className="text-[11px] text-rose-600 mt-1">KM: {product.promotion.value}{product.promotion.type === 'Percent' ? '%' : '₫'}</div>
+          <div className="text-[11px] font-medium text-rose-600 mt-1">KM: {product.promotion.value}{product.promotion.type === 'Percent' ? '%' : '₫'}</div>
         )}
       </div>
     </button>
@@ -286,7 +289,7 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
             {getMenuItems().map((item, idx) => (
               <Link key={idx} href={item.href} className="no-underline group flex items-center gap-2 whitespace-nowrap">
                 <span className="text-base">{item.icon}</span>
-                <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">{item.label}</span>
+                <span className="text-sm font-normal text-gray-700 group-hover:text-gray-900 group-hover:font-medium transition-all">{item.label}</span>
               </Link>
             ))}
           </nav>
@@ -322,70 +325,54 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
           )}
         </div>
 
-        {/* 2 Tin tức xếp dọc bên phải */}
+        {/* 3 Tin tức xếp dọc bên phải */}
         <div className="w-full lg:w-[30%] flex flex-col gap-2 lg:h-[500px]">
-          {/* Tin tức 1 */}
-          <div className="h-1/2 bg-white border border-gray-200 rounded shadow-sm overflow-hidden relative">
-            {loading ? (
-              <div className="w-full h-full animate-pulse bg-gray-200" />
-            ) : latestNews[0] ? (
-              <Link
-                href={`/post/tag?tagname=${latestNews[0].cr1bb_tags}&postid=${latestNews[0].cr1bb_data_website_ecommerceid}`}
-                className="block w-full h-full no-underline group relative"
-              >
-                {latestNews[0].cr1bb_img_url ? (
-                  <Image
-                    src={latestNews[0].cr1bb_img_url}
-                    alt={latestNews[0].cr1bb_title || 'News'}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    sizes="(max-width: 768px) 100vw, 300px"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-cyan-100 to-cyan-200 flex items-center justify-center">
-                    <span className="text-2xl">📰</span>
-                  </div>
-                )}
-              </Link>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                <Link href="/post" className="text-xs text-cyan-600 hover:text-cyan-700 font-medium no-underline">
-                  Xem tin tức
-                </Link>
-              </div>
-            )}
+          {/* Tin tức 1 - Hình Artboard 1 */}
+          <div className="h-1/3 bg-white border border-gray-200 rounded shadow-sm overflow-hidden relative">
+            <Link
+              href="/post"
+              className="block w-full h-full no-underline group relative"
+            >
+              <Image
+                src={NewsImage1}
+                alt="Tin tức Wecare"
+                fill
+                className="object-cover group-hover:scale-105 transition-transform duration-300"
+                sizes="(max-width: 768px) 100vw, 300px"
+              />
+            </Link>
           </div>
 
-          {/* Tin tức 2 */}
-          <div className="h-1/2 bg-white border border-gray-200 rounded shadow-sm overflow-hidden relative">
-            {loading ? (
-              <div className="w-full h-full animate-pulse bg-gray-200" />
-            ) : latestNews[1] ? (
-              <Link
-                href={`/post/tag?tagname=${latestNews[1].cr1bb_tags}&postid=${latestNews[1].cr1bb_data_website_ecommerceid}`}
-                className="block w-full h-full no-underline group relative"
-              >
-                {latestNews[1].cr1bb_img_url ? (
-                  <Image
-                    src={latestNews[1].cr1bb_img_url}
-                    alt={latestNews[1].cr1bb_title || 'News'}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    sizes="(max-width: 768px) 100vw, 300px"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-cyan-100 to-cyan-200 flex items-center justify-center">
-                    <span className="text-2xl">📰</span>
-                  </div>
-                )}
-              </Link>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                <Link href="/post" className="text-xs text-cyan-600 hover:text-cyan-700 font-medium no-underline">
-                  Xem tin tức
-                </Link>
-              </div>
-            )}
+          {/* Tin tức 2 - Hình Artboard 2 */}
+          <div className="h-1/3 bg-white border border-gray-200 rounded shadow-sm overflow-hidden relative">
+            <Link
+              href="/post"
+              className="block w-full h-full no-underline group relative"
+            >
+              <Image
+                src={NewsImage2}
+                alt="Tin tức Wecare"
+                fill
+                className="object-cover group-hover:scale-105 transition-transform duration-300"
+                sizes="(max-width: 768px) 100vw, 300px"
+              />
+            </Link>
+          </div>
+
+          {/* Tin tức 3 - Hình Artboard 3 */}
+          <div className="h-1/3 bg-white border border-gray-200 rounded shadow-sm overflow-hidden relative">
+            <Link
+              href="/post"
+              className="block w-full h-full no-underline group relative"
+            >
+              <Image
+                src={NewsImage3}
+                alt="Tin tức Wecare"
+                fill
+                className="object-cover group-hover:scale-105 transition-transform duration-300"
+                sizes="(max-width: 768px) 100vw, 300px"
+              />
+            </Link>
           </div>
         </div>
       </div>
