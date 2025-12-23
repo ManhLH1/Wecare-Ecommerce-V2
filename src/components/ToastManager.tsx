@@ -91,76 +91,105 @@ const InfoIcon = () => (
   </div>
 );
 
+// Helper function to safely show toast with error handling
+const safeToast = (toastFn: () => any) => {
+  try {
+    return toastFn();
+  } catch (error) {
+    // Silently handle toast errors to prevent crashes
+    console.warn('Toast error:', error);
+    return null;
+  }
+};
+
 // Toast functions
 export const showToast = {
   success: (message: string, options?: ToastOptions) => {
-    return toast.success(
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <SuccessIcon />
-        <span>{message}</span>
-      </div>,
-      {
-        ...defaultToastOptions,
-        ...options,
-      }
+    return safeToast(() => 
+      toast.success(
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <SuccessIcon />
+          <span>{message}</span>
+        </div>,
+        {
+          ...defaultToastOptions,
+          ...options,
+        }
+      )
     );
   },
   
   error: (message: string, options?: ToastOptions) => {
-    return toast.error(
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <ErrorIcon />
-        <span>{message}</span>
-      </div>,
-      {
-        ...defaultToastOptions,
-        ...options,
-      }
+    return safeToast(() => 
+      toast.error(
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <ErrorIcon />
+          <span>{message}</span>
+        </div>,
+        {
+          ...defaultToastOptions,
+          ...options,
+        }
+      )
     );
   },
   
   warning: (message: string, options?: ToastOptions) => {
-    return toast.warning(
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <WarningIcon />
-        <span>{message}</span>
-      </div>,
-      {
-        ...defaultToastOptions,
-        ...options,
-      }
+    return safeToast(() => 
+      toast.warning(
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <WarningIcon />
+          <span>{message}</span>
+        </div>,
+        {
+          ...defaultToastOptions,
+          ...options,
+        }
+      )
     );
   },
   
   info: (message: string, options?: ToastOptions) => {
-    return toast.info(
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <InfoIcon />
-        <span>{message}</span>
-      </div>,
-      {
-        ...defaultToastOptions,
-        ...options,
-      }
+    return safeToast(() => 
+      toast.info(
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <InfoIcon />
+          <span>{message}</span>
+        </div>,
+        {
+          ...defaultToastOptions,
+          ...options,
+        }
+      )
     );
   },
   
   // Custom toast with custom styling
   custom: (message: string, options?: ToastOptions) => {
-    return toast(message, {
-      ...defaultToastOptions,
-      ...options,
-    });
+    return safeToast(() => 
+      toast(message, {
+        ...defaultToastOptions,
+        ...options,
+      })
+    );
   },
   
   // Dismiss all toasts
   dismiss: () => {
-    toast.dismiss();
+    try {
+      toast.dismiss();
+    } catch (error) {
+      console.warn('Error dismissing toasts:', error);
+    }
   },
   
   // Dismiss specific toast
   dismissToast: (toastId: string | number) => {
-    toast.dismiss(toastId);
+    try {
+      toast.dismiss(toastId);
+    } catch (error) {
+      console.warn('Error dismissing toast:', error);
+    }
   },
 };
 
@@ -181,6 +210,8 @@ const ToastManager: React.FC = () => {
       limit={3}
       className="toast-container"
       toastClassName="toast-item"
+      enableMultiContainer={false}
+      onClose={() => {}} // Prevent errors on close
       style={{
         top: '140px',
         right: '16px',

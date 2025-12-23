@@ -1980,53 +1980,106 @@ export default function ProductEntryForm({
           </div>
         )}
 
-        {/* Row 3: Giá sau chiết khấu, Subtotal/Total (only after product selected) */}
+        {/* Row 3: Giá đã giảm, Subtotal/Total (only after product selected) */}
         <div className="admin-app-form-row-compact admin-app-form-row-summary admin-app-form-row-summary-no-stock">
           {hasSelectedProduct && (() => {
-            // Tính giá sau chiết khấu (giá đơn vị sau khi áp dụng chiết khấu)
+            // Tính giá đã giảm (giá đơn vị sau khi áp dụng chiết khấu và VAT)
             // Logic giống với recomputeTotals để đảm bảo tính toán nhất quán
             const priceNum = parseFloat(String(price)) || 0;
             const promoDiscountPct = discountPercent || promotionDiscountPercent || 0;
             const discountFactor = 1 - (promoDiscountPct > 0 ? promoDiscountPct / 100 : 0);
             const discountedPrice = priceNum * discountFactor;
+            // Tính giá đã giảm bao gồm VAT
+            const discountedPriceWithVat = discountedPrice * (1 + (vatPercent || 0) / 100);
             // Làm tròn để hiển thị giống với cách tính trong recomputeTotals
+            const roundedDiscountedPriceWithVat = Math.round(discountedPriceWithVat);
             const roundedDiscountedPrice = Math.round(discountedPrice);
+            
+            // Công thức: Giá đã giảm = (Giá gốc × (1 - Chiết khấu%)) × (1 + VAT%)
+            let formula = `CÔNG THỨC TÍNH GIÁ ĐÃ GIẢM\n`;
+            formula += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+            formula += `Giá gốc: ${priceNum.toLocaleString('vi-VN')} ₫\n`;
+            if (promoDiscountPct > 0) {
+              formula += `Chiết khấu: ${promoDiscountPct}%\n`;
+              formula += `Giá sau chiết khấu: ${roundedDiscountedPrice.toLocaleString('vi-VN')} ₫\n`;
+            } else {
+              formula += `Chiết khấu: 0%\n`;
+            }
+            formula += `VAT: ${vatPercent}%\n\n`;
+            formula += `Tính toán:\n`;
+            if (promoDiscountPct > 0) {
+              formula += `${roundedDiscountedPrice.toLocaleString('vi-VN')} × (1 + ${vatPercent}%) = ${roundedDiscountedPriceWithVat.toLocaleString('vi-VN')} ₫`;
+            } else {
+              formula += `${priceNum.toLocaleString('vi-VN')} × (1 + ${vatPercent}%) = ${roundedDiscountedPriceWithVat.toLocaleString('vi-VN')} ₫`;
+            }
+            
             return (
               <div className="admin-app-field-compact admin-app-field-discounted-price">
-                <label className="admin-app-label-inline">Giá sau chiết khấu</label>
+                <label className="admin-app-label-inline" title={formula}>Giá đã giảm</label>
                 <input
                   type="text"
                   className="admin-app-input admin-app-input-compact admin-app-input-readonly admin-app-input-money"
-                  value={`${roundedDiscountedPrice.toLocaleString('vi-VN')} ₫`}
+                  value={`${roundedDiscountedPriceWithVat.toLocaleString('vi-VN')} ₫`}
                   readOnly
+                  title={formula}
                 />
               </div>
             );
           })()}
 
-          {hasSelectedProduct && (
-            <div className="admin-app-field-compact admin-app-field-total">
-              <label className="admin-app-label-inline">Thành tiền</label>
-              <input
-                type="text"
-                className="admin-app-input admin-app-input-compact admin-app-input-readonly admin-app-input-money"
-                value={`${subtotal.toLocaleString('vi-VN')} ₫`}
-                readOnly
-              />
-            </div>
-          )}
+          {hasSelectedProduct && (() => {
+            // Công thức: Thành tiền = Số lượng × Giá (sau chiết khấu, chưa VAT)
+            const priceNum = parseFloat(String(price)) || 0;
+            const promoDiscountPct = discountPercent || promotionDiscountPercent || 0;
+            const discountFactor = 1 - (promoDiscountPct > 0 ? promoDiscountPct / 100 : 0);
+            const discountedPrice = priceNum * discountFactor;
+            const roundedDiscountedPrice = Math.round(discountedPrice);
+            
+            // Công thức chi tiết
+            let formula = `CÔNG THỨC TÍNH THÀNH TIỀN\n`;
+            formula += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+            formula += `Số lượng: ${quantity}\n`;
+            formula += `Giá đơn vị (sau chiết khấu, chưa VAT): ${roundedDiscountedPrice.toLocaleString('vi-VN')} ₫\n\n`;
+            formula += `Tính toán:\n`;
+            formula += `${quantity} × ${roundedDiscountedPrice.toLocaleString('vi-VN')} = ${subtotal.toLocaleString('vi-VN')} ₫`;
+            
+            return (
+              <div className="admin-app-field-compact admin-app-field-total">
+                <label className="admin-app-label-inline" title={formula}>Thành tiền</label>
+                <input
+                  type="text"
+                  className="admin-app-input admin-app-input-compact admin-app-input-readonly admin-app-input-money"
+                  value={`${subtotal.toLocaleString('vi-VN')} ₫`}
+                  readOnly
+                  title={formula}
+                />
+              </div>
+            );
+          })()}
 
-          {hasSelectedProduct && (
-            <div className="admin-app-field-compact admin-app-field-grand-total">
-              <label className="admin-app-label-inline">Tổng tiền</label>
-              <input
-                type="text"
-                className="admin-app-input admin-app-input-compact admin-app-input-readonly admin-app-input-money admin-app-input-total"
-                value={`${totalAmount.toLocaleString('vi-VN')} ₫`}
-                readOnly
-              />
-            </div>
-          )}
+          {hasSelectedProduct && (() => {
+            // Công thức: Tổng tiền = Thành tiền + VAT = Thành tiền × (1 + VAT%)
+            const vatAmountCalc = Math.round((subtotal * (vatPercent || 0)) / 100);
+            let formula = `CÔNG THỨC TÍNH TỔNG TIỀN\n`;
+            formula += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+            formula += `Thành tiền: ${subtotal.toLocaleString('vi-VN')} ₫\n`;
+            formula += `VAT (${vatPercent}%): ${vatAmountCalc.toLocaleString('vi-VN')} ₫\n\n`;
+            formula += `Tính toán:\n`;
+            formula += `${subtotal.toLocaleString('vi-VN')} + ${vatAmountCalc.toLocaleString('vi-VN')} = ${totalAmount.toLocaleString('vi-VN')} ₫`;
+            
+            return (
+              <div className="admin-app-field-compact admin-app-field-grand-total">
+                <label className="admin-app-label-inline" title={formula}>Tổng tiền</label>
+                <input
+                  type="text"
+                  className="admin-app-input admin-app-input-compact admin-app-input-readonly admin-app-input-money admin-app-input-total"
+                  value={`${totalAmount.toLocaleString('vi-VN')} ₫`}
+                  readOnly
+                  title={formula}
+                />
+              </div>
+            );
+          })()}
 
           {/* Ghi chú - Thu nhỏ và đặt sau Tổng tiền */}
           <div className="admin-app-field-compact admin-app-field-note" style={{ minWidth: '120px' }}>
