@@ -408,16 +408,25 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       // Lấy các sản phẩm CHƯA CÓ trong SOD từ CRM
       // Sản phẩm mới là những sản phẩm không có ID từ CRM hoặc ID không nằm trong danh sách SOD hiện có
       const newProducts = productList.filter((item) => {
-        // Không có ID → sản phẩm mới
-        if (!item.id) return true;
+        // Đã đánh dấu là SOD đã tạo → bỏ qua (ưu tiên kiểm tra này trước)
+        if (item.isSodCreated === true) {
+          return false;
+        }
 
-        // Đã đánh dấu là SOD đã tạo → bỏ qua
-        if (item.isSodCreated) return false;
+        // Không có ID → sản phẩm mới (chưa save)
+        if (!item.id) {
+          return true;
+        }
 
         const idLower = item.id.toLowerCase();
         // Id CRM dạng GUID hoặc prefix crdfd_ → coi là đã tạo (nếu tìm thấy trong CRM)
         if (crmGuidPattern.test(item.id) || idLower.startsWith('crdfd_')) {
-          return !existingProductIds.has(item.id);
+          // Nếu ID có trong danh sách SOD từ CRM → đã save rồi, bỏ qua
+          if (existingProductIds.has(item.id)) {
+            return false;
+          }
+          // ID có format CRM nhưng không có trong danh sách → có thể là ID cũ hoặc đã bị xóa, cho phép lưu lại
+          return true;
         }
 
         // Các id tạm (local) khác → cho phép lưu
@@ -499,13 +508,55 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       const savedProductGroupCodes = productsToSave.map(p => p.productGroupCode).filter(Boolean) as string[];
       const savedTotalAmount = orderSummary.total;
 
-      // Clear all form fields after successful save
+      // Reload danh sách SOD từ CRM để cập nhật isSodCreated cho các sản phẩm vừa save
+      try {
+        const updatedDetails = await fetchSaleOrderDetails(soId);
+        const mappedProducts: ProductItem[] = updatedDetails.map((detail: SaleOrderDetail) => {
+          const subtotal = (detail.discountedPrice || detail.price) * detail.quantity;
+          const vatAmount = (subtotal * detail.vat) / 100;
+          return {
+            id: detail.id,
+            stt: detail.stt,
+            productName: detail.productName,
+            unit: detail.unit,
+            quantity: detail.quantity,
+            price: detail.price,
+            surcharge: detail.surcharge,
+            discount: detail.discount,
+            discountedPrice: detail.discountedPrice,
+            vat: detail.vat,
+            subtotal,
+            vatAmount,
+            totalAmount: detail.totalAmount,
+            approver: detail.approver,
+            deliveryDate: detail.deliveryDate || '',
+            isSodCreated: true, // Đánh dấu là đã save vào CRM
+          };
+        });
+        // Sort by STT descending
+        mappedProducts.sort((a, b) => (b.stt || 0) - (a.stt || 0));
+        setProductList(mappedProducts);
+      } catch (error) {
+        console.error('Error reloading sale order details after save:', error);
+        // Nếu reload thất bại, vẫn cập nhật isSodCreated cho các sản phẩm vừa save
+        setProductList(prevList => {
+          const savedProductCodesSet = new Set(savedProductCodes);
+          return prevList.map(item => {
+            // Nếu sản phẩm vừa được save (có productCode trong danh sách vừa save)
+            if (item.productCode && savedProductCodesSet.has(item.productCode)) {
+              return { ...item, isSodCreated: true };
+            }
+            return item;
+          });
+        });
+      }
+
+      // Clear form fields after successful save (giữ lại SO và customer)
       setProduct('');
       setProductCode('');
       setProductGroupCode('');
       setUnit('');
       setUnitId('');
-      setWarehouse('');
       setQuantity(1);
       setPrice('');
       setSubtotal(0);
@@ -522,13 +573,6 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       setDiscountPercent(0);
       setDiscountAmount(0);
       setPromotionText('');
-      setCustomer('');
-      setCustomerId('');
-      setCustomerCode('');
-      setCustomerIndustry(null);
-      setSo('');
-      setSoId('');
-      setProductList([]);
 
       // Check promotion order sau khi save thành công
       try {
