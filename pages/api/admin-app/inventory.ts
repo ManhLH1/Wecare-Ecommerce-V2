@@ -17,12 +17,7 @@ export default async function handler(
 
   try {
     const { productCode, warehouseName, isVatOrder } = req.query;
-    const token = await getAccessToken();
-
-    if (!token) {
-      return res.status(401).json({ error: "Failed to obtain access token" });
-    }
-
+    
     if (
       !productCode ||
       typeof productCode !== "string" ||
@@ -33,8 +28,14 @@ export default async function handler(
         .json({ error: "productCode (Mã sản phẩm) is required" });
     }
 
+    // Check cache first (use short cache for inventory as it changes frequently)
+    const cacheKey = getCacheKey("inventory", { productCode, warehouseName, isVatOrder });
+    const cachedResponse = getCachedResponse(cacheKey, true); // Use short cache (1 min)
+    if (cachedResponse !== undefined) {
+      return res.status(200).json(cachedResponse);
+    }
+
     const headers = {
-      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
       "OData-MaxVersion": "4.0",
       "OData-Version": "4.0",
