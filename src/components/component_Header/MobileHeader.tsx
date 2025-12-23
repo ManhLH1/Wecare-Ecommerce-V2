@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaSearch, FaBars, FaTags, FaBoxOpen, FaFire, FaTag, FaClock, FaMoneyBillAlt, FaNewspaper, FaShoppingCart } from "react-icons/fa";
+import { FaSearch, FaBars, FaShoppingCart } from "react-icons/fa";
 import { IoMdClose } from "react-icons/io";
 import Image from "next/image";
 import Link from "next/link";
@@ -59,21 +59,21 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
     <>
       {/* Mobile Header */}
       <header
-        className={`${className} w-full shadow-lg fixed top-0 left-0 z-50 transition-all duration-300 bg-white border-b border-gray-200 ${isScrolled ? 'sticky-header' : ''}`}
+        className={`${className} w-full shadow-md fixed top-0 left-0 z-50 transition-all duration-300 bg-white border-b border-gray-200 ${isScrolled ? 'sticky-header' : ''}`}
       >
-        <div className={`w-full flex items-center justify-between px-2 ${isScrolled ? 'py-2' : 'py-1.5'} gap-2 ${isScrolled ? 'h-14' : 'h-12'}`}>
+        <div className={`w-full flex items-center justify-between px-3 sm:px-4 ${isScrolled ? 'py-2.5' : 'py-2'} gap-2 sm:gap-3 ${isScrolled ? 'h-14 sm:h-16' : 'h-12 sm:h-14'}`}>
           {/* Logo + tên web */}
           <Link
             href="/"
-            className={`flex items-center gap-1.5 no-underline transition-all duration-300 ${
-              isScrolled ? 'min-w-[80px]' : 'absolute left-1/2 transform -translate-x-1/2'
+            className={`flex items-center gap-1.5 sm:gap-2 no-underline transition-all duration-300 flex-shrink-0 ${
+              isScrolled ? 'min-w-[90px] sm:min-w-[100px]' : 'absolute left-1/2 transform -translate-x-1/2'
             }`}
             prefetch={false}
           >
             <div className={`flex items-center justify-center overflow-hidden transition-all duration-300 ${
               isScrolled 
-                ? 'w-6 h-6 rounded-lg bg-white shadow-sm border border-gray-100' 
-                : 'w-12 h-12 rounded-2xl bg-white/95 backdrop-blur-md shadow-[0_12px_40px_rgba(0,0,0,0.25)] border-2 border-white/80'
+                ? 'w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white shadow-sm border border-gray-100' 
+                : 'w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/95 backdrop-blur-md shadow-[0_12px_40px_rgba(0,0,0,0.25)] border-2 border-white/80'
             }`}>
               <Image
                 src={LogoSvg}
@@ -81,8 +81,8 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
                 width={24}
                 height={24}
                 style={{
-                  width: isScrolled ? 20 : 36,
-                  height: isScrolled ? 20 : 36,
+                  width: isScrolled ? '22px' : '40px',
+                  height: isScrolled ? '22px' : '40px',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
                 className="object-contain"
@@ -91,13 +91,13 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
             <span
               className={`logo-text font-bold tracking-wide leading-tight select-none no-underline whitespace-nowrap transition-all duration-300 ${
                 isScrolled 
-                  ? 'text-xs drop-shadow-sm' 
-                  : 'text-xl drop-shadow-[0_4px_12px_rgba(0,0,0,0.4)] font-black'
+                  ? 'text-xs sm:text-sm drop-shadow-sm' 
+                  : 'text-lg sm:text-xl drop-shadow-[0_4px_12px_rgba(0,0,0,0.4)] font-black'
               }`}
               style={{ 
                 textDecoration: "none", 
                 borderBottom: "none",
-                color: '#3393ac'
+                color: '#049DBF'
               }}
             >
               WECARE
@@ -106,15 +106,15 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
 
           {/* Thanh tìm kiếm */}
           <div className={`flex justify-center transition-all duration-300 ${
-            isScrolled ? 'flex-1 mx-2' : 'w-0 opacity-0 overflow-hidden'
+            isScrolled ? 'flex-1 mx-2 sm:mx-3' : 'w-0 opacity-0 overflow-hidden'
           }`}>
             <form
               className="relative w-full max-w-2xl flex items-center"
               onSubmit={onSearchSubmit}
             >
-              <div className="search-bar flex items-center bg-white rounded-full shadow-lg overflow-hidden border border-gray-200 w-full h-10">
-                <div className="flex items-center pl-2 pr-1">
-                  <FaSearch className="w-4 h-4 text-gray-500" />
+              <div className="search-bar flex items-center bg-white rounded-full shadow-lg overflow-hidden border border-gray-200 w-full h-10 sm:h-11">
+                <div className="flex items-center pl-2.5 sm:pl-3 pr-1">
+                  <FaSearch className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
                 </div>
                 <div className="relative flex-1">
                   <input
@@ -123,24 +123,24 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
                     onChange={onSearchInput}
                     onFocus={handleSearchFocus}
                     onBlur={handleSearchBlur}
-                    className="w-full px-3 py-2 text-gray-800 placeholder-gray-500 focus:outline-none bg-transparent text-sm font-medium"
+                    className="w-full px-2 sm:px-3 py-2 text-gray-800 placeholder-gray-500 focus:outline-none bg-transparent text-sm sm:text-base font-medium"
                     placeholder="Tìm kiếm sản phẩm..."
                   />
                   {searchTerm && (
                     <button
                       type="button"
-                      className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 bg-white rounded-full p-1 shadow-sm transition-all"
+                      className="absolute right-1.5 sm:right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 bg-white rounded-full p-1.5 sm:p-2 shadow-sm transition-all touch-manipulation"
                       onClick={onClearSearch}
                       aria-label="Xoá tìm kiếm"
                     >
-                      <IoMdClose size={12} />
+                      <IoMdClose size={14} className="sm:w-4 sm:h-4" />
                     </button>
                   )}
                 </div>
                 <button
                   type="submit"
-                  className="text-white px-4 h-full font-semibold transition-colors text-sm rounded-r-full"
-                  style={{ backgroundColor: '#3393ac' }}
+                  className="text-white px-3 sm:px-4 h-full font-semibold transition-colors text-xs sm:text-sm rounded-r-full touch-manipulation active:opacity-80"
+                  style={{ backgroundColor: '#049DBF' }}
                 >
                   Tìm
                 </button>
@@ -148,14 +148,34 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
             </form>
           </div>
 
-          {/* Menu Toggle */}
-          <button
-            type="button"
-            onClick={onMenuToggle}
-            className={`flex items-center justify-center rounded-full ${isScrolled ? 'p-2 w-8 h-8' : 'p-1.5 w-6 h-6'} shadow-sm transition-all bg-white hover:bg-gray-50`}
-          >
-            <FaBars className={`text-xs text-gray-700`} />
-          </button>
+          {/* Menu Toggle + Cart */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            {/* Cart Button */}
+            <button
+              type="button"
+              onClick={onCartClick}
+              className="relative flex items-center justify-center rounded-full p-2 sm:p-2.5 shadow-sm transition-all bg-white hover:bg-gray-50 touch-manipulation active:scale-95"
+              style={{ minWidth: '44px', minHeight: '44px' }}
+            >
+              <FaShoppingCart className="text-[#049DBF] text-lg sm:text-xl" />
+              {cartItemsCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-yellow-400 text-white rounded-full min-w-[18px] h-[18px] sm:min-w-[20px] sm:h-[20px] flex items-center justify-center text-[10px] sm:text-xs font-bold px-1 border-2 border-white shadow">
+                  {cartItemsCount > 99 ? '99+' : cartItemsCount}
+                </span>
+              )}
+            </button>
+
+            {/* Menu Toggle */}
+            <button
+              type="button"
+              onClick={onMenuToggle}
+              className={`flex items-center justify-center rounded-full shadow-sm transition-all bg-white hover:bg-gray-50 touch-manipulation active:scale-95 ${
+                isScrolled ? 'p-2.5 w-10 h-10 sm:w-11 sm:h-11' : 'p-2 w-9 h-9 sm:w-10 sm:h-10'
+              }`}
+            >
+              <FaBars className="text-base sm:text-lg text-gray-700" />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -179,13 +199,13 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
           right: 0;
           z-index: 50;
           backdrop-filter: blur(10px);
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
         }
 
         .search-bar:focus-within {
-          box-shadow: 0 0 0 3px rgba(51, 147, 172, 0.18), 0 8px 25px rgba(0, 0, 0, 0.15);
+          box-shadow: 0 0 0 3px rgba(4, 157, 191, 0.15), 0 4px 16px rgba(0, 0, 0, 0.1);
           transform: translateY(-1px);
-          border-color: rgba(51, 147, 172, 0.6);
+          border-color: rgba(4, 157, 191, 0.5);
         }
 
         .search-bar {
@@ -193,8 +213,20 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
           height: 40px;
         }
 
+        @media (min-width: 640px) {
+          .search-bar {
+            height: 44px;
+          }
+        }
+
         .search-bar:hover {
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        /* Touch-friendly buttons */
+        .touch-manipulation {
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
         }
 
         /* Hide scrollbar for horizontal scroll */

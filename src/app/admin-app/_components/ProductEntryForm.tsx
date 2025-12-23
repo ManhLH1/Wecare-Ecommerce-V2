@@ -1049,15 +1049,39 @@ export default function ProductEntryForm({
         }
       }
 
-      // Chọn giá dựa vào VAT của SẢN PHẨM
-      // TẤT CẢ SẢN PHẨM (có VAT và không VAT) ĐỀU DÙNG priceNoVat (giá trước VAT)
-      // Theo PDF: "Đơn giá" = giá trước VAT, "Đơn giá sau VAT" = giá sau VAT
-      // "Thành tiền" được tính từ "Đơn giá" (giá trước VAT) * số lượng
+      // Chọn giá dựa vào VAT của SO và SẢN PHẨM
+      // Logic:
+      // 1. SO có VAT + Sản phẩm có VAT → dùng priceNoVat
+      // 2. SO có VAT + Sản phẩm không VAT → dùng price
+      // 3. SO không VAT + Sản phẩm có VAT → dùng price
+      // 4. SO không VAT + Sản phẩm không VAT → dùng price
       let basePrice: number | null = null;
       
-      // Luôn dùng priceNoVat (giá trước VAT) để hiển thị trong "Đơn giá"
-      // VAT sẽ được tính riêng trong phần tính tổng tiền
-      basePrice = priceNoVat ?? null;
+      // Xác định SO có VAT hay không
+      const vatTextLower = (vatText || '').toLowerCase();
+      const soIsVat = vatTextLower.includes('có vat') || vatPercent > 0;
+      
+      // Xác định sản phẩm có VAT hay không (dựa vào crdfd_gtgt)
+      // Tìm sản phẩm từ selectedProduct hoặc từ products list
+      const currentProduct = selectedProduct || (selectedProductCode ? products.find((p) => p.crdfd_masanpham === selectedProductCode) : null);
+      const productVatOptionValue = currentProduct?.crdfd_gtgt_option ?? currentProduct?.crdfd_gtgt;
+      const productVatPercent = productVatOptionValue !== undefined ? VAT_OPTION_MAP[Number(productVatOptionValue)] : undefined;
+      const productIsVat = productVatPercent !== undefined && productVatPercent > 0;
+      
+      // Áp dụng logic chọn giá
+      if (soIsVat && productIsVat) {
+        // SO có VAT + Sản phẩm có VAT → dùng priceNoVat
+        basePrice = priceNoVat ?? null;
+      } else if (soIsVat && !productIsVat) {
+        // SO có VAT + Sản phẩm không VAT → dùng price
+        basePrice = priceWithVat ?? null;
+      } else if (!soIsVat && productIsVat) {
+        // SO không VAT + Sản phẩm có VAT → dùng price
+        basePrice = priceWithVat ?? null;
+      } else {
+        // SO không VAT + Sản phẩm không VAT → dùng price
+        basePrice = priceWithVat ?? null;
+      }
 
       // Làm tròn & format giống PowerApps Text(..., "#,###")
       const roundedBase =
@@ -1720,14 +1744,14 @@ export default function ProductEntryForm({
           </div>
         </div>
 
-        {/* Row 2: Quantity, Price, Add Button */}
+        {/* Row 2: Quantity, Price, VAT (%), Add Button */}
         <div className="admin-app-form-row-compact admin-app-product-row-2">
           <div className="admin-app-field-compact">
             <label className="admin-app-label-inline">Số lượng</label>
             <div className="admin-app-input-wrapper">
               <input
                 type="number"
-                className="admin-app-input admin-app-input-compact admin-app-input-number"
+                className="admin-app-input admin-app-input-compact admin-app-input-number admin-app-input-small"
                 value={quantity > 0 ? quantity : ''}
                 onChange={(e) => {
                   const val = e.target.value === '' ? null : parseInt(e.target.value);
@@ -1755,7 +1779,7 @@ export default function ProductEntryForm({
               )}
               <input
                 type="text"
-                className={`admin-app-input admin-app-input-compact admin-app-input-money${priceLoading || !approvePrice || (approvePrice && priceEntryMethod === 'Theo chiết khấu') ? ' admin-app-input-readonly' : ''}`}
+                className={`admin-app-input admin-app-input-compact admin-app-input-money admin-app-input-small${priceLoading || !approvePrice || (approvePrice && priceEntryMethod === 'Theo chiết khấu') ? ' admin-app-input-readonly' : ''}`}
                 value={price}
                 onChange={(e) => handlePriceChange(e.target.value)}
                 placeholder={priceLoading ? "Đang tải..." : "Giá"}
@@ -1765,6 +1789,18 @@ export default function ProductEntryForm({
               />
             </div>
           </div>
+
+          {isVatSo && (
+            <div className="admin-app-field-compact admin-app-field-vat">
+              <label className="admin-app-label-inline">VAT (%)</label>
+              <input
+                type="number"
+                className="admin-app-input admin-app-input-compact admin-app-input-readonly admin-app-input-small"
+                value={vatPercent}
+                readOnly
+              />
+            </div>
+          )}
 
           <div className="admin-app-field-compact admin-app-field-add-button">
             <label className="admin-app-label-inline" style={{ visibility: 'hidden' }}>Add</label>
@@ -1889,19 +1925,29 @@ export default function ProductEntryForm({
           </div>
         )}
 
-        {/* Row 3: VAT% (only for VAT SO), Subtotal/Total (only after product selected) */}
+        {/* Row 3: Giá sau chiết khấu, Subtotal/Total (only after product selected) */}
         <div className="admin-app-form-row-compact admin-app-form-row-summary admin-app-form-row-summary-no-stock">
-          {isVatSo && (
-            <div className="admin-app-field-compact admin-app-field-vat">
-              <label className="admin-app-label-inline">VAT (%)</label>
-              <input
-                type="number"
-                className="admin-app-input admin-app-input-compact admin-app-input-readonly"
-                value={vatPercent}
-                readOnly
-              />
-            </div>
-          )}
+          {hasSelectedProduct && (() => {
+            // Tính giá sau chiết khấu (giá đơn vị sau khi áp dụng chiết khấu)
+            // Logic giống với recomputeTotals để đảm bảo tính toán nhất quán
+            const priceNum = parseFloat(String(price)) || 0;
+            const promoDiscountPct = discountPercent || promotionDiscountPercent || 0;
+            const discountFactor = 1 - (promoDiscountPct > 0 ? promoDiscountPct / 100 : 0);
+            const discountedPrice = priceNum * discountFactor;
+            // Làm tròn để hiển thị giống với cách tính trong recomputeTotals
+            const roundedDiscountedPrice = Math.round(discountedPrice);
+            return (
+              <div className="admin-app-field-compact admin-app-field-discounted-price">
+                <label className="admin-app-label-inline">Giá sau chiết khấu</label>
+                <input
+                  type="text"
+                  className="admin-app-input admin-app-input-compact admin-app-input-readonly admin-app-input-money"
+                  value={`${roundedDiscountedPrice.toLocaleString('vi-VN')} ₫`}
+                  readOnly
+                />
+              </div>
+            );
+          })()}
 
           {hasSelectedProduct && (
             <div className="admin-app-field-compact admin-app-field-total">

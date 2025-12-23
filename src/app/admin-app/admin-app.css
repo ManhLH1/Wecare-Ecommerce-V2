@@ -2150,7 +2150,7 @@
 }
 
 .admin-app-product-row-2 {
-  grid-template-columns: minmax(120px, 0.9fr) minmax(160px, 1.1fr) minmax(60px, 0.5fr);
+  grid-template-columns: minmax(100px, 0.7fr) minmax(140px, 1fr) minmax(80px, 0.6fr) minmax(60px, 0.5fr);
   align-items: start;
 }
 
@@ -2455,6 +2455,10 @@
   min-width: 60px;
 }
 
+.admin-app-field-discounted-price {
+  min-width: 120px;
+}
+
 .admin-app-field-total {
   min-width: 100px;
 }
@@ -2496,6 +2500,16 @@
 
 .admin-app-input-wrapper .admin-app-input-compact {
   height: 28px;
+}
+
+.admin-app-input-small {
+  height: 24px;
+  padding: 3px 6px;
+  font-size: 11px;
+}
+
+.admin-app-input-wrapper .admin-app-input-small {
+  height: 24px;
 }
 
 .admin-app-input-total {

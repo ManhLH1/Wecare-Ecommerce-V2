@@ -210,16 +210,42 @@ export default async function handler(
               const freshCurrentInventory = freshRecord.cr44a_soluongtonlythuyet ?? 0;
               const freshReservedQuantity = freshRecord.cr1bb_soluonglythuyetgiuathang ?? 0;
               
-              // Atomic check: CurrentInventory >= quantity
-              if (freshCurrentInventory < quantity) {
+              // Kiểm tra xem có cần bypass tồn kho không
+              const ALLOWED_PRODUCT_GROUPS = ['NSP-00027', 'NSP-000872', 'NSP-000409', 'NSP-000474', 'NSP-000873'];
+              const isSpecialProduct = productGroupCode && ALLOWED_PRODUCT_GROUPS.includes(productGroupCode);
+              
+              // Atomic check: CurrentInventory >= quantity (trừ khi skipStockCheck = true hoặc là sản phẩm đặc biệt)
+              if (!skipStockCheck && !isSpecialProduct && freshCurrentInventory < quantity) {
                 const errorMessage = `Không đủ tồn kho để chốt đơn! Sản phẩm ${productCode} có tồn kho: ${freshCurrentInventory}, yêu cầu: ${quantity}`;
                 return res.status(400).json({ success: false, message: errorMessage });
               }
               
+              if (skipStockCheck || isSpecialProduct) {
+                console.log('[Update Inventory] Skipping stock check for final (Inventory Weshops):', {
+                  productCode,
+                  skipStockCheck,
+                  isSpecialProduct,
+                  productGroupCode,
+                  currentInventory: freshCurrentInventory,
+                  quantity
+                });
+              }
+              
               // Update: CurrentInventory -= quantity, ReservedQuantity -= quantity (giải phóng đặt giữ)
-              // Làm tròn thành số nguyên vì field yêu cầu Int32
-              const newCurrentInventory = Math.round(freshCurrentInventory - quantity);
+              // Với nhóm đặc biệt: KHÔNG trừ tồn kho lý thuyết, chỉ giải phóng ReservedQuantity
               const newReservedQuantity = Math.max(0, Math.round(freshReservedQuantity - quantity));
+              
+              // Với nhóm đặc biệt: KHÔNG trừ tồn kho lý thuyết
+              let newCurrentInventory: number | undefined;
+              if (!isSpecialProduct) {
+                // Sản phẩm thường: trừ tồn kho lý thuyết
+                newCurrentInventory = Math.round(freshCurrentInventory - quantity);
+              } else {
+                // Sản phẩm đặc biệt: giữ nguyên tồn kho lý thuyết
+                newCurrentInventory = undefined; // Không update field này
+                console.log(`[Update Inventory] Nhóm đặc biệt ${productGroupCode} - Không trừ tồn kho lý thuyết, chỉ giải phóng ReservedQuantity`);
+              }
+              
               const updateInvEndpoint = `${BASE_URL}${INVENTORY_TABLE}(${freshRecord.cr44a_inventoryweshopid})`;
               
               console.log('[Update Inventory] Finalizing order (Inventory Weshops):', {
@@ -227,20 +253,33 @@ export default async function handler(
                 currentInventory: freshCurrentInventory,
                 reservedQuantity: freshReservedQuantity,
                 quantity,
-                newCurrentInventory,
-                newReservedQuantity
+                newCurrentInventory: newCurrentInventory ?? '(giữ nguyên)',
+                newReservedQuantity,
+                isSpecialProduct
               });
               
               try {
+                // ATOMIC OPERATION: Update field(s) trong cùng 1 request
+                const updatePayload: any = {
+                  cr1bb_soluonglythuyetgiuathang: newReservedQuantity // Tính lại số giữ tồn kho (luôn update)
+                };
+                
+                // Chỉ update tồn kho lý thuyết nếu không phải sản phẩm đặc biệt
+                if (newCurrentInventory !== undefined) {
+                  updatePayload.cr44a_soluongtonlythuyet = newCurrentInventory;
+                }
+                
                 await axios.patch(
                   updateInvEndpoint,
-                  { 
-                    cr44a_soluongtonlythuyet: newCurrentInventory,
-                    cr1bb_soluonglythuyetgiuathang: newReservedQuantity
-                  },
+                  updatePayload,
                   { headers }
                 );
-                console.log('[Update Inventory] ✅ Successfully finalized order (Inventory Weshops)');
+                
+                if (isSpecialProduct) {
+                  console.log(`[Update Inventory] ✅ Nhóm đặc biệt - Chỉ giải phóng ReservedQuantity: ${productCode} - Giữ tồn: ${freshReservedQuantity} → ${newReservedQuantity} (Tồn kho lý thuyết giữ nguyên: ${freshCurrentInventory})`);
+                } else {
+                  console.log('[Update Inventory] ✅ Successfully finalized order (Inventory Weshops)');
+                }
                 inventoryUpdated = true;
               } catch (patchError: any) {
                 console.error('[Update Inventory] ❌ Error finalizing order (Inventory Weshops):', {
@@ -406,16 +445,44 @@ export default async function handler(
               }
               const freshReservedQuantity = freshRecord.cr1bb_soluonganggiuathang ?? 0;
               
-              // Atomic check: CurrentInventory >= quantity
-              if (freshCurrentInventory < quantity) {
+              // Kiểm tra xem có cần bypass tồn kho không
+              const ALLOWED_PRODUCT_GROUPS = ['NSP-00027', 'NSP-000872', 'NSP-000409', 'NSP-000474', 'NSP-000873'];
+              const isSpecialProduct = productGroupCode && ALLOWED_PRODUCT_GROUPS.includes(productGroupCode);
+              
+              // Atomic check: CurrentInventory >= quantity (trừ khi skipStockCheck = true hoặc là sản phẩm đặc biệt)
+              // Lưu ý: Đơn VAT thường không cần check tồn kho, nhưng vẫn check nếu không phải sản phẩm đặc biệt và không có skipStockCheck
+              if (!skipStockCheck && !isSpecialProduct && freshCurrentInventory < quantity) {
                 const errorMessage = `Không đủ tồn kho để chốt đơn! Sản phẩm ${productCode} có tồn kho: ${freshCurrentInventory}, yêu cầu: ${quantity}`;
                 return res.status(400).json({ success: false, message: errorMessage });
               }
               
+              if (skipStockCheck || isSpecialProduct || isVatOrder) {
+                console.log('[Update Inventory] Skipping stock check for final (Kho Bình Định):', {
+                  productCode,
+                  skipStockCheck,
+                  isVatOrder,
+                  isSpecialProduct,
+                  productGroupCode,
+                  currentInventory: freshCurrentInventory,
+                  quantity
+                });
+              }
+              
               // Update: CurrentInventory -= quantity, ReservedQuantity -= quantity
-              // Làm tròn thành số nguyên vì field yêu cầu Int32
-              const newCurrentInventory = Math.round(freshCurrentInventory - quantity);
+              // Với nhóm đặc biệt: KHÔNG trừ tồn kho lý thuyết, chỉ giải phóng ReservedQuantity
               const newReservedQuantity = Math.max(0, Math.round(freshReservedQuantity - quantity));
+              
+              // Với nhóm đặc biệt: KHÔNG trừ tồn kho lý thuyết
+              let newCurrentInventory: number | undefined;
+              if (!isSpecialProduct) {
+                // Sản phẩm thường: trừ tồn kho lý thuyết
+                newCurrentInventory = Math.round(freshCurrentInventory - quantity);
+              } else {
+                // Sản phẩm đặc biệt: giữ nguyên tồn kho lý thuyết
+                newCurrentInventory = undefined; // Không update field này
+                console.log(`[Update Inventory] Nhóm đặc biệt ${productGroupCode} - Không trừ tồn kho lý thuyết (Kho Bình Định), chỉ giải phóng ReservedQuantity`);
+              }
+              
               const updateKhoBDEndpoint = `${BASE_URL}${KHO_BD_TABLE}(${freshRecord.crdfd_kho_binh_dinhid})`;
               
               console.log('[Update Inventory] Finalizing order (Kho Bình Định):', {
@@ -423,21 +490,25 @@ export default async function handler(
                 currentInventory: freshCurrentInventory,
                 reservedQuantity: freshReservedQuantity,
                 quantity,
-                newCurrentInventory,
-                newReservedQuantity
+                newCurrentInventory: newCurrentInventory ?? '(giữ nguyên)',
+                newReservedQuantity,
+                isSpecialProduct
               });
               
               try {
-                // Update cả CurrentInventory và ReservedQuantity
-                // Sử dụng field tương ứng với CurrentInventory đã lấy
+                // ATOMIC OPERATION: Update field(s) trong cùng 1 request
                 const updatePayload: any = {
-                  cr1bb_soluonganggiuathang: newReservedQuantity
+                  cr1bb_soluonganggiuathang: newReservedQuantity // Tính lại số giữ tồn kho (luôn update)
                 };
-                // Update field CurrentInventory tương ứng
-                if (freshRecord.cr1bb_tonkholythuyetbomua !== undefined) {
-                  updatePayload.cr1bb_tonkholythuyetbomua = newCurrentInventory;
-                } else if (freshRecord.crdfd_tonkholythuyet !== undefined) {
-                  updatePayload.crdfd_tonkholythuyet = newCurrentInventory;
+                
+                // Chỉ update tồn kho lý thuyết nếu không phải sản phẩm đặc biệt
+                if (newCurrentInventory !== undefined) {
+                  // Update field CurrentInventory tương ứng
+                  if (freshRecord.cr1bb_tonkholythuyetbomua !== undefined) {
+                    updatePayload.cr1bb_tonkholythuyetbomua = newCurrentInventory;
+                  } else if (freshRecord.crdfd_tonkholythuyet !== undefined) {
+                    updatePayload.crdfd_tonkholythuyet = newCurrentInventory;
+                  }
                 }
                 
                 await axios.patch(
@@ -445,7 +516,12 @@ export default async function handler(
                   updatePayload,
                   { headers }
                 );
-                console.log('[Update Inventory] ✅ Successfully finalized order (Kho Bình Định)');
+                
+                if (isSpecialProduct) {
+                  console.log(`[Update Inventory] ✅ Nhóm đặc biệt - Chỉ giải phóng ReservedQuantity (Kho Bình Định): ${productCode} - Giữ tồn: ${freshReservedQuantity} → ${newReservedQuantity} (Tồn kho lý thuyết giữ nguyên: ${freshCurrentInventory})`);
+                } else {
+                  console.log('[Update Inventory] ✅ Successfully finalized order (Kho Bình Định)');
+                }
                 khoBDUpdated = true;
               } catch (patchError: any) {
                 console.error('[Update Inventory] ❌ Error finalizing order (Kho Bình Định):', {

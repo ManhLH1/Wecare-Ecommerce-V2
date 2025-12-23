@@ -431,7 +431,9 @@ async function updateInventoryAfterSale(
   quantity: number,
   warehouseName: string | undefined,
   isVatOrder: boolean,
-  headers: any
+  headers: any,
+  productGroupCode?: string,
+  skipStockCheck?: boolean
 ): Promise<void> {
   if (!productCode || !warehouseName) {
     return;
@@ -476,34 +478,70 @@ async function updateInventoryAfterSale(
         const currentInventory = invRecord.cr44a_soluongtonlythuyet ?? 0;
         const reservedQuantity = invRecord.cr1bb_soluonglythuyetgiuathang ?? 0;
         
-        // Atomic check: CurrentInventory >= quantity
-        if (currentInventory < quantity) {
+        // Kiểm tra xem có cần bypass tồn kho không
+        const ALLOWED_PRODUCT_GROUPS = ['NSP-00027', 'NSP-000872', 'NSP-000409', 'NSP-000474', 'NSP-000873'];
+        const isSpecialProduct = productGroupCode && ALLOWED_PRODUCT_GROUPS.includes(productGroupCode);
+        
+        // Atomic check: CurrentInventory >= quantity (trừ khi skipStockCheck = true hoặc là sản phẩm đặc biệt)
+        if (!skipStockCheck && !isSpecialProduct && currentInventory < quantity) {
           const errorMessage = `Không đủ tồn kho để chốt đơn! Sản phẩm ${productCode} có tồn kho: ${currentInventory}, yêu cầu: ${quantity}`;
           throw new Error(errorMessage);
+        }
+        
+        if (skipStockCheck || isSpecialProduct) {
+          console.log('[Save SOD] Skipping stock check for final (Inventory Weshops):', {
+            productCode,
+            skipStockCheck,
+            isSpecialProduct,
+            productGroupCode,
+            currentInventory,
+            quantity
+          });
         }
 
         // ============ ATOMIC UPDATE: Trừ tồn kho lý thuyết VÀ tính lại số giữ tồn kho CÙNG LÚC ============
         // Đảm bảo cả 2 field được update trong cùng 1 PATCH request để tránh race condition
-        // - CurrentInventory -= quantity (trừ tồn kho lý thuyết)
+        // - CurrentInventory -= quantity (trừ tồn kho lý thuyết) - CHỈ cho sản phẩm thường
         // - ReservedQuantity -= quantity (tính lại số giữ tồn kho: giữ đặt = giữ đặt hàng - số lượng lên đơn)
         // Ví dụ: Giữ đặt 40, save đơn 20 → Giữ đặt còn lại 20 (40 - 20 = 20)
-        const newCurrentInventory = currentInventory - quantity;
+        // Với nhóm đặc biệt: KHÔNG trừ tồn kho lý thuyết, chỉ giải phóng ReservedQuantity
         const newReservedQuantity = Math.max(0, reservedQuantity - quantity);
+        
+        // Với nhóm đặc biệt: KHÔNG trừ tồn kho lý thuyết
+        let newCurrentInventory: number | undefined;
+        if (!isSpecialProduct) {
+          // Sản phẩm thường: trừ tồn kho lý thuyết
+          newCurrentInventory = currentInventory - quantity;
+        } else {
+          // Sản phẩm đặc biệt: giữ nguyên tồn kho lý thuyết
+          newCurrentInventory = undefined; // Không update field này
+          console.log(`[Save SOD] Nhóm đặc biệt ${productGroupCode} - Không trừ tồn kho lý thuyết, chỉ giải phóng ReservedQuantity`);
+        }
 
         const updateInvEndpoint = `${BASE_URL}${INVENTORY_TABLE}(${invRecord.cr44a_inventoryweshopid})`;
 
-        // ATOMIC OPERATION: Update cả 2 field trong cùng 1 request
+        // ATOMIC OPERATION: Update field(s) trong cùng 1 request
         // Dynamics 365 đảm bảo tính nguyên tố (atomic) cho mỗi PATCH request
+        const updatePayload: any = {
+          cr1bb_soluonglythuyetgiuathang: newReservedQuantity // Tính lại số giữ tồn kho (luôn update)
+        };
+        
+        // Chỉ update tồn kho lý thuyết nếu không phải sản phẩm đặc biệt
+        if (newCurrentInventory !== undefined) {
+          updatePayload.cr44a_soluongtonlythuyet = newCurrentInventory;
+        }
+        
         await axios.patch(
           updateInvEndpoint,
-          { 
-            cr44a_soluongtonlythuyet: newCurrentInventory,      // Trừ tồn kho lý thuyết
-            cr1bb_soluonglythuyetgiuathang: newReservedQuantity // Tính lại số giữ tồn kho
-          },
+          updatePayload,
           { headers }
         );
         
-        console.log(`✅ [Inventory Non-VAT] Atomic update: ${productCode} - Tồn kho: ${currentInventory} → ${newCurrentInventory}, Giữ tồn: ${reservedQuantity} → ${newReservedQuantity}`);
+        if (isSpecialProduct) {
+          console.log(`✅ [Inventory Non-VAT] Nhóm đặc biệt - Chỉ giải phóng ReservedQuantity: ${productCode} - Giữ tồn: ${reservedQuantity} → ${newReservedQuantity} (Tồn kho lý thuyết giữ nguyên: ${currentInventory})`);
+        } else {
+          console.log(`✅ [Inventory Non-VAT] Atomic update: ${productCode} - Tồn kho: ${currentInventory} → ${newCurrentInventory}, Giữ tồn: ${reservedQuantity} → ${newReservedQuantity}`);
+        }
       }
     }
 
@@ -942,7 +980,9 @@ export default async function handler(
               product.quantity,
               warehouseName,
               !isNonVatOrder, // isVatOrder
-              headers
+              headers,
+              product.productGroupCode, // productGroupCode để kiểm tra nhóm đặc biệt
+              false // skipStockCheck - sẽ được xác định trong hàm
             );
             console.log(`✅ [Inventory] Đã chốt tồn kho cho ${product.productCode}: trả lại ${product.quantity} giữ tồn và trừ ${product.quantity} tồn kho`);
           } catch (invError: any) {
