@@ -89,7 +89,7 @@ export default async function handler(
     const createdOrderXPromotionId = createResponse.headers["odata-entityid"]
       ?.match(/\(([^)]+)\)/)?.[1];
 
-    // 2. Nếu là chiết khấu 2 (chietKhau2 = true), cập nhật crdfd_chieckhau2 trên các SOD matching
+    // 2. Nếu là chiết khấu 2 (chietKhau2 = true), cập nhật crdfd_chieckhau2 và giá trên các SOD matching
     let updatedSodCount = 0;
     if (chietKhau2) {
       // Lấy danh sách SOD của SO
@@ -114,6 +114,11 @@ export default async function handler(
         ? (Array.isArray(productGroupCodes) ? productGroupCodes : productGroupCodes.split(",")).map((c: string) => c.trim()).filter(Boolean)
         : [];
 
+      // Tính toán giá trị chiết khấu 2 (đã được tính ở trên)
+      // chietKhau2Value đã được tính: VNĐ thì là số tiền, % thì là decimal (0.05 = 5%)
+
+      // Chuẩn bị danh sách SOD cần cập nhật
+      const sodsToUpdate: any[] = [];
       for (const sod of sodList) {
         const sodProductCode = sod.crdfd_masanpham || "";
         const sodProductGroupCode = sod.crdfd_manhomsp || "";
@@ -122,15 +127,24 @@ export default async function handler(
         const matchesProduct = productCodeList.length === 0 || productCodeList.some((code: string) => sodProductCode.includes(code));
         const matchesGroup = productGroupCodeList.length === 0 || productGroupCodeList.some((code: string) => sodProductGroupCode.includes(code));
 
-        // If either matches (or no filter provided), update crdfd_chieckhau2
+        // If either matches (or no filter provided), add to update list
         if (productCodeList.length === 0 && productGroupCodeList.length === 0) {
           // No filter - update all SOD
-          await updateSodChietKhau2(sod.crdfd_saleorderdetailsid, promotionValue, vndOrPercent, headers);
-          updatedSodCount++;
+          sodsToUpdate.push(sod);
         } else if (matchesProduct || matchesGroup) {
-          await updateSodChietKhau2(sod.crdfd_saleorderdetailsid, promotionValue, vndOrPercent, headers);
-          updatedSodCount++;
+          sodsToUpdate.push(sod);
         }
+      }
+
+      // Cập nhật từng SOD với crdfd_chieckhau2
+      for (const sod of sodsToUpdate) {
+        await updateSodChietKhau2(
+          sod.crdfd_saleorderdetailsid,
+          promotionValue,
+          vndOrPercent,
+          headers
+        );
+        updatedSodCount++;
       }
     }
 
@@ -161,6 +175,7 @@ export default async function handler(
 
 /**
  * Helper function to update crdfd_chieckhau2 on a SOD record
+ * Chỉ cập nhật crdfd_chieckhau2, không cập nhật giá
  */
 async function updateSodChietKhau2(
   sodId: string,
