@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import axios from "axios";
-import { getAccessToken } from "../getAccessToken";
+import axiosClient from "./_utils/axiosClient";
+import { getCacheKey, getCachedResponse, setCachedResponse } from "./_utils/cache";
+import { deduplicateRequest, getDedupKey } from "./_utils/requestDeduplication";
 
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
 const CUSTOMER_TABLE = "crdfd_customers";
@@ -15,14 +16,15 @@ export default async function handler(
 
   try {
     const { search } = req.query;
-    const token = await getAccessToken();
-
-    if (!token) {
-      return res.status(401).json({ error: "Failed to obtain access token" });
+    
+    // Check cache first
+    const cacheKey = getCacheKey("customers", { search });
+    const cachedResponse = getCachedResponse(cacheKey);
+    if (cachedResponse !== undefined) {
+      return res.status(200).json(cachedResponse);
     }
 
     const headers = {
-      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
       "OData-MaxVersion": "4.0",
       "OData-Version": "4.0",
@@ -42,7 +44,11 @@ export default async function handler(
     )}&$orderby=crdfd_name&$top=100`;
     const endpoint = `${BASE_URL}${CUSTOMER_TABLE}?${query}`;
 
-    const response = await axios.get(endpoint, { headers });
+    // Use deduplication for customer queries
+    const dedupKey = getDedupKey(CUSTOMER_TABLE, { search });
+    const response = await deduplicateRequest(dedupKey, () =>
+      axiosClient.get(endpoint, { headers })
+    );
 
     const customers = (response.data.value || []).map((item: any) => ({
       crdfd_customerid: item.crdfd_customerid,
@@ -56,6 +62,9 @@ export default async function handler(
       cr1bb_vungmien: item.crdfd_Tinhthanh?.new_vungmienfx || null,
       cr1bb_vungmien_text: item.crdfd_Tinhthanh?.new_vungmienfx || "",
     }));
+
+    // Cache the result
+    setCachedResponse(cacheKey, customers);
 
     res.status(200).json(customers);
   } catch (error: any) {

@@ -3088,4 +3088,275 @@
   border-color: #94a3b8;
 }
 
+/* ============ Mobile Optimization - Stack Layout ============ */
+/* Đảm bảo 3 phần chính xếp chồng lên nhau trên mobile */
+
+@media (max-width: 768px) {
+  /* Wrapper - tối ưu cho mobile */
+  .admin-app-wrapper {
+    padding: 8px !important;
+    max-width: 100% !important;
+  }
+
+  /* Main content container - chuyển từ flex row sang flex column */
+  .admin-app-content-compact {
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 12px !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    align-items: stretch !important;
+  }
+
+  /* Left column - Thông tin đơn hàng (phần 1) */
+  .admin-app-column-left {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 auto !important;
+    order: 1;
+    margin-bottom: 0;
+    transform: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+
+  /* Right column - Product Entry Form (phần 2) */
+  .admin-app-column-right {
+    width: 100% !important;
+    flex: 0 0 auto !important;
+    min-width: 100% !important;
+    order: 2;
+    margin-bottom: 0;
+  }
+
+  /* Table wrapper - Product Table (phần 3) */
+  .admin-app-table-wrapper {
+    width: 100% !important;
+    order: 3;
+    flex: 0 0 auto !important;
+    height: auto !important;
+    min-height: 300px !important;
+    max-height: 400px !important;
+    margin-top: 12px;
+  }
+
+  /* Ẩn nút reveal khi collapsed trên mobile vì không cần */
+  .admin-app-orderinfo-reveal {
+    display: none !important;
+  }
+
+  /* Card compact - tối ưu padding cho mobile */
+  .admin-app-card-compact {
+    padding: 12px !important;
+  }
+
+  /* Header compact - tối ưu cho mobile */
+  .admin-app-header-compact {
+    padding: 0 12px !important;
+    flex-wrap: wrap;
+    min-height: auto;
+    height: auto;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .admin-app-header-compact-left {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  .admin-app-header-compact-right {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-start;
+  }
+
+  .admin-app-header-btn {
+    flex: 1 1 auto;
+    min-width: 80px;
+    font-size: 12px !important;
+    padding: 6px 10px !important;
+  }
+
+  /* Form fields - tối ưu spacing */
+  .admin-app-field-compact {
+    margin-bottom: 12px;
+  }
+
+  .admin-app-form-compact {
+    gap: 12px;
+  }
+
+  /* Product entry form rows - chuyển sang 1 cột trên mobile */
+  .admin-app-product-row-1,
+  .admin-app-product-row-2,
+  .admin-app-product-row-3 {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .admin-app-form-row-mini {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Checkboxes inline - xếp dọc trên mobile */
+  .admin-app-checkboxes-inline {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  /* Table - tối ưu cho mobile */
+  .admin-app-table-compact {
+    font-size: 12px;
+  }
+
+  .admin-app-table-compact th,
+  .admin-app-table-compact td {
+    padding: 6px 4px !important;
+    font-size: 11px;
+  }
+
+  /* Wrapper - cho phép scroll trên mobile */
+  .admin-app-wrapper {
+    overflow-y: auto !important;
+    height: 100vh;
+  }
+
+  /* Compact layout - cho phép scroll trên mobile */
+  .admin-app-compact-layout {
+    overflow-y: auto !important;
+    height: 100vh;
+  }
+}
+
+/* Mobile nhỏ hơn (480px) */
+@media (max-width: 480px) {
+  /* Wrapper - tối ưu padding */
+  .admin-app-wrapper {
+    padding: 4px 8px 8px !important;
+    max-width: 100% !important;
+  }
+
+  /* Header - tối ưu cho mobile nhỏ */
+  .admin-app-header {
+    padding: 12px !important;
+    gap: 12px;
+  }
+
+  .admin-app-header-left {
+    width: 100%;
+  }
+
+  .admin-app-header-right {
+    width: 100%;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .admin-app-form-toggle {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .admin-app-user-info {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .admin-app-content-compact {
+    padding: 8px !important;
+    gap: 8px !important;
+  }
+
+  .admin-app-card-compact {
+    padding: 10px !important;
+  }
+
+  .admin-app-header-compact {
+    padding: 0 8px !important;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .admin-app-header-btn {
+    font-size: 11px !important;
+    padding: 5px 8px !important;
+    min-width: 70px;
+  }
+
+  .admin-app-title-compact {
+    font-size: 12px !important;
+  }
+
+  .admin-app-table-wrapper {
+    min-height: 250px !important;
+    max-height: 350px !important;
+  }
+
+  .admin-app-field-compact {
+    margin-bottom: 10px;
+  }
+
+  .admin-app-form-compact {
+    gap: 10px;
+  }
+
+  /* Dropdown menu - tối ưu cho màn hình nhỏ */
+  .admin-app-dropdown-menu {
+    max-height: 200px !important;
+    font-size: 13px;
+  }
+
+  /* Input fields - tối ưu font size */
+  .admin-app-input,
+  .admin-app-input-compact {
+    font-size: 14px !important;
+    padding: 10px 12px !important;
+  }
+
+  /* Labels */
+  .admin-app-label-inline {
+    font-size: 12px !important;
+    margin-bottom: 4px;
+  }
+
+  /* Toggle buttons - tối ưu cho mobile */
+  .admin-app-toggle-btn {
+    font-size: 13px !important;
+    padding: 8px 16px !important;
+  }
+
+  /* User info - compact hơn */
+  .admin-app-user-avatar {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 14px !important;
+  }
+
+  .admin-app-user-name {
+    font-size: 13px !important;
+  }
+
+  .admin-app-user-email {
+    font-size: 11px !important;
+  }
+}
+
+/* Landscape mobile - tối ưu cho màn hình ngang */
+@media (max-width: 768px) and (orientation: landscape) {
+  .admin-app-table-wrapper {
+    min-height: 200px !important;
+    max-height: 250px !important;
+  }
+
+  .admin-app-content-compact {
+    gap: 8px !important;
+  }
+}
 

@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import axios from "axios";
-import { getAccessToken } from "../getAccessToken";
+import axiosClient from "./_utils/axiosClient";
+import { getCacheKey, getCachedResponse, setCachedResponse } from "./_utils/cache";
+import { deduplicateRequest, getDedupKey } from "./_utils/requestDeduplication";
 
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
 const INVENTORY_TABLE = "cr44a_inventoryweshops";
@@ -68,7 +69,12 @@ export default async function handler(
         filter
       )}&$top=1`;
       const endpoint = `${BASE_URL}${KHO_BD_TABLE}?${query}`;
-      const response = await axios.get(endpoint, { headers });
+      
+      // Use deduplication
+      const dedupKey = getDedupKey(KHO_BD_TABLE, { productCode, warehouseName });
+      const response = await deduplicateRequest(dedupKey, () =>
+        axiosClient.get(endpoint, { headers })
+      );
       const first = (response.data.value || [])[0];
       
       // CurrentInventory = cr1bb_tonkholythuyetbomua (ưu tiên), fallback về crdfd_tonkholythuyet
@@ -92,6 +98,10 @@ export default async function handler(
         reservedQuantity: reservedQuantity, // Số lượng đang giữ đơn
         availableToSell: availableToSell, // AvailableToSell = CurrentInventory - ReservedQuantity
       };
+      
+      // Cache the result
+      setCachedResponse(cacheKey, result, true);
+      
       return res.status(200).json(result);
     } else {
       // Inventory Weshops
@@ -117,7 +127,11 @@ export default async function handler(
         )}&$top=1`;
         const endpoint = `${BASE_URL}${INVENTORY_TABLE}?${query}`;
         
-        const response = await axios.get(endpoint, { headers });
+        // Use deduplication
+        const dedupKey = getDedupKey(INVENTORY_TABLE, { productCode, warehouseName, preferCrdfd });
+        const response = await deduplicateRequest(dedupKey, () =>
+          axiosClient.get(endpoint, { headers })
+        );
         const results = response.data.value || [];
         const first = results[0];
         
@@ -128,7 +142,12 @@ export default async function handler(
             fallbackFilter
           )}&$top=1`;
           const fallbackEndpoint = `${BASE_URL}${INVENTORY_TABLE}?${fallbackQuery}`;
-          const fallbackResponse = await axios.get(fallbackEndpoint, { headers });
+          
+          // Use deduplication
+          const fallbackDedupKey = getDedupKey(INVENTORY_TABLE, { productCode, preferCrdfd, fallback: true });
+          const fallbackResponse = await deduplicateRequest(fallbackDedupKey, () =>
+            axiosClient.get(fallbackEndpoint, { headers })
+          );
           const fallbackResults = fallbackResponse.data.value || [];
           const fallbackFirst = fallbackResults[0];
           
@@ -138,7 +157,7 @@ export default async function handler(
             const reserved = fallbackFirst?.cr1bb_soluonglythuyetgiuathang ?? 0;
             const available = theoretical - reserved;
             
-            return {
+            const fallbackResult = {
               productCode:
                 (preferCrdfd ? fallbackFirst?.crdfd_masanpham : fallbackFirst?.cr44a_masanpham) ||
                 fallbackFirst?.cr44a_masanpham ||
@@ -149,6 +168,11 @@ export default async function handler(
               reservedQuantity: reserved,
               availableToSell: available,
             };
+            
+            // Cache the fallback result
+            setCachedResponse(cacheKey, fallbackResult, true);
+            
+            return fallbackResult;
           }
         }
         
@@ -157,7 +181,7 @@ export default async function handler(
         const reserved = first?.cr1bb_soluonglythuyetgiuathang ?? 0;
         const available = theoretical - reserved;
         
-        return {
+        const result = {
           productCode:
             (preferCrdfd ? first?.crdfd_masanpham : first?.cr44a_masanpham) ||
             first?.cr44a_masanpham ||
@@ -168,10 +192,16 @@ export default async function handler(
           reservedQuantity: reserved,
           availableToSell: available,
         };
+        
+        // Cache the result
+        setCachedResponse(cacheKey, result, true);
+        
+        return result;
       };
 
       try {
         const result = await queryInventory(true);
+        // Cache already set in queryInventory
         return res.status(200).json(result);
       } catch (err: any) {
         const message: string | undefined =

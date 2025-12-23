@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import axios from "axios";
-import { getAccessToken } from "../getAccessToken";
+import axiosClient from "./_utils/axiosClient";
+import { getCacheKey, getCachedResponse, setCachedResponse } from "./_utils/cache";
+import { deduplicateRequest, getDedupKey } from "./_utils/requestDeduplication";
 
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
 const PRODUCT_TABLE = "crdfd_productses";
@@ -15,14 +16,15 @@ export default async function handler(
 
   try {
     const { search } = req.query;
-    const token = await getAccessToken();
-
-    if (!token) {
-      return res.status(401).json({ error: "Failed to obtain access token" });
+    
+    // Check cache first
+    const cacheKey = getCacheKey("products", { search });
+    const cachedResponse = getCachedResponse(cacheKey);
+    if (cachedResponse !== undefined) {
+      return res.status(200).json(cachedResponse);
     }
 
     const headers = {
-      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
       "OData-MaxVersion": "4.0",
       "OData-Version": "4.0",
@@ -50,7 +52,11 @@ export default async function handler(
 
     const endpoint = `${BASE_URL}${PRODUCT_TABLE}?${query}`;
 
-    const response = await axios.get(endpoint, { headers });
+    // Use deduplication for product queries
+    const dedupKey = getDedupKey(PRODUCT_TABLE, { search });
+    const response = await deduplicateRequest(dedupKey, () =>
+      axiosClient.get(endpoint, { headers })
+    );
 
     const products = (response.data.value || []).map((item: any) => ({
       crdfd_productsid: item.crdfd_productsid,
@@ -62,6 +68,9 @@ export default async function handler(
       cr1bb_banchatgiaphatra: item.cr1bb_banchatgiaphatra ?? null,
       crdfd_manhomsp: item.crdfd_manhomsp || "",
     }));
+
+    // Cache the result
+    setCachedResponse(cacheKey, products);
 
     res.status(200).json(products);
   } catch (error: any) {

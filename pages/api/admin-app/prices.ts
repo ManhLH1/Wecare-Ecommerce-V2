@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import axios from "axios";
-import { getAccessToken } from "../getAccessToken";
+import axiosClient from "./_utils/axiosClient";
+import { getCacheKey, getCachedResponse, setCachedResponse } from "./_utils/cache";
+import { deduplicateRequest, getDedupKey } from "./_utils/requestDeduplication";
 
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
 const QUOTE_DETAIL_TABLE = "crdfd_baogiachitiets";
@@ -25,26 +26,39 @@ async function getCustomerId(
     return null;
   }
 
-  try {
-    const safeCode = customerCode.replace(/'/g, "''");
-    const customerFilter = `statecode eq 0 and cr44a_makhachhang eq '${safeCode}'`;
-    const customerQuery = `$select=crdfd_customerid&$filter=${encodeURIComponent(customerFilter)}&$top=1`;
-    const customerEndpoint = `${BASE_URL}${CUSTOMER_TABLE}?${customerQuery}`;
-    const customerResponse = await axios.get(customerEndpoint, { headers });
-    const customer = customerResponse.data.value?.[0];
+  // Check cache first
+  const cacheKey = getCacheKey(`customer-id`, { customerCode });
+  const cached = getCachedResponse(cacheKey, true); // Use short cache (1 min)
+  if (cached !== undefined) {
+    return cached;
+  }
 
-    if (!customer || !customer.crdfd_customerid) {
+  // Use deduplication to prevent concurrent requests
+  const dedupKey = getDedupKey(`${CUSTOMER_TABLE}-id`, { customerCode });
+  
+  return deduplicateRequest(dedupKey, async () => {
+    try {
+      const safeCode = customerCode.replace(/'/g, "''");
+      const customerFilter = `statecode eq 0 and cr44a_makhachhang eq '${safeCode}'`;
+      const customerQuery = `$select=crdfd_customerid&$filter=${encodeURIComponent(customerFilter)}&$top=1`;
+      const customerEndpoint = `${BASE_URL}${CUSTOMER_TABLE}?${customerQuery}`;
+      const customerResponse = await axiosClient.get(customerEndpoint, { headers });
+      const customer = customerResponse.data.value?.[0];
+
+      const result = customer?.crdfd_customerid || null;
+      
+      // Cache the result
+      setCachedResponse(cacheKey, result, true);
+      
+      return result;
+    } catch (error: any) {
+      console.error("❌ [Get Customer ID] Error:", {
+        error: error.message,
+        response: error.response?.data,
+      });
       return null;
     }
-
-    return customer.crdfd_customerid;
-  } catch (error: any) {
-    console.error("❌ [Get Customer ID] Error:", {
-      error: error.message,
-      response: error.response?.data,
-    });
-    return null;
-  }
+  });
 }
   
 // Helper function to get customer groups (nhóm khách hàng) from cr1bb_groupkh
@@ -56,27 +70,42 @@ async function getCustomerGroups(
     return [];
   }
 
-  try {
-    // Filter: _cr1bb_khachhang_value eq customerId
-    // Select: cr1bb_tennhomkh
-    const groupFilter = `_cr1bb_khachhang_value eq ${customerId}`;
-    const groupQuery = `$select=cr1bb_tennhomkh&$filter=${encodeURIComponent(groupFilter)}`;
-    const groupEndpoint = `${BASE_URL}${GROUP_KH_TABLE}?${groupQuery}`;
-    
-    const groupResponse = await axios.get(groupEndpoint, { headers });
-
-    const groups = (groupResponse.data.value || [])
-      .map((item: any) => item.cr1bb_tennhomkh)
-      .filter((text: any): text is string => !!text && typeof text === "string");
-
-    return groups;
-  } catch (error: any) {
-    console.error("❌ [Get Customer Groups] Error:", {
-      error: error.message,
-      response: error.response?.data,
-    });
-    return [];
+  // Check cache first
+  const cacheKey = getCacheKey(`customer-groups`, { customerId });
+  const cached = getCachedResponse(cacheKey, true); // Use short cache (1 min)
+  if (cached !== undefined) {
+    return cached;
   }
+
+  // Use deduplication to prevent concurrent requests
+  const dedupKey = getDedupKey(`${GROUP_KH_TABLE}`, { customerId });
+  
+  return deduplicateRequest(dedupKey, async () => {
+    try {
+      // Filter: _cr1bb_khachhang_value eq customerId
+      // Select: cr1bb_tennhomkh
+      const groupFilter = `_cr1bb_khachhang_value eq ${customerId}`;
+      const groupQuery = `$select=cr1bb_tennhomkh&$filter=${encodeURIComponent(groupFilter)}`;
+      const groupEndpoint = `${BASE_URL}${GROUP_KH_TABLE}?${groupQuery}`;
+      
+      const groupResponse = await axiosClient.get(groupEndpoint, { headers });
+
+      const groups = (groupResponse.data.value || [])
+        .map((item: any) => item.cr1bb_tennhomkh)
+        .filter((text: any): text is string => !!text && typeof text === "string");
+
+      // Cache the result
+      setCachedResponse(cacheKey, groups, true);
+      
+      return groups;
+    } catch (error: any) {
+      console.error("❌ [Get Customer Groups] Error:", {
+        error: error.message,
+        response: error.response?.data,
+      });
+      return [];
+    }
+  });
 }
 
 export default async function handler(
@@ -93,27 +122,56 @@ export default async function handler(
       return res.status(400).json({ error: "productCode is required" });
     }
 
-    const token = await getAccessToken();
-    if (!token) {
-      return res.status(401).json({ error: "Failed to obtain access token" });
+    // Check cache for full response
+    const cacheKey = getCacheKey("prices", {
+      productCode,
+      customerCode,
+      customerId,
+      region,
+    });
+    const cachedResponse = getCachedResponse(cacheKey, true); // Use short cache (1 min)
+    if (cachedResponse !== undefined) {
+      return res.status(200).json(cachedResponse);
     }
 
     const headers = {
-      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
       "OData-MaxVersion": "4.0",
       "OData-Version": "4.0",
     };
 
-    // Step 1: Get customer ID from customerCode or customerId
-    const finalCustomerId = await getCustomerId(
-      customerCode as string | undefined,
-      customerId as string | undefined,
-      headers
-    );
+    // Step 1 & 2: Get customer ID and groups in parallel when possible
+    // If we have customerId (GUID), we can get groups immediately
+    // Otherwise, we need to get customerId first, then groups
+    let finalCustomerId: string | null = null;
+    let customerGroups: string[] = [];
 
-    // Step 2: Get customer groups (nhóm khách hàng) from cr1bb_groupkh
-    const customerGroups = await getCustomerGroups(finalCustomerId, headers);
+    if (customerId && typeof customerId === "string") {
+      const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (guidPattern.test(customerId)) {
+        // We have a valid GUID, can fetch both in parallel
+        finalCustomerId = customerId;
+        [customerGroups] = await Promise.all([
+          getCustomerGroups(finalCustomerId, headers),
+        ]);
+      } else {
+        // Not a GUID, need to resolve customerCode first
+        finalCustomerId = await getCustomerId(
+          customerCode as string | undefined,
+          customerId as string | undefined,
+          headers
+        );
+        customerGroups = await getCustomerGroups(finalCustomerId, headers);
+      }
+    } else {
+      // Need to get customerId from customerCode first
+      finalCustomerId = await getCustomerId(
+        customerCode as string | undefined,
+        undefined,
+        headers
+      );
+      customerGroups = await getCustomerGroups(finalCustomerId, headers);
+    }
 
     // Step 3: Build price filters - get all prices by product code (không filter theo unitId và isVatOrder)
     const safeCode = productCode.replace(/'/g, "''");
@@ -158,7 +216,17 @@ export default async function handler(
     )}&${expand}&$orderby=crdfd_giatheovc asc`;
 
     const endpoint = `${BASE_URL}${QUOTE_DETAIL_TABLE}?${query}`;
-    const response = await axios.get(endpoint, { headers });
+    
+    // Use deduplication for price queries
+    const dedupKey = getDedupKey(QUOTE_DETAIL_TABLE, {
+      productCode,
+      customerGroups: customerGroups.join(","),
+      region,
+    });
+    
+    const response = await deduplicateRequest(dedupKey, () =>
+      axiosClient.get(endpoint, { headers })
+    );
 
     const allPrices = response.data.value || [];
     
@@ -208,6 +276,9 @@ export default async function handler(
       // Mảng tất cả các giá (theo các đơn vị khác nhau)
       prices: prices,
     };
+
+    // Cache the result
+    setCachedResponse(cacheKey, result, true);
 
     res.status(200).json(result);
   } catch (error: any) {

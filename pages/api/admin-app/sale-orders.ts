@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import axios from "axios";
-import { getAccessToken } from "../getAccessToken";
+import axiosClient from "./_utils/axiosClient";
+import { getCacheKey, getCachedResponse, setCachedResponse } from "./_utils/cache";
+import { deduplicateRequest, getDedupKey } from "./_utils/requestDeduplication";
 
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
 const SALE_ORDER_TABLE = "crdfd_sale_orders";
@@ -15,14 +16,15 @@ export default async function handler(
 
   try {
     const { customerId } = req.query;
-    const token = await getAccessToken();
-
-    if (!token) {
-      return res.status(401).json({ error: "Failed to obtain access token" });
+    
+    // Check cache first (use short cache as sale orders change frequently)
+    const cacheKey = getCacheKey("sale-orders", { customerId });
+    const cachedResponse = getCachedResponse(cacheKey, true); // Use short cache (1 min)
+    if (cachedResponse !== undefined) {
+      return res.status(200).json(cachedResponse);
     }
 
     const headers = {
-      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
       "OData-MaxVersion": "4.0",
       "OData-Version": "4.0",
@@ -62,7 +64,11 @@ export default async function handler(
 
     const endpoint = `${BASE_URL}${SALE_ORDER_TABLE}?${query}`;
 
-    const response = await axios.get(endpoint, { headers });
+    // Use deduplication
+    const dedupKey = getDedupKey(SALE_ORDER_TABLE, { customerId });
+    const response = await deduplicateRequest(dedupKey, () =>
+      axiosClient.get(endpoint, { headers })
+    );
 
     const saleOrders = (response.data.value || []).map((item: any) => {
       // Try different possible field names for ID
@@ -76,6 +82,9 @@ export default async function handler(
         cr1bb_loaihoaon: item.cr1bb_loaihoaon ?? null
       };
     });
+
+    // Cache the result
+    setCachedResponse(cacheKey, saleOrders, true);
 
     res.status(200).json(saleOrders);
   } catch (error: any) {

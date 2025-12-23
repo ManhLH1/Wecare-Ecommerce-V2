@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import axios from "axios";
-import { getAccessToken } from "../getAccessToken";
+import axiosClient from "./_utils/axiosClient";
+import { getCacheKey, getCachedResponse, setCachedResponse } from "./_utils/cache";
+import { deduplicateRequest, getDedupKey } from "./_utils/requestDeduplication";
 
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
 const CUSTOMER_TABLE = "crdfd_customers";
@@ -16,18 +17,19 @@ export default async function handler(
 
   try {
     const { customerId, customerCode } = req.query;
-    const token = await getAccessToken();
-
-    if (!token) {
-      return res.status(401).json({ error: "Failed to obtain access token" });
-    }
-
+    
     if (!customerId && !customerCode) {
       return res.status(400).json({ error: "customerId or customerCode is required" });
     }
 
+    // Check cache first
+    const cacheKey = getCacheKey("warehouses", { customerId, customerCode });
+    const cachedResponse = getCachedResponse(cacheKey);
+    if (cachedResponse !== undefined) {
+      return res.status(200).json(cachedResponse);
+    }
+
     const headers = {
-      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
       "OData-MaxVersion": "4.0",
       "OData-Version": "4.0",
@@ -51,7 +53,11 @@ export default async function handler(
     const customerQuery = `$select=${customerColumns}&$filter=${encodeURIComponent(customerFilter)}&${customerExpand}`;
     const customerEndpoint = `${BASE_URL}${CUSTOMER_TABLE}?${customerQuery}`;
 
-    const customerResponse = await axios.get(customerEndpoint, { headers });
+    // Use deduplication
+    const customerDedupKey = getDedupKey(`${CUSTOMER_TABLE}-warehouses`, { customerId, customerCode });
+    const customerResponse = await deduplicateRequest(customerDedupKey, () =>
+      axiosClient.get(customerEndpoint, { headers })
+    );
     const customers = customerResponse.data.value || [];
 
     if (customers.length === 0) {
@@ -125,13 +131,20 @@ export default async function handler(
     const warehouseQuery = `$select=${warehouseColumns}&$filter=${encodeURIComponent(warehouseFilter)}&$orderby=crdfd_name&$top=500`;
     const warehouseEndpoint = `${BASE_URL}${WAREHOUSE_TABLE}?${warehouseQuery}`;
 
-    const warehouseResponse = await axios.get(warehouseEndpoint, { headers });
+    // Use deduplication
+    const warehouseDedupKey = getDedupKey(WAREHOUSE_TABLE, { mainWarehouseName, subWarehouseNames: subWarehouseNames.join(",") });
+    const warehouseResponse = await deduplicateRequest(warehouseDedupKey, () =>
+      axiosClient.get(warehouseEndpoint, { headers })
+    );
 
     const warehouses = (warehouseResponse.data.value || []).map((item: any) => ({
       crdfd_khowecareid: item.crdfd_khowecareid || item.crdfd_khowecare_id || '',
       crdfd_name: item.crdfd_name || "",
       crdfd_makho: item.crdfd_makho || "",
     }));
+
+    // Cache the result
+    setCachedResponse(cacheKey, warehouses);
 
     res.status(200).json(warehouses);
   } catch (error: any) {

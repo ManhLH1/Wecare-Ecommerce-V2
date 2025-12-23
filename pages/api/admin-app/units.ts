@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import axios from "axios";
-import { getAccessToken } from "../getAccessToken";
+import axiosClient from "./_utils/axiosClient";
+import { getCacheKey, getCachedResponse, setCachedResponse } from "./_utils/cache";
+import { deduplicateRequest, getDedupKey } from "./_utils/requestDeduplication";
 
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
 const UNIT_CONVERSION_TABLE = "crdfd_unitconvertions";
@@ -15,14 +16,15 @@ export default async function handler(
 
   try {
     const { productCode } = req.query; // Mã sản phẩm (Mã SP)
-    const token = await getAccessToken();
-
-    if (!token) {
-      return res.status(401).json({ error: "Failed to obtain access token" });
+    
+    // Check cache first
+    const cacheKey = getCacheKey("units", { productCode });
+    const cachedResponse = getCachedResponse(cacheKey);
+    if (cachedResponse !== undefined) {
+      return res.status(200).json(cachedResponse);
     }
 
     const headers = {
-      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
       "OData-MaxVersion": "4.0",
       "OData-Version": "4.0",
@@ -43,7 +45,11 @@ export default async function handler(
 
     const endpoint = `${BASE_URL}${UNIT_CONVERSION_TABLE}?${query}`;
 
-    const response = await axios.get(endpoint, { headers });
+    // Use deduplication
+    const dedupKey = getDedupKey(UNIT_CONVERSION_TABLE, { productCode });
+    const response = await deduplicateRequest(dedupKey, () =>
+      axiosClient.get(endpoint, { headers })
+    );
 
     // Map the response to get unit information
     const units = (response.data.value || [])
@@ -68,6 +74,9 @@ export default async function handler(
         }
         return acc;
       }, []);
+
+    // Cache the result
+    setCachedResponse(cacheKey, units);
 
     res.status(200).json(units);
   } catch (error: any) {
