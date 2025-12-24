@@ -54,7 +54,7 @@ export default async function handler(
   }
 
   try {
-    const { productCode, customerCode, customerCodes } = req.query;
+    const { productCode, customerCode, customerCodes, region } = req.query;
 
     // productCode can be comma-separated; require at least one
     if (!productCode || typeof productCode !== "string" || !productCode.trim()) {
@@ -131,15 +131,19 @@ export default async function handler(
     }
 
     if (resolvedCustomerCodes.length > 0) {
+      // Note: OData contains() can cause false positives with substring matches
+      // (e.g., "KH-1766" matches "KH-17664"). We'll filter client-side for exact matches.
+      // Use startswith/endswith for better precision where possible, but still need client-side filtering
       const customerFilter = resolvedCustomerCodes
         .map((code) => {
           const safeCode = escapeODataValue(code);
-          // Match exact token in comma-separated string without partial hits
+          // Use startswith/endswith for better precision, but still include contains as fallback
+          // Client-side filtering will ensure exact token match
           return (
             `cr3b9_ma_khachhang_apdung eq '${safeCode}'` +
-            ` or contains(cr3b9_ma_khachhang_apdung,'${safeCode},')` +
-            ` or contains(cr3b9_ma_khachhang_apdung,',${safeCode},')` +
-            ` or contains(cr3b9_ma_khachhang_apdung,',${safeCode}')`
+            ` or startswith(cr3b9_ma_khachhang_apdung,'${safeCode},')` +
+            ` or endswith(cr3b9_ma_khachhang_apdung,',${safeCode}')` +
+            ` or contains(cr3b9_ma_khachhang_apdung,',${safeCode},')`
           );
         })
         .map((expr) => `(${expr})`)
@@ -187,7 +191,9 @@ export default async function handler(
     const endpoint = `${BASE_URL}${PROMOTION_TABLE}?${query}`;
     const response = await axios.get(endpoint, { headers });
 
-    const promotions = (response.data.value || []).map((promo: any) => ({
+    // Filter promotions by region if provided
+    // Promotion names contain region in format: [MIỀN TRUNG] or [MIỀN NAM]
+    let promotions = (response.data.value || []).map((promo: any) => ({
       id: promo.crdfd_promotionid,
       name: promo.crdfd_name,
       conditions: promo.crdfd_conditions,
@@ -218,6 +224,48 @@ export default async function handler(
       saleInventoryOnly: promo.crdfd_salehangton,
       unitName: promo.cr1bb_onvitinh,
     }));
+
+    // Client-side filtering: Ensure exact customer code match (not substring)
+    // This prevents "KH-1766" from matching "KH-17664"
+    if (resolvedCustomerCodes.length > 0) {
+      promotions = promotions.filter((promo: any) => {
+        const customerCodesStr = promo.customerCodes || "";
+        
+        // If promotion has no customer codes specified, it applies to all customers - keep it
+        if (!customerCodesStr || customerCodesStr.trim() === "") {
+          return true;
+        }
+        
+        // Split by comma and check for exact match
+        const codesList = customerCodesStr.split(',').map((c: string) => c.trim()).filter(Boolean);
+        
+        // Check if any of the resolved customer codes exactly matches a code in the list
+        return resolvedCustomerCodes.some((searchCode: string) => {
+          return codesList.includes(searchCode);
+        });
+      });
+    }
+
+    // Filter by region if provided
+    // Promotion names may contain region in format: [MIỀN TRUNG] or [MIỀN NAM]
+    // If promotion has no region tag, it applies to all regions
+    if (region && typeof region === "string" && region.trim()) {
+      const regionLower = region.trim().toLowerCase();
+      const normalizedRegion = regionLower.includes("miền trung") ? "MIỀN TRUNG" : 
+                               regionLower.includes("miền nam") ? "MIỀN NAM" : null;
+      
+      if (normalizedRegion) {
+        promotions = promotions.filter((promo: any) => {
+          const promoName = (promo.name || "").toUpperCase();
+          // If promotion name contains a region tag, it must match the requested region
+          if (promoName.includes("[MIỀN TRUNG]") || promoName.includes("[MIỀN NAM]")) {
+            return promoName.includes(`[${normalizedRegion}]`);
+          }
+          // If promotion doesn't have region tag, include it (applies to all regions)
+          return true;
+        });
+      }
+    }
 
     res.status(200).json(promotions);
   } catch (error: any) {

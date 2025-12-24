@@ -243,13 +243,17 @@ export const fetchProductPrice = async (
 
 export const fetchProductPromotions = async (
   productCode?: string,
-  customerCode?: string
+  customerCode?: string,
+  region?: string
 ): Promise<Promotion[]> => {
   if (!productCode) return [];
   try {
     const params: Record<string, string> = { productCode };
     if (customerCode) {
       params.customerCode = customerCode;
+    }
+    if (region) {
+      params.region = region;
     }
     const response = await axios.get(`${BASE_URL}/promotions`, { params });
     return response.data;

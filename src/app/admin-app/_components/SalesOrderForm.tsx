@@ -147,42 +147,61 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const selectedVatText = getVatLabelText(selectedSo);
   const isNonVatSelected = (selectedVatText || '').toLowerCase().includes('không');
 
+  // Helper function to generate SO label from SO object
+  const generateSoLabel = (so: any): string => {
+    const soCode = so?.crdfd_so_code || so?.crdfd_so_auto || '';
+    const soName = (so?.crdfd_name || '').trim();
+    if (soName && soCode) {
+      const soNameLower = soName.toLowerCase();
+      const soCodeLower = soCode.toLowerCase();
+      if (soNameLower.includes(soCodeLower)) {
+        return soName;
+      } else {
+        return `${soCode} - ${soName}`;
+      }
+    } else if (soCode) {
+      return soCode;
+    } else if (soName) {
+      return soName;
+    } else {
+      return 'SO không tên';
+    }
+  };
+
   // Auto-select SO mới nhất (có createdon mới nhất) sau khi chọn khách hàng
   useEffect(() => {
     // Chỉ auto-select khi:
     // 1. Đã chọn khách hàng (customerId có giá trị)
     // 2. Đã load xong danh sách SO (không loading)
-    // 3. Chưa có SO được chọn (soId rỗng)
-    // 4. Có ít nhất 1 SO trong danh sách
-    if (customerId && !soLoading && !soId && saleOrders.length > 0) {
+    // 3. Có ít nhất 1 SO trong danh sách
+    if (customerId && !soLoading && saleOrders.length > 0) {
       // SO đầu tiên là SO mới nhất vì API đã sort theo createdon desc
       const latestSo = saleOrders[0];
       if (latestSo && latestSo.crdfd_sale_orderid) {
-        // Tạo option object giống như trong Dropdown
-        const soCode = latestSo.crdfd_so_code || latestSo.crdfd_so_auto || '';
-        const soName = (latestSo.crdfd_name || '').trim();
-        let baseLabel: string;
-        if (soName && soCode) {
-          const soNameLower = soName.toLowerCase();
-          const soCodeLower = soCode.toLowerCase();
-          if (soNameLower.includes(soCodeLower)) {
-            baseLabel = soName;
-          } else {
-            baseLabel = `${soCode} - ${soName}`;
-          }
-        } else if (soCode) {
-          baseLabel = soCode;
-        } else if (soName) {
-          baseLabel = soName;
-        } else {
-          baseLabel = 'SO không tên';
-        }
+        // Nếu soId chưa được set hoặc soId hiện tại không match với SO mới nhất, thì auto-select
+        const shouldAutoSelect = !soId || soId !== latestSo.crdfd_sale_orderid;
         
-        setSoId(latestSo.crdfd_sale_orderid);
-        setSo(baseLabel);
+        if (shouldAutoSelect) {
+          const baseLabel = generateSoLabel(latestSo);
+          setSoId(latestSo.crdfd_sale_orderid);
+          setSo(baseLabel);
+        }
       }
     }
-  }, [customerId, soLoading, soId, saleOrders]);
+  }, [customerId, soLoading, saleOrders]); // Removed soId from dependencies to avoid loops
+
+  // Sync SO label when saleOrders change and soId is already set
+  // This ensures dropdown displays correctly even if soId was set before saleOrders loaded
+  useEffect(() => {
+    if (soId && saleOrders.length > 0) {
+      const currentSo = saleOrders.find(so => so.crdfd_sale_orderid === soId);
+      if (currentSo) {
+        const baseLabel = generateSoLabel(currentSo);
+        // Only update if label is different to avoid unnecessary re-renders
+        setSo(prev => prev !== baseLabel ? baseLabel : prev);
+      }
+    }
+  }, [soId, saleOrders]);
 
   // Load Sale Order Details when soId changes (formData equivalent)
   useEffect(() => {

@@ -1214,7 +1214,19 @@ export default function ProductEntryForm({
       setPromotionLoading(true);
       setPromotionError(null);
       try {
-        const data = await fetchProductPromotions(selectedProductCode, customerCode);
+        // Extract region from customerName if available
+        // Format: "... - Miền Trung" or "... - Miền Nam"
+        let region: string | undefined = undefined;
+        if (customerName) {
+          const customerNameLower = customerName.toLowerCase();
+          if (customerNameLower.includes('miền trung')) {
+            region = 'Miền Trung';
+          } else if (customerNameLower.includes('miền nam')) {
+            region = 'Miền Nam';
+          }
+        }
+        
+        const data = await fetchProductPromotions(selectedProductCode, customerCode, region);
 
         // Filter promotions dựa trên saleInventoryOnly và loại đơn hàng
         // Nếu saleInventoryOnly = true → chỉ áp dụng cho đơn Không VAT

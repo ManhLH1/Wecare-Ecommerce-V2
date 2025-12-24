@@ -54,11 +54,17 @@ export default async function handler(
 
     // Filter theo canvas: Status = Active, Mã đơn hàng.Id = var_selected_id_donhang
     // Sort theo STT descending
+    // Lookup field: crdfd_SOcode (field name with capital S and O for @odata.bind)
+    // But lookup value field format is _crdfd_socode_value (lowercase) as seen in getSaleOrdersData.ts
     const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(soId);
-    // Sử dụng _crdfd_socode_value như trong getSaleOrdersData.ts
-    const soIdFilter = isGuid 
-      ? `_crdfd_socode_value eq ${soId}`
-      : `crdfd_socode eq '${soId.replace(/'/g, "''")}'`;
+    let soIdFilter: string;
+    if (isGuid) {
+      // For GUID, use lookup value field format (lowercase) as per getSaleOrdersData.ts
+      soIdFilter = `_crdfd_socode_value eq ${soId}`;
+    } else {
+      // For non-GUID, try field name directly (with capital S and O)
+      soIdFilter = `crdfd_SOcode eq '${soId.replace(/'/g, "''")}'`;
+    }
 
     const filter = `statecode eq 0 and ${soIdFilter}`;
 
