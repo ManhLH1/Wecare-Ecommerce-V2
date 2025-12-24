@@ -147,6 +147,43 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const selectedVatText = getVatLabelText(selectedSo);
   const isNonVatSelected = (selectedVatText || '').toLowerCase().includes('không');
 
+  // Auto-select SO mới nhất (có createdon mới nhất) sau khi chọn khách hàng
+  useEffect(() => {
+    // Chỉ auto-select khi:
+    // 1. Đã chọn khách hàng (customerId có giá trị)
+    // 2. Đã load xong danh sách SO (không loading)
+    // 3. Chưa có SO được chọn (soId rỗng)
+    // 4. Có ít nhất 1 SO trong danh sách
+    if (customerId && !soLoading && !soId && saleOrders.length > 0) {
+      // SO đầu tiên là SO mới nhất vì API đã sort theo createdon desc
+      const latestSo = saleOrders[0];
+      if (latestSo && latestSo.crdfd_sale_orderid) {
+        // Tạo option object giống như trong Dropdown
+        const soCode = latestSo.crdfd_so_code || latestSo.crdfd_so_auto || '';
+        const soName = (latestSo.crdfd_name || '').trim();
+        let baseLabel: string;
+        if (soName && soCode) {
+          const soNameLower = soName.toLowerCase();
+          const soCodeLower = soCode.toLowerCase();
+          if (soNameLower.includes(soCodeLower)) {
+            baseLabel = soName;
+          } else {
+            baseLabel = `${soCode} - ${soName}`;
+          }
+        } else if (soCode) {
+          baseLabel = soCode;
+        } else if (soName) {
+          baseLabel = soName;
+        } else {
+          baseLabel = 'SO không tên';
+        }
+        
+        setSoId(latestSo.crdfd_sale_orderid);
+        setSo(baseLabel);
+      }
+    }
+  }, [customerId, soLoading, soId, saleOrders]);
+
   // Load Sale Order Details when soId changes (formData equivalent)
   useEffect(() => {
     const loadSaleOrderDetails = async () => {

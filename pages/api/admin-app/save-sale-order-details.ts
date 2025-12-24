@@ -1,8 +1,38 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import axios from "axios";
 import { getAccessToken } from "../getAccessToken";
+import http from "http";
+import https from "https";
 
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
+
+// Axios configuration for better performance and timeout handling
+const DEFAULT_TIMEOUT = 30000; // 30 seconds per request
+const MAX_SOCKETS = 50;
+const MAX_FREE_SOCKETS = 10;
+const KEEP_ALIVE_MS = 50000; // 50 seconds
+
+// Create axios instance with timeout and connection pooling
+const apiClient = axios.create({
+  baseURL: BASE_URL,
+  timeout: DEFAULT_TIMEOUT,
+  httpAgent: new http.Agent({
+    keepAlive: true,
+    keepAliveMsecs: KEEP_ALIVE_MS,
+    maxSockets: MAX_SOCKETS,
+    maxFreeSockets: MAX_FREE_SOCKETS,
+    timeout: DEFAULT_TIMEOUT,
+    scheduling: 'lifo'
+  }),
+  httpsAgent: new https.Agent({
+    keepAlive: true,
+    keepAliveMsecs: KEEP_ALIVE_MS,
+    maxSockets: MAX_SOCKETS,
+    maxFreeSockets: MAX_FREE_SOCKETS,
+    timeout: DEFAULT_TIMEOUT,
+    scheduling: 'lifo'
+  })
+});
 const SALE_ORDER_DETAILS_TABLE = "crdfd_saleorderdetails";
 const SALE_ORDERS_TABLE = "crdfd_sale_orders";
 const INVENTORY_TABLE = "cr44a_inventoryweshops";
@@ -49,12 +79,12 @@ async function tryPatchCustomerLookup(
   customerId: string,
   headers: any
 ): Promise<boolean> {
-  const endpoint = `${BASE_URL}${SALE_ORDER_DETAILS_TABLE}(${saleOrderDetailId})`;
+  const endpoint = `${SALE_ORDER_DETAILS_TABLE}(${saleOrderDetailId})`;
   const payload: any = {
     [`${lookupFieldName}@odata.bind`]: `/${CUSTOMER_TABLE}(${customerId})`,
   };
   try {
-    await axios.patch(endpoint, payload, { headers });
+    await apiClient.patch(endpoint, payload, { headers });
     return true;
   } catch (err: any) {
     // Ignore unknown field errors; do not fail the whole save flow.
@@ -83,9 +113,9 @@ async function lookupSystemUserId(
     if (!filter) return null;
 
     const query = `$select=systemuserid,domainname,internalemailaddress&$filter=${encodeURIComponent(filter)}&$top=1`;
-    const endpoint = `${BASE_URL}${SYSTEMUSER_TABLE}?${query}`;
+    const endpoint = `${SYSTEMUSER_TABLE}?${query}`;
     
-    const response = await axios.get(endpoint, { headers });
+    const response = await apiClient.get(endpoint, { headers });
     const results = response.data.value || [];
     
     if (results.length > 0) {
@@ -106,11 +136,11 @@ async function trySetOwnerAndCreatedBySystemUser(
 ): Promise<void> {
   if (!systemUserId) return;
 
-  const endpoint = `${BASE_URL}${SALE_ORDER_DETAILS_TABLE}(${saleOrderDetailId})`;
+  const endpoint = `${SALE_ORDER_DETAILS_TABLE}(${saleOrderDetailId})`;
   
   try {
     // Set ownerid (system field)
-    await axios.patch(
+    await apiClient.patch(
       endpoint,
       { [`ownerid@odata.bind`]: `/${SYSTEMUSER_TABLE}(${systemUserId})` },
       { headers }
@@ -123,7 +153,7 @@ async function trySetOwnerAndCreatedBySystemUser(
   // Try to set createdby (may not be settable, but try custom fields)
   for (const f of CREATEDBY_LOOKUP_CANDIDATES) {
     try {
-      await axios.patch(
+      await apiClient.patch(
         endpoint,
         { [`${f}@odata.bind`]: `/${SYSTEMUSER_TABLE}(${systemUserId})` },
         { headers }
@@ -168,13 +198,13 @@ async function trySetTensanphamLookup(
 ): Promise<void> {
   if (!productId) return;
 
-  const endpoint = `${BASE_URL}${SALE_ORDER_DETAILS_TABLE}(${saleOrderDetailId})`;
+  const endpoint = `${SALE_ORDER_DETAILS_TABLE}(${saleOrderDetailId})`;
   const payload: any = {
     [`cr44a_Tensanpham@odata.bind`]: `/crdfd_productses(${productId})`,
   };
 
   try {
-    await axios.patch(endpoint, payload, { headers });
+    await apiClient.patch(endpoint, payload, { headers });
   } catch (err: any) {
     // Don't fail the whole save if this lookup field doesn't exist
   }
@@ -223,9 +253,9 @@ async function lookupProductId(
 
     const columns = "crdfd_productsid";
     const query = `$select=${columns}&$filter=${encodeURIComponent(filter)}&$top=1`;
-    const endpoint = `${BASE_URL}${PRODUCT_TABLE}?${query}`;
+    const endpoint = `${PRODUCT_TABLE}?${query}`;
 
-    const response = await axios.get(endpoint, { headers });
+    const response = await apiClient.get(endpoint, { headers });
     const products = response.data.value || [];
     
     if (products.length > 0) {
@@ -255,9 +285,9 @@ async function lookupUnitConversionId(
     const filter = `cr44a_masanpham eq '${safeCode}' and statecode eq 0 and crdfd_onvichuyenoitransfome eq '${safeUnitName}'`;
     const columns = "crdfd_unitconvertionid";
     const query = `$select=${columns}&$filter=${encodeURIComponent(filter)}&$top=1`;
-    const endpoint = `${BASE_URL}${UNIT_CONVERSION_TABLE}?${query}`;
+    const endpoint = `${UNIT_CONVERSION_TABLE}?${query}`;
 
-    const response = await axios.get(endpoint, { headers });
+    const response = await apiClient.get(endpoint, { headers });
     const results = response.data.value || [];
     
     if (results.length > 0) {
@@ -384,10 +414,10 @@ async function lookupTyleChuyenDoi(
       const tryByUnitIdFilter = `crdfd_unitconvertionid eq '${unitId}' and statecode eq 0 and cr44a_masanpham eq '${safeCode}'`;
       const columns = "crdfd_giatrichuyenoi";
       const queryByUnitId = `$select=${columns}&$filter=${encodeURIComponent(tryByUnitIdFilter)}&$top=1`;
-      const endpointByUnitId = `${BASE_URL}${UNIT_CONVERSION_TABLE}?${queryByUnitId}`;
+      const endpointByUnitId = `${UNIT_CONVERSION_TABLE}?${queryByUnitId}`;
 
       try {
-        const responseByUnitId = await axios.get(endpointByUnitId, { headers });
+        const responseByUnitId = await apiClient.get(endpointByUnitId, { headers });
         const resultsByUnitId = responseByUnitId.data.value || [];
         
         if (resultsByUnitId.length > 0) {
@@ -407,9 +437,9 @@ async function lookupTyleChuyenDoi(
 
     const columns = "crdfd_giatrichuyenoi,crdfd_onvichuyenoitransfome";
     const query = `$select=${columns}&$filter=${encodeURIComponent(filter)}&$top=1`;
-    const endpoint = `${BASE_URL}${UNIT_CONVERSION_TABLE}?${query}`;
+    const endpoint = `${UNIT_CONVERSION_TABLE}?${query}`;
 
-    const response = await axios.get(endpoint, { headers });
+    const response = await apiClient.get(endpoint, { headers });
     const results = response.data.value || [];
     
     if (results.length > 0) {
@@ -453,10 +483,10 @@ async function updateInventoryAfterSale(
       // Query cả ReservedQuantity để release
       const invColumns = "cr44a_inventoryweshopid,cr44a_soluongtonlythuyet,cr1bb_soluonglythuyetgiuathang,cr1bb_vitrikhotext";
       const invQuery = `$select=${invColumns}&$filter=${encodeURIComponent(invFilter)}&$top=1`;
-      const invEndpoint = `${BASE_URL}${INVENTORY_TABLE}?${invQuery}`;
+      const invEndpoint = `${INVENTORY_TABLE}?${invQuery}`;
       
       // RE-CHECK: Get fresh inventory value right before update (atomic operation)
-      const invResponse = await axios.get(invEndpoint, { headers });
+      const invResponse = await apiClient.get(invEndpoint, { headers });
       const invResults = invResponse.data.value || [];
       
       let invRecord = null;
@@ -466,8 +496,8 @@ async function updateInventoryAfterSale(
         // Nếu không tìm thấy với warehouse filter, thử lại không có warehouse filter
         const fallbackFilter = `cr44a_masanpham eq '${safeCode}' and statecode eq 0`;
         const fallbackQuery = `$select=${invColumns}&$filter=${encodeURIComponent(fallbackFilter)}&$top=1`;
-        const fallbackEndpoint = `${BASE_URL}${INVENTORY_TABLE}?${fallbackQuery}`;
-        const fallbackResponse = await axios.get(fallbackEndpoint, { headers });
+        const fallbackEndpoint = `${INVENTORY_TABLE}?${fallbackQuery}`;
+        const fallbackResponse = await apiClient.get(fallbackEndpoint, { headers });
         const fallbackResults = fallbackResponse.data.value || [];
         if (fallbackResults.length > 0) {
           invRecord = fallbackResults[0];
@@ -518,7 +548,7 @@ async function updateInventoryAfterSale(
           console.log(`[Save SOD] Nhóm đặc biệt ${productGroupCode} - Không trừ tồn kho lý thuyết, chỉ giải phóng ReservedQuantity`);
         }
 
-        const updateInvEndpoint = `${BASE_URL}${INVENTORY_TABLE}(${invRecord.cr44a_inventoryweshopid})`;
+        const updateInvEndpoint = `${INVENTORY_TABLE}(${invRecord.cr44a_inventoryweshopid})`;
 
         // ATOMIC OPERATION: Update field(s) trong cùng 1 request
         // Dynamics 365 đảm bảo tính nguyên tố (atomic) cho mỗi PATCH request
@@ -531,7 +561,7 @@ async function updateInventoryAfterSale(
           updatePayload.cr44a_soluongtonlythuyet = newCurrentInventory;
         }
         
-        await axios.patch(
+        await apiClient.patch(
           updateInvEndpoint,
           updatePayload,
           { headers }
@@ -558,10 +588,10 @@ async function updateInventoryAfterSale(
       // KHÔNG query tồn kho lý thuyết bỏ mua vì đơn VAT không cập nhật các cột này
       const khoBDColumns = "crdfd_kho_binh_dinhid,cr1bb_soluonganggiuathang,crdfd_vitrikhofx";
       const khoBDQuery = `$select=${khoBDColumns}&$filter=${encodeURIComponent(khoBDFilter)}&$top=1`;
-      const khoBDEndpoint = `${BASE_URL}${KHO_BD_TABLE}?${khoBDQuery}`;
+      const khoBDEndpoint = `${KHO_BD_TABLE}?${khoBDQuery}`;
 
       // RE-CHECK: Get fresh inventory value right before update
-      const khoBDResponse = await axios.get(khoBDEndpoint, { headers });
+      const khoBDResponse = await apiClient.get(khoBDEndpoint, { headers });
       const khoBDResults = khoBDResponse.data.value || [];
       
       if (khoBDResults.length > 0) {
@@ -574,14 +604,14 @@ async function updateInventoryAfterSale(
         // Ví dụ: Giữ đặt 40, save đơn 20 → Giữ đặt còn lại 20 (40 - 20 = 20)
         const newReservedQuantity = Math.max(0, reservedQuantity - quantity);
 
-        const updateKhoBDEndpoint = `${BASE_URL}${KHO_BD_TABLE}(${khoBDRecord.crdfd_kho_binh_dinhid})`;
+        const updateKhoBDEndpoint = `${KHO_BD_TABLE}(${khoBDRecord.crdfd_kho_binh_dinhid})`;
 
         // CHỈ cập nhật ReservedQuantity, KHÔNG cập nhật tồn kho lý thuyết bỏ mua
         const updatePayload: any = {
           cr1bb_soluonganggiuathang: newReservedQuantity
         };
 
-        await axios.patch(
+        await apiClient.patch(
           updateKhoBDEndpoint,
           updatePayload,
           { headers }
@@ -726,9 +756,9 @@ export default async function handler(
           }
           const columns = "cr44a_inventoryweshopid,cr44a_masanpham,cr44a_soluongtonlythuyet,cr1bb_vitrikhotext";
           const query = `$select=${columns}&$filter=${encodeURIComponent(filter)}&$top=1`;
-          const endpoint = `${BASE_URL}${INVENTORY_TABLE}?${query}`;
+          const endpoint = `${INVENTORY_TABLE}?${query}`;
 
-          const response = await axios.get(endpoint, { headers });
+          const response = await apiClient.get(endpoint, { headers });
           const results = response.data.value || [];
           const first = results[0];
 
@@ -736,8 +766,8 @@ export default async function handler(
           if (!first && safeWarehouse) {
             const fallbackFilter = `cr44a_masanpham eq '${safeCode}' and statecode eq 0`;
             const fallbackQuery = `$select=${columns}&$filter=${encodeURIComponent(fallbackFilter)}&$top=1`;
-            const fallbackEndpoint = `${BASE_URL}${INVENTORY_TABLE}?${fallbackQuery}`;
-            const fallbackResponse = await axios.get(fallbackEndpoint, { headers });
+            const fallbackEndpoint = `${INVENTORY_TABLE}?${fallbackQuery}`;
+            const fallbackResponse = await apiClient.get(fallbackEndpoint, { headers });
             const fallbackResults = fallbackResponse.data.value || [];
             const fallbackFirst = fallbackResults[0];
 
@@ -915,13 +945,13 @@ export default async function handler(
       try {
         if (product.id) {
           // Update existing record
-          const updateEndpoint = `${BASE_URL}${SALE_ORDER_DETAILS_TABLE}(${product.id})`;
-          await axios.patch(updateEndpoint, payload, { headers });
+          const updateEndpoint = `${SALE_ORDER_DETAILS_TABLE}(${product.id})`;
+          await apiClient.patch(updateEndpoint, payload, { headers });
           detailId = product.id;
         } else {
           // Create new record
-          const createEndpoint = `${BASE_URL}${SALE_ORDER_DETAILS_TABLE}`;
-          const createResponse = await axios.post(createEndpoint, payload, {
+          const createEndpoint = `${SALE_ORDER_DETAILS_TABLE}`;
+          const createResponse = await apiClient.post(createEndpoint, payload, {
             headers,
           });
           detailId = createResponse.data.crdfd_saleorderdetailid;
@@ -1026,7 +1056,7 @@ export default async function handler(
       }
     }
 
-    const soUpdateEndpoint = `${BASE_URL}${SALE_ORDERS_TABLE}(${soId})`;
+    const soUpdateEndpoint = `${SALE_ORDERS_TABLE}(${soId})`;
 
     // Handle special case: Shop + Dây điện/Cáp điện → Giao 1 lần
     if (
@@ -1037,7 +1067,7 @@ export default async function handler(
           p.productCategoryLevel4 === "Cáp điện"
       )
     ) {
-      await axios.patch(
+      await apiClient.patch(
         soUpdateEndpoint,
         {
           crdfd_hinhthucgiaohang: 191920000, // "Giao 1 lần"
@@ -1054,6 +1084,16 @@ export default async function handler(
     });
   } catch (error: any) {
     console.error("❌ Error saving sale order details:", error);
+
+    // Check for timeout errors
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout') || error.message?.includes('TIMEOUT')) {
+      console.error("❌ Request timeout - operation took too long");
+      return res.status(504).json({
+        error: "Request timeout - operation took too long",
+        details: "The request to save sale order details exceeded the timeout limit. Please try again with fewer products or contact support if the issue persists.",
+        timeout: true,
+      });
+    }
 
     // Nếu là lỗi từ việc save product (đã được throw từ trong loop)
     if (error.message && error.details) {
