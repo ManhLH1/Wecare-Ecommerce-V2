@@ -5,9 +5,9 @@ pipeline {
         APP_NAME = 'wecare-ecommerce'
         DOCKER_IMAGE = 'wecare-ecommerce'
         DOCKER_TAG = "${BUILD_NUMBER}"
-        VPS_HOST = '103.68.85.218'
-        VPS_USER = 'root'
-        DEPLOY_PATH = '/home/wecare/app'
+        VPS_HOST = "20.127.187.150"
+        VPS_USER = 'wecare'
+        DEPLOY_PATH = '/home/wecare/wecare-v2/Wecare-Ecommerce-V2'
     }
     
     stages {
@@ -42,9 +42,9 @@ pipeline {
         stage('Deploy to VPS') {
             steps {
                 echo 'Deploying to VPS...'
-                sshagent(credentials: ['vps-ssh']) {
+                sshagent(credentials: ['37e445c2-5b34-467d-b14a-fcb94385dd57']) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_HOST} 'mkdir -p ${DEPLOY_PATH}'
+                        ssh -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_HOST} "mkdir -p ${DEPLOY_PATH}"
                         
                         scp -o StrictHostKeyChecking=no ${DOCKER_IMAGE}.tar.gz ${VPS_USER}@${VPS_HOST}:${DEPLOY_PATH}/
                         scp -o StrictHostKeyChecking=no docker-compose.yml ${VPS_USER}@${VPS_HOST}:${DEPLOY_PATH}/

@@ -2,6 +2,123 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===== STANDARD TYPOGRAPHY SYSTEM ===== */
+/* Font weight hierarchy theo tiêu chuẩn UI/UX */
+@layer base {
+  /* Body text - font-normal (400) */
+  body {
+    @apply font-normal;
+  }
+
+  /* Headings - font-bold cho H1, H2 và font-semibold cho còn lại */
+  h1 {
+    @apply font-bold;
+  }
+
+  h2 {
+    @apply font-semibold;
+  }
+
+  h3 {
+    @apply font-semibold;
+  }
+
+  h4 {
+    @apply font-medium;
+  }
+
+  h5, h6 {
+    @apply font-medium;
+  }
+
+  /* Labels - font-medium (500) */
+  label {
+    @apply font-medium;
+  }
+
+  /* Strong/Bold text */
+  strong, b {
+    @apply font-semibold;
+  }
+}
+
+/* Typography utility classes */
+@layer components {
+  /* Page titles - chỉ dùng cho tiêu đề trang chính */
+  .title-page {
+    @apply text-2xl md:text-3xl font-bold text-gray-900;
+  }
+
+  /* Section titles - tiêu đề các section */
+  .title-section {
+    @apply text-xl md:text-2xl font-semibold text-gray-900;
+  }
+
+  /* Card/Item titles - tiêu đề nhỏ trong card */
+  .title-card {
+    @apply text-base md:text-lg font-semibold text-gray-800;
+  }
+
+  /* Subtitle/Description */
+  .text-subtitle {
+    @apply text-sm md:text-base font-normal text-gray-600;
+  }
+
+  /* Body text */
+  .text-body {
+    @apply text-sm md:text-base font-normal text-gray-700;
+  }
+
+  /* Small/Caption text */
+  .text-caption {
+    @apply text-xs md:text-sm font-normal text-gray-500;
+  }
+
+  /* Labels - cho form, tags */
+  .text-label {
+    @apply text-sm font-medium text-gray-700;
+  }
+
+  /* Button text */
+  .text-button {
+    @apply text-sm md:text-base font-medium;
+  }
+
+  /* Navigation links */
+  .text-nav {
+    @apply text-sm font-normal hover:font-medium transition-all;
+  }
+
+  /* Price text - đậm hơn để nổi bật */
+  .text-price {
+    @apply font-bold text-gray-900;
+  }
+
+  /* Price original (giá gốc khi giảm giá) */
+  .text-price-original {
+    @apply font-normal text-gray-400 line-through;
+  }
+
+  /* Badge/Tag text */
+  .text-badge {
+    @apply text-xs font-medium;
+  }
+
+  /* Link text */
+  .text-link {
+    @apply font-medium text-blue-600 hover:text-blue-700;
+  }
+
+  /* Category/Menu item - bình thường thì font-normal, active thì font-medium */
+  .text-menu-item {
+    @apply text-sm font-normal text-gray-700;
+  }
+
+  .text-menu-item-active {
+    @apply text-sm font-medium text-gray-900;
+  }
+}
+
 /* ===== CUSTOM ANIMATIONS ===== */
 @keyframes fade-in {
   from {
@@ -494,10 +611,6 @@ body {
 
 /* Mobile Footer Bottom Spacing */
 @media (max-width: 1024px) {
-  .footer-custom {
-    padding-top: 0;
-    padding-bottom: 5rem;
-  }
   .nganh-hang {
     margin-left: 0px;
   }
@@ -531,8 +644,8 @@ body {
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Better touch targets for mobile */
-  button, a, input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+  /* Better touch targets for mobile - only for interactive elements in main content */
+  .touch-target-min {
     min-height: 44px;
     min-width: 44px;
   }
@@ -546,6 +659,17 @@ body {
   /* Prevent zoom on input focus for mobile */
   input, select, textarea {
     font-size: 16px;
+  }
+
+  /* Safe area support for iOS devices with notch */
+  @supports (padding: env(safe-area-inset-bottom)) {
+    .safe-area-bottom {
+      padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+    }
+    
+    .safe-area-top {
+      padding-top: env(safe-area-inset-top);
+    }
   }
 }
 
@@ -740,6 +864,64 @@ body {
 .mobile-touch {
   @apply touch-manipulation;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Remove tap highlight on all touchable elements */
+a, button, [role="button"], input, select, textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Smooth scroll snap for carousels */
+.snap-x {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.snap-start {
+  scroll-snap-align: start;
+}
+
+.snap-center {
+  scroll-snap-align: center;
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Touch manipulation for better performance */
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+/* Prevent text selection on touch */
+.select-none-touch {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Active state for touch feedback */
+.touch-active:active {
+  transform: scale(0.97);
+  opacity: 0.9;
+}
+
+/* Pull-to-refresh prevention */
+.overscroll-none {
+  overscroll-behavior: none;
+}
+
+/* Hardware acceleration for smooth animations */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 /* Mobile loading states */

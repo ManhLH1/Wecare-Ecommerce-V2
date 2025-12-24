@@ -269,11 +269,11 @@ const ProductContent = () => {
         />
 
         {/* Main Layout - No Sidebar */}
-        <div className="max-w-7xl mx-auto px-0 py-6" style={{ paddingTop: '90px' }}>
+        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-10 py-6" style={{ paddingTop: '90px' }}>
           <div className="flex flex-col">
             {/* Main Content - Full Width */}
             <div className="w-full">
-              <main className="w-full px-2">
+              <main className="w-full">
         {chua_login ? (
           <section className="pb-4 sm:pt-100 bg-slate-100">
             <div className=" max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden">

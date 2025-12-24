@@ -490,21 +490,23 @@ const BusinessOpportunitySection: React.FC<BusinessOpportunitySectionProps> = ({
   }, [isAutoPlay, topRankingProducts.length]);
 
   return (
-    // <section className={`bg-transparent shadow-none px-0 md:px-0 mt-2 mb-3 ${className}`}>
-    <div className="p-1 md:p-6 lg:p-8">
-      {/* Main Title */}
+    <div className="p-2 md:p-4 lg:p-6">
+      {/* Mobile section title */}
+      <div className="flex items-center justify-between mb-3 md:hidden">
+        <h2 className="text-base font-bold text-gray-900">Khám phá sản phẩm</h2>
+      </div>
 
-      {/* Three Columns Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4 items-stretch">
+      {/* Three Columns Layout - Mobile: swipeable cards, Desktop: grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 items-stretch">
 
         {/* Top Ranking Column */}
-        <div className="space-y-3 bg-white rounded-xl p-2 md:p-4 shadow-md">
+        <div className="space-y-3 bg-white rounded-xl p-3 md:p-4 shadow-md">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-base md:text-xl font-bold text-gray-900">Xếp hạng cao</h2>
-              <p className="text-xs text-gray-600 mt-1">Sản phẩm bán chạy nhất</p>
+              <h2 className="text-sm md:text-xl font-bold text-gray-900">Xếp hạng cao</h2>
+              <p className="text-[10px] md:text-xs text-gray-500 mt-0.5">Sản phẩm bán chạy nhất</p>
             </div>
-            <Link href="/top-san-pham-ban-chay" className="text-blue-600 hover:text-blue-700 text-xs font-medium inline-flex items-center gap-1 group">
+            <Link href="/top-san-pham-ban-chay" className="text-cyan-600 hover:text-cyan-700 text-xs font-medium inline-flex items-center gap-1 group bg-cyan-50 px-2 py-1 rounded-full active:scale-95 transition-all touch-manipulation">
               Xem thêm
               <svg className="w-3 h-3 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
@@ -512,18 +514,18 @@ const BusinessOpportunitySection: React.FC<BusinessOpportunitySectionProps> = ({
             </Link>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2 md:space-y-3">
             {loading ? (
               // Loading skeleton
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="animate-pulse">
-                  <div className="bg-gray-200 rounded-lg h-48 md:h-56 mb-2"></div>
+                  <div className="bg-gray-200 rounded-xl h-40 md:h-56 mb-2"></div>
                   <div className="bg-gray-200 rounded h-3 mb-1"></div>
                   <div className="bg-gray-200 rounded h-2 w-2/3"></div>
                 </div>
-                <div className="grid grid-cols-4 gap-1">
+                <div className="grid grid-cols-4 gap-1.5">
                   {[...Array(8)].map((_, idx) => (
-                    <div key={generateUniqueKey('top-loading', idx)} className="bg-gray-200 rounded-md h-12 md:h-14 animate-pulse"></div>
+                    <div key={generateUniqueKey('top-loading', idx)} className="bg-gray-200 rounded-lg h-10 md:h-14 animate-pulse"></div>
                   ))}
                 </div>
               </div>
@@ -531,9 +533,9 @@ const BusinessOpportunitySection: React.FC<BusinessOpportunitySectionProps> = ({
               <>
                 <div>
                   <div className="relative">
-                    {/* Main Product Carousel */}
+                    {/* Main Product Carousel với touch-friendly interaction */}
                     <div
-                      className="relative bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg overflow-hidden h-48 md:h-72 group hover:shadow-lg transition-all duration-300 shadow-md cursor-pointer"
+                      className="relative bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl overflow-hidden h-40 md:h-72 group hover:shadow-lg active:scale-[0.99] transition-all duration-300 shadow-md cursor-pointer touch-manipulation"
                       onClick={() => handleProductClick(topRankingProducts[currentSlide])}
                     >
                       <div className="relative w-full h-full flex items-center justify-center p-2">
@@ -653,15 +655,15 @@ const BusinessOpportunitySection: React.FC<BusinessOpportunitySectionProps> = ({
         </div>
 
         {/* New Arrivals Column */}
-        <div className="space-y-3 bg-white rounded-xl p-2 md:p-4 shadow-sm">
+        <div className="space-y-2 md:space-y-3 bg-white rounded-xl p-3 md:p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-base md:text-xl font-bold text-gray-900 mb-1">
+              <h2 className="text-sm md:text-xl font-bold text-gray-900">
                 Sản phẩm mới
               </h2>
-              <p className="text-xs md:text-sm text-gray-600">15+ sản phẩm mới nhất</p>
+              <p className="text-[10px] md:text-sm text-gray-500 mt-0.5">15+ sản phẩm mới nhất</p>
             </div>
-            <Link href="/new-arrivals" className="text-blue-600 hover:text-blue-700 text-xs font-medium inline-flex items-center gap-1 group">
+            <Link href="/new-arrivals" className="text-cyan-600 hover:text-cyan-700 text-xs font-medium inline-flex items-center gap-1 group bg-cyan-50 px-2 py-1 rounded-full active:scale-95 transition-all touch-manipulation">
               Xem thêm
               <svg className="w-3 h-3 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
@@ -669,58 +671,58 @@ const BusinessOpportunitySection: React.FC<BusinessOpportunitySectionProps> = ({
             </Link>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <div className="grid grid-cols-4 gap-2 md:gap-3">
-                {latestLoading ? (
-                  // Loading skeleton
-                  [...Array(16)].map((_, idx) => (
-                    <div key={generateUniqueKey('latest-loading', idx)} className="bg-gray-200 rounded-md aspect-square animate-pulse"></div>
-                  ))
-                ) : latestProducts.length > 0 ? (
-                  displayLatestProducts.map((product, index) => {
-                    const imgSrc = (product.image && typeof product.image === 'string' && product.image.trim() !== '') ? product.image : '/placeholder-image.jpg';
-                    return (
-                      <div
-                        key={generateUniqueKey('latest-product', index, product.id)}
-                        className={`group relative bg-gray-100 rounded-md overflow-hidden aspect-square hover:shadow-md transition-all duration-300 border border-gray-100 ${product.crdfd_masanpham ? 'cursor-pointer' : 'cursor-default'}`}
-                        onClick={() => { if (product.crdfd_masanpham) handleProductClick(product); }}
-                        title={product.title}
-                      >
-                        <div className="relative w-full h-full p-2 md:p-3">
-                          <Image
-                            src={imgSrc}
-                            alt={product.title || 'Sản phẩm mới'}
-                            fill
-                            className="object-contain group-hover:scale-105 transition-transform duration-300"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.src = '/placeholder-image.jpg';
-                            }}
-                          />
-                        </div>
-                        {/* Hidden title for a cleaner grid; available via title tooltip */}
+          <div>
+            {/* Mobile: 4x3 grid (12 items), Desktop: 4x4 grid (16 items) */}
+            <div className="grid grid-cols-4 gap-1.5 md:gap-3">
+              {latestLoading ? (
+                // Loading skeleton - 12 for mobile, 16 for desktop
+                [...Array(12)].map((_, idx) => (
+                  <div key={generateUniqueKey('latest-loading', idx)} className={`bg-gray-200 rounded-lg aspect-square animate-pulse ${idx >= 12 ? 'hidden md:block' : ''}`}></div>
+                ))
+              ) : latestProducts.length > 0 ? (
+                displayLatestProducts.slice(0, 16).map((product, index) => {
+                  const imgSrc = (product.image && typeof product.image === 'string' && product.image.trim() !== '') ? product.image : '/placeholder-image.jpg';
+                  // Hide last 4 items on mobile
+                  const hiddenOnMobile = index >= 12;
+                  return (
+                    <div
+                      key={generateUniqueKey('latest-product', index, product.id)}
+                      className={`group relative bg-gray-50 rounded-lg overflow-hidden aspect-square hover:shadow-md active:scale-95 transition-all duration-200 border border-gray-100 touch-manipulation ${product.crdfd_masanpham ? 'cursor-pointer' : 'cursor-default'} ${hiddenOnMobile ? 'hidden md:block' : ''}`}
+                      onClick={() => { if (product.crdfd_masanpham) handleProductClick(product); }}
+                      title={product.title}
+                    >
+                      <div className="relative w-full h-full p-1.5 md:p-3">
+                        <Image
+                          src={imgSrc}
+                          alt={product.title || 'Sản phẩm mới'}
+                          fill
+                          className="object-contain group-hover:scale-105 transition-transform duration-300"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/placeholder-image.jpg';
+                          }}
+                        />
                       </div>
-                    );
-                  })
-                ) : (
-                  <div className="col-span-4 text-center py-4 text-gray-500 text-xs">
-                    Không có sản phẩm mới
-                  </div>
-                )}
-              </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="col-span-4 text-center py-4 text-gray-500 text-xs">
+                  Không có sản phẩm mới
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         {/* Best Promotions Column */}
-        <div className="space-y-3 bg-white rounded-xl p-2 md:p-4 shadow-md">
+        <div className="space-y-2 md:space-y-3 bg-white rounded-xl p-3 md:p-4 shadow-md">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-sm md:text-base font-bold text-gray-900">Ưu đãi tốt nhất</h2>
-              {/* Hidden subtitle to keep layout compact */}
+              <p className="text-[10px] md:text-xs text-gray-500 mt-0.5 hidden md:block">Khuyến mãi hot</p>
             </div>
-            <Link href="/promotion" className="text-blue-600 hover:text-blue-700 text-xs font-medium inline-flex items-center gap-1 group">
+            <Link href="/promotion" className="text-cyan-600 hover:text-cyan-700 text-xs font-medium inline-flex items-center gap-1 group bg-cyan-50 px-2 py-1 rounded-full active:scale-95 transition-all touch-manipulation">
               Xem thêm
               <svg className="w-3 h-3 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
@@ -728,11 +730,11 @@ const BusinessOpportunitySection: React.FC<BusinessOpportunitySectionProps> = ({
             </Link>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2 md:space-y-3">
             {promotionsLoading ? (
               // Loading skeleton
               [...Array(3)].map((_, idx) => (
-                <div key={generateUniqueKey('promotion-loading', idx)} className="relative bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg overflow-hidden h-24 md:h-28 animate-pulse">
+                <div key={generateUniqueKey('promotion-loading', idx)} className="relative bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl overflow-hidden h-20 md:h-28 animate-pulse">
                   <div className="absolute top-2 left-2 bg-gray-300 rounded w-8 h-4"></div>
                   <div className="absolute bottom-2 left-2 right-2">
                     <div className="bg-gray-300 rounded h-3 mb-1"></div>
@@ -745,7 +747,7 @@ const BusinessOpportunitySection: React.FC<BusinessOpportunitySectionProps> = ({
                 {/* Main Featured Promotion */}
                 {primaryPromotion && (
                   <Link href={`/promotion/detail/${primaryPromotion.promotion_id}`} className="block no-underline">
-                    <div className="relative bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 rounded-lg overflow-hidden h-32 md:h-36 hover:shadow-lg transition-all duration-300 group cursor-pointer">
+                    <div className="relative bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500 rounded-xl overflow-hidden h-28 md:h-36 hover:shadow-lg active:scale-[0.99] transition-all duration-300 group cursor-pointer touch-manipulation">
                       {primaryPromotion.image ? (
                         <Image
                           src={primaryPromotion.image}
@@ -781,11 +783,11 @@ const BusinessOpportunitySection: React.FC<BusinessOpportunitySectionProps> = ({
                   </Link>
                 )}
 
-                {/* Secondary Promotions Grid */}
-                <div className="grid grid-cols-2 gap-2">
+                {/* Secondary Promotions Grid - 3 columns on mobile, 2 on desktop */}
+                <div className="grid grid-cols-3 md:grid-cols-2 gap-1.5 md:gap-2">
                   {secondaryPromotions.map((promotion, index) => (
                     <Link key={generateUniqueKey('secondary-promotion', index, promotion.promotion_id)} href={`/promotion/detail/${promotion.promotion_id}`} className="block no-underline">
-                      <div className="relative bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg overflow-hidden h-20 md:h-24 hover:shadow-md transition-all duration-300 group cursor-pointer">
+                      <div className="relative bg-gradient-to-br from-blue-100 to-purple-100 rounded-xl overflow-hidden h-16 md:h-24 hover:shadow-md active:scale-95 transition-all duration-200 group cursor-pointer touch-manipulation">
                         {promotion.image ? (
                           <Image
                             src={promotion.image}

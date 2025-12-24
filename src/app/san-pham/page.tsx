@@ -455,7 +455,7 @@ const HomeContent = () => {
 
         {/* Desktop Layout */}
         <div className="hidden lg:block w-full" style={{ paddingTop: '140px' }}>
-          <div className="max-w-7xl mx-auto px-4">
+          <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-10">
             <Suspense fallback={<Loading />}>
               <ProductTree
                 onCategorySelect={handleCategorySelect}

@@ -9,6 +9,9 @@ import { useProductGroupHierarchy } from '@/hooks/useProductGroupHierarchy';
 import { generateProductUrl } from '@/utils/urlGenerator';
 import { usePermission } from '@/hooks/usePermission';
 import HeroBannerImage from '@/assets/img/sample hero-section wecare.png';
+import NewsImage1 from '@/assets/img/Artboard 1.png';
+import NewsImage2 from '@/assets/img/Artboard 2.png';
+import NewsImage3 from '@/assets/img/Artboard 3.png';
 
 interface JDStyleMainContentProps {
   categoryGroups: any[];
@@ -251,19 +254,19 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
         )}
       </div>
       <div className="text-left">
-        <div className="text-sm font-semibold text-gray-800 line-clamp-2">
+        <div className="text-sm font-medium text-gray-800 line-clamp-2">
           {product.crdfd_name || product.crdfd_tensanphamtext}
         </div>
         {product.crdfd_masanpham && (
-          <div className="text-xs text-gray-500 mt-1">{product.crdfd_masanpham}</div>
+          <div className="text-xs font-normal text-gray-500 mt-1">{product.crdfd_masanpham}</div>
         )}
         {product.cr1bb_giaban && (
-          <div className="text-sm text-cyan-600 font-bold mt-1">
+          <div className="text-sm text-cyan-600 font-semibold mt-1">
             {Number(product.cr1bb_giaban).toLocaleString()}₫
           </div>
         )}
         {product.has_promotion && product.promotion?.value && (
-          <div className="text-[11px] text-rose-600 mt-1">KM: {product.promotion.value}{product.promotion.type === 'Percent' ? '%' : '₫'}</div>
+          <div className="text-[11px] font-medium text-rose-600 mt-1">KM: {product.promotion.value}{product.promotion.type === 'Percent' ? '%' : '₫'}</div>
         )}
       </div>
     </button>
@@ -279,113 +282,126 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
 
   return (
     <div className="flex-1">
-      {/* Quick Menu - Chỉ hiện trên Mobile (Desktop đã có trong subheader) */}
+      {/* Quick Menu - Chỉ hiện trên Mobile với horizontal scroll mượt */}
       <div className="mb-3 lg:hidden">
-        <div className="w-full overflow-x-auto scrollbar-hide">
-          <nav className="flex gap-4 items-center px-2 py-2 bg-white border border-gray-200 rounded-xl shadow-sm min-w-max">
+        <div className="w-full overflow-x-auto scrollbar-hide -mx-1 px-1">
+          <nav className="flex gap-2 items-center py-2 min-w-max">
             {getMenuItems().map((item, idx) => (
-              <Link key={idx} href={item.href} className="no-underline group flex items-center gap-2 whitespace-nowrap">
-                <span className="text-base">{item.icon}</span>
-                <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">{item.label}</span>
+              <Link 
+                key={idx} 
+                href={item.href} 
+                className="no-underline group flex items-center gap-1.5 whitespace-nowrap bg-white border border-gray-200 rounded-full px-3 py-2 shadow-sm active:scale-95 transition-all duration-200 touch-manipulation"
+              >
+                <span className="text-sm">{item.icon}</span>
+                <span className="text-xs font-medium text-gray-700 group-hover:text-gray-900 transition-all">{item.label}</span>
               </Link>
             ))}
           </nav>
         </div>
       </div>
 
-      {/* Hero Section + 2 Tin tức bên phải (xếp dọc) */}
+      {/* Hero Section + Tin tức bên phải (Desktop: ngang, Mobile: dọc) */}
       <div ref={heroContainerRef} className="flex flex-col lg:flex-row gap-2 mb-3 lg:pl-3 lg:items-stretch">
-        {/* Hero Banner - ở giữa */}
-        <div className="w-full lg:w-[70%] border border-gray-200 rounded shadow-sm overflow-hidden aspect-[16/7] lg:aspect-auto lg:h-[500px]">
-          {bestPromotions.length > 0 ? (
-            <div
-              className="relative w-full h-full cursor-pointer"
-              onClick={() => (window.location.href = '/promotion')}
-            >
-              <Image
-                src={HeroBannerImage}
-                alt="Wecare - Chương trình khuyến mãi"
-                fill
-                className="object-cover object-center"
-                priority
-                sizes="(max-width: 1024px) 100vw, 70vw"
-              />
-            </div>
-          ) : (
-            <div className="bg-gradient-to-r from-cyan-600 to-cyan-700 p-6 text-white h-full flex flex-col justify-center">
-              <h2 className="text-2xl font-bold mb-2">Ưu đãi tốt nhất hôm nay</h2>
-              <p className="text-cyan-100 mb-4">Tổng hợp khuyến mãi, sản phẩm mới, xếp hạng cao</p>
-              <button className="bg-white text-cyan-600 px-6 py-2 font-medium hover:bg-gray-50 transition-colors w-fit rounded" onClick={() => window.location.href = '/promotion'}>
-                Xem khuyến mãi
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* 2 Tin tức xếp dọc bên phải */}
-        <div className="w-full lg:w-[30%] flex flex-col gap-2 lg:h-[500px]">
-          {/* Tin tức 1 */}
-          <div className="h-1/2 bg-white border border-gray-200 rounded shadow-sm overflow-hidden relative">
-            {loading ? (
-              <div className="w-full h-full animate-pulse bg-gray-200" />
-            ) : latestNews[0] ? (
-              <Link
-                href={`/post/tag?tagname=${latestNews[0].cr1bb_tags}&postid=${latestNews[0].cr1bb_data_website_ecommerceid}`}
-                className="block w-full h-full no-underline group relative"
+        {/* Hero Banner */}
+        <div className="w-full lg:w-[70%] border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+          {/* Mobile: aspect ratio 16:9, Desktop: fixed height */}
+          <div className="relative w-full aspect-[16/9] lg:aspect-auto lg:h-[500px]">
+            {bestPromotions.length > 0 ? (
+              <div
+                className="relative w-full h-full cursor-pointer active:opacity-90 transition-opacity touch-manipulation"
+                onClick={() => (window.location.href = '/promotion')}
               >
-                {latestNews[0].cr1bb_img_url ? (
-                  <Image
-                    src={latestNews[0].cr1bb_img_url}
-                    alt={latestNews[0].cr1bb_title || 'News'}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    sizes="(max-width: 768px) 100vw, 300px"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-cyan-100 to-cyan-200 flex items-center justify-center">
-                    <span className="text-2xl">📰</span>
-                  </div>
-                )}
-              </Link>
+                <Image
+                  src={HeroBannerImage}
+                  alt="Wecare - Chương trình khuyến mãi"
+                  fill
+                  className="object-cover object-center"
+                  priority
+                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 100vw, 70vw"
+                />
+                {/* Mobile CTA overlay */}
+                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent lg:hidden">
+                  <span className="inline-flex items-center gap-1 text-white text-sm font-medium">
+                    Xem ưu đãi
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </span>
+                </div>
+              </div>
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                <Link href="/post" className="text-xs text-cyan-600 hover:text-cyan-700 font-medium no-underline">
-                  Xem tin tức
-                </Link>
+              <div className="bg-gradient-to-br from-cyan-600 to-cyan-700 p-4 md:p-6 text-white h-full flex flex-col justify-center">
+                <h2 className="text-xl md:text-2xl font-bold mb-2">Ưu đãi tốt nhất hôm nay</h2>
+                <p className="text-cyan-100 mb-4 text-sm md:text-base">Tổng hợp khuyến mãi, sản phẩm mới, xếp hạng cao</p>
+                <button 
+                  className="bg-white text-cyan-600 px-4 md:px-6 py-2 font-medium hover:bg-gray-50 active:scale-95 transition-all w-fit rounded-lg touch-manipulation" 
+                  onClick={() => window.location.href = '/promotion'}
+                >
+                  Xem khuyến mãi
+                </button>
               </div>
             )}
           </div>
+        </div>
 
-          {/* Tin tức 2 */}
-          <div className="h-1/2 bg-white border border-gray-200 rounded shadow-sm overflow-hidden relative">
-            {loading ? (
-              <div className="w-full h-full animate-pulse bg-gray-200" />
-            ) : latestNews[1] ? (
+        {/* Tin tức - Mobile: horizontal scroll, Desktop: vertical stack */}
+        <div className="w-full lg:w-[30%] lg:h-[500px]">
+          {/* Mobile: horizontal scroll với snap */}
+          <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible scrollbar-hide snap-x snap-mandatory lg:snap-none -mx-2 px-2 lg:mx-0 lg:px-0 lg:h-full">
+            {/* Tin tức 1 */}
+            <div className="flex-shrink-0 w-[75vw] sm:w-[60vw] lg:w-full h-[140px] sm:h-[160px] lg:h-1/3 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden relative snap-start">
               <Link
-                href={`/post/tag?tagname=${latestNews[1].cr1bb_tags}&postid=${latestNews[1].cr1bb_data_website_ecommerceid}`}
-                className="block w-full h-full no-underline group relative"
+                href="/post"
+                className="block w-full h-full no-underline group relative touch-manipulation"
               >
-                {latestNews[1].cr1bb_img_url ? (
-                  <Image
-                    src={latestNews[1].cr1bb_img_url}
-                    alt={latestNews[1].cr1bb_title || 'News'}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    sizes="(max-width: 768px) 100vw, 300px"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-cyan-100 to-cyan-200 flex items-center justify-center">
-                    <span className="text-2xl">📰</span>
-                  </div>
-                )}
+                <Image
+                  src={NewsImage1}
+                  alt="Tin tức Wecare"
+                  fill
+                  className="object-cover group-hover:scale-105 group-active:scale-100 transition-transform duration-300"
+                  sizes="(max-width: 768px) 75vw, (max-width: 1024px) 60vw, 300px"
+                />
               </Link>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                <Link href="/post" className="text-xs text-cyan-600 hover:text-cyan-700 font-medium no-underline">
-                  Xem tin tức
-                </Link>
-              </div>
-            )}
+            </div>
+
+            {/* Tin tức 2 */}
+            <div className="flex-shrink-0 w-[75vw] sm:w-[60vw] lg:w-full h-[140px] sm:h-[160px] lg:h-1/3 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden relative snap-start">
+              <Link
+                href="/post"
+                className="block w-full h-full no-underline group relative touch-manipulation"
+              >
+                <Image
+                  src={NewsImage2}
+                  alt="Tin tức Wecare"
+                  fill
+                  className="object-cover group-hover:scale-105 group-active:scale-100 transition-transform duration-300"
+                  sizes="(max-width: 768px) 75vw, (max-width: 1024px) 60vw, 300px"
+                />
+              </Link>
+            </div>
+
+            {/* Tin tức 3 */}
+            <div className="flex-shrink-0 w-[75vw] sm:w-[60vw] lg:w-full h-[140px] sm:h-[160px] lg:h-1/3 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden relative snap-start">
+              <Link
+                href="/post"
+                className="block w-full h-full no-underline group relative touch-manipulation"
+              >
+                <Image
+                  src={NewsImage3}
+                  alt="Tin tức Wecare"
+                  fill
+                  className="object-cover group-hover:scale-105 group-active:scale-100 transition-transform duration-300"
+                  sizes="(max-width: 768px) 75vw, (max-width: 1024px) 60vw, 300px"
+                />
+              </Link>
+            </div>
+          </div>
+          
+          {/* Mobile scroll indicator */}
+          <div className="flex justify-center gap-1.5 mt-2 lg:hidden">
+            <div className="w-6 h-1 bg-cyan-500 rounded-full"></div>
+            <div className="w-1.5 h-1 bg-gray-300 rounded-full"></div>
+            <div className="w-1.5 h-1 bg-gray-300 rounded-full"></div>
           </div>
         </div>
       </div>

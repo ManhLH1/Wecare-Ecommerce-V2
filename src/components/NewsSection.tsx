@@ -181,30 +181,84 @@ const NewsSection = () => {
   };
 
   return (
-    <div className="relative mb-2 md:mb-24 py-6 md:py-10">
-      {/* Nền riêng biệt toàn chiều ngang (không dùng section) */}
+    <div className="relative mb-20 md:mb-24 py-4 md:py-10">
+      {/* Nền riêng biệt toàn chiều ngang */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-stone-100"
       />
-      {/* Đường phân tách mảnh phía trên và dưới cho cảm giác vùng riêng */}
+      {/* Đường phân tách mảnh phía trên và dưới */}
       <div aria-hidden className="pointer-events-none absolute -top-px left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] h-px w-screen bg-stone-200/80" />
       <div aria-hidden className="pointer-events-none absolute -bottom-px left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] h-px w-screen bg-stone-200/80" />
-      <div className="relative space-y-3 max-w-12xl xl:max-w-12xl mx-auto px-2 md:px-10">
-        {/* Header tối giản (bỏ section khung nền) */}
+      
+      <div className="relative space-y-3 max-w-12xl xl:max-w-12xl mx-auto px-3 md:px-10">
+        {/* Header */}
         <div className="flex justify-between items-center">
-          <h2 className="text-base md:text-2xl font-semibold text-gray-900 mb-1 md:mb-2">Tin tức mới nhất</h2>
+          <h2 className="text-base md:text-2xl font-semibold text-gray-900">Tin tức mới nhất</h2>
           <Link
             href="/post"
             aria-label="Xem tất cả tin tức"
-            className="text-blue-600 hover:text-blue-800 text-xs font-medium hover:underline transition-all duration-200 bg-blue-50 px-2 py-1 rounded-full -mr-2 md:-mr-3"
+            className="text-cyan-600 hover:text-cyan-700 text-xs font-medium transition-all duration-200 bg-cyan-50 px-2.5 py-1 rounded-full active:scale-95 touch-manipulation"
           >
             Xem tất cả
           </Link>
         </div>
 
-        {/* Bố cục ngang 1 - 2 - 2: Grid 4 cột, 2 hàng. Hero to hơn (span 2 cột x 2 hàng). */}
-        <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 md:[grid-auto-rows:minmax(0,1fr)] gap-2 md:gap-4">
+        {/* Mobile Layout: Horizontal scrollable cards */}
+        <div className="md:hidden">
+          <div className="flex overflow-x-auto gap-3 pb-2 -mx-3 px-3 snap-x snap-mandatory scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
+            {items.map((item, index) => (
+              <div key={(item.cr1bb_data_website_ecommerceid || index)} className="flex-shrink-0 w-[80vw] snap-start">
+                <div className="group relative h-[200px] bg-white rounded-2xl overflow-hidden shadow-md ring-1 ring-stone-200">
+                  <div className="absolute inset-0">
+                    {item.cr1bb_img_url ? (
+                      <Image
+                        src={item.cr1bb_img_url}
+                        alt={item.cr1bb_title || 'News image'}
+                        fill
+                        className="object-cover w-full h-full transition-transform duration-500 group-active:scale-100"
+                        sizes="80vw"
+                        priority={index === 0}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-amber-100 to-amber-200" />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                  </div>
+
+                  {/* Content overlay */}
+                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <span className="inline-block px-2 py-0.5 text-[10px] font-medium text-amber-800 bg-amber-100/90 rounded-full mb-2">
+                      {item.cr1bb_tags || 'Tin tức'}
+                    </span>
+                    <h3 className="text-white font-bold text-sm leading-tight line-clamp-2 mb-2 drop-shadow-md">
+                      {item.cr1bb_title || 'Tiêu đề tin tức'}
+                    </h3>
+                    <Link
+                      href={`/post/tag?tagname=${item.cr1bb_tags}&postid=${item.cr1bb_data_website_ecommerceid}`}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-amber-600 text-white font-medium shadow hover:bg-amber-700 active:scale-95 transition-all text-xs touch-manipulation"
+                    >
+                      Đọc thêm
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {/* Mobile scroll indicator */}
+          <div className="flex justify-center gap-1.5 mt-2">
+            {items.slice(0, 5).map((_, idx) => (
+              <div key={idx} className={`h-1 rounded-full transition-all ${idx === 0 ? 'w-4 bg-amber-500' : 'w-1.5 bg-gray-300'}`} />
+            ))}
+          </div>
+        </div>
+
+        {/* Desktop Layout: Grid 4 cột, 2 hàng */}
+        <div className="hidden md:grid md:grid-cols-4 md:grid-rows-2 md:[grid-auto-rows:minmax(0,1fr)] gap-4">
           {/* Cột trái: Hero (span 2 cột x 2 hàng) */}
           {items[0] && (
             <div className="md:col-span-2 md:row-span-2 md:col-start-1 md:row-start-1 h-full">

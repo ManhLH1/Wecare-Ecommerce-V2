@@ -99,11 +99,11 @@ export default function Home() {
         />
 
         {/* Main Layout - No Sidebar */}
-        <div className="max-w-7xl mx-auto px-0 py-6 pt-24">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-10 py-6 pt-24">
           <div className="flex flex-col">
             {/* Main Content - Full Width */}
             <div className="w-full">
-              <main className="w-full px-4 py-6">
+              <main className="w-full py-6">
         {/* Breadcrumb */}
         <nav
           className="max-w-screen-2xl mx-auto px-1 mb-1"
@@ -127,7 +127,7 @@ export default function Home() {
             </li>
           </ol>
         </nav>
-                <div className="w-full max-w-screen-2xl mx-auto grid grid-cols-1 gap-2 px-4">
+                <div className="w-full max-w-screen-2xl mx-auto grid grid-cols-1 gap-2">
           {/* Main content */}
           <section className="col-span-1 lg:col-span-9 xl:col-span-10">
             {pageLoading ? (
