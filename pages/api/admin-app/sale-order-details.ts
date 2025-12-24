@@ -101,7 +101,7 @@ export default async function handler(
     // Lookup productCode từ product ID nếu có
     const PRODUCT_TABLE = "crdfd_productses";
     const productIdToCodeMap = new Map<string, string>();
-    
+
     // Lấy danh sách product IDs duy nhất
     const productIds = [...new Set(
       (response.data.value || [])
@@ -119,7 +119,7 @@ export default async function handler(
             const productResponse = await axios.get(productEndpoint, { headers });
             const products = productResponse.data.value || [];
             if (products.length > 0 && products[0].crdfd_masanpham) {
-              productIdToCodeMap.set(productId, products[0].crdfd_masanpham);
+              productIdToCodeMap.set(productId as string, products[0].crdfd_masanpham);
             }
           } catch (err) {
             // Silently fail individual product lookup
@@ -133,7 +133,7 @@ export default async function handler(
     const saleOrderDetails = (response.data.value || []).map((item: any) => {
       const productId = item._crdfd_sanpham_value;
       const productCode = item.crdfd_masanpham || (productId ? productIdToCodeMap.get(productId) : undefined);
-      
+
       return {
         id: item.crdfd_saleorderdetailid || "",
         stt: item.crdfd_stton || 0, // Stt đơn (correct field name)
