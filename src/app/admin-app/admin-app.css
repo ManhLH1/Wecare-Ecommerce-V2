@@ -2954,6 +2954,65 @@
   border-color: #dc2626;
 }
 
+/* Row modified style */
+.admin-app-row-modified {
+  background-color: #fef3c7 !important;
+  border-left: 3px solid #f59e0b;
+}
+
+.admin-app-row-modified:hover {
+  background-color: #fde68a !important;
+}
+
+/* Modified badge */
+.admin-app-modified-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+/* Quantity input */
+.admin-app-quantity-input {
+  font-size: 11px;
+  font-family: inherit;
+}
+
+.admin-app-quantity-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Confirm button */
+.admin-app-confirm-btn-compact {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  border: 1px solid #10b981;
+  background: #d1fae5;
+  color: #059669;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.admin-app-confirm-btn-compact:hover:not(:disabled) {
+  background: #10b981;
+  color: white;
+  border-color: #10b981;
+}
+
+.admin-app-confirm-btn-compact:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .admin-app-table-empty-compact {
   text-align: center;
   padding: 30px !important;

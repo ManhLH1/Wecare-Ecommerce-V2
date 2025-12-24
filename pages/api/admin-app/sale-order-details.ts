@@ -86,6 +86,8 @@ export default async function handler(
       "crdfd_duyetgia",
       "crdfd_ngaygiaodukientonghop",
       "_crdfd_sanpham_value",  // Product ID từ getTop30ProductsWithPromotion.ts
+      "crdfd_masanpham",        // Mã sản phẩm (productCode) - nếu có trong SOD
+      "crdfd_manhomsp",         // Mã nhóm sản phẩm
     ].join(",");
 
     const query = `$select=${columns}&$filter=${encodeURIComponent(
@@ -96,21 +98,61 @@ export default async function handler(
 
     const response = await axios.get(endpoint, { headers });
 
-    const saleOrderDetails = (response.data.value || []).map((item: any) => ({
-      id: item.crdfd_saleorderdetailid || "",
-      stt: item.crdfd_stton || 0, // Stt đơn (correct field name)
-      productName: item.crdfd_tensanphamtext || item.crdfd_tensanpham || "",
-      unit: item.crdfd_onvionhang || item.crdfd_donvi || "",
-      quantity: item.crdfd_productnum || item.crdfd_soluong || 0,
-      price: item.crdfd_gia || 0,
-      surcharge: item.crdfd_phuphi_hoadon || item.crdfd_phuphi || 0,
-      discount: item.crdfd_chieckhau ? item.crdfd_chieckhau * 100 : 0, // Chuyển từ thập phân (0.04) sang phần trăm (4%)
-      discountedPrice: item.crdfd_giagoc || item.crdfd_gia || 0,
-      vat: getVatFromIeuChinhGtgt(item.crdfd_ieuchinhgtgt),
-      totalAmount: item.crdfd_tongtiencovat || item.crdfd_tongtienchuavat || 0,
-      approver: item.crdfd_duyetgia || "",
-      deliveryDate: item.crdfd_ngaygiaodukientonghop || "",
-    }));
+    // Lookup productCode từ product ID nếu có
+    const PRODUCT_TABLE = "crdfd_productses";
+    const productIdToCodeMap = new Map<string, string>();
+    
+    // Lấy danh sách product IDs duy nhất
+    const productIds = [...new Set(
+      (response.data.value || [])
+        .map((item: any) => item._crdfd_sanpham_value)
+        .filter((id: any): id is string => !!id)
+    )];
+
+    // Lookup productCode cho từng product ID
+    if (productIds.length > 0) {
+      try {
+        for (const productId of productIds) {
+          try {
+            const productQuery = `$select=crdfd_productsid,crdfd_masanpham&$filter=crdfd_productsid eq ${productId}&$top=1`;
+            const productEndpoint = `${BASE_URL}${PRODUCT_TABLE}?${productQuery}`;
+            const productResponse = await axios.get(productEndpoint, { headers });
+            const products = productResponse.data.value || [];
+            if (products.length > 0 && products[0].crdfd_masanpham) {
+              productIdToCodeMap.set(productId, products[0].crdfd_masanpham);
+            }
+          } catch (err) {
+            // Silently fail individual product lookup
+          }
+        }
+      } catch (err) {
+        // Silently fail batch lookup
+      }
+    }
+
+    const saleOrderDetails = (response.data.value || []).map((item: any) => {
+      const productId = item._crdfd_sanpham_value;
+      const productCode = item.crdfd_masanpham || (productId ? productIdToCodeMap.get(productId) : undefined);
+      
+      return {
+        id: item.crdfd_saleorderdetailid || "",
+        stt: item.crdfd_stton || 0, // Stt đơn (correct field name)
+        productName: item.crdfd_tensanphamtext || item.crdfd_tensanpham || "",
+        unit: item.crdfd_onvionhang || item.crdfd_donvi || "",
+        quantity: item.crdfd_productnum || item.crdfd_soluong || 0,
+        price: item.crdfd_gia || 0,
+        surcharge: item.crdfd_phuphi_hoadon || item.crdfd_phuphi || 0,
+        discount: item.crdfd_chieckhau ? item.crdfd_chieckhau * 100 : 0, // Chuyển từ thập phân (0.04) sang phần trăm (4%)
+        discountedPrice: item.crdfd_giagoc || item.crdfd_gia || 0,
+        vat: getVatFromIeuChinhGtgt(item.crdfd_ieuchinhgtgt),
+        totalAmount: item.crdfd_tongtiencovat || item.crdfd_tongtienchuavat || 0,
+        approver: item.crdfd_duyetgia || "",
+        deliveryDate: item.crdfd_ngaygiaodukientonghop || "",
+        productCode: productCode, // Thêm productCode
+        productId: productId, // Thêm productId
+        productGroupCode: item.crdfd_manhomsp || undefined, // Thêm productGroupCode
+      };
+    });
 
     res.status(200).json(saleOrderDetails);
   } catch (error: any) {

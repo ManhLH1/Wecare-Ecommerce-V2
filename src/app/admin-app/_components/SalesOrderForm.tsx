@@ -5,7 +5,7 @@ import ProductEntryForm from './ProductEntryForm';
 import ProductTable from './ProductTable';
 import Dropdown from './Dropdown';
 import { useCustomers, useSaleOrders } from '../_hooks/useDropdownData';
-import { fetchSaleOrderDetails, SaleOrderDetail, saveSaleOrderDetails, updateInventory, fetchInventory, fetchUnits, fetchPromotionOrders, applyPromotionOrder, PromotionOrderItem } from '../_api/adminApi';
+import { fetchSaleOrderDetails, SaleOrderDetail, saveSaleOrderDetails, updateInventory, fetchInventory, fetchUnits, fetchPromotionOrders, applyPromotionOrder, PromotionOrderItem, InventoryInfo } from '../_api/adminApi';
 import { showToast } from '../../../components/ToastManager';
 import { getItem } from '../../../utils/SecureStorage';
 import { getStoredUser } from '../_utils/implicitAuthService';
@@ -43,6 +43,8 @@ interface ProductItem {
   promotionText?: string;
   invoiceSurcharge?: number; // Phụ phí hoá đơn
   createdOn?: string;
+  isModified?: boolean; // Flag để đánh dấu dòng đã sửa
+  originalQuantity?: number; // Lưu số lượng gốc để so sánh
 }
 
 interface SalesOrderFormProps {
@@ -221,6 +223,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           return {
             id: detail.id,
             stt: detail.stt,
+            productCode: detail.productCode, // Lấy từ API
+            productId: detail.productId, // Lấy từ API
+            productGroupCode: detail.productGroupCode, // Lấy từ API
             productName: detail.productName,
             unit: detail.unit,
             quantity: detail.quantity,
@@ -234,7 +239,10 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             totalAmount: detail.totalAmount,
             approver: detail.approver,
             deliveryDate: detail.deliveryDate || '',
+            warehouse: warehouse, // Lấy từ state warehouse
             isSodCreated: true,
+            isModified: false, // Mặc định chưa sửa
+            originalQuantity: detail.quantity, // Lưu số lượng gốc
           };
         });
         // Sort by STT descending (already sorted by API, but ensure it)
@@ -856,6 +864,258 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setSoId(''); // Clear soId
   };
 
+  // Handler để update một sản phẩm đơn lẻ (đã sửa)
+  const handleUpdateProduct = async (product: ProductItem) => {
+    if (!soId) {
+      showToast.error('Vui lòng chọn Sales Order trước khi cập nhật.');
+      return;
+    }
+
+    if (!product.id) {
+      showToast.error('Không thể cập nhật: sản phẩm chưa có ID.');
+      return;
+    }
+
+    const selectedSo = saleOrders.find((so) => so.crdfd_sale_orderid === soId);
+    const isVatOrder = selectedVatText?.toLowerCase().includes('có vat') || false;
+
+    // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [người duyệt]", ngược lại lấy từ item.note
+    const formattedNote = product.approvePrice && product.approver 
+      ? `Duyệt giá bởi ${product.approver}`
+      : product.note || '';
+
+    try {
+      const customerLoginIdRaw = getItem('id');
+      const customerLoginId =
+        (typeof customerLoginIdRaw === 'string' ? customerLoginIdRaw : String(customerLoginIdRaw || '')).trim() || undefined;
+
+      const userInfo = getStoredUser();
+
+      // Validate ID format (phải là GUID)
+      const crmGuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!crmGuidPattern.test(product.id)) {
+        showToast.error('ID sản phẩm không hợp lệ.');
+        return;
+      }
+
+      // Kiểm tra tồn kho nếu số lượng tăng
+      const originalQuantity = product.originalQuantity ?? product.quantity;
+      const quantityDelta = product.quantity - originalQuantity;
+
+      // Lấy productCode và warehouse - ưu tiên từ product, fallback từ context
+      let finalProductCode = product.productCode;
+      let finalWarehouse = product.warehouse || warehouse;
+
+      // Nếu không có productCode, thử lookup từ productName
+      if (!finalProductCode && product.productName) {
+        try {
+          const { fetchProducts } = await import('../_api/adminApi');
+          const products = await fetchProducts(product.productName);
+          const foundProduct = products.find(p => 
+            p.crdfd_name === product.productName || 
+            p.crdfd_fullname === product.productName
+          );
+          if (foundProduct && foundProduct.crdfd_masanpham) {
+            finalProductCode = foundProduct.crdfd_masanpham;
+          }
+        } catch (error) {
+          console.warn('Không thể lookup productCode từ productName:', error);
+        }
+      }
+
+      // Bỏ qua kiểm tra tồn kho cho các nhóm SP đặc thù
+      const INVENTORY_BYPASS_PRODUCT_GROUP_CODES = [
+        'NSP-00027',
+        'NSP-000872',
+        'NSP-000409',
+        'NSP-000474',
+        'NSP-000873',
+      ];
+      const shouldBypassInventoryCheck = product.productGroupCode 
+        ? INVENTORY_BYPASS_PRODUCT_GROUP_CODES.includes(product.productGroupCode)
+        : false;
+
+      // Bỏ qua kiểm tra tồn kho cho khách hàng đặc biệt
+      const customerNameNorm = (customer || '').toLowerCase().trim();
+      const isAllowedCustomer = customerNameNorm === 'kho wecare' || customerNameNorm === 'kho wecare (ho chi minh)';
+
+      // Validate: phải có productCode và warehouse để kiểm tra tồn kho (chỉ khi có thay đổi số lượng)
+      if (quantityDelta !== 0 && (!finalProductCode || !finalWarehouse)) {
+        const errorMsg = `Không thể kiểm tra tồn kho: ${!finalProductCode ? 'thiếu mã sản phẩm' : ''}${!finalProductCode && !finalWarehouse ? ' và ' : ''}${!finalWarehouse ? 'thiếu kho' : ''}. Vui lòng kiểm tra lại.`;
+        showToast.warning(errorMsg);
+        throw new Error(errorMsg);
+      }
+
+      if (quantityDelta > 0 && finalProductCode && finalWarehouse) {
+        // Tính base quantity từ quantity và unit conversion factor
+        let baseQuantityDelta = quantityDelta;
+        if (product.unit && finalProductCode) {
+          try {
+            const units = await fetchUnits(finalProductCode);
+            const selectedUnit = units.find((u) => u.crdfd_name === product.unit);
+            if (selectedUnit) {
+              const conversionFactor = (selectedUnit as any)?.crdfd_giatrichuyenoi ?? 
+                                      (selectedUnit as any)?.crdfd_giatrichuyendoi ?? 
+                                      (selectedUnit as any)?.crdfd_conversionvalue ?? 
+                                      1;
+              const factorNum = Number(conversionFactor);
+              if (!isNaN(factorNum) && factorNum > 0) {
+                baseQuantityDelta = quantityDelta * factorNum;
+              }
+            }
+          } catch (unitError) {
+            console.warn('Không thể lấy conversion factor, sử dụng quantity trực tiếp:', unitError);
+          }
+        }
+
+        // Kiểm tra tồn kho cho đơn không VAT (đơn VAT không cần check)
+        // QUAN TRỌNG: Phải kiểm tra tồn kho TRƯỚC KHI reserve
+        if (!isVatOrder && !shouldBypassInventoryCheck && !isAllowedCustomer) {
+          // Kiểm tra tồn kho
+          const inventoryInfo: InventoryInfo | null = await fetchInventory(
+            finalProductCode!,
+            finalWarehouse!,
+            isVatOrder
+          );
+
+          if (!inventoryInfo) {
+            const errorMsg = 'Không lấy được thông tin tồn kho. Vui lòng thử lại.';
+            showToast.error(errorMsg);
+            throw new Error(errorMsg);
+          }
+
+          const availableStock = inventoryInfo.availableToSell ?? 
+                               (inventoryInfo.theoreticalStock ?? 0) - (inventoryInfo.reservedQuantity ?? 0);
+
+          if (availableStock < baseQuantityDelta) {
+            const errorMsg = `Tồn kho không đủ. Hiện có: ${availableStock.toLocaleString('vi-VN')}, cần thêm: ${baseQuantityDelta.toLocaleString('vi-VN')}. Vui lòng điều chỉnh số lượng.`;
+            showToast.warning(errorMsg, { autoClose: 5000 });
+            throw new Error(errorMsg);
+          }
+        }
+
+        // Reserve thêm số lượng tăng
+        // CHỈ reserve sau khi đã kiểm tra tồn kho (nếu cần)
+        try {
+          await updateInventory({
+            productCode: finalProductCode!,
+            quantity: baseQuantityDelta,
+            warehouseName: finalWarehouse!,
+            operation: 'reserve', // Reserve thêm số lượng tăng
+            isVatOrder,
+            skipStockCheck: isVatOrder || shouldBypassInventoryCheck || isAllowedCustomer,
+            productGroupCode: product.productGroupCode,
+          });
+        } catch (error: any) {
+          const errorMsg = error.message || 'Không thể giữ tồn kho. Vui lòng thử lại.';
+          showToast.error(errorMsg);
+          throw new Error(errorMsg);
+        }
+      } else if (quantityDelta < 0 && finalProductCode && finalWarehouse) {
+        // Giảm số lượng: Release số lượng giảm
+        let baseQuantityDelta = Math.abs(quantityDelta);
+        if (product.unit && finalProductCode) {
+          try {
+            const units = await fetchUnits(finalProductCode);
+            const selectedUnit = units.find((u) => u.crdfd_name === product.unit);
+            if (selectedUnit) {
+              const conversionFactor = (selectedUnit as any)?.crdfd_giatrichuyenoi ?? 
+                                      (selectedUnit as any)?.crdfd_giatrichuyendoi ?? 
+                                      (selectedUnit as any)?.crdfd_conversionvalue ?? 
+                                      1;
+              const factorNum = Number(conversionFactor);
+              if (!isNaN(factorNum) && factorNum > 0) {
+                baseQuantityDelta = Math.abs(quantityDelta) * factorNum;
+              }
+            }
+          } catch (unitError) {
+            console.warn('Không thể lấy conversion factor, sử dụng quantity trực tiếp:', unitError);
+          }
+        }
+
+        // Release số lượng giảm
+        try {
+          await updateInventory({
+            productCode: finalProductCode!,
+            quantity: baseQuantityDelta,
+            warehouseName: finalWarehouse!,
+            operation: 'release', // Giải phóng số lượng giảm
+            isVatOrder,
+          });
+        } catch (error: any) {
+          const errorMsg = error.message || 'Không thể giải phóng tồn kho. Vui lòng thử lại.';
+          showToast.error(errorMsg);
+          throw new Error(errorMsg);
+        }
+      }
+
+      // Gọi API để update single SOD
+      const result = await saveSaleOrderDetails({
+        soId,
+        warehouseName: warehouse,
+        isVatOrder,
+        customerIndustry: customerIndustry,
+        customerLoginId,
+        customerId: customerId || undefined,
+        userInfo: userInfo ? {
+          username: userInfo.username,
+          name: userInfo.name,
+          email: userInfo.email,
+        } : undefined,
+        products: [{
+          id: product.id, // Gửi ID để update
+          productId: product.productId,
+          productCode: product.productCode,
+          productName: product.productName,
+          productGroupCode: product.productGroupCode,
+          productCategoryLevel4: product.productCategoryLevel4,
+          unitId: product.unitId,
+          unit: product.unit,
+          quantity: product.quantity,
+          price: product.price,
+          discountedPrice: product.discountedPrice ?? product.price,
+          originalPrice: product.price,
+          vat: product.vat,
+          vatAmount: product.vatAmount,
+          subtotal: product.subtotal,
+          totalAmount: product.totalAmount,
+          stt: product.stt || 0,
+          deliveryDate: product.deliveryDate,
+          note: formattedNote,
+          urgentOrder: product.urgentOrder,
+          approvePrice: product.approvePrice,
+          approveSupPrice: product.approveSupPrice,
+          approveSupPriceId: product.approveSupPriceId,
+          approver: product.approver,
+          discountPercent: product.discountPercent,
+          discountAmount: product.discountAmount,
+          promotionText: product.promotionText,
+          invoiceSurcharge: product.invoiceSurcharge,
+        }],
+      });
+
+      if (result.success) {
+        showToast.success('Đã cập nhật sản phẩm thành công!');
+        // Cập nhật isModified = false và originalQuantity = quantity mới
+        setProductList(prevList => 
+          prevList.map(item => 
+            item.id === product.id 
+              ? { ...item, isModified: false, originalQuantity: item.quantity }
+              : item
+          )
+        );
+      } else {
+        const errorMsg = result.message || 'Không thể cập nhật sản phẩm.';
+        showToast.error(errorMsg);
+        throw new Error(errorMsg);
+      }
+    } catch (error: any) {
+      console.error('Error updating product:', error);
+      showToast.error(error.message || 'Có lỗi xảy ra khi cập nhật sản phẩm.');
+      throw error; // Re-throw để ProductTable xử lý
+    }
+  };
+
   return (
     <div className="admin-app-compact-layout">
       {/* Promotion Order Popup */}
@@ -1277,6 +1537,10 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         <ProductTable 
           products={productList} 
           setProducts={setProductList}
+          onUpdate={handleUpdateProduct}
+          soId={soId}
+          warehouseName={warehouse}
+          isVatOrder={!isNonVatSelected}
           onDelete={async (product) => {
             // Giải phóng hàng khi xóa sản phẩm (chỉ cho sản phẩm chưa được save vào CRM)
             if (!product.isSodCreated && product.productCode && product.warehouse && product.quantity > 0) {

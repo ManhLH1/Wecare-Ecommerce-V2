@@ -120,6 +120,9 @@ export interface SaleOrderDetail {
   totalAmount: number;
   approver: string;
   deliveryDate: string;
+  productCode?: string; // Mã sản phẩm
+  productId?: string; // Product ID
+  productGroupCode?: string; // Mã nhóm sản phẩm
 }
 
 // Fetch customers with search
