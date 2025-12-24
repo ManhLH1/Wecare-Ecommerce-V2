@@ -9,6 +9,7 @@ import { getItem } from "@/utils/SecureStorage";
 import { usePermission } from "@/hooks/usePermission";
 import axios from "axios";
 import CategoryMenu from "./component_Header/CategoryMenu";
+import MobileCategoryMenu from "./component_Header/MobileCategoryMenu";
 import { fetchWithCache } from "@/utils/cache";
 
 interface JDStyleHeaderProps {
@@ -51,9 +52,13 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
   const [userType, setUserType] = useState<string | null>(null);
   const { permission, isLoading: permissionLoading } = usePermission();
 
-  // Category menu state
+  // Category menu state - Mobile: always starts closed
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
-  const [isDesktop, setIsDesktop] = useState<boolean>(true);
+  // Initialize isDesktop based on window width immediately to prevent auto-open on mobile
+  const [isDesktop, setIsDesktop] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return window.innerWidth >= 1024;
+  });
   const [categoryHierarchy, setCategoryHierarchy] = useState<any>(null);
   const [categoryGroups, setCategoryGroups] = useState<any[]>([]);
   const [loadingCategory, setLoadingCategory] = useState(true);
@@ -315,7 +320,12 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
   useEffect(() => {
     const updateViewport = () => {
       if (typeof window === "undefined") return;
-      setIsDesktop(window.innerWidth >= 1024); // lg breakpoint
+      const newIsDesktop = window.innerWidth >= 1024;
+      setIsDesktop(newIsDesktop);
+      // If switching to mobile, ensure menu is closed
+      if (!newIsDesktop) {
+        setShowCategoryMenu(false);
+      }
     };
     updateViewport();
     window.addEventListener("resize", updateViewport);
@@ -323,16 +333,25 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
   }, []);
 
   // Auto-open CategoryMenu when at top of page, auto-close when scrolled down
-  // This behavior ONLY applies on homepage. Other pages use hover behavior.
+  // This behavior ONLY applies on DESKTOP homepage. Mobile NEVER auto-opens.
   useEffect(() => {
-    if (typeof window === "undefined" || !isDesktop || !isHomePage) {
-      // On non-homepage, don't auto-show based on scroll
-      if (!isHomePage) {
-        setShowCategoryMenu(false);
-      }
+    // CRITICAL: Mobile check must be FIRST and ALWAYS return early
+    if (typeof window === "undefined") return;
+    
+    // Mobile: Always ensure closed, never auto-open - check immediately
+    if (!isDesktop) {
+      setShowCategoryMenu(false);
       return;
     }
 
+    // Desktop only from here
+    if (!isHomePage) {
+      // On non-homepage desktop, don't auto-show based on scroll
+      setShowCategoryMenu(false);
+      return;
+    }
+
+    // Desktop homepage only: auto-open/close based on scroll
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
       const topThreshold = 50; // Open when scrollY < 50px (at top of page)
@@ -408,10 +427,23 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
   // Close category menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (categoryMenuRef.current && !categoryMenuRef.current.contains(event.target as Node)) {
-        setShowCategoryMenu(false);
+      const target = event.target as Node;
+      
+      // Check if click is inside category menu dropdown (desktop only)
+      if (isDesktop && showCategoryMenu) {
+        // Check if click is inside the button container
+        const isInsideButton = categoryMenuRef.current?.contains(target);
+        // Check if click is inside the dropdown menu (by checking for CategoryMenu component elements)
+        const isInsideDropdown = (target as Element)?.closest('.category-menu-dropdown') !== null;
+        
+        // Only close if clicking outside both button and dropdown
+        if (!isInsideButton && !isInsideDropdown) {
+          setShowCategoryMenu(false);
+        }
       }
-      if (supportMenuRef.current && !supportMenuRef.current.contains(event.target as Node)) {
+      
+      // Support menu click outside handling
+      if (supportMenuRef.current && !supportMenuRef.current.contains(target)) {
         setShowSupportMenu(false);
       }
     };
@@ -423,7 +455,7 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showCategoryMenu, showSupportMenu]);
+  }, [showCategoryMenu, showSupportMenu, isDesktop]);
 
   // Assign camera stream to video element when it changes
   useEffect(() => {
@@ -760,26 +792,35 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
         <div className="w-full border-b" style={{ backgroundColor: '#3492ab' }}>
           <div className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 xl:px-16">
             <div className="flex items-center">
-              {/* Nút Danh mục sản phẩm - Style giống sieuthihaiminh.vn */}
+              {/* Nút Danh mục sản phẩm - Desktop: hover, Mobile: click để mở full screen */}
               <div
                 className="relative"
                 ref={categoryMenuRef}
-                onMouseEnter={() => !isHomePage && setShowCategoryMenu(true)}
-                onMouseLeave={() => !isHomePage && setShowCategoryMenu(false)}
+                onMouseEnter={() => !isHomePage && isDesktop && setShowCategoryMenu(true)}
+                onMouseLeave={() => !isHomePage && isDesktop && setShowCategoryMenu(false)}
               >
-                <div
-                  className="flex items-center gap-2 bg-amber-500 text-white px-4 py-2.5 rounded-none font-medium text-sm shadow-sm h-[45px] leading-tight cursor-pointer select-none"
+                <button
+                  onClick={() => {
+                    // Mobile: mở full screen modal
+                    if (!isDesktop) {
+                      setShowCategoryMenu(true);
+                    }
+                    // Desktop: toggle dropdown (nếu không dùng hover)
+                  }}
+                  className="flex items-center gap-2 bg-amber-500 text-white px-4 py-2.5 rounded-none font-medium text-sm shadow-sm h-[45px] leading-tight cursor-pointer select-none w-full text-left active:bg-amber-600 transition-colors touch-manipulation"
                 >
                   <FaBars className="text-base" />
                   <span className="whitespace-nowrap">Danh mục sản phẩm</span>
                   <FaChevronDown className={`text-xs transition-transform duration-200 ${showCategoryMenu ? 'rotate-180' : ''}`} />
-                </div>
+                </button>
 
-                {/* Dropdown Menu - Style giống sieuthihaiminh.vn */}
-                {showCategoryMenu && (
+                {/* Desktop: Dropdown Menu - Style giống sieuthihaiminh.vn */}
+                {showCategoryMenu && isDesktop && (
                   <div
-                    className="absolute top-full left-0 mt-0 z-50 bg-white rounded-b-lg shadow-2xl border border-gray-200 overflow-hidden"
+                    className="category-menu-dropdown absolute top-full left-0 mt-0 z-50 bg-white rounded-b-lg shadow-2xl border border-gray-200 overflow-hidden"
                     style={{ height: '500px' }}
+                    onMouseEnter={() => !isHomePage && isDesktop && setShowCategoryMenu(true)}
+                    onMouseLeave={() => !isHomePage && isDesktop && setShowCategoryMenu(false)}
                   >
                     <CategoryMenu
                       categoryHierarchy={categoryHierarchy}
@@ -1000,6 +1041,18 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Mobile: Full Screen Category Menu Modal */}
+      {!isDesktop && (
+        <MobileCategoryMenu
+          isOpen={showCategoryMenu}
+          onClose={() => setShowCategoryMenu(false)}
+          categoryHierarchy={categoryHierarchy}
+          categoryGroups={categoryGroups}
+          loadingCategory={loadingCategory}
+          onCategorySelect={handleCategorySelect}
+        />
       )}
     </>
   );

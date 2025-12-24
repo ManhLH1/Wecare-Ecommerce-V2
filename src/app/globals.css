@@ -611,10 +611,6 @@ body {
 
 /* Mobile Footer Bottom Spacing */
 @media (max-width: 1024px) {
-  .footer-custom {
-    padding-top: 0;
-    padding-bottom: 5rem;
-  }
   .nganh-hang {
     margin-left: 0px;
   }
@@ -648,8 +644,8 @@ body {
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Better touch targets for mobile */
-  button, a, input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+  /* Better touch targets for mobile - only for interactive elements in main content */
+  .touch-target-min {
     min-height: 44px;
     min-width: 44px;
   }
@@ -663,6 +659,17 @@ body {
   /* Prevent zoom on input focus for mobile */
   input, select, textarea {
     font-size: 16px;
+  }
+
+  /* Safe area support for iOS devices with notch */
+  @supports (padding: env(safe-area-inset-bottom)) {
+    .safe-area-bottom {
+      padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+    }
+    
+    .safe-area-top {
+      padding-top: env(safe-area-inset-top);
+    }
   }
 }
 
@@ -857,6 +864,64 @@ body {
 .mobile-touch {
   @apply touch-manipulation;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Remove tap highlight on all touchable elements */
+a, button, [role="button"], input, select, textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Smooth scroll snap for carousels */
+.snap-x {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.snap-start {
+  scroll-snap-align: start;
+}
+
+.snap-center {
+  scroll-snap-align: center;
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Touch manipulation for better performance */
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+/* Prevent text selection on touch */
+.select-none-touch {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Active state for touch feedback */
+.touch-active:active {
+  transform: scale(0.97);
+  opacity: 0.9;
+}
+
+/* Pull-to-refresh prevention */
+.overscroll-none {
+  overscroll-behavior: none;
+}
+
+/* Hardware acceleration for smooth animations */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 /* Mobile loading states */

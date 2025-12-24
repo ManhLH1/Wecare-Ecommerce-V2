@@ -1004,7 +1004,7 @@ const HomeContent = () => {
         />
 
         {/* Main Layout */}
-        <div className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 xl:px-16" style={{ marginTop: '115px' }}>
+        <div className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 xl:px-16 pt-[115px]">
           <div className="flex flex-col lg:flex-row">
             {/* Spacer for CategoryMenu dropdown on Desktop */}
             <div className="hidden lg:block w-[280px] flex-shrink-0" />

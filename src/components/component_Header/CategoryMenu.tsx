@@ -479,21 +479,21 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
                               {/* LV2 Header - Bold text, clickable */}
                               <button
                                 onClick={() => onCategorySelect(lv2Item)}
-                                className="text-left mb-0.5 group"
+                                className="text-left mb-2 group"
                               >
-                                <h4 className="text-base font-bold text-gray-900 group-hover:text-amber-600 transition-colors leading-none">
+                                <h4 className="text-base font-bold text-gray-900 group-hover:text-amber-600 transition-colors leading-tight">
                                   {lv2Item.crdfd_productname}
                                 </h4>
                               </button>
 
                               {/* LV3 Items - Simple text links, always visible */}
                               {lv3Items.length > 0 ? (
-                                <div className="flex flex-col items-start -space-y-0.5">
+                                <div className="flex flex-col items-start space-y-1.5">
                                   {lv3Items.map((lv3Item: any) => (
                                     <button
                                       key={lv3Item.crdfd_productgroupid}
                                       onClick={() => onCategorySelect(lv3Item)}
-                                      className="text-left text-sm text-gray-600 hover:text-amber-600 transition-colors leading-none"
+                                      className="text-left text-sm text-gray-600 hover:text-amber-600 transition-colors leading-relaxed py-0.5"
                                     >
                                       {lv3Item.crdfd_productname}
                                     </button>
