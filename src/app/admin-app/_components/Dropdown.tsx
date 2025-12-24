@@ -22,32 +22,32 @@ function normalizeForSearch(str: string): string {
 function fuzzyMatch(searchTerm: string, text: string): boolean {
   if (!searchTerm) return true;
   if (!text) return false;
-  
+
   const normalizedSearch = normalizeForSearch(searchTerm);
   const normalizedText = normalizeForSearch(text);
-  
+
   // Fast path: exact substring match (most common case)
   if (normalizedText.includes(normalizedSearch)) {
     return true;
   }
-  
+
   // Fast path: if search term is longer than text, no match
   if (normalizedSearch.length > normalizedText.length) {
     return false;
   }
-  
+
   // Fuzzy match: check if all characters in search term appear in order in text
   // This allows searching "nguyen" to match "Nguyễn" or "ng" to match "Nguyễn"
   let searchIndex = 0;
   const searchLen = normalizedSearch.length;
   const textLen = normalizedText.length;
-  
+
   for (let i = 0; i < textLen && searchIndex < searchLen; i++) {
     if (normalizedText[i] === normalizedSearch[searchIndex]) {
       searchIndex++;
     }
   }
-  
+
   return searchIndex === searchLen;
 }
 
@@ -57,6 +57,7 @@ interface DropdownOption {
   dropdownTooltip?: string; // native title tooltip
   dropdownMetaText?: string; // shown on hover (e.g. customer code)
   dropdownCopyText?: string; // text copied when clicking copy button
+  dropdownSubLabel?: string; // shown below label
   [key: string]: any;
 }
 
@@ -242,7 +243,7 @@ export default function Dropdown({
       ...opt,
       _normalizedLabel: normalizeForSearch(opt.label || ''),
       _normalizedMeta: normalizeForSearch(
-        (opt.dropdownMetaText || opt.dropdownCopyText || opt.dropdownTooltip || '').toString()
+        (opt.dropdownMetaText || opt.dropdownCopyText || opt.dropdownTooltip || opt.dropdownSubLabel || '').toString()
       ),
     }));
   }, [options]);
@@ -254,7 +255,7 @@ export default function Dropdown({
     }
 
     const normalizedSearch = normalizeForSearch(searchTerm);
-    
+
     // Fast path: if search term is empty after normalization, return all
     if (!normalizedSearch) {
       return options;
@@ -277,83 +278,89 @@ export default function Dropdown({
 
   const portalStyle: CSSProperties | undefined = menuVars
     ? ({
-        ['--dd-top' as any]: `${menuVars.top}px`,
-        ['--dd-left' as any]: `${menuVars.left}px`,
-        ['--dd-width' as any]: `${menuVars.width}px`,
-        ['--dd-max-height' as any]: `${menuVars.maxHeight}px`,
-      } as CSSProperties)
+      ['--dd-top' as any]: `${menuVars.top}px`,
+      ['--dd-left' as any]: `${menuVars.left}px`,
+      ['--dd-width' as any]: `${menuVars.width}px`,
+      ['--dd-max-height' as any]: `${menuVars.maxHeight}px`,
+    } as CSSProperties)
     : undefined;
 
   const menu = isOpen
     ? createPortal(
-        <div
-          ref={menuRef}
-          className="admin-app-dropdown-menu admin-app-dropdown-menu-portal"
-          style={portalStyle}
-        >
-          {searchable && (
-            <div className="admin-app-dropdown-search">
-              <input
-                type="text"
-                className="admin-app-dropdown-search-input"
-                placeholder="Tìm kiếm..."
-                value={searchTerm}
-                onChange={handleSearchChange}
-                autoFocus
-              />
-            </div>
-          )}
+      <div
+        ref={menuRef}
+        className="admin-app-dropdown-menu admin-app-dropdown-menu-portal"
+        style={portalStyle}
+      >
+        {searchable && (
+          <div className="admin-app-dropdown-search">
+            <input
+              type="text"
+              className="admin-app-dropdown-search-input"
+              placeholder="Tìm kiếm..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              autoFocus
+            />
+          </div>
+        )}
 
-          {loading ? (
-            <div className="admin-app-dropdown-loading">
-              <div className="admin-app-spinner admin-app-spinner-small"></div>
-              <span>Đang tải...</span>
-            </div>
-          ) : filteredOptions.length === 0 ? (
-            <div className="admin-app-dropdown-empty">Không có dữ liệu</div>
-          ) : (
-            <div className="admin-app-dropdown-options">
-              {filteredOptions.map((option) => (
-                <div
-                  key={option.value}
-                  className={`admin-app-dropdown-option ${
-                    value === option.value ? 'selected' : ''
+        {loading ? (
+          <div className="admin-app-dropdown-loading">
+            <div className="admin-app-spinner admin-app-spinner-small"></div>
+            <span>Đang tải...</span>
+          </div>
+        ) : filteredOptions.length === 0 ? (
+          <div className="admin-app-dropdown-empty">Không có dữ liệu</div>
+        ) : (
+          <div className="admin-app-dropdown-options">
+            {filteredOptions.map((option) => (
+              <div
+                key={option.value}
+                className={`admin-app-dropdown-option ${value === option.value ? 'selected' : ''
                   }`}
-                  onClick={() => handleSelect(option)}
-                  title={option.dropdownTooltip}
-                >
+                onClick={() => handleSelect(option)}
+                title={option.dropdownTooltip}
+              >
+                <div className="admin-app-dropdown-option-content">
                   <span className="admin-app-dropdown-option-label">
-                  {option.label}
+                    {option.label}
                   </span>
-                  {(option.dropdownMetaText || option.dropdownCopyText) && (
-                    <span
-                      className="admin-app-dropdown-option-meta"
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onClick={(e) => e.stopPropagation()}
-                      title={option.dropdownTooltip}
-                    >
-                      <span className="admin-app-dropdown-option-meta-text">
-                        {option.dropdownMetaText || option.dropdownCopyText}
-                      </span>
-                      <button
-                        type="button"
-                        className="admin-app-dropdown-copy-btn"
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onClick={(e) => handleCopy(e, option)}
-                        aria-label="Copy"
-                        title={copiedValue === option.value ? 'Đã copy' : 'Copy'}
-                      >
-                        {copiedValue === option.value ? '✓' : '⧉'}
-                      </button>
+                  {option.dropdownSubLabel && (
+                    <span className="admin-app-dropdown-option-sublabel" style={{ display: 'block', fontSize: '11px', color: '#64748b' }}>
+                      {option.dropdownSubLabel}
                     </span>
                   )}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>,
-        document.body
-      )
+                {(option.dropdownMetaText || option.dropdownCopyText) && (
+                  <span
+                    className="admin-app-dropdown-option-meta"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                    title={option.dropdownTooltip}
+                  >
+                    <span className="admin-app-dropdown-option-meta-text">
+                      {option.dropdownMetaText || option.dropdownCopyText}
+                    </span>
+                    <button
+                      type="button"
+                      className="admin-app-dropdown-copy-btn"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => handleCopy(e, option)}
+                      aria-label="Copy"
+                      title={copiedValue === option.value ? 'Đã copy' : 'Copy'}
+                    >
+                      {copiedValue === option.value ? '✓' : '⧉'}
+                    </button>
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>,
+      document.body
+    )
     : null;
 
   const triggerTitle =

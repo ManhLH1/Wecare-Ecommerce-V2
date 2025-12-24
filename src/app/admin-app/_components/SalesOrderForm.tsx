@@ -90,7 +90,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const [priceEntryMethod, setPriceEntryMethod] = useState<'Nhập thủ công' | 'Theo chiết khấu'>('Nhập thủ công');
   const [discountRate, setDiscountRate] = useState<string>('1');
   const [discountPercent, setDiscountPercent] = useState(0);
-  
+
   // Danh sách người duyệt
   const approversList = [
     'Bùi Tuấn Dũng',
@@ -105,7 +105,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     'Phạm Thị Mỹ Hương',
     'Hoàng Thị Mỹ Linh',
   ];
-  
+
   const discountRates = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '20'];
   const [discountAmount, setDiscountAmount] = useState(0);
   const [promotionText, setPromotionText] = useState('');
@@ -182,7 +182,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       if (latestSo && latestSo.crdfd_sale_orderid) {
         // Nếu soId chưa được set hoặc soId hiện tại không match với SO mới nhất, thì auto-select
         const shouldAutoSelect = !soId || soId !== latestSo.crdfd_sale_orderid;
-        
+
         if (shouldAutoSelect) {
           const baseLabel = generateSoLabel(latestSo);
           setSoId(latestSo.crdfd_sale_orderid);
@@ -263,7 +263,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     // Validation: product, unit, quantity, price (bắt buộc phải có giá > 0)
     const priceNum = parseFloat(price || '0') || 0;
     const hasValidPrice = priceNum > 0;
-    
+
     if (!product || !unit || quantity <= 0 || !hasValidPrice) {
       console.warn('❌ Add Product Failed: Missing required fields', {
         product: !!product,
@@ -273,7 +273,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         hasValidPrice,
         approvePrice,
       });
-      
+
       // Hiển thị thông báo lỗi cụ thể
       if (!product) {
         showToast.error('Vui lòng chọn sản phẩm');
@@ -306,12 +306,12 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     // Check if product already exists with same productCode/productName, unit, and price
     // Only combine products that haven't been saved to CRM (isSodCreated = false)
     const existingProductIndex = productList.findIndex((p) => {
-      const sameProduct = (productCode && p.productCode === productCode) || 
-                         (!productCode && p.productName === product);
+      const sameProduct = (productCode && p.productCode === productCode) ||
+        (!productCode && p.productName === product);
       const sameUnit = p.unit === unit;
       const samePrice = Math.abs(p.price - priceNum) < 0.01; // Compare with small tolerance for floating point
       const notSaved = !p.isSodCreated; // Only combine unsaved products
-      
+
       return sameProduct && sameUnit && samePrice && notSaved;
     });
 
@@ -319,17 +319,17 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       // Combine with existing product: add quantities and recalculate
       const existingProduct = productList[existingProductIndex];
       const newQuantity = existingProduct.quantity + quantity;
-      
+
       // Recalculate amounts with new total quantity
       const newSubtotal = newQuantity * finalPrice;
       const newVatAmount = (newSubtotal * vatPercent) / 100;
       const newTotalAmount = newSubtotal + newVatAmount;
 
       // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [người duyệt]", ngược lại lấy từ input
-      const formattedNoteForMerge = approvePrice && approver 
+      const formattedNoteForMerge = approvePrice && approver
         ? `Duyệt giá bởi ${approver}`
         : note;
-      
+
       // Update existing product
       const updatedProduct: ProductItem = {
         ...existingProduct,
@@ -345,8 +345,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         vat: vatPercent,
         invoiceSurcharge: invoiceSurchargeRate,
         // Merge notes if both have notes
-        note: existingProduct.note && formattedNoteForMerge 
-          ? `${existingProduct.note}; ${formattedNoteForMerge}` 
+        note: existingProduct.note && formattedNoteForMerge
+          ? `${existingProduct.note}; ${formattedNoteForMerge}`
           : existingProduct.note || formattedNoteForMerge,
         // Đảm bảo isSodCreated = false khi combine (vì chỉ combine với sản phẩm chưa lưu)
         isSodCreated: false,
@@ -368,7 +368,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       const newStt = maxStt + 1;
 
       // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [người duyệt]", ngược lại lấy từ input
-      const formattedNote = approvePrice && approver 
+      const formattedNote = approvePrice && approver
         ? `Duyệt giá bởi ${approver}`
         : note;
 
@@ -509,10 +509,10 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       // Không gửi ID vì đây là sản phẩm mới, chưa có trong CRM
       const productsToSave = newProducts.map((item) => {
         // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [người duyệt]", ngược lại lấy từ item.note
-        const formattedNote = item.approvePrice && item.approver 
+        const formattedNote = item.approvePrice && item.approver
           ? `Duyệt giá bởi ${item.approver}`
           : item.note || '';
-        
+
         return {
           id: undefined, // Không gửi ID cho sản phẩm mới - sẽ được tạo mới trong CRM
           productId: item.productId,
@@ -547,7 +547,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
 
       // Lấy user info từ localStorage
       const userInfo = getStoredUser();
-      
+
       const result = await saveSaleOrderDetails({
         soId,
         warehouseName: warehouse,
@@ -570,7 +570,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         const totalFailed = result.totalFailed ?? 0;
         const message = result.message || `Đã lưu ${totalSaved}/${totalRequested} sản phẩm. ${totalFailed} sản phẩm thất bại.`;
         showToast.warning(message);
-        
+
         // Log chi tiết các sản phẩm thất bại
         if (result.failedProducts && result.failedProducts.length > 0) {
           console.error('Các sản phẩm thất bại:', result.failedProducts);
@@ -694,14 +694,14 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             savedProductCodes,
             savedProductGroupCodes
           );
-          
+
           console.log('[Promotion Order] Result:', {
             hasExistingPromotionOrder: promotionOrderResult.hasExistingPromotionOrder,
             availablePromotionsCount: promotionOrderResult.availablePromotions?.length || 0,
             allPromotionsCount: promotionOrderResult.allPromotions?.length || 0,
             availablePromotions: promotionOrderResult.availablePromotions
           });
-          
+
           // LUÔN hiển thị popup nếu có promotion khả dụng (bất kể đã có promotion order hay chưa)
           if (promotionOrderResult.availablePromotions && promotionOrderResult.availablePromotions.length > 0) {
             console.log('[Promotion Order] ✅ Showing popup - có promotion khả dụng');
@@ -880,7 +880,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     const isVatOrder = selectedVatText?.toLowerCase().includes('có vat') || false;
 
     // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [người duyệt]", ngược lại lấy từ item.note
-    const formattedNote = product.approvePrice && product.approver 
+    const formattedNote = product.approvePrice && product.approver
       ? `Duyệt giá bởi ${product.approver}`
       : product.note || '';
 
@@ -911,8 +911,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         try {
           const { fetchProducts } = await import('../_api/adminApi');
           const products = await fetchProducts(product.productName);
-          const foundProduct = products.find(p => 
-            p.crdfd_name === product.productName || 
+          const foundProduct = products.find(p =>
+            p.crdfd_name === product.productName ||
             p.crdfd_fullname === product.productName
           );
           if (foundProduct && foundProduct.crdfd_masanpham) {
@@ -931,7 +931,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         'NSP-000474',
         'NSP-000873',
       ];
-      const shouldBypassInventoryCheck = product.productGroupCode 
+      const shouldBypassInventoryCheck = product.productGroupCode
         ? INVENTORY_BYPASS_PRODUCT_GROUP_CODES.includes(product.productGroupCode)
         : false;
 
@@ -954,10 +954,10 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             const units = await fetchUnits(finalProductCode);
             const selectedUnit = units.find((u) => u.crdfd_name === product.unit);
             if (selectedUnit) {
-              const conversionFactor = (selectedUnit as any)?.crdfd_giatrichuyenoi ?? 
-                                      (selectedUnit as any)?.crdfd_giatrichuyendoi ?? 
-                                      (selectedUnit as any)?.crdfd_conversionvalue ?? 
-                                      1;
+              const conversionFactor = (selectedUnit as any)?.crdfd_giatrichuyenoi ??
+                (selectedUnit as any)?.crdfd_giatrichuyendoi ??
+                (selectedUnit as any)?.crdfd_conversionvalue ??
+                1;
               const factorNum = Number(conversionFactor);
               if (!isNaN(factorNum) && factorNum > 0) {
                 baseQuantityDelta = quantityDelta * factorNum;
@@ -984,8 +984,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             throw new Error(errorMsg);
           }
 
-          const availableStock = inventoryInfo.availableToSell ?? 
-                               (inventoryInfo.theoreticalStock ?? 0) - (inventoryInfo.reservedQuantity ?? 0);
+          const availableStock = inventoryInfo.availableToSell ??
+            (inventoryInfo.theoreticalStock ?? 0) - (inventoryInfo.reservedQuantity ?? 0);
 
           if (availableStock < baseQuantityDelta) {
             const errorMsg = `Tồn kho không đủ. Hiện có: ${availableStock.toLocaleString('vi-VN')}, cần thêm: ${baseQuantityDelta.toLocaleString('vi-VN')}. Vui lòng điều chỉnh số lượng.`;
@@ -1019,10 +1019,10 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             const units = await fetchUnits(finalProductCode);
             const selectedUnit = units.find((u) => u.crdfd_name === product.unit);
             if (selectedUnit) {
-              const conversionFactor = (selectedUnit as any)?.crdfd_giatrichuyenoi ?? 
-                                      (selectedUnit as any)?.crdfd_giatrichuyendoi ?? 
-                                      (selectedUnit as any)?.crdfd_conversionvalue ?? 
-                                      1;
+              const conversionFactor = (selectedUnit as any)?.crdfd_giatrichuyenoi ??
+                (selectedUnit as any)?.crdfd_giatrichuyendoi ??
+                (selectedUnit as any)?.crdfd_conversionvalue ??
+                1;
               const factorNum = Number(conversionFactor);
               if (!isNaN(factorNum) && factorNum > 0) {
                 baseQuantityDelta = Math.abs(quantityDelta) * factorNum;
@@ -1097,9 +1097,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       if (result.success) {
         showToast.success('Đã cập nhật sản phẩm thành công!');
         // Cập nhật isModified = false và originalQuantity = quantity mới
-        setProductList(prevList => 
-          prevList.map(item => 
-            item.id === product.id 
+        setProductList(prevList =>
+          prevList.map(item =>
+            item.id === product.id
               ? { ...item, isModified: false, originalQuantity: item.quantity }
               : item
           )
@@ -1271,14 +1271,17 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                 <label className="admin-app-label-inline">Khách hàng <span className="admin-app-required">*</span></label>
                 <Dropdown
                   options={customers.map((c) => {
-                    const regionText = c.cr1bb_vungmien_text ? ` - ${c.cr1bb_vungmien_text}` : '';
-                    const code = c.cr44a_makhachhang || c.cr44a_st || '';
+                    const code = c.cr44a_makhachhang || c.cr44a_st || '---';
+                    const phone = c.crdfd_phone2 || '---';
+                    const region = c.cr1bb_vungmien_text || '---';
+
                     return {
                       value: c.crdfd_customerid,
-                      label: `${c.crdfd_name}${regionText}`,
-                      dropdownTooltip: code ? `Mã KH: ${code}` : undefined,
-                      dropdownMetaText: code || undefined,
-                      dropdownCopyText: code || undefined,
+                      label: c.crdfd_name,
+                      dropdownSubLabel: `Mã: ${code} - SĐT: ${phone} - ${region}`,
+                      dropdownTooltip: `Mã: ${code} | SĐT: ${phone} | KV: ${region}`,
+                      dropdownMetaText: code !== '---' ? code : undefined,
+                      dropdownCopyText: code !== '---' ? code : undefined,
                       ...c,
                     };
                   })}
@@ -1336,7 +1339,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                     // Ưu tiên crdfd_so_code, nếu không có thì dùng crdfd_so_auto
                     const soCode = so.crdfd_so_code || so.crdfd_so_auto || '';
                     const soName = (so.crdfd_name || '').trim();
-                    
+
                     // Kiểm tra xem soName đã chứa soCode chưa để tránh lặp
                     let baseLabel: string;
                     if (soName && soCode) {
@@ -1356,7 +1359,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                     } else {
                       baseLabel = 'SO không tên';
                     }
-                    
+
                     const vatLabelText = getVatLabelText(so) || 'Không VAT';
                     return {
                       value: so.crdfd_sale_orderid,
@@ -1526,7 +1529,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             onAdd={handleAddProduct}
             onSave={handleSave}
             onRefresh={handleRefresh}
-            onInventoryReserved={() => {}} // Callback để trigger reload inventory
+            onInventoryReserved={() => { }} // Callback để trigger reload inventory
             onProductGroupCodeChange={setProductGroupCode} // Callback để cập nhật productGroupCode
           />
         </div>
@@ -1534,8 +1537,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
 
       {/* Product Table - Fixed Height, No Scroll */}
       <div className="admin-app-table-wrapper">
-        <ProductTable 
-          products={productList} 
+        <ProductTable
+          products={productList}
           setProducts={setProductList}
           onUpdate={handleUpdateProduct}
           soId={soId}
@@ -1546,7 +1549,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             if (!product.isSodCreated && product.productCode && product.warehouse && product.quantity > 0) {
               try {
                 const isVatOrder = !isNonVatSelected;
-                
+
                 // Tính base quantity từ quantity và unit
                 let baseQuantity = product.quantity;
                 if (product.unit && product.productCode) {
@@ -1554,10 +1557,10 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                     const units = await fetchUnits(product.productCode);
                     const selectedUnit = units.find((u) => u.crdfd_name === product.unit);
                     if (selectedUnit) {
-                      const conversionFactor = (selectedUnit as any)?.crdfd_giatrichuyenoi ?? 
-                                              (selectedUnit as any)?.crdfd_giatrichuyendoi ?? 
-                                              (selectedUnit as any)?.crdfd_conversionvalue ?? 
-                                              1;
+                      const conversionFactor = (selectedUnit as any)?.crdfd_giatrichuyenoi ??
+                        (selectedUnit as any)?.crdfd_giatrichuyendoi ??
+                        (selectedUnit as any)?.crdfd_conversionvalue ??
+                        1;
                       const factorNum = Number(conversionFactor);
                       if (!isNaN(factorNum) && factorNum > 0) {
                         baseQuantity = product.quantity * factorNum;
@@ -1567,7 +1570,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                     console.warn('Không thể lấy conversion factor, sử dụng quantity trực tiếp:', unitError);
                   }
                 }
-                
+
                 await updateInventory({
                   productCode: product.productCode,
                   quantity: baseQuantity, // Sử dụng base quantity
@@ -1582,7 +1585,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           }}
         />
       </div>
-      
+
       {/* Loading overlay khi đang save/load details */}
       {(isSaving || isLoadingDetails) && (
         <div className="admin-app-form-loading-overlay">

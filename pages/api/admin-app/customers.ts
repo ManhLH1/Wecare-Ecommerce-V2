@@ -16,7 +16,7 @@ export default async function handler(
 
   try {
     const { search } = req.query;
-    
+
     // Check cache first
     const cacheKey = getCacheKey("customers", { search });
     const cachedResponse = getCachedResponse(cacheKey);
@@ -33,7 +33,7 @@ export default async function handler(
     // Build filter
     let filter = "statecode eq 0";
     if (search && typeof search === "string" && search.trim()) {
-      const searchTerm = search.trim();
+      const searchTerm = search.trim().replace(/'/g, "''");
       filter += ` and (contains(crdfd_name, '${searchTerm}') or contains(cr44a_st, '${searchTerm}') or contains(crdfd_phone2, '${searchTerm}'))`;
     }
 
