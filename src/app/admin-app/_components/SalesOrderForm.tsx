@@ -418,7 +418,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setDiscountPercent(0);
     setDiscountAmount(0);
     setPromotionText('');
-    // Keep note, warehouse, customer, SO, deliveryDate as they are reused
+    setNote('');
+    // Keep warehouse, customer, SO, deliveryDate as they are reused
 
     setIsAdding(false);
     showToast.success('Đã thêm sản phẩm vào danh sách!');
