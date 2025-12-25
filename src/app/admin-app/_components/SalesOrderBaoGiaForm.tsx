@@ -543,80 +543,36 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       }
 
       // Clear form fields after successful save (giữ lại SOBG và customer) - giống SO
-      setProduct('');
-      setProductCode('');
-      setProductGroupCode('');
-      setUnit('');
-      setUnitId('');
-      setQuantity(1);
-      setPrice('');
-      setSubtotal(0);
-      setVatPercent(0);
-      setVatAmount(0);
-      setTotalAmount(0);
-      setStockQuantity(0);
-      setApprovePrice(false);
-      setApproveSupPrice(false);
-      setUrgentOrder(false);
-      setDeliveryDate('');
-      // Keep note - không clear ghi chú
-      setApprover('');
-      setDiscountPercent(0);
-      setDiscountAmount(0);
-      setPromotionText('');
-      // Nếu tất cả sản phẩm đã lưu thành công (không partial) => reload danh sách chi tiết từ CRM
+      // If all saved successfully (no partial), clear entire form (like SalesOrderForm behavior)
       if (!result.partialSuccess && (!result.totalFailed || result.totalFailed === 0)) {
-        try {
-          const updatedDetails = await fetchSOBGDetails(soId, customerId);
-          const mappedProducts: ProductItem[] = updatedDetails.map((detail: SaleOrderDetail) => {
-            const subtotal = detail.subtotal ?? ((detail.discountedPrice || detail.price) * detail.quantity);
-            const vatAmount = detail.vatAmount ?? (subtotal * detail.vat / 100);
-            return {
-              id: detail.id,
-              stt: detail.stt,
-              productCode: detail.productCode,
-              productId: detail.productId,
-              productGroupCode: detail.productGroupCode,
-              productName: detail.productName,
-              unit: detail.unit,
-              quantity: detail.quantity,
-              price: detail.price,
-              surcharge: detail.surcharge || 0,
-              discount: detail.discount || 0,
-              discountedPrice: detail.discountedPrice || detail.price,
-              vat: detail.vat,
-              subtotal: detail.subtotal ?? subtotal,
-              vatAmount: detail.vatAmount ?? vatAmount,
-              totalAmount: detail.totalAmount,
-              approver: detail.approver || '',
-              deliveryDate: detail.deliveryDate || '',
-              warehouse: warehouse,
-              note: detail.note || '',
-              approvePrice: detail.approvePrice || false,
-              approveSupPrice: detail.approveSupPrice || false,
-              discountPercent: detail.discountPercent || 0,
-              discountAmount: detail.discountAmount || 0,
-              promotionText: detail.promotionText || '',
-              invoiceSurcharge: detail.invoiceSurcharge || 0,
-              isSodCreated: true,
-              isModified: false,
-              originalQuantity: detail.quantity,
-            };
-          });
-          mappedProducts.sort((a, b) => (b.stt || 0) - (a.stt || 0));
-          setProductList(mappedProducts);
-        } catch (reloadError) {
-          console.error('Error reloading SOBG details after save:', reloadError);
-          // If reload fails, but result.savedDetails provided, mark those saved in UI
-          if (result.savedDetails && result.savedDetails.length > 0) {
-            setProductList(prevList => {
-              const savedCodes = new Set(result.savedDetails.map((p: any) => p.productCode).filter(Boolean));
-              return prevList.map(item => item.productCode && savedCodes.has(item.productCode) ? { ...item, isSodCreated: true } : item);
-            });
-          }
-        }
+        clearEverything();
       } else {
-        // Nếu có partial success, chỉ cập nhật các sản phẩm đã được lưu theo response.savedDetails nếu có
+        // Partial success -> clear only product input fields (keep SOBG/customer)
+        setProduct('');
+        setProductCode('');
+        setProductGroupCode('');
+        setUnit('');
+        setUnitId('');
+        setQuantity(1);
+        setPrice('');
+        setSubtotal(0);
+        setVatPercent(0);
+        setVatAmount(0);
+        setTotalAmount(0);
+        setStockQuantity(0);
+        setApprovePrice(false);
+        setApproveSupPrice(false);
+        setUrgentOrder(false);
+        setDeliveryDate('');
+        // Keep note - không clear ghi chú
+        setApprover('');
+        setDiscountPercent(0);
+        setDiscountAmount(0);
+        setPromotionText('');
+      }
+      // Nếu tất cả sản phẩm đã lưu thành công (không partial) => đã clear form (clearEverything)
+      // Nếu partial success, chỉ cập nhật các sản phẩm đã được lưu theo response.savedDetails nếu có
+      if (result.partialSuccess || (result.totalFailed && result.totalFailed > 0)) {
         if (result.savedDetails && result.savedDetails.length > 0) {
           setProductList(prevList => {
             const savedCodes = new Set(result.savedDetails.map((p: any) => p.productCode).filter(Boolean));
@@ -654,6 +610,42 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     setDiscountAmount(0);
     setPromotionText('');
     // Keep note, customer, SOBG (đang được set mới), deliveryDate as they are reused
+  };
+
+  // Clear everything (customer, SOBG, form, product list) after save if requested
+  const clearEverything = () => {
+    setCustomer('');
+    setCustomerId('');
+    setCustomerCode('');
+    setSo('');
+    setSoId('');
+    setProduct('');
+    setProductCode('');
+    setProductGroupCode('');
+    setUnit('');
+    setUnitId('');
+    setWarehouse('');
+    setQuantity(1);
+    setPrice('');
+    setSubtotal(0);
+    setVatPercent(0);
+    setVatAmount(0);
+    setTotalAmount(0);
+    setStockQuantity(0);
+    setApprovePrice(false);
+    setApproveSupPrice(false);
+    setUrgentOrder(false);
+    setDeliveryDate('');
+    setApprover('');
+    setDiscountPercent(0);
+    setDiscountAmount(0);
+    setPromotionText('');
+    setProductList([]);
+    setNote('');
+    setDiscount2(0);
+    setDiscount2Enabled(false);
+    setPriceEntryMethod('Nhập thủ công');
+    setDiscountRate('1');
   };
 
   const handleRefresh = async () => {

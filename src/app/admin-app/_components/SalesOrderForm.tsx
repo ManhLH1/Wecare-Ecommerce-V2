@@ -693,6 +693,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             setShowPromotionOrderPopup(true);
           } else {
             console.log('[Promotion Order] ❌ Không có promotion khả dụng - không hiển thị popup');
+            // No promotions -> clear all form data after successful save
+            clearEverything();
           }
         } catch (error) {
           console.error('[Promotion Order] ❌ Error checking promotion orders:', error);
@@ -731,6 +733,39 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setDiscountAmount(0);
     setPromotionText('');
     // Keep note, customer, SO (đang được set mới), deliveryDate as they are reused
+  };
+
+  // Clear everything (customer, SO, form, product list) after save if requested
+  const clearEverything = () => {
+    setCustomer('');
+    setCustomerId('');
+    setCustomerCode('');
+    setSo('');
+    setSoId('');
+    setProduct('');
+    setProductCode('');
+    setProductGroupCode('');
+    setUnit('');
+    setUnitId('');
+    setWarehouse('');
+    setQuantity(1);
+    setPrice('');
+    setSubtotal(0);
+    setVatPercent(0);
+    setVatAmount(0);
+    setTotalAmount(0);
+    setStockQuantity(0);
+    setApprovePrice(false);
+    setApproveSupPrice(false);
+    setUrgentOrder(false);
+    setDeliveryDate('');
+    setApprover('');
+    setDiscountPercent(0);
+    setDiscountAmount(0);
+    setPromotionText('');
+    setProductList([]);
+    setNote('');
+    setInvoiceSurcharge(0 as any);
   };
 
   const handleRefresh = async () => {
@@ -864,8 +899,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         setShowPromotionOrderPopup(false);
         setSelectedPromotionOrders([]);
         setPromotionOrderList([]);
-        // KHÔNG clear soId để user có thể tiếp tục làm việc với SO này
-        // setSoId(''); 
+        // Clear entire form after successfully applying promotions
+        clearEverything();
       } else {
         const errorMessages = results
           .filter(r => r && r.success === false)
@@ -887,7 +922,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setShowPromotionOrderPopup(false);
     setSelectedPromotionOrders([]);
     setPromotionOrderList([]);
-    setSoId(''); // Clear soId
+    // Clear entire form when closing promotion popup
+    clearEverything();
   };
 
   // Handler để update một sản phẩm đơn lẻ (đã sửa)
