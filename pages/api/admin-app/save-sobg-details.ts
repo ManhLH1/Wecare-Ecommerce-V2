@@ -139,6 +139,7 @@ export default async function handler(
             sobgId,
             warehouseName,
             isVatOrder,
+            customerIndustry,
             userInfo,
             products,
         } = req.body;
@@ -243,7 +244,8 @@ export default async function handler(
 
                     // Data fields (Mapped from Metadata)
                     "crdfd_soluong": product.quantity,
-                    "crdfd_ongia": product.price, // Schema name typo: ongia
+                    // Price logic based on industry: Shop uses discounted price, others use regular price
+                    "crdfd_ongia": (customerIndustry === "Shop" ? product.discountedPrice : product.price) || product.price, // Schema name typo: ongia
                     // Map VAT percent -> OptionSet value for CRM (crdfd_gtgt)
                     "crdfd_ieuchinhgtgt": mapVatPercentToChoice(product.vat),
                     "crdfd_gtgt": mapVatPercentToChoice(product.vat),
@@ -251,7 +253,7 @@ export default async function handler(
                     // "crdfd_thanhtien": product.totalAmount, // Field not found in metadata. Skip.
 
                     // Name (Common field)
-                    "crdfd_name": product.productName || "SOBG Detail",
+                    // "crdfd_name": product.productName || "SOBG Detail",
 
                     // NEW FIELDS
                     "cr1bb_ca": mapShiftToChoice(product.shift),
@@ -259,10 +261,33 @@ export default async function handler(
                     "crdfd_chietkhau": product.discount ? product.discount / 100 : 0,
                     "crdfd_chietkhauvn": product.discountVND || 0,
                     "crdfd_chietkhau2": product.discount2 ? product.discount2 / 100 : 0,
-                    "crdfd_giack1": product.priceDiscount1 || 0,
+                    "crdfd_giack1": product.originalPrice || product.price || 0, // Giá gốc (original price)
                     "crdfd_giack2": product.discountedPrice || product.priceDiscount2 || 0,
+                    // Logical name `crdfd_giagoc` expected by integration — ensure we write Giá gốc
+                    "crdfd_giagoc": product.originalPrice || product.price || 0,
                     "crdfd_phu_phi_hoa_don": product.surcharge || 0,
+
+                    // MISSING FIELDS FROM POWER APPS REQUIREMENTS
+                    // NOTE: schema logical name is `crdfd_stton` (Whole number) in CRM
+                    "crdfd_stton": Number(product.stt) || 0,
+                    // Approval fields in CRM:
+                    // - `crdfd_duyetgia` is a Choice (OptionSet) stored as Int32. We will map and set it below if available.
+                    // - `Duyet gia sup` is a Lookup on a separate table; do NOT send boolean/int for lookup.
+                    "crdfd_promotiontext": product.promotionText || "",
+                    "crdfd_ghichu": product.note || "",
                 };
+
+                // Map and set approval choice if provided/derivable.
+                const mappedApproval = mapApprovalToChoice(product.approvePrice, product.approverChoiceValue || product.approverChoice);
+                if (mappedApproval !== null) {
+                    entity["crdfd_duyetgia"] = mappedApproval;
+                }
+
+                // If SUP approver ID is provided, set lookup binding property used elsewhere in repo (`cr1bb_duyetgiasup@odata.bind`)
+                // This avoids sending a non-existent `crdfd_duyetgiasup` attribute.
+                if (product.approveSupPrice && product.approveSupPriceId) {
+                    entity[`cr1bb_duyetgiasup@odata.bind`] = `/crdfd_duyetgias(${product.approveSupPriceId})`;
+                }
 
                 console.log('[Save SOBG] 💾 Creating entity...');
 
@@ -391,6 +416,29 @@ function mapShiftToChoice(shift: any): number | null {
     if (Number(shift) === 283640000) return 283640000;
     if (Number(shift) === 283640001) return 283640001;
 
+    return null;
+}
+
+// Map approval input to CRM Choice (OptionSet) values.
+// crdfd_duyetgia is a Choice field whose valid values are the OptionSet integers.
+// Strategy:
+// - If frontend provides `product.approverChoiceValue` (numeric), use it.
+// - If `approvePrice` is truthy but no choice provided, use a safe default (first OptionSet value).
+// - If `approvePrice` is falsy, do not set the field (return null) to avoid sending invalid 0.
+const DEFAULT_APPROVAL_CHOICE = 191920000;
+function mapApprovalToChoice(approveFlag: any, approverChoiceValue?: any): number | null {
+    // If explicit numeric choice provided by frontend, use it
+    if (approverChoiceValue !== undefined && approverChoiceValue !== null && approverChoiceValue !== '') {
+        const n = Number(approverChoiceValue);
+        if (!isNaN(n)) return Math.trunc(n);
+    }
+
+    // If approveFlag is truthy, return default option value
+    if (approveFlag === true || String(approveFlag).toLowerCase() === 'true' || Number(approveFlag) > 0) {
+        return DEFAULT_APPROVAL_CHOICE;
+    }
+
+    // Otherwise do not set the choice (null)
     return null;
 }
 
