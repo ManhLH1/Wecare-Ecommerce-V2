@@ -1439,6 +1439,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             vatText={selectedVatText}
             orderType={selectedSo?.crdfd_loai_don_hang}
             soId={soId}
+            orderTotal={orderSummary.total}
             quantity={quantity}
             setQuantity={setQuantity}
             price={price}

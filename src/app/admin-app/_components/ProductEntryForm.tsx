@@ -8,6 +8,7 @@ import {
   fetchProductPromotions,
   fetchInventory,
   fetchAccountingStock,
+  fetchPromotionOrders,
   Promotion,
   Product,
 } from '../_api/adminApi';
@@ -96,6 +97,7 @@ interface ProductEntryFormProps {
   onInventoryReserved?: () => void; // Callback khi inventory được reserve để trigger reload
   onProductGroupCodeChange?: (code: string) => void; // Callback khi productGroupCode thay đổi
   disableInventoryReserve?: boolean; // Tắt tính năng giữ hàng tự động (dùng cho SOBG)
+  orderTotal?: number; // Tổng tiền toàn đơn (dùng để check Promotion Order & phân bổ chiết khấu VNĐ)
 }
 
 export default function ProductEntryForm({
@@ -164,6 +166,7 @@ export default function ProductEntryForm({
   onInventoryReserved,
   onProductGroupCodeChange,
   disableInventoryReserve = false,
+  orderTotal,
 }: ProductEntryFormProps) {
   // Disable form if customer or SO is not selected
   // Check for both null/undefined and empty string
@@ -205,6 +208,7 @@ export default function ProductEntryForm({
   const setDiscountRate = setDiscountRateProp ?? setDiscountRateInternal;
   const [basePriceForDiscount, setBasePriceForDiscount] = useState<number>(0);
   const [promotionDiscountPercent, setPromotionDiscountPercent] = useState<number>(0);
+  const [orderPromotionInfo, setOrderPromotionInfo] = useState<{ vndOrPercent?: string; value?: number; chietKhau2?: boolean } | null>(null);
   const [apiPrice, setApiPrice] = useState<number | null>(null); // Giá từ API để check warning
   const [shouldReloadPrice, setShouldReloadPrice] = useState<number>(0); // Counter to trigger reload
   const [isProcessingAdd, setIsProcessingAdd] = useState<boolean>(false); // Flag để ngăn bấm liên tục
@@ -1324,12 +1328,61 @@ export default function ProductEntryForm({
   // Calculate totals with promotion discount
   const recomputeTotals = (priceValue: string | number, qty: number, promoDiscountPct: number, vatPct: number) => {
     const priceNum = parseFloat(String(priceValue).replace(/,/g, '')) || 0;
+
+    // Base after primary promotion percent
     const discountFactor = 1 - (promoDiscountPct > 0 ? promoDiscountPct / 100 : 0);
-    const effectivePrice = priceNum * discountFactor;
+    let effectivePrice = priceNum * discountFactor;
+
+    // If Chiết khấu 2 is enabled and has value, apply it according to promotion type
+    const d2 = Number(discount2) || 0;
+    if (discount2Enabled && d2 > 0) {
+      const promoOrder = orderPromotionInfo;
+      const isPercentType =
+        (promoOrder && promoOrder.vndOrPercent && String(promoOrder.vndOrPercent).trim() === '%') ||
+        // fallback: product-level promotion may expose 'vn' as '%'
+        ((selectedPromotion as any)?.vn && String((selectedPromotion as any).vn).trim() === '%');
+
+      if (isPercentType) {
+        // Additive percent (primary promo + chiết khấu 2)
+        const totalPct = (promoDiscountPct || 0) + d2;
+        const finalFactor = 1 - (totalPct > 0 ? totalPct / 100 : 0);
+        effectivePrice = priceNum * finalFactor;
+      }
+      // VNĐ type will be handled on subtotal level below (distributed by order share)
+    }
+
     const vatTextLower = (vatText || '').toLowerCase();
     const isNonVatOrder = vatTextLower.includes('không vat');
     const effectiveVat = isNonVatOrder ? 0 : vatPct;
-    const newSubtotal = qty * effectivePrice;
+
+    // Subtotal before VNĐ-type chiết khấu 2
+    let newSubtotal = qty * effectivePrice;
+
+    // If Chiết khấu 2 is VNĐ type, distribute reduction based on orderTotal if possible
+    const promoOrder = orderPromotionInfo;
+    const isVndType =
+      discount2Enabled &&
+      d2 > 0 &&
+      promoOrder &&
+      promoOrder.vndOrPercent &&
+      String(promoOrder.vndOrPercent).trim() !== '%';
+
+    if (isVndType) {
+      const promoValue = Number(promoOrder.value) || Number((selectedPromotion as any)?.value) || 0;
+      if (promoValue > 0) {
+        if (orderTotal && orderTotal > 0) {
+          // Distribute promoValue proportionally to this line's base amount (before chiết khấu 2)
+          const baseLineAmount = qty * (priceNum * (1 - (promoDiscountPct > 0 ? promoDiscountPct / 100 : 0)));
+          const lineShare = baseLineAmount / orderTotal;
+          const lineReduction = promoValue * lineShare;
+          newSubtotal = Math.max(0, newSubtotal - lineReduction);
+        } else {
+          // No order total available - apply full promoValue up to subtotal
+          newSubtotal = Math.max(0, newSubtotal - promoValue);
+        }
+      }
+    }
+
     const newVat = (newSubtotal * effectiveVat) / 100;
     // Làm tròn đến hàng đơn vị
     const roundedSubtotal = Math.round(newSubtotal);
@@ -1561,6 +1614,43 @@ export default function ProductEntryForm({
 
     recomputeTotals(price, quantity, promoPct || discountPercent, vatPercent);
   }, [selectedPromotionId, promotions, approvePrice]);
+
+  // Check Promotion Order applicability (order-level) for the selected promotion
+  useEffect(() => {
+    let cancelled = false;
+    const checkOrderLevelPromotion = async () => {
+      if (!soId || !selectedPromotion) {
+        setOrderPromotionInfo(null);
+        return;
+      }
+      try {
+        const res = await fetchPromotionOrders(
+          soId,
+          customerCode,
+          orderTotal ?? 0,
+          selectedProductCode ? [selectedProductCode] : [],
+          selectedProductGroupCode ? [selectedProductGroupCode] : []
+        );
+        const available = (res && res.availablePromotions) ? res.availablePromotions : (res && res.allPromotions ? res.allPromotions : []);
+        const matched = (available || []).find((p: any) => normalizePromotionId(p.id) === normalizePromotionId(selectedPromotion.id));
+        if (matched && !cancelled) {
+          const vndOrPercent = (matched.vndOrPercent || '').toString();
+          const val = Number(matched.value) || 0;
+          const ch2 = String(matched.chietKhau2) === '191920001' || String(matched.chietKhau2) === 'true' || String(matched.chietKhau2) === '1';
+          setOrderPromotionInfo({ vndOrPercent, value: val, chietKhau2: ch2 });
+          setDiscount2Enabled?.(Boolean(ch2));
+        } else if (!cancelled) {
+          setOrderPromotionInfo(null);
+          setDiscount2Enabled?.(false);
+        }
+      } catch (err) {
+        console.warn('[Promotion Order] check failed', err);
+        // Do not change existing state on error
+      }
+    };
+    checkOrderLevelPromotion();
+    return () => { cancelled = true; };
+  }, [soId, customerCode, orderTotal, selectedPromotionId, selectedProductCode, selectedProductGroupCode]);
 
   // Recompute totals when discount percent changes elsewhere
   useEffect(() => {
