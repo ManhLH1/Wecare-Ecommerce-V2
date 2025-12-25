@@ -91,6 +91,7 @@ interface ProductEntryFormProps {
   onRefresh: () => void;
   onInventoryReserved?: () => void; // Callback khi inventory được reserve để trigger reload
   onProductGroupCodeChange?: (code: string) => void; // Callback khi productGroupCode thay đổi
+  disableInventoryReserve?: boolean; // Tắt tính năng giữ hàng tự động (dùng cho SOBG)
 }
 
 export default function ProductEntryForm({
@@ -154,6 +155,7 @@ export default function ProductEntryForm({
   onRefresh,
   onInventoryReserved,
   onProductGroupCodeChange,
+  disableInventoryReserve = false,
 }: ProductEntryFormProps) {
   // Disable form if customer or SO is not selected
   // Check for both null/undefined and empty string
@@ -186,7 +188,7 @@ export default function ProductEntryForm({
   const [priceGroupText, setPriceGroupText] = useState<string>('');
   const [priceEntryMethodInternal, setPriceEntryMethodInternal] = useState<'Nhập thủ công' | 'Theo chiết khấu'>('Nhập thủ công');
   const [discountRateInternal, setDiscountRateInternal] = useState<string>('1');
-  
+
   // Use props if provided, otherwise use internal state
   const priceEntryMethod = priceEntryMethodProp ?? priceEntryMethodInternal;
   const setPriceEntryMethod = setPriceEntryMethodProp ?? setPriceEntryMethodInternal;
@@ -589,7 +591,7 @@ export default function ProductEntryForm({
       const vatOptionValue = selectedProduct?.crdfd_gtgt_option ?? selectedProduct?.crdfd_gtgt;
       const productVatPercent = vatOptionValue !== undefined ? VAT_OPTION_MAP[Number(vatOptionValue)] : undefined;
       const productVatIsZero = productVatPercent === 0 || productVatPercent === undefined;
-      
+
       // Nếu SO có VAT và sản phẩm không VAT thì chặn
       if (productVatIsZero) {
         return true; // Disable button
@@ -704,7 +706,7 @@ export default function ProductEntryForm({
       const vatOptionValue = selectedProduct?.crdfd_gtgt_option ?? selectedProduct?.crdfd_gtgt;
       const productVatPercent = vatOptionValue !== undefined ? VAT_OPTION_MAP[Number(vatOptionValue)] : undefined;
       const productVatIsZero = productVatPercent === 0 || productVatPercent === undefined;
-      
+
       // Nếu SO có VAT và sản phẩm không VAT thì chặn
       if (productVatIsZero) {
         const reason = 'Đơn SO có VAT không được thêm sản phẩm không VAT';
@@ -1012,7 +1014,7 @@ export default function ProductEntryForm({
         }
         return;
       }
-      
+
       // QUAN TRỌNG: Clear giá ngay khi chọn sản phẩm mới (trước khi load giá mới)
       // Để tránh hiển thị giá của sản phẩm trước trong khi đang load giá mới
       // Chỉ clear nếu không đang ở chế độ nhập thủ công với duyệt giá
@@ -1020,10 +1022,10 @@ export default function ProductEntryForm({
         handlePriceChange('');
         setBasePriceForDiscount(0);
       }
-      
+
       setPriceLoading(true);
       setApiPrice(null); // Reset trước khi load giá mới
-      
+
       // Lưu productCode hiện tại để kiểm tra sau khi load xong
       const currentProductCode = selectedProductCode;
 
@@ -1042,7 +1044,7 @@ export default function ProductEntryForm({
 
         // API trả về TẤT CẢ giá cho tất cả đơn vị
         const allPrices = (result as any)?.prices || [];
-        
+
         // Lấy đơn vị hiện tại để lọc giá
         const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
         const currentUnitName = currentUnit?.crdfd_name || unit;
@@ -1062,7 +1064,7 @@ export default function ProductEntryForm({
             const selectedUnitName = normalizeText(currentUnitName);
             return apiUnitName === selectedUnitName;
           });
-          
+
           // Bước 2: Nếu không tìm thấy theo unitName, thử tìm theo crdfd_onvichuan
           if (!selectedPrice && currentUnitOnvichuan) {
             selectedPrice = allPrices.find((p: any) => {
@@ -1073,12 +1075,12 @@ export default function ProductEntryForm({
             });
           }
         }
-        
+
         // Nếu không tìm thấy giá theo đơn vị đã chọn, lấy giá đầu tiên (backward compatibility)
         if (!selectedPrice && allPrices.length > 0) {
           selectedPrice = allPrices[0];
         }
-        
+
         // Fallback về format cũ nếu API chưa có prices array
         const priceWithVat = selectedPrice?.price ?? result?.price ?? null;
         const priceNoVat = selectedPrice?.priceNoVat ?? (result as any)?.priceNoVat ?? null;
@@ -1114,18 +1116,18 @@ export default function ProductEntryForm({
         // 3. SO không VAT + Sản phẩm có VAT → dùng price
         // 4. SO không VAT + Sản phẩm không VAT → dùng price
         let basePrice: number | null = null;
-        
+
         // Xác định SO có VAT hay không
         const vatTextLower = (vatText || '').toLowerCase();
         const soIsVat = vatTextLower.includes('có vat') || vatPercent > 0;
-        
+
         // Xác định sản phẩm có VAT hay không (dựa vào crdfd_gtgt)
         // Tìm sản phẩm từ selectedProduct hoặc từ products list
         const currentProduct = selectedProduct || (selectedProductCode ? products.find((p) => p.crdfd_masanpham === selectedProductCode) : null);
         const productVatOptionValue = currentProduct?.crdfd_gtgt_option ?? currentProduct?.crdfd_gtgt;
         const productVatPercent = productVatOptionValue !== undefined ? VAT_OPTION_MAP[Number(productVatOptionValue)] : undefined;
         const productIsVat = productVatPercent !== undefined && productVatPercent > 0;
-        
+
         // Áp dụng logic chọn giá
         if (soIsVat && productIsVat) {
           // SO có VAT + Sản phẩm có VAT → dùng priceNoVat
@@ -1225,7 +1227,7 @@ export default function ProductEntryForm({
             region = 'Miền Nam';
           }
         }
-        
+
         const data = await fetchProductPromotions(selectedProductCode, customerCode, region);
 
         // Filter promotions dựa trên saleInventoryOnly và loại đơn hàng
@@ -1353,7 +1355,7 @@ export default function ProductEntryForm({
       const vatOptionValue = selectedProduct?.crdfd_gtgt_option ?? selectedProduct?.crdfd_gtgt;
       const productVatPercent = vatOptionValue !== undefined ? VAT_OPTION_MAP[Number(vatOptionValue)] : undefined;
       const productVatIsZero = productVatPercent === 0 || productVatPercent === undefined;
-      
+
       if (productVatIsZero) {
         showToast.error('Đơn SO có VAT không được thêm sản phẩm không VAT');
         return;
@@ -1369,8 +1371,9 @@ export default function ProductEntryForm({
       }
 
       // Reserve inventory trước khi add sản phẩm vào đơn nháp
+      // Chỉ thực hiện nếu không bị disable (SOBG sẽ disable)
       // Sử dụng baseQuantity (theo đơn vị chuẩn) để reserve
-      if (selectedProductCode && warehouse && quantity > 0) {
+      if (!disableInventoryReserve && selectedProductCode && warehouse && quantity > 0) {
         try {
           const vatTextLower = (vatText || '').toLowerCase();
           const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
@@ -2071,7 +2074,7 @@ export default function ProductEntryForm({
             // Làm tròn để hiển thị giống với cách tính trong recomputeTotals
             const roundedDiscountedPriceWithVat = Math.round(discountedPriceWithVat);
             const roundedDiscountedPrice = Math.round(discountedPrice);
-            
+
             // Công thức: Giá đã giảm = (Giá gốc × (1 - Chiết khấu%)) × (1 + VAT%)
             let formula = `CÔNG THỨC TÍNH GIÁ ĐÃ GIẢM\n`;
             formula += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
@@ -2089,7 +2092,7 @@ export default function ProductEntryForm({
             } else {
               formula += `${priceNum.toLocaleString('vi-VN')} × (1 + ${vatPercent}%) = ${roundedDiscountedPriceWithVat.toLocaleString('vi-VN')} ₫`;
             }
-            
+
             return (
               <div className="admin-app-field-compact admin-app-field-discounted-price">
                 <label className="admin-app-label-inline" title={formula}>Giá đã giảm</label>
@@ -2111,7 +2114,7 @@ export default function ProductEntryForm({
             const discountFactor = 1 - (promoDiscountPct > 0 ? promoDiscountPct / 100 : 0);
             const discountedPrice = priceNum * discountFactor;
             const roundedDiscountedPrice = Math.round(discountedPrice);
-            
+
             // Công thức chi tiết
             let formula = `CÔNG THỨC TÍNH THÀNH TIỀN\n`;
             formula += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
@@ -2119,7 +2122,7 @@ export default function ProductEntryForm({
             formula += `Giá đơn vị (sau chiết khấu, chưa VAT): ${roundedDiscountedPrice.toLocaleString('vi-VN')} ₫\n\n`;
             formula += `Tính toán:\n`;
             formula += `${quantity} × ${roundedDiscountedPrice.toLocaleString('vi-VN')} = ${subtotal.toLocaleString('vi-VN')} ₫`;
-            
+
             return (
               <div className="admin-app-field-compact admin-app-field-total">
                 <label className="admin-app-label-inline" title={formula}>Thành tiền</label>
@@ -2143,7 +2146,7 @@ export default function ProductEntryForm({
             formula += `VAT (${vatPercent}%): ${vatAmountCalc.toLocaleString('vi-VN')} ₫\n\n`;
             formula += `Tính toán:\n`;
             formula += `${subtotal.toLocaleString('vi-VN')} + ${vatAmountCalc.toLocaleString('vi-VN')} = ${totalAmount.toLocaleString('vi-VN')} ₫`;
-            
+
             return (
               <div className="admin-app-field-compact admin-app-field-grand-total">
                 <label className="admin-app-label-inline" title={formula}>Tổng tiền</label>

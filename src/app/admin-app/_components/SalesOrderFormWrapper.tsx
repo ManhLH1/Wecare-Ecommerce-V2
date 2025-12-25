@@ -36,8 +36,10 @@ export default function SalesOrderFormWrapper() {
         {/* Left Section: Brand & Title */}
         <div className="admin-app-header-left">
           <div className="admin-app-header-brand">
-            <div className="admin-app-title">Admin</div>
-            <span className="admin-app-badge admin-app-badge-version">V1.7</span>
+            <div className="admin-app-title">
+              {activeForm === 'SO' ? 'Tạo đơn bán chi tiết' : 'Tạo đơn báo giá chi tiết'}
+            </div>
+            <span className="admin-app-badge admin-app-badge-version">V1.8</span>
           </div>
           <div className="admin-app-subtitle">
             {activeForm === 'SO' ? 'Đơn hàng bán hàng' : 'Đơn hàng báo giá'}

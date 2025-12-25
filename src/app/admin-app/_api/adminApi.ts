@@ -117,12 +117,21 @@ export interface SaleOrderDetail {
   discount: number;
   discountedPrice: number;
   vat: number;
+  subtotal?: number; // Tổng tiền chưa VAT (tính từ API)
+  vatAmount?: number; // Tiền VAT (tính từ API)
   totalAmount: number;
   approver: string;
   deliveryDate: string;
   productCode?: string; // Mã sản phẩm
   productId?: string; // Product ID
   productGroupCode?: string; // Mã nhóm sản phẩm
+  note?: string; // Ghi chú
+  approvePrice?: boolean; // Duyệt giá
+  approveSupPrice?: boolean; // Duyệt giá sup
+  discountPercent?: number; // Chiết khấu %
+  discountAmount?: number; // Chiết khấu VNĐ
+  promotionText?: string; // Promotion text
+  invoiceSurcharge?: number; // Phụ phí hoá đơn
 }
 
 // Fetch customers with search
@@ -283,6 +292,25 @@ export const fetchSaleOrderDetails = async (
   }
 };
 
+// Fetch SOBG Details by SOBG ID (tương tự fetchSaleOrderDetails)
+export const fetchSOBGDetails = async (
+  sobgId?: string,
+  customerId?: string
+): Promise<SaleOrderDetail[]> => {
+  if (!sobgId) return [];
+  try {
+    const params: any = { sobgId };
+    if (customerId) params.customerId = customerId;
+    const response = await axios.get(`${BASE_URL}/sobg-details`, { params });
+    // Sort by STT descending (already sorted by API, but ensure it here too)
+    const details = response.data || [];
+    return details.sort((a: SaleOrderDetail, b: SaleOrderDetail) => (b.stt || 0) - (a.stt || 0));
+  } catch (error) {
+    console.error('Error fetching SOBG details:', error);
+    return [];
+  }
+};
+
 // Save Sale Order Details (create/update)
 export interface SaveSaleOrderDetailsRequest {
   soId: string;
@@ -379,7 +407,7 @@ export interface UpdateInventoryRequest {
   productCode: string;
   quantity: number; // Số lượng theo đơn vị chuẩn (base quantity)
   warehouseName?: string;
-  operation: 'subtract' | 'add' | 'reserve' | 'release' | 'final'; 
+  operation: 'subtract' | 'add' | 'reserve' | 'release' | 'final';
   // 'subtract' = trừ tồn kho trực tiếp (legacy, tạm thời vô hiệu hóa)
   // 'add' = cộng tồn kho trực tiếp (legacy, tạm thời vô hiệu hóa)
   // 'reserve' = giữ hàng (tăng ReservedQuantity) - dùng khi add sản phẩm vào đơn nháp
@@ -452,7 +480,7 @@ export const fetchPromotionOrders = async (
     if (totalAmount !== undefined) params.totalAmount = String(totalAmount);
     if (productCodes && productCodes.length > 0) params.productCodes = productCodes.join(",");
     if (productGroupCodes && productGroupCodes.length > 0) params.productGroupCodes = productGroupCodes.join(",");
-    
+
     const response = await axios.get(`${BASE_URL}/promotion-orders`, { params });
     return response.data;
   } catch (error: any) {
@@ -496,6 +524,123 @@ export const applyPromotionOrder = async (
   } catch (error: any) {
     console.error('Error applying promotion order:', error);
     throw new Error(error.response?.data?.details || 'Failed to apply promotion order');
+  }
+};
+
+// ============ SOBG (Sales Order Báo Giá) APIs ============
+
+export interface SOBaoGia {
+  id: string;
+  name: string;
+  soAuto?: string;
+  soCode?: string;
+  tenDonHang?: string;
+  vatText?: string;
+  vat?: number;
+  trangThaiBaoGia?: number;
+  loaiHoaDon?: number; // Loại hóa đơnOptionSet value
+  xuatHoaDon?: boolean;
+  khachHang?: {
+    id: string | null;
+    name: string;
+    maKhachHang: string;
+  };
+  createdon?: string;
+}
+
+/**
+ * Fetch danh sách SO Báo Giá theo customerId
+ * Filter: Trạng thái = "Đang báo giá", Status = Active
+ */
+export const fetchSOBaoGia = async (customerId?: string): Promise<SOBaoGia[]> => {
+  try {
+    const params: any = {};
+    if (customerId) params.customerId = customerId;
+    const response = await axios.get(`${BASE_URL}/get-sale-order-baogia`, { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching SO Báo Giá:', error);
+    throw error;
+  }
+};
+
+export interface SaveSOBGDetailsRequest {
+  sobgId: string; // SO Báo Giá ID
+  warehouseName?: string;
+  isVatOrder?: boolean;
+  customerIndustry?: number | null;
+  customerLoginId?: string;
+  customerId?: string;
+  userInfo?: {
+    username?: string;
+    name?: string;
+    email?: string;
+  };
+  products: Array<{
+    id?: string;
+    productId?: string;
+    productCode?: string;
+    productName: string;
+    productGroupCode?: string;
+    productCategoryLevel4?: string;
+    unitId?: string;
+    unit: string;
+    quantity: number;
+    price: number;
+    discountedPrice?: number;
+    originalPrice?: number;
+    vat: number;
+    vatAmount: number;
+    subtotal: number;
+    totalAmount: number;
+    stt: number;
+    deliveryDate?: string;
+    note?: string;
+    urgentOrder?: boolean;
+    approvePrice?: boolean;
+    approveSupPrice?: boolean;
+    approveSupPriceId?: string;
+    approver?: string;
+    discountPercent?: number;
+    discountAmount?: number;
+    promotionText?: string;
+    invoiceSurcharge?: number;
+  }>;
+}
+
+export interface SaveSOBGDetailsResponse {
+  success: boolean;
+  message: string;
+  savedDetails: any[];
+  totalAmount: number;
+  partialSuccess?: boolean;
+  failedProducts?: Array<{
+    productCode?: string;
+    productName?: string;
+    quantity?: number;
+    error?: string;
+    fullError?: any;
+  }>;
+  totalRequested?: number;
+  totalSaved?: number;
+  totalFailed?: number;
+}
+
+/**
+ * Lưu chi tiết SO Báo Giá (KHÔNG trừ tồn kho)
+ */
+export const saveSOBGDetails = async (
+  data: SaveSOBGDetailsRequest
+): Promise<SaveSOBGDetailsResponse> => {
+  try {
+    const response = await axios.post(`${BASE_URL}/save-sobg-details`, data);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error saving SOBG details:', error);
+    if (error.response?.data) {
+      throw new Error(error.response.data.details || error.response.data.error || 'Failed to save SOBG details');
+    }
+    throw error;
   }
 };
 

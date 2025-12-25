@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { fetchCustomers, fetchProducts, fetchUnits, fetchSaleOrders, fetchWarehouses } from '../_api/adminApi';
-import type { Customer, Product, Unit, SaleOrder, Warehouse } from '../_api/adminApi';
+import { fetchCustomers, fetchProducts, fetchUnits, fetchSaleOrders, fetchWarehouses, fetchSOBaoGia } from '../_api/adminApi';
+import type { Customer, Product, Unit, SaleOrder, Warehouse, SOBaoGia } from '../_api/adminApi';
 
 // Simple in-memory cache for API calls
 const cache = new Map<string, { data: any; timestamp: number }>();
@@ -231,3 +231,41 @@ export const useWarehouses = (customerId?: string, customerCode?: string) => {
   return { warehouses, loading, error };
 };
 
+export const useSaleOrderBaoGia = (customerId?: string) => {
+  const [soBaoGiaList, setSoBaoGiaList] = useState<SOBaoGia[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const cacheKey = `sobaogia-${customerId || 'all'}`;
+
+    // Check cache first
+    const cached = getCachedData<SOBaoGia[]>(cacheKey);
+    if (cached) {
+      setSoBaoGiaList(cached);
+      setLoading(false);
+      return;
+    }
+
+    const loadData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await fetchSOBaoGia(customerId || undefined);
+        setSoBaoGiaList(data);
+        setCachedData(cacheKey, data); // Cache the result
+      } catch (err: any) {
+        console.error('Error loading SO Bao Gia:', err);
+        setError(err.message || 'Failed to load SO Bao Gia');
+        setSoBaoGiaList([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Load immediately
+    loadData();
+  }, [customerId]);
+
+  return { soBaoGiaList, loading, error };
+};
