@@ -164,6 +164,7 @@ export default function ProductEntryForm({
   const [productSearch, setProductSearch] = useState('');
   const [productId, setProductId] = useState('');
   const [unitId, setUnitId] = useState('');
+  const [availableUnitsFromPrices, setAvailableUnitsFromPrices] = useState<any[]>([]);
   const [warehouseId, setWarehouseId] = useState('');
   const [selectedProductCode, setSelectedProductCode] = useState<string | undefined>();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -1055,6 +1056,30 @@ export default function ProductEntryForm({
         // Ưu tiên map theo unitName từ API (đã được lấy từ crdfd_onvi lookup)
         // Sau đó mới map theo crdfd_onvichuan
         let selectedPrice: any = null;
+        // Build list of units that have prices returned by API
+        let matchedUnits: any[] = [];
+        if (allPrices.length > 0 && units && units.length > 0) {
+          matchedUnits = units.filter((u) => {
+            const unitNamesToCheck = [
+              normalizeText((u as any)?.crdfd_name || ''),
+              normalizeText((u as any)?.crdfd_onvichuan || (u as any)?.crdfd_onvichuantext || '')
+            ];
+            return allPrices.some((p: any) => {
+              const apiNames = [
+                normalizeText(p.unitName || ''),
+                normalizeText(p.crdfd_onvichuan || '')
+              ];
+              return apiNames.some(n => n && unitNamesToCheck.includes(n));
+            });
+          });
+          if (matchedUnits.length > 0) {
+            setAvailableUnitsFromPrices(matchedUnits);
+          } else {
+            setAvailableUnitsFromPrices([]);
+          }
+        } else {
+          setAvailableUnitsFromPrices([]);
+        }
         if (allPrices.length > 0 && currentUnitName) {
           // Bước 1: Tìm theo unitName từ API (đã được lấy từ crdfd_onvi lookup) - chính xác nhất
           selectedPrice = allPrices.find((p: any) => {
@@ -1087,25 +1112,19 @@ export default function ProductEntryForm({
         const apiUnitName = selectedPrice?.unitName ?? result?.unitName ?? undefined;
         const apiPriceGroupText = selectedPrice?.priceGroupText ?? result?.priceGroupText ?? undefined;
 
-        // Tự động set đơn vị từ API CHỈ KHI:
-        // 1. CHƯA CÓ ĐƠN VỊ ĐƯỢC CHỌN (unitId và unit đều trống)
-        // 2. NGƯỜI DÙNG CHƯA CHỌN ĐƠN VỊ THỦ CÔNG (userSelectedUnitRef.current = false)
-        // 3. CHƯA SET TỪ API LẦN NÀO (hasSetUnitFromApiRef.current = false)
-        // KHÔNG BAO GIỜ set đơn vị nếu người dùng đã chọn đơn vị thủ công
-        if (apiUnitName && units.length > 0 && !hasSetUnitFromApiRef.current && !userSelectedUnitRef.current) {
-          const foundUnit = units.find((u) =>
-            u.crdfd_name.toLowerCase() === apiUnitName.toLowerCase()
-          );
+        // Tự động set đơn vị từ API khi có apiUnitName nếu người dùng chưa chọn đơn vị thủ công.
+        if (apiUnitName && units.length > 0 && !userSelectedUnitRef.current) {
+          const normApiUnitName = normalizeText(apiUnitName);
+          const unitsToSearch = matchedUnits && matchedUnits.length > 0 ? matchedUnits : units;
+          const foundUnit = unitsToSearch.find((u) => {
+            const n1 = normalizeText((u as any)?.crdfd_name || '');
+            const n2 = normalizeText((u as any)?.crdfd_onvichuan || (u as any)?.crdfd_onvichuantext || '');
+            return n1 === normApiUnitName || n2 === normApiUnitName;
+          });
           if (foundUnit) {
-            // CHỈ set nếu CHƯA CÓ unitId VÀ CHƯA CÓ unit (hoàn toàn chưa chọn đơn vị)
-            // VÀ người dùng chưa chọn đơn vị thủ công
-            const unitIdIsEmpty = !unitId || unitId === '' || unitId === null || unitId === undefined;
-            const unitIsEmpty = !unit || unit === '' || unit === null || unit === undefined;
-            if (unitIdIsEmpty && unitIsEmpty) {
-              setUnitId(foundUnit.crdfd_unitsid);
-              setUnit(foundUnit.crdfd_name);
-              hasSetUnitFromApiRef.current = true; // Đánh dấu đã set từ API
-            }
+            setUnitId(foundUnit.crdfd_unitsid);
+            setUnit(foundUnit.crdfd_name);
+            hasSetUnitFromApiRef.current = true;
           }
         }
 
@@ -1128,19 +1147,15 @@ export default function ProductEntryForm({
         const productVatPercent = productVatOptionValue !== undefined ? VAT_OPTION_MAP[Number(productVatOptionValue)] : undefined;
         const productIsVat = productVatPercent !== undefined && productVatPercent > 0;
 
-        // Áp dụng logic chọn giá
+        // Áp dụng logic chọn giá (đơn giản hoá để tránh mapping nhầm giữa giá có VAT / không VAT)
+        // - Nếu SO có VAT và SP có VAT => dùng priceNoVat (giá chưa VAT)
+        // - Các trường hợp khác => dùng priceWithVat (giá từ API hoặc fallback)
         if (soIsVat && productIsVat) {
-          // SO có VAT + Sản phẩm có VAT → dùng priceNoVat
+          // SO có VAT + SP có VAT: ưu tiên dùng giá chưa VAT (priceNoVat)
           basePrice = priceNoVat ?? null;
-        } else if (soIsVat && !productIsVat) {
-          // SO có VAT + Sản phẩm không VAT → dùng price
-          basePrice = priceWithVat ?? null;
-        } else if (!soIsVat && productIsVat) {
-          // SO không VAT + Sản phẩm có VAT → dùng price
-          basePrice = priceWithVat ?? null;
         } else {
-          // SO không VAT + Sản phẩm không VAT → dùng price
-          basePrice = priceWithVat ?? null;
+          // Các trường hợp khác dùng priceWithVat (fallback sang result.price nếu cần)
+          basePrice = priceWithVat ?? result?.price ?? null;
         }
 
         // Làm tròn & format giống PowerApps Text(..., "#,###")
@@ -1287,14 +1302,16 @@ export default function ProductEntryForm({
   ) || promotions[0];
 
   // Tính giá theo chiết khấu khi chọn "Theo chiết khấu"
+  // Use `discountPercent` prop (numeric) as source of truth for discount value,
+  // allowing parent to provide either selected preset or a custom "Khác" value.
   useEffect(() => {
     if (approvePrice && priceEntryMethod === 'Theo chiết khấu' && basePriceForDiscount > 0) {
-      const discountPercent = parseFloat(discountRate) || 0;
-      const discountedPrice = basePriceForDiscount - (basePriceForDiscount * discountPercent / 100);
+      const pct = Number(discountPercent) || 0;
+      const discountedPrice = basePriceForDiscount - (basePriceForDiscount * pct / 100);
       const roundedPrice = Math.round(discountedPrice);
       handlePriceChange(String(roundedPrice));
     }
-  }, [approvePrice, priceEntryMethod, discountRate, basePriceForDiscount]);
+  }, [approvePrice, priceEntryMethod, discountPercent, basePriceForDiscount]);
 
   // Calculate totals with promotion discount
   const recomputeTotals = (priceValue: string | number, qty: number, promoDiscountPct: number, vatPct: number) => {
@@ -1682,6 +1699,15 @@ export default function ProductEntryForm({
       setPriceEntryMethod('Nhập thủ công');
       setDiscountRate('1');
       setBasePriceForDiscount(0);
+
+      // Reset price to API-provided data (apiPrice) when user turns off approval.
+      // If apiPrice is not available, clear price input.
+      if (apiPrice !== null && apiPrice !== undefined && apiPrice > 0) {
+        // Use handlePriceChange to ensure formatting/behavior is consistent
+        handlePriceChange(String(apiPrice));
+      } else {
+        handlePriceChange('');
+      }
     } else {
       // KHI BẬT "DUYỆT GIÁ": Chiết khấu 1 = 0 (không tính chiết khấu từ promotion)
       setDiscountPercent(0);
@@ -1689,45 +1715,148 @@ export default function ProductEntryForm({
       // Recompute totals với chiết khấu = 0
       recomputeTotals(price, quantity, 0, vatPercent);
     }
-  }, [approvePrice, setApprover]);
+  }, [approvePrice, setApprover, apiPrice]);
 
   return (
     <div className="admin-app-card-compact">
-      <div className="admin-app-card-title-row">
+      <div className="admin-app-card-title-row" style={{ alignItems: 'center', gap: '12px' }}>
         <h3 className="admin-app-card-title">Thông tin sản phẩm</h3>
-        {showInlineActions && (
-          <div className="admin-app-card-actions-block">
-            <div className="admin-app-card-actions">
-              <button
-                type="button"
-                className="admin-app-mini-btn admin-app-mini-btn-secondary"
-                onClick={handleResetAllWithConfirm}
-                disabled={isSaving || isAdding || isLoadingDetails}
-                title="Reset toàn bộ form"
-              >
-                ↺ Reset
-              </button>
-              <button
-                type="button"
-                className="admin-app-mini-btn admin-app-mini-btn-primary"
-                onClick={handleSaveWithInventoryCheck}
-                disabled={isSaving || !hasUnsavedProducts}
-                title={!hasUnsavedProducts ? "Chưa có sản phẩm mới cần lưu" : "Lưu đơn hàng"}
-              >
-                {isSaving ? (
-                  <>
-                    <div className="admin-app-spinner admin-app-spinner-small" style={{ marginRight: '4px' }}></div>
-                    Đang lưu...
-                  </>
-                ) : (
-                  '💾 Lưu'
-                )}
-              </button>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <label className={`admin-app-chip-toggle ${urgentOrder ? 'is-active' : ''} ${isFormDisabled ? 'is-disabled' : ''}`} style={{ marginRight: 8 }}>
+            <input
+              type="checkbox"
+              checked={urgentOrder}
+              onChange={(e) => setUrgentOrder(e.target.checked)}
+              disabled={isFormDisabled}
+            />
+            <span>Đơn hàng gấp</span>
+          </label>
+          <label className={`admin-app-chip-toggle ${approvePrice ? 'is-active' : ''} ${isFormDisabled ? 'is-disabled' : ''}`}>
+            <input
+              type="checkbox"
+              checked={approvePrice}
+              onChange={(e) => {
+                setApprovePrice(e.target.checked);
+                if (!e.target.checked) setApprover('');
+              }}
+              disabled={isFormDisabled}
+            />
+            <span>Duyệt giá</span>
+          </label>
+          {showInlineActions && (
+            <div className="admin-app-card-actions-block">
+              <div className="admin-app-card-actions">
+                <button
+                  type="button"
+                  className="admin-app-mini-btn admin-app-mini-btn-secondary"
+                  onClick={handleResetAllWithConfirm}
+                  disabled={isSaving || isAdding || isLoadingDetails}
+                  title="Reset toàn bộ form"
+                >
+                  ↺ Reset
+                </button>
+                <button
+                  type="button"
+                  className="admin-app-mini-btn admin-app-mini-btn-primary"
+                  onClick={handleSaveWithInventoryCheck}
+                  disabled={isSaving || !hasUnsavedProducts}
+                  title={!hasUnsavedProducts ? "Chưa có sản phẩm mới cần lưu" : "Lưu đơn hàng"}
+                >
+                  {isSaving ? (
+                    <>
+                      <div className="admin-app-spinner admin-app-spinner-small" style={{ marginRight: '4px' }}></div>
+                      Đang lưu...
+                    </>
+                  ) : (
+                    '💾 Lưu'
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="admin-app-form-compact">
+        {/* Price approval UI moved into Product Entry */}
+        {approvePrice && (
+          <div className="admin-app-form-row-compact admin-app-form-row-approval" style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #e2e8f0' }}>
+            <div className="admin-app-field-compact">
+              <label className="admin-app-label-inline">Phương thức</label>
+              <Dropdown
+                options={[
+                  { value: 'Nhập thủ công', label: 'Nhập thủ công' },
+                  { value: 'Theo chiết khấu', label: 'Theo chiết khấu' },
+                ]}
+                value={priceEntryMethod}
+                onChange={(value) => setPriceEntryMethod(value as 'Nhập thủ công' | 'Theo chiết khấu')}
+                placeholder="Chọn phương thức"
+                disabled={isFormDisabled}
+              />
+            </div>
+
+            {priceEntryMethod === 'Theo chiết khấu' && (
+              <div className="admin-app-field-compact" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
+                <div style={{ flex: 1 }}>
+                  <label className="admin-app-label-inline">Chiết khấu (%)</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <Dropdown
+                        options={[
+                          ...discountRates.map((rate) => ({ value: rate, label: rate })),
+                          { value: 'Khác', label: 'Khác' },
+                        ]}
+                        value={discountRate}
+                        onChange={(value) => {
+                          setDiscountRate(value);
+                          if (value === 'Khác') {
+                            setDiscountPercent(0);
+                          } else {
+                            const num = Number(value);
+                            setDiscountPercent(isNaN(num) ? 0 : num);
+                          }
+                        }}
+                        placeholder="Chọn tỉ lệ"
+                        disabled={isFormDisabled}
+                      />
+                    </div>
+                    <div style={{ width: '100px', flex: '0 0 100px' }}>
+                      <input
+                        type="number"
+                        className="admin-app-input admin-app-input-compact"
+                        min={0}
+                        max={100}
+                        value={discountRate === 'Khác' ? discountPercent : (isNaN(Number(discountRate)) ? discountPercent : Number(discountRate))}
+                        onChange={(e) => {
+                          const v = e.target.value === '' ? 0 : Number(e.target.value);
+                          setDiscountPercent(isNaN(v) ? 0 : v);
+                        }}
+                        disabled={isFormDisabled || discountRate !== 'Khác'}
+                        placeholder="Nhập %"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="admin-app-field-compact">
+              <label className="admin-app-label-inline">
+                Người duyệt
+                {approvePrice && <span className="admin-app-required">*</span>}
+              </label>
+              <Dropdown
+                options={approversList.map((name) => ({ value: name, label: name }))}
+                value={approver}
+                onChange={(value) => setApprover(value)}
+                placeholder="Chọn người duyệt"
+                disabled={isFormDisabled}
+              />
+              {approvePrice && !approver && (
+                <div className="admin-app-error-inline">Vui lòng chọn người duyệt</div>
+              )}
             </div>
           </div>
         )}
-      </div>
-      <div className="admin-app-form-compact">
         {/* Row 1: Product, Unit, Warehouse */}
         <div className="admin-app-form-row-compact admin-app-product-row-1">
           <div className="admin-app-field-compact admin-app-field-product">
@@ -1820,7 +1949,7 @@ export default function ProductEntryForm({
           <div className="admin-app-field-compact">
             <label className="admin-app-label-inline">Đơn vị</label>
             <Dropdown
-              options={units.map((u) => ({
+              options={(availableUnitsFromPrices && availableUnitsFromPrices.length > 0 ? availableUnitsFromPrices : units).map((u) => ({
                 value: u.crdfd_unitsid,
                 label: u.crdfd_name,
                 ...u,
@@ -1883,7 +2012,23 @@ export default function ProductEntryForm({
           </div>
 
           <div className="admin-app-field-compact">
-            <label className="admin-app-label-inline">Giá</label>
+            <label className="admin-app-label-inline">
+              Giá
+              {priceGroupText && (
+                <span className="admin-app-price-group-badge" style={{
+                  marginLeft: '8px',
+                  fontSize: '10px',
+                  fontWeight: '500',
+                  color: '#059669',
+                  backgroundColor: '#ecfdf5',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  border: '1px solid #a7f3d0'
+                }}>
+                  {priceGroupText}
+                </span>
+              )}
+            </label>
             <div className="admin-app-input-wrapper" style={{ position: 'relative' }}>
               {priceLoading && (
                 <div className="admin-app-input-loading-spinner">
@@ -2063,34 +2208,31 @@ export default function ProductEntryForm({
         {/* Row 3: Giá đã giảm, Subtotal/Total (only after product selected) */}
         <div className="admin-app-form-row-compact admin-app-form-row-summary admin-app-form-row-summary-no-stock">
           {hasSelectedProduct && (() => {
-            // Tính giá đã giảm (giá đơn vị sau khi áp dụng chiết khấu và VAT)
+            // Tính giá đã giảm (giá đơn vị sau khi áp dụng chiết khấu, KHÔNG bao gồm VAT)
             // Logic giống với recomputeTotals để đảm bảo tính toán nhất quán
             const priceNum = parseFloat(String(price)) || 0;
             const promoDiscountPct = discountPercent || promotionDiscountPercent || 0;
             const discountFactor = 1 - (promoDiscountPct > 0 ? promoDiscountPct / 100 : 0);
             const discountedPrice = priceNum * discountFactor;
-            // Tính giá đã giảm bao gồm VAT
-            const discountedPriceWithVat = discountedPrice * (1 + (vatPercent || 0) / 100);
             // Làm tròn để hiển thị giống với cách tính trong recomputeTotals
-            const roundedDiscountedPriceWithVat = Math.round(discountedPriceWithVat);
             const roundedDiscountedPrice = Math.round(discountedPrice);
 
-            // Công thức: Giá đã giảm = (Giá gốc × (1 - Chiết khấu%)) × (1 + VAT%)
+            // Công thức: Giá đã giảm = Giá gốc × (1 - Chiết khấu%)
             let formula = `CÔNG THỨC TÍNH GIÁ ĐÃ GIẢM\n`;
             formula += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
             formula += `Giá gốc: ${priceNum.toLocaleString('vi-VN')} ₫\n`;
             if (promoDiscountPct > 0) {
               formula += `Chiết khấu: ${promoDiscountPct}%\n`;
-              formula += `Giá sau chiết khấu: ${roundedDiscountedPrice.toLocaleString('vi-VN')} ₫\n`;
+              formula += `Giá đã giảm: ${roundedDiscountedPrice.toLocaleString('vi-VN')} ₫\n`;
             } else {
               formula += `Chiết khấu: 0%\n`;
+              formula += `Giá đã giảm: ${roundedDiscountedPrice.toLocaleString('vi-VN')} ₫\n`;
             }
-            formula += `VAT: ${vatPercent}%\n\n`;
-            formula += `Tính toán:\n`;
+            formula += `\nTính toán:\n`;
             if (promoDiscountPct > 0) {
-              formula += `${roundedDiscountedPrice.toLocaleString('vi-VN')} × (1 + ${vatPercent}%) = ${roundedDiscountedPriceWithVat.toLocaleString('vi-VN')} ₫`;
+              formula += `${priceNum.toLocaleString('vi-VN')} × (1 - ${promoDiscountPct}%) = ${roundedDiscountedPrice.toLocaleString('vi-VN')} ₫`;
             } else {
-              formula += `${priceNum.toLocaleString('vi-VN')} × (1 + ${vatPercent}%) = ${roundedDiscountedPriceWithVat.toLocaleString('vi-VN')} ₫`;
+              formula += `${priceNum.toLocaleString('vi-VN')} ₫ (không chiết khấu)`;
             }
 
             return (
@@ -2099,7 +2241,7 @@ export default function ProductEntryForm({
                 <input
                   type="text"
                   className="admin-app-input admin-app-input-compact admin-app-input-readonly admin-app-input-money"
-                  value={`${roundedDiscountedPriceWithVat.toLocaleString('vi-VN')} ₫`}
+                  value={`${roundedDiscountedPrice.toLocaleString('vi-VN')} ₫`}
                   readOnly
                   title={formula}
                 />

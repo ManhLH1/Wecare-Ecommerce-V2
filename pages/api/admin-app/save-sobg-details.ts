@@ -244,9 +244,9 @@ export default async function handler(
                     // Data fields (Mapped from Metadata)
                     "crdfd_soluong": product.quantity,
                     "crdfd_ongia": product.price, // Schema name typo: ongia
+                    // Map VAT percent -> OptionSet value for CRM (crdfd_gtgt)
                     "crdfd_ieuchinhgtgt": mapVatPercentToChoice(product.vat),
-
-                    "crdfd_gtgt": product.vatAmount, // GTGT Value
+                    "crdfd_gtgt": mapVatPercentToChoice(product.vat),
                     "crdfd_tongtienkhongvat": product.subtotal, // Total exclude VAT
                     // "crdfd_thanhtien": product.totalAmount, // Field not found in metadata. Skip.
 
@@ -260,7 +260,7 @@ export default async function handler(
                     "crdfd_chietkhauvn": product.discountVND || 0,
                     "crdfd_chietkhau2": product.discount2 ? product.discount2 / 100 : 0,
                     "crdfd_giack1": product.priceDiscount1 || 0,
-                    "crdfd_giack2": product.priceDiscount2 || 0,
+                    "crdfd_giack2": product.discountedPrice || product.priceDiscount2 || 0,
                     "crdfd_phu_phi_hoa_don": product.surcharge || 0,
                 };
 

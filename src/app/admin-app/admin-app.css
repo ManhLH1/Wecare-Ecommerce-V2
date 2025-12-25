@@ -1654,8 +1654,33 @@
 
 /* Ensure wrapper allows dropdown overflow */
 .admin-app-wrapper {
-  overflow: visible !important;
+  overflow: hidden !important;
   position: relative;
+  height: calc(100vh - 56px); /* fit viewport under header */
+}
+
+/* Ensure root elements occupy full height so our calc sizing works reliably */
+html, body, #__next {
+  height: 100%;
+}
+
+/* Layout: make wrapper a column so content and table can be sized independently */
+.admin-app-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Content area should take remaining space and avoid page scroll */
+.admin-app-content-compact {
+  flex: 1 1 auto;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Keep table area at bottom and scroll internally */
+.admin-app-table-wrapper {
+  flex: 0 0 260px; /* fixed area for table; adjust as needed */
+  overflow: auto;
 }
 
 /* Content containers must allow dropdown overflow */
@@ -1666,6 +1691,55 @@
 .admin-app-column-left,
 .admin-app-column-right {
   overflow: visible !important;
+  min-height: 0; /* allow flex children to shrink and avoid internal scrollbars */
+}
+
+/* Responsive: on smaller viewports, make content fit viewport and let left column scroll.
+   Ensure product info (right column) expands to show full details without internal scroll. */
+@media (max-width: 1200px), (max-height: 900px) {
+  .admin-app-content-compact {
+    height: calc(100vh - 56px); /* reserve space for top header */
+    display: flex;
+    overflow: hidden; /* avoid page-level scroll */
+  }
+
+  /* Left column can scroll if it overflows, but keep fixed width */
+  .admin-app-column-left {
+    flex: 0 0 320px;
+    max-height: 100%;
+    overflow: auto;
+    min-height: 0;
+  }
+
+  /* Right column should expand to full available height and not introduce internal scroll */
+  .admin-app-column-right {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-height: 100%;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  /* Make the product card and its form layout stretch to available height */
+  .admin-app-column-right .admin-app-card-compact {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  /* Form area should use remaining space but avoid its own scrollbar; inputs will flow */
+  .admin-app-column-right .admin-app-form-compact {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+
+  /* Keep table wrapper at bottom but allow page to avoid extra height */
+  .admin-app-table-wrapper {
+    flex: 0 0 auto;
+  }
 }
 
 /* Compact Header - 40px */

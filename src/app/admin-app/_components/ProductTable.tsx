@@ -1,6 +1,7 @@
-'use client';
+ 'use client';
 
 import { useMemo, useState } from 'react';
+import { showToast } from '../../../components/ToastManager';
 
 interface ProductItem {
   id: string;
@@ -50,6 +51,7 @@ interface ProductTableProps {
   soId?: string; // SO ID để update
   warehouseName?: string; // Warehouse name
   isVatOrder?: boolean; // Is VAT order
+  isSOBG?: boolean; // nếu true gọi API deactivate SOBG detail thay vì SOD
 }
 
 export default function ProductTable({ 
@@ -63,20 +65,45 @@ export default function ProductTable({
   soId,
   warehouseName,
   isVatOrder
+  , isSOBG = false
 }: ProductTableProps) {
   const [editingQuantityId, setEditingQuantityId] = useState<string | null>(null);
   const [editingQuantityValue, setEditingQuantityValue] = useState<string>('');
   const [updatingProductId, setUpdatingProductId] = useState<string | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmingProduct, setConfirmingProduct] = useState<ProductItem | null>(null);
+  const [deactivating, setDeactivating] = useState(false);
 
   const handleDelete = (id: string) => {
     const productToDelete = products.find((p) => p.id === id);
     if (productToDelete) {
-      // Gọi callback để parent component xử lý (cộng lại tồn kho)
-      if (onDelete) {
-        onDelete(productToDelete);
+      // If product has been saved to CRM (isSodCreated) ask for confirmation and deactivate first
+      // Consider a product saved to CRM only if isSodCreated === true AND id looks like a GUID.
+      const GUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const isSaved = productToDelete.isSodCreated === true && GUID_PATTERN.test(String(productToDelete.id));
+
+      const performRemoval = async (prod?: ProductItem) => {
+        try {
+          // Call parent onDelete to handle inventory adjustments (if provided)
+          if (onDelete) {
+            await onDelete(prod || productToDelete);
+          }
+        } catch (err: any) {
+          console.warn('Error in onDelete handler:', err);
+        } finally {
+          // Remove from UI list regardless of onDelete result
+          setProducts(products.filter((p) => p.id !== id));
+        }
+      };
+
+      if (!isSaved) {
+        // Unsaved products: remove immediately without confirmation
+        performRemoval();
+        return;
       }
-      // Xóa sản phẩm khỏi danh sách
-      setProducts(products.filter((p) => p.id !== id));
+      // Saved products: show custom confirmation modal
+      setConfirmingProduct(productToDelete);
+      setShowConfirmModal(true);
     }
   };
 
@@ -186,6 +213,45 @@ export default function ProductTable({
     } finally {
       setUpdatingProductId(null);
     }
+  };
+
+  const handleConfirmModalYes = async () => {
+    if (!confirmingProduct) return;
+    setDeactivating(true);
+    try {
+      const apiEndpoint = isSOBG ? '/api/admin-app/deactivate-sobg-detail' : '/api/admin-app/deactivate-sale-order-detail';
+      const resp = await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ detailId: confirmingProduct.id }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        console.error('Deactivation failed:', data);
+        showToast.error(data.details?.error || data.error || 'Không thể vô hiệu hoá sản phẩm');
+        return;
+      }
+      showToast.success('Đã vô hiệu hoá sản phẩm thành công');
+      // perform onDelete and remove from list
+      try {
+        if (onDelete) await onDelete(confirmingProduct);
+      } catch (err: any) {
+        console.warn('Error in onDelete after deactivate:', err);
+      }
+      setProducts(products.filter(p => p.id !== confirmingProduct.id));
+    } catch (err: any) {
+      console.error('Error deactivating product:', err);
+      showToast.error(err?.message || 'Lỗi khi vô hiệu hoá sản phẩm');
+    } finally {
+      setDeactivating(false);
+      setShowConfirmModal(false);
+      setConfirmingProduct(null);
+    }
+  };
+
+  const handleConfirmModalNo = () => {
+    setShowConfirmModal(false);
+    setConfirmingProduct(null);
   };
 
   const showSurchargeColumn = 
@@ -387,6 +453,37 @@ export default function ProductTable({
         </tbody>
       </table>
       </div>
+      {/* Confirmation Modal */}
+      {showConfirmModal && confirmingProduct && (
+        <div className="admin-app-popup-overlay">
+          <div className="admin-app-popup" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+            <div className="admin-app-popup-header">
+              <h3 id="confirm-modal-title" className="admin-app-popup-title">Xác nhận</h3>
+            </div>
+            <div className="admin-app-popup-content">
+              <p>{`Sản phẩm "${confirmingProduct.productName}" đã được lưu. Bạn có chắc muốn vô hiệu hóa (deactivate) nó?`}</p>
+            </div>
+            <div className="admin-app-popup-actions" style={{ justifyContent: 'flex-end', gap: '8px' }}>
+              <button
+                type="button"
+                className="admin-app-btn admin-app-btn-secondary"
+                onClick={handleConfirmModalNo}
+                disabled={deactivating}
+              >
+                Huỷ
+              </button>
+              <button
+                type="button"
+                className="admin-app-btn admin-app-btn-primary"
+                onClick={handleConfirmModalYes}
+                disabled={deactivating}
+              >
+                {deactivating ? 'Đang vô hiệu...' : 'Vô hiệu hoá'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

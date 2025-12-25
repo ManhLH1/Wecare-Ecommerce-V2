@@ -301,9 +301,11 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     const isNonVat = vatPercent === 0;
     const invoiceSurchargeRate = isHoKinhDoanh && isNonVat ? 0.015 : 0;
 
-    // Calculate discounted price (giá đã giảm)
-    // For now, use price directly; in future integrate with promotion logic
-    const discountedPriceCalc = priceNum * (1 - discountPercent / 100) - discountAmount;
+    // Calculate discounted price (giá đã giảm) - ensure discounted price EXCLUDES VAT.
+    // If input price includes VAT (common in UI), remove VAT first before applying discounts.
+    const vatRate = vatPercent || 0;
+    const basePriceExVat = vatRate > 0 ? priceNum / (1 + vatRate / 100) : priceNum;
+    const discountedPriceCalc = basePriceExVat * (1 - discountPercent / 100) - discountAmount;
     const finalPrice = discountedPriceCalc * (1 + invoiceSurchargeRate);
 
     // Check if product already exists with same productCode/productName, unit, and price
@@ -550,6 +552,66 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       setDiscountPercent(0);
       setDiscountAmount(0);
       setPromotionText('');
+      // Nếu tất cả sản phẩm đã lưu thành công (không partial) => reload danh sách chi tiết từ CRM
+      if (!result.partialSuccess && (!result.totalFailed || result.totalFailed === 0)) {
+        try {
+          const updatedDetails = await fetchSOBGDetails(soId, customerId);
+          const mappedProducts: ProductItem[] = updatedDetails.map((detail: SaleOrderDetail) => {
+            const subtotal = detail.subtotal ?? ((detail.discountedPrice || detail.price) * detail.quantity);
+            const vatAmount = detail.vatAmount ?? (subtotal * detail.vat / 100);
+            return {
+              id: detail.id,
+              stt: detail.stt,
+              productCode: detail.productCode,
+              productId: detail.productId,
+              productGroupCode: detail.productGroupCode,
+              productName: detail.productName,
+              unit: detail.unit,
+              quantity: detail.quantity,
+              price: detail.price,
+              surcharge: detail.surcharge || 0,
+              discount: detail.discount || 0,
+              discountedPrice: detail.discountedPrice || detail.price,
+              vat: detail.vat,
+              subtotal: detail.subtotal ?? subtotal,
+              vatAmount: detail.vatAmount ?? vatAmount,
+              totalAmount: detail.totalAmount,
+              approver: detail.approver || '',
+              deliveryDate: detail.deliveryDate || '',
+              warehouse: warehouse,
+              note: detail.note || '',
+              approvePrice: detail.approvePrice || false,
+              approveSupPrice: detail.approveSupPrice || false,
+              discountPercent: detail.discountPercent || 0,
+              discountAmount: detail.discountAmount || 0,
+              promotionText: detail.promotionText || '',
+              invoiceSurcharge: detail.invoiceSurcharge || 0,
+              isSodCreated: true,
+              isModified: false,
+              originalQuantity: detail.quantity,
+            };
+          });
+          mappedProducts.sort((a, b) => (b.stt || 0) - (a.stt || 0));
+          setProductList(mappedProducts);
+        } catch (reloadError) {
+          console.error('Error reloading SOBG details after save:', reloadError);
+          // If reload fails, but result.savedDetails provided, mark those saved in UI
+          if (result.savedDetails && result.savedDetails.length > 0) {
+            setProductList(prevList => {
+              const savedCodes = new Set(result.savedDetails.map((p: any) => p.productCode).filter(Boolean));
+              return prevList.map(item => item.productCode && savedCodes.has(item.productCode) ? { ...item, isSodCreated: true } : item);
+            });
+          }
+        }
+      } else {
+        // Nếu có partial success, chỉ cập nhật các sản phẩm đã được lưu theo response.savedDetails nếu có
+        if (result.savedDetails && result.savedDetails.length > 0) {
+          setProductList(prevList => {
+            const savedCodes = new Set(result.savedDetails.map((p: any) => p.productCode).filter(Boolean));
+            return prevList.map(item => item.productCode && savedCodes.has(item.productCode) ? { ...item, isSodCreated: true } : item);
+          });
+        }
+      }
 
       setIsSaving(false);
     } catch (error: any) {
@@ -867,95 +929,13 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
                 />
               </div>
 
-              <div className="admin-app-checkboxes-inline admin-app-checkboxes-inline-right">
-                <label className={`admin-app-chip-toggle ${urgentOrder ? 'is-active' : ''} ${(!customerId || !soId) ? 'is-disabled' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={urgentOrder}
-                    onChange={(e) => setUrgentOrder(e.target.checked)}
-                    disabled={!customerId || !soId}
-                  />
-                  <span>Đơn hàng gấp</span>
-                </label>
-                <label className={`admin-app-chip-toggle ${approvePrice ? 'is-active' : ''} ${(!customerId || !soId) ? 'is-disabled' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={approvePrice}
-                    onChange={(e) => {
-                      setApprovePrice(e.target.checked);
-                      // Reset approver when "Duyệt giá" is unchecked
-                      if (!e.target.checked) {
-                        setApprover('');
-                      }
-                    }}
-                    disabled={!customerId || !soId}
-                  />
-                  <span>Duyệt giá</span>
-                </label>
-              </div>
-
-              {/* Price Approval Section - Moved from ProductEntryForm */}
-              {approvePrice && (
-                <div className="admin-app-form-row-compact admin-app-form-row-approval" style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
-                  <div className="admin-app-field-compact">
-                    <label className="admin-app-label-inline">Phương thức</label>
-                    <Dropdown
-                      options={[
-                        { value: 'Nhập thủ công', label: 'Nhập thủ công' },
-                        { value: 'Theo chiết khấu', label: 'Theo chiết khấu' },
-                      ]}
-                      value={priceEntryMethod}
-                      onChange={(value) => {
-                        setPriceEntryMethod(value as 'Nhập thủ công' | 'Theo chiết khấu');
-                      }}
-                      placeholder="Chọn phương thức"
-                      disabled={!customerId || !soId}
-                    />
-                  </div>
-
-                  {priceEntryMethod === 'Theo chiết khấu' && (
-                    <div className="admin-app-field-compact">
-                      <label className="admin-app-label-inline">Chiết khấu (%)</label>
-                      <Dropdown
-                        options={discountRates.map((rate) => ({
-                          value: rate,
-                          label: rate,
-                        }))}
-                        value={discountRate}
-                        onChange={(value) => setDiscountRate(value)}
-                        placeholder="Chọn tỉ lệ"
-                        disabled={!customerId || !soId}
-                      />
-                    </div>
-                  )}
-
-                  <div className="admin-app-field-compact">
-                    <label className="admin-app-label-inline">
-                      Người duyệt
-                      {approvePrice && <span className="admin-app-required">*</span>}
-                    </label>
-                    <Dropdown
-                      options={approversList.map((name) => ({
-                        value: name,
-                        label: name,
-                      }))}
-                      value={approver}
-                      onChange={(value) => setApprover(value)}
-                      placeholder="Chọn người duyệt"
-                      disabled={!customerId || !soId}
-                    />
-                    {approvePrice && !approver && (
-                      <div className="admin-app-error-inline">Vui lòng chọn người duyệt</div>
-                    )}
-                  </div>
-                </div>
-              )}
+              {/* Removed urgent checkbox from order-info (moved into ProductEntryForm) */}
             </div>
           </div>
         </div>
 
         {/* Right Column - Product Entry (70%) */}
-        <div className="admin-app-column-right">
+        <div className="admin-app-column-right" style={{ flex: '1 1 70%', minWidth: 0 }}>
           <ProductEntryForm
             disableInventoryReserve={true}
             isAdding={isAdding}
@@ -1032,6 +1012,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           invoiceType={selectedSo?.loaiHoaDon} // Pass invoiceType for surcharge column
           vatChoice={selectedSo?.vat} // Pass vatChoice for surcharge column
           customerIndustry={customerIndustry} // Pass customerIndustry for surcharge column
+          isSOBG={true}
           onDelete={(product) => {
             // Logic xóa
             const newList = productList.filter(p => p.id !== product.id);
