@@ -765,7 +765,6 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setPromotionText('');
     setProductList([]);
     setNote('');
-    setInvoiceSurcharge(0 as any);
   };
 
   const handleRefresh = async () => {

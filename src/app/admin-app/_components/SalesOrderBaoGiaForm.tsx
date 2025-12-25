@@ -40,6 +40,8 @@ interface ProductItem {
   approveSupPriceId?: string;
   discountPercent?: number;
   discountAmount?: number;
+  discount2?: number;
+  discount2Enabled?: boolean;
   promotionText?: string;
   invoiceSurcharge?: number; // Phụ phí hoá đơn
   createdOn?: string;
