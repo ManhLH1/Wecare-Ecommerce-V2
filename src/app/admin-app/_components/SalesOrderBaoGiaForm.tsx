@@ -91,6 +91,8 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   const [priceEntryMethod, setPriceEntryMethod] = useState<'Nhập thủ công' | 'Theo chiết khấu'>('Nhập thủ công');
   const [discountRate, setDiscountRate] = useState<string>('1');
   const [discountPercent, setDiscountPercent] = useState(0);
+  const [discount2, setDiscount2] = useState(0);
+  const [discount2Enabled, setDiscount2Enabled] = useState(false);
 
   // Danh sách người duyệt
   const approversList = [
@@ -243,6 +245,14 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             discountAmount: detail.discountAmount || 0,
             promotionText: detail.promotionText || '',
             invoiceSurcharge: detail.invoiceSurcharge || 0,
+            // Map chiết khấu 2 (stored as decimal or percent)
+            discount2: (() => {
+              const raw = (detail as any).crdfd_chietkhau2 ?? (detail as any).chietKhau2 ?? (detail as any).discount2 ?? 0;
+              const num = Number(raw) || 0;
+              if (num > 0 && num <= 1) return Math.round(num * 100);
+              return num;
+            })(),
+            discount2Enabled: Boolean((detail as any).crdfd_chietkhau2 ?? (detail as any).chietKhau2 ?? (detail as any).discount2),
             isSodCreated: true,
             isModified: false, // Mặc định chưa sửa
             originalQuantity: detail.quantity, // Lưu số lượng gốc
@@ -490,6 +500,8 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           discountPercent: item.discountPercent,
           discountAmount: item.discountAmount,
           promotionText: item.promotionText,
+          discount2: item.discount2 ?? 0,
+          discount2Enabled: item.discount2Enabled ?? false,
           invoiceSurcharge: item.invoiceSurcharge,
         };
       });
@@ -985,6 +997,10 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             setApprover={setApprover}
             discountPercent={discountPercent}
             setDiscountPercent={setDiscountPercent}
+            discount2={discount2}
+            setDiscount2={setDiscount2}
+            discount2Enabled={discount2Enabled}
+            setDiscount2Enabled={setDiscount2Enabled}
             discountAmount={discountAmount}
             setDiscountAmount={setDiscountAmount}
             promotionText={promotionText}

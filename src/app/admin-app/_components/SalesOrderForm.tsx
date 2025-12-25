@@ -40,6 +40,8 @@ interface ProductItem {
   approveSupPriceId?: string;
   discountPercent?: number;
   discountAmount?: number;
+  discount2?: number;
+  discount2Enabled?: boolean;
   promotionText?: string;
   invoiceSurcharge?: number; // Phụ phí hoá đơn
   createdOn?: string;
@@ -90,6 +92,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const [priceEntryMethod, setPriceEntryMethod] = useState<'Nhập thủ công' | 'Theo chiết khấu'>('Nhập thủ công');
   const [discountRate, setDiscountRate] = useState<string>('1');
   const [discountPercent, setDiscountPercent] = useState(0);
+  const [discount2, setDiscount2] = useState(0);
+  const [discount2Enabled, setDiscount2Enabled] = useState(false);
 
   // Danh sách người duyệt
   const approversList = [
@@ -218,6 +222,14 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             productId: detail.productId, // Lấy từ API
             productGroupCode: detail.productGroupCode, // Lấy từ API
             productName: detail.productName,
+            // Map chiết khấu 2 from backend (stored as decimal like 0.05 or percent)
+            discount2: (() => {
+              const raw = (detail as any).crdfd_chietkhau2 ?? (detail as any).chietKhau2 ?? (detail as any).discount2 ?? 0;
+              const num = Number(raw) || 0;
+              if (num > 0 && num <= 1) return Math.round(num * 100);
+              return num;
+            })(),
+            discount2Enabled: Boolean((detail as any).crdfd_chietkhau2 ?? (detail as any).chietKhau2 ?? (detail as any).discount2),
             unit: detail.unit,
             quantity: detail.quantity,
             price: detail.price,
@@ -502,6 +514,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           approver: item.approver,
           discountPercent: item.discountPercent,
           discountAmount: item.discountAmount,
+            // Secondary discount (Chiết khấu 2) - percent value (e.g., 5 = 5%)
+            discount2: item.discount2 ?? 0,
+            discount2Enabled: item.discount2Enabled ?? false,
           promotionText: item.promotionText,
           invoiceSurcharge: item.invoiceSurcharge,
         };
@@ -1452,6 +1467,10 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             setApprover={setApprover}
             discountPercent={discountPercent}
             setDiscountPercent={setDiscountPercent}
+            discount2={discount2}
+            setDiscount2={setDiscount2}
+            discount2Enabled={discount2Enabled}
+            setDiscount2Enabled={setDiscount2Enabled}
             discountAmount={discountAmount}
             setDiscountAmount={setDiscountAmount}
             promotionText={promotionText}
