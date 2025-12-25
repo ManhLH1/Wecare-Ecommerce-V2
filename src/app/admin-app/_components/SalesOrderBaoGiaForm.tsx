@@ -611,6 +611,99 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     setProductList([]);
   };
 
+  // Handler để update một sản phẩm đơn lẻ (Inline Edit)
+  const handleUpdateProduct = async (product: ProductItem) => {
+    if (!soId) {
+      showToast.error('Vui lòng chọn SOBG trước khi cập nhật.');
+      return;
+    }
+
+    if (!product.id) {
+      showToast.error('Không thể cập nhật: sản phẩm chưa có ID.');
+      return;
+    }
+
+    const selectedSo = soBaoGiaList.find((so) => so.id === soId);
+    const isVatOrder = selectedVatText?.toLowerCase().includes('có vat') || false;
+
+    // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [người duyệt]", ngược lại lấy từ item.note
+    const formattedNote = product.approvePrice && product.approver
+      ? `Duyệt giá bởi ${product.approver}`
+      : product.note || '';
+
+    try {
+      const customerLoginIdRaw = getItem('id');
+      const customerLoginId = (typeof customerLoginIdRaw === 'string' ? customerLoginIdRaw : String(customerLoginIdRaw || '')).trim() || undefined;
+      const userInfo = getStoredUser();
+
+      // Gọi API để update single SOD (Quote Detail)
+      // Note: SOBG không check/trừ tồn kho nên không cần logic inventory như SalesOrderForm
+      const result = await saveSOBGDetails({
+        sobgId: soId,
+        warehouseName: warehouse,
+        isVatOrder,
+        customerIndustry: customerIndustry,
+        customerLoginId,
+        customerId: customerId || undefined,
+        userInfo: userInfo ? {
+          username: userInfo.username,
+          name: userInfo.name,
+          email: userInfo.email,
+        } : undefined,
+        products: [{
+          id: product.id, // Gửi ID để update
+          productId: product.productId,
+          productCode: product.productCode,
+          productName: product.productName,
+          productGroupCode: product.productGroupCode,
+          productCategoryLevel4: product.productCategoryLevel4,
+          unitId: product.unitId,
+          unit: product.unit,
+          quantity: product.quantity,
+          price: product.price,
+          discountedPrice: product.discountedPrice ?? product.price,
+          originalPrice: product.price,
+          vat: product.vat,
+          vatAmount: product.vatAmount,
+          subtotal: product.subtotal,
+          totalAmount: product.totalAmount,
+          stt: product.stt || 0,
+          deliveryDate: product.deliveryDate,
+          note: formattedNote,
+          urgentOrder: product.urgentOrder,
+          approvePrice: product.approvePrice,
+          approveSupPrice: product.approveSupPrice,
+          approveSupPriceId: product.approveSupPriceId,
+          approver: product.approver,
+          discountPercent: product.discountPercent,
+          discountAmount: product.discountAmount,
+          promotionText: product.promotionText,
+          invoiceSurcharge: product.invoiceSurcharge,
+        }],
+      });
+
+      if (result.success) {
+        showToast.success('Đã cập nhật sản phẩm thành công!');
+        // Cập nhật isModified = false và originalQuantity = quantity mới
+        setProductList(prevList =>
+          prevList.map(item =>
+            item.id === product.id
+              ? { ...item, isModified: false, originalQuantity: item.quantity }
+              : item
+          )
+        );
+      } else {
+        const errorMsg = result.message || 'Không thể cập nhật sản phẩm.';
+        showToast.error(errorMsg);
+        throw new Error(errorMsg);
+      }
+    } catch (error: any) {
+      console.error('Error updating product:', error);
+      showToast.error(error.message || 'Có lỗi xảy ra khi cập nhật sản phẩm.');
+      throw error; // Re-throw để ProductTable xử lý
+    }
+  };
+
   return (
     <div className="admin-app-compact-layout">
       {!hideHeader && (
@@ -935,6 +1028,10 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           soId={soId}
           warehouseName={warehouse}
           isVatOrder={!isNonVatSelected}
+          onUpdate={handleUpdateProduct} // Inline Edit Support
+          invoiceType={selectedSo?.loaiHoaDon} // Pass invoiceType for surcharge column
+          vatChoice={selectedSo?.vat} // Pass vatChoice for surcharge column
+          customerIndustry={customerIndustry} // Pass customerIndustry for surcharge column
           onDelete={(product) => {
             // Logic xóa
             const newList = productList.filter(p => p.id !== product.id);

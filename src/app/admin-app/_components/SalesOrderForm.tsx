@@ -173,26 +173,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   }, []);
 
   // Auto-select SO mới nhất (có createdon mới nhất) sau khi chọn khách hàng
-  useEffect(() => {
-    // Chỉ auto-select khi:
-    // 1. Đã chọn khách hàng (customerId có giá trị)
-    // 2. Đã load xong danh sách SO (không loading)
-    // 3. Có ít nhất 1 SO trong danh sách
-    if (customerId && !soLoading && saleOrders.length > 0) {
-      // SO đầu tiên là SO mới nhất vì API đã sort theo createdon desc
-      const latestSo = saleOrders[0];
-      if (latestSo && latestSo.crdfd_sale_orderid) {
-        // Nếu soId chưa được set hoặc soId hiện tại không match với SO mới nhất, thì auto-select
-        const shouldAutoSelect = !soId || soId !== latestSo.crdfd_sale_orderid;
+  // Auto-select SO hook removed to prevent unwanted resets
 
-        if (shouldAutoSelect) {
-          const baseLabel = generateSoLabel(latestSo);
-          setSoId(latestSo.crdfd_sale_orderid);
-          setSo(baseLabel);
-        }
-      }
-    }
-  }, [customerId, soLoading, saleOrders, soId, generateSoLabel]); // Added soId and generateSoLabel
 
   // Sync SO label when saleOrders change and soId is already set
   // This ensures dropdown displays correctly even if soId was set before saleOrders loaded
@@ -210,7 +192,14 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   // Load Sale Order Details when soId changes (formData equivalent)
   useEffect(() => {
     const loadSaleOrderDetails = async () => {
-      if (!soId) {
+      // Validation: soId must be valid
+      if (!soId || soId.trim() === '') {
+        setProductList([]);
+        return;
+      }
+
+      // Validation: Customer must be selected (Safety check matching SOBG)
+      if (!customerId) {
         setProductList([]);
         return;
       }
@@ -1314,6 +1303,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                     // Clear SO và các selected khi đổi customer
                     setSo('');
                     setSoId('');
+                    setProductList([]); // Clear product list immediately
                     setProduct('');
                     setProductCode('');
                     setProductGroupCode('');
