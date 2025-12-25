@@ -8,6 +8,8 @@ const INVENTORY_TABLE = "cr44a_inventoryweshops";
 const PRODUCT_TABLE = "crdfd_productses";
 // Theo metadata: crdfd_onvi trỏ tới crdfd_unitconvertions, không phải crdfd_units
 const UNIT_CONVERSION_TABLE = "crdfd_unitconvertions";
+const EMPLOYEE_TABLE = "crdfd_employees";
+const SYSTEMUSER_TABLE = "systemusers";
 
 // Helper lookup Product
 async function lookupProductId(productCode: string, headers: any): Promise<string | null> {
@@ -49,6 +51,81 @@ async function lookupUnitConversionId(productCode: string, unitName: string, hea
     return null;
 }
 
+// Helper function to lookup systemuser ID from username or email
+async function lookupSystemUserId(
+    headers: any,
+    username?: string,
+    email?: string
+): Promise<string | null> {
+    if (!username && !email) return null;
+
+    try {
+        let filter = '';
+        if (username) {
+            const safeUsername = username.trim().replace(/'/g, "''");
+            filter = `domainname eq '${safeUsername}'`;
+            console.log('[Save SOBG] 🔍 Searching systemuser by domainname:', safeUsername);
+        } else if (email) {
+            const safeEmail = email.trim().replace(/'/g, "''");
+            filter = `internalemailaddress eq '${safeEmail}'`;
+            console.log('[Save SOBG] 🔍 Searching systemuser by email:', safeEmail);
+        }
+
+        if (!filter) return null;
+
+        const query = `$select=systemuserid,domainname,internalemailaddress&$filter=${encodeURIComponent(filter)}&$top=1`;
+        const endpoint = `${BASE_URL}${SYSTEMUSER_TABLE}?${query}`;
+
+        const response = await axios.get(endpoint, { headers });
+        const results = response.data.value || [];
+
+        if (results.length > 0) {
+            return results[0].systemuserid;
+        }
+    } catch (error: any) {
+        console.error('[Save SOBG] Error looking up systemuser:', error.message);
+        console.error('[Save SOBG] Full error:', error.response?.data || error);
+    }
+
+    return null;
+}
+
+// Helper function to lookup employee ID from email
+async function lookupEmployeeByEmail(
+    headers: any,
+    email?: string
+): Promise<string | null> {
+    if (!email) return null;
+
+    try {
+        const safeEmail = email.trim().replace(/'/g, "''");
+        console.log('[Save SOBG] 🔍 Searching employee by email (cr1bb_emailcal):', safeEmail);
+
+        const filter = `cr1bb_emailcal eq '${safeEmail}' and statecode eq 0`;
+        const query = `$select=crdfd_employeeid,crdfd_name,cr1bb_emailcal&$filter=${encodeURIComponent(filter)}&$top=1`;
+        const endpoint = `${BASE_URL}${EMPLOYEE_TABLE}?${query}`;
+
+        const response = await axios.get(endpoint, { headers });
+        const results = response.data.value || [];
+
+        if (results.length > 0) {
+            console.log('[Save SOBG] ✅ Found employee:', {
+                employeeId: results[0].crdfd_employeeid,
+                employeeName: results[0].crdfd_name,
+                email: results[0].cr1bb_emailcal
+            });
+            return results[0].crdfd_employeeid;
+        } else {
+            console.warn('[Save SOBG] ⚠️ No employee found with email:', safeEmail);
+        }
+    } catch (error: any) {
+        console.error('[Save SOBG] Error looking up employee by email:', error.message);
+        console.error('[Save SOBG] Full error:', error.response?.data || error);
+    }
+
+    return null;
+}
+
 export default async function handler(
     req: NextApiRequest,
     res: NextApiResponse
@@ -62,6 +139,7 @@ export default async function handler(
             sobgId,
             warehouseName,
             isVatOrder,
+            userInfo,
             products,
         } = req.body;
 
@@ -74,6 +152,27 @@ export default async function handler(
         if (!token) return res.status(401).json({ error: "Failed token" });
 
         const headers = { Authorization: `Bearer ${token}` };
+
+        // Log userInfo received from frontend
+        console.log('[Save SOBG] 📥 Received userInfo:', JSON.stringify(userInfo, null, 2));
+
+        // Lookup systemuser ID from userInfo email for owner/createdby
+        // Note: ownerid in Dynamics 365 can only reference systemuser or team, not custom employee entities
+        let ownerSystemUserId: string | null = null;
+        if (userInfo && userInfo.email) {
+            console.log('[Save SOBG] 🔍 Looking up systemuser with email:', userInfo.email);
+            ownerSystemUserId = await lookupSystemUserId(headers, undefined, userInfo.email);
+            if (ownerSystemUserId) {
+                console.log('[Save SOBG] ✅ Found systemuser for owner:', {
+                    systemUserId: ownerSystemUserId,
+                    email: userInfo.email
+                });
+            } else {
+                console.warn('[Save SOBG] ⚠️ Could not find systemuser with email:', userInfo.email);
+            }
+        } else {
+            console.warn('[Save SOBG] ⚠️ No userInfo provided or missing email');
+        }
 
         // ============ STEP 1: CHECK INVENTORY (Read-only) ============
         const isNonVatOrder = !isVatOrder;
@@ -138,6 +237,10 @@ export default async function handler(
                     // Lookup Unit: Metadata says 'crdfd_onvi' -> 'crdfd_unitconvertions'
                     ...(unitConvId ? { "crdfd_onvi@odata.bind": `/crdfd_unitconvertions(${unitConvId})` } : {}),
 
+                    // NOTE: Do NOT set ownerid/createdby here during CREATE
+                    // Dynamics 365 may not allow setting owner during creation
+                    // We will PATCH after creation instead
+
                     // Data fields (Mapped from Metadata)
                     "crdfd_soluong": product.quantity,
                     "crdfd_ongia": product.price, // Schema name typo: ongia
@@ -161,7 +264,83 @@ export default async function handler(
                     "crdfd_phu_phi_hoa_don": product.surcharge || 0,
                 };
 
-                await axios.post(`${BASE_URL}${SODBAOGIA_TABLE}`, entity, { headers });
+                console.log('[Save SOBG] 💾 Creating entity...');
+
+                // Use impersonation to set the correct createdby user
+                // MSCRMCallerID header tells Dynamics 365 to create the record as if this user did it
+                const createHeaders: any = { ...headers };
+                if (ownerSystemUserId) {
+                    createHeaders['MSCRMCallerID'] = ownerSystemUserId;
+                    console.log('[Save SOBG] 🎭 Impersonating systemuser for creation:', ownerSystemUserId);
+                }
+
+                const createResponse = await axios.post(`${BASE_URL}${SODBAOGIA_TABLE}`, entity, { headers: createHeaders });
+
+                // Get the created record ID from response headers
+                const createdRecordUrl = createResponse.headers['odata-entityid'] || createResponse.headers['location'];
+                let createdRecordId: string | null = null;
+
+                if (createdRecordUrl) {
+                    // Extract GUID from URL: .../crdfd_sodbaogias(guid)
+                    const match = createdRecordUrl.match(/\(([a-f0-9-]+)\)/i);
+                    if (match) {
+                        createdRecordId = match[1];
+                        console.log('[Save SOBG] ✅ Created record:', createdRecordId);
+                    }
+                }
+
+                // PATCH to set owner and createdby if we have ownerSystemUserId and createdRecordId
+                if (ownerSystemUserId && createdRecordId) {
+                    console.log('[Save SOBG] 🔧 Patching ownerid and createdby:', {
+                        recordId: createdRecordId,
+                        ownerSystemUserId
+                    });
+
+                    try {
+                        // Set ownerid to systemuser
+                        await axios.patch(
+                            `${BASE_URL}${SODBAOGIA_TABLE}(${createdRecordId})`,
+                            { "ownerid@odata.bind": `/systemusers(${ownerSystemUserId})` },
+                            { headers }
+                        );
+                        console.log('[Save SOBG] ✅ Set ownerid successfully');
+                    } catch (ownerError: any) {
+                        console.warn('[Save SOBG] ⚠️ Could not set ownerid:', ownerError.message);
+                        console.warn('[Save SOBG] Error details:', ownerError.response?.data);
+                    }
+
+                    // Try to set createdby (may not be settable, but try custom fields)
+                    // Try multiple possible field names since the exact name may vary
+                    const CREATEDBY_CANDIDATES = [
+                        "crdfd_createdby",
+                        "crdfd_createdby_customer",
+                        "cr44a_createdby",
+                        "cr44a_createdby_customer",
+                        "cr1bb_createdby",
+                        "cr1bb_createdby_customer",
+                    ];
+
+                    let createdBySuccess = false;
+                    for (const fieldName of CREATEDBY_CANDIDATES) {
+                        try {
+                            await axios.patch(
+                                `${BASE_URL}${SODBAOGIA_TABLE}(${createdRecordId})`,
+                                { [`${fieldName}@odata.bind`]: `/systemusers(${ownerSystemUserId})` },
+                                { headers }
+                            );
+                            console.log('[Save SOBG] ✅ Set createdby successfully using field:', fieldName);
+                            createdBySuccess = true;
+                            break;
+                        } catch (err: any) {
+                            // Continue to next candidate
+                        }
+                    }
+
+                    if (!createdBySuccess) {
+                        console.warn('[Save SOBG] ⚠️ Could not set createdby with any field name');
+                    }
+                }
+
                 totalSaved++;
 
             } catch (err: any) {

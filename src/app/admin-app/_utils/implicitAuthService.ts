@@ -433,9 +433,9 @@ export const loginWithDefaultAccount = async (): Promise<AuthResult> => {
     // Tạo mock access token (JWT format với payload chứa user info)
     // Note: Đây là mock token, không phải token thật từ Microsoft
     const mockPayload = {
-      upn: 'admin1218@wecare.com.vn',
+      upn: 'thuy.tran@wecare.com.vn',
       unique_name: 'admin1218',
-      email: 'admin1218@wecare.com.vn',
+      email: 'thuy.tran@wecare.com.vn',
       name: 'Admin Default',
       exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiry
     };
@@ -457,7 +457,7 @@ export const loginWithDefaultAccount = async (): Promise<AuthResult> => {
       user: {
         username: 'admin1218',
         name: 'Admin Default',
-        email: 'admin1218@wecare.com.vn',
+        email: 'thuy.tran@wecare.com.vn',
       },
     };
 

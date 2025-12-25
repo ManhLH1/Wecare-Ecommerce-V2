@@ -114,17 +114,17 @@ async function lookupSystemUserId(
 
     const query = `$select=systemuserid,domainname,internalemailaddress&$filter=${encodeURIComponent(filter)}&$top=1`;
     const endpoint = `${SYSTEMUSER_TABLE}?${query}`;
-    
+
     const response = await apiClient.get(endpoint, { headers });
     const results = response.data.value || [];
-    
+
     if (results.length > 0) {
       return results[0].systemuserid;
     }
   } catch (error: any) {
     console.error('[Save SOD] Error looking up systemuser:', error.message);
   }
-  
+
   return null;
 }
 
@@ -137,7 +137,7 @@ async function trySetOwnerAndCreatedBySystemUser(
   if (!systemUserId) return;
 
   const endpoint = `${SALE_ORDER_DETAILS_TABLE}(${saleOrderDetailId})`;
-  
+
   try {
     // Set ownerid (system field)
     await apiClient.patch(
@@ -191,7 +191,7 @@ async function trySetOwnerAndCreatedByCustomer(
 }
 
 // Helper function to set cr44a_Tensanpham lookup (additional product lookup field)
-async function trySetTensanphamLookup(  
+async function trySetTensanphamLookup(
   saleOrderDetailId: string,
   productId: string | null,
   headers: any
@@ -242,7 +242,7 @@ async function lookupProductId(
 
   try {
     let filter = "statecode eq 0";
-    
+
     if (productCode) {
       const safeCode = productCode.trim().replace(/'/g, "''");
       filter += ` and crdfd_masanpham eq '${safeCode}'`;
@@ -257,7 +257,7 @@ async function lookupProductId(
 
     const response = await apiClient.get(endpoint, { headers });
     const products = response.data.value || [];
-    
+
     if (products.length > 0) {
       return products[0].crdfd_productsid;
     }
@@ -281,7 +281,7 @@ async function lookupUnitConversionId(
   try {
     const safeCode = productCode.trim().replace(/'/g, "''");
     const safeUnitName = unitName.trim().replace(/'/g, "''");
-    
+
     const filter = `cr44a_masanpham eq '${safeCode}' and statecode eq 0 and crdfd_onvichuyenoitransfome eq '${safeUnitName}'`;
     const columns = "crdfd_unitconvertionid";
     const query = `$select=${columns}&$filter=${encodeURIComponent(filter)}&$top=1`;
@@ -289,7 +289,7 @@ async function lookupUnitConversionId(
 
     const response = await apiClient.get(endpoint, { headers });
     const results = response.data.value || [];
-    
+
     if (results.length > 0) {
       const unitConversionId = results[0].crdfd_unitconvertionid;
       return unitConversionId;
@@ -315,10 +315,10 @@ async function calculateDeliveryDateAndShift(
 ): Promise<{ deliveryDateNew: string | null; shift: number | null }> {
   try {
     // Nếu không có baseDeliveryDate, sử dụng ngày hiện tại
-    const baseDate = baseDeliveryDate 
+    const baseDate = baseDeliveryDate
       ? new Date(baseDeliveryDate.split('/').reverse().join('-'))
       : new Date();
-    
+
     if (isNaN(baseDate.getTime())) {
       return { deliveryDateNew: null, shift: null };
     }
@@ -326,13 +326,13 @@ async function calculateDeliveryDateAndShift(
     // Logic đặc biệt cho ngành nghề "Shop" (191920001)
     if (customerIndustry === 191920001) {
       // Tính tổng số lượng và giá trị theo từng loại sản phẩm
-      const thietBiNuoc = allProducts.filter(p => 
+      const thietBiNuoc = allProducts.filter(p =>
         p.productCategoryLevel2 === "Thiết bị nước" || p.productCategoryLevel4 === "Ống cứng PVC"
       );
-      const thietBiDien = allProducts.filter(p => 
+      const thietBiDien = allProducts.filter(p =>
         p.productCategoryLevel2 === "Thiết bị điện"
       );
-      const vatTuKimKhi = allProducts.filter(p => 
+      const vatTuKimKhi = allProducts.filter(p =>
         p.productCategoryLevel2 === "Vật tư kim khí"
       );
 
@@ -348,8 +348,8 @@ async function calculateDeliveryDateAndShift(
       let shouldApplySpecialLogic = false;
 
       // Logic cho Thiết bị nước hoặc Ống cứng PVC
-      if (thietBiNuoc.length > 0 && 
-          ((countThietBiNuoc >= 50 && sumThietBiNuoc >= 100000000) || sumOngCung >= 100000000)) {
+      if (thietBiNuoc.length > 0 &&
+        ((countThietBiNuoc >= 50 && sumThietBiNuoc >= 100000000) || sumOngCung >= 100000000)) {
         shouldApplySpecialLogic = true;
         if (sumThietBiNuoc >= 200000000 || sumOngCung >= 200000000) {
           leadTimeHours = 24;
@@ -371,12 +371,12 @@ async function calculateDeliveryDateAndShift(
       if (shouldApplySpecialLogic) {
         const newDate = new Date(baseDate);
         newDate.setHours(newDate.getHours() + leadTimeHours);
-        
+
         const hour = newDate.getHours();
         const shift = (hour >= 0 && hour <= 12) ? CA_SANG : CA_CHIEU;
-        
+
         const dateStr = newDate.toISOString().split('T')[0]; // YYYY-MM-DD
-        
+
         return { deliveryDateNew: dateStr, shift };
       }
     }
@@ -385,7 +385,7 @@ async function calculateDeliveryDateAndShift(
     const hour = baseDate.getHours();
     const shift = (hour >= 0 && hour <= 12) ? CA_SANG : CA_CHIEU;
     const dateStr = baseDate.toISOString().split('T')[0]; // YYYY-MM-DD
-    
+
     return { deliveryDateNew: dateStr, shift };
   } catch (error: any) {
     return { deliveryDateNew: null, shift: null };
@@ -405,10 +405,10 @@ async function lookupTyleChuyenDoi(
 
   try {
     const safeCode = productCode.trim().replace(/'/g, "''");
-    
+
     // Query unit conversion by productCode (cr44a_masanpham) - đây là cách chính xác nhất
     let filter = `cr44a_masanpham eq '${safeCode}' and statecode eq 0`;
-    
+
     // Nếu có unitId, thử query theo crdfd_unitconvertionid trước
     if (unitId) {
       const tryByUnitIdFilter = `crdfd_unitconvertionid eq '${unitId}' and statecode eq 0 and cr44a_masanpham eq '${safeCode}'`;
@@ -419,7 +419,7 @@ async function lookupTyleChuyenDoi(
       try {
         const responseByUnitId = await apiClient.get(endpointByUnitId, { headers });
         const resultsByUnitId = responseByUnitId.data.value || [];
-        
+
         if (resultsByUnitId.length > 0) {
           const giatrichuyenoi = resultsByUnitId[0].crdfd_giatrichuyenoi;
           return giatrichuyenoi ?? null;
@@ -428,7 +428,7 @@ async function lookupTyleChuyenDoi(
         // Try by productCode only
       }
     }
-    
+
     // Nếu có unitName, thử filter thêm theo unit name
     if (unitName) {
       const safeUnitName = unitName.trim().replace(/'/g, "''");
@@ -441,7 +441,7 @@ async function lookupTyleChuyenDoi(
 
     const response = await apiClient.get(endpoint, { headers });
     const results = response.data.value || [];
-    
+
     if (results.length > 0) {
       const giatrichuyenoi = results[0].crdfd_giatrichuyenoi;
       return giatrichuyenoi ?? null;
@@ -484,11 +484,11 @@ async function updateInventoryAfterSale(
       const invColumns = "cr44a_inventoryweshopid,cr44a_soluongtonlythuyet,cr1bb_soluonglythuyetgiuathang,cr1bb_vitrikhotext";
       const invQuery = `$select=${invColumns}&$filter=${encodeURIComponent(invFilter)}&$top=1`;
       const invEndpoint = `${INVENTORY_TABLE}?${invQuery}`;
-      
+
       // RE-CHECK: Get fresh inventory value right before update (atomic operation)
       const invResponse = await apiClient.get(invEndpoint, { headers });
       const invResults = invResponse.data.value || [];
-      
+
       let invRecord = null;
       if (invResults.length > 0) {
         invRecord = invResults[0];
@@ -503,21 +503,21 @@ async function updateInventoryAfterSale(
           invRecord = fallbackResults[0];
         }
       }
-      
+
       if (invRecord && invRecord.cr44a_inventoryweshopid) {
         const currentInventory = invRecord.cr44a_soluongtonlythuyet ?? 0;
         const reservedQuantity = invRecord.cr1bb_soluonglythuyetgiuathang ?? 0;
-        
+
         // Kiểm tra xem có cần bypass tồn kho không
         const ALLOWED_PRODUCT_GROUPS = ['NSP-00027', 'NSP-000872', 'NSP-000409', 'NSP-000474', 'NSP-000873'];
         const isSpecialProduct = productGroupCode && ALLOWED_PRODUCT_GROUPS.includes(productGroupCode);
-        
+
         // Atomic check: CurrentInventory >= quantity (trừ khi skipStockCheck = true hoặc là sản phẩm đặc biệt)
         if (!skipStockCheck && !isSpecialProduct && currentInventory < quantity) {
           const errorMessage = `Không đủ tồn kho để chốt đơn! Sản phẩm ${productCode} có tồn kho: ${currentInventory}, yêu cầu: ${quantity}`;
           throw new Error(errorMessage);
         }
-        
+
         if (skipStockCheck || isSpecialProduct) {
           console.log('[Save SOD] Skipping stock check for final (Inventory Weshops):', {
             productCode,
@@ -536,7 +536,7 @@ async function updateInventoryAfterSale(
         // Ví dụ: Giữ đặt 40, save đơn 20 → Giữ đặt còn lại 20 (40 - 20 = 20)
         // Với nhóm đặc biệt: KHÔNG trừ tồn kho lý thuyết, chỉ giải phóng ReservedQuantity
         const newReservedQuantity = Math.max(0, reservedQuantity - quantity);
-        
+
         // Với nhóm đặc biệt: KHÔNG trừ tồn kho lý thuyết
         let newCurrentInventory: number | undefined;
         if (!isSpecialProduct) {
@@ -555,18 +555,18 @@ async function updateInventoryAfterSale(
         const updatePayload: any = {
           cr1bb_soluonglythuyetgiuathang: newReservedQuantity // Tính lại số giữ tồn kho (luôn update)
         };
-        
+
         // Chỉ update tồn kho lý thuyết nếu không phải sản phẩm đặc biệt
         if (newCurrentInventory !== undefined) {
           updatePayload.cr44a_soluongtonlythuyet = newCurrentInventory;
         }
-        
+
         await apiClient.patch(
           updateInvEndpoint,
           updatePayload,
           { headers }
         );
-        
+
         if (isSpecialProduct) {
           console.log(`✅ [Inventory Non-VAT] Nhóm đặc biệt - Chỉ giải phóng ReservedQuantity: ${productCode} - Giữ tồn: ${reservedQuantity} → ${newReservedQuantity} (Tồn kho lý thuyết giữ nguyên: ${currentInventory})`);
         } else {
@@ -593,11 +593,11 @@ async function updateInventoryAfterSale(
       // RE-CHECK: Get fresh inventory value right before update
       const khoBDResponse = await apiClient.get(khoBDEndpoint, { headers });
       const khoBDResults = khoBDResponse.data.value || [];
-      
+
       if (khoBDResults.length > 0) {
         const khoBDRecord = khoBDResults[0];
         const reservedQuantity = khoBDRecord.cr1bb_soluonganggiuathang ?? 0;
-        
+
         // ============ ĐƠN VAT: Chỉ cập nhật số lượng đang giữ hàng ============
         // Đơn VAT KHÔNG cập nhật tồn kho lý thuyết bỏ mua (cr1bb_tonkholythuyetbomua hoặc crdfd_tonkholythuyet)
         // Chỉ cập nhật ReservedQuantity -= quantity (giữ lại phần còn lại: giữ đặt = giữ đặt hàng - số lượng lên đơn)
@@ -616,7 +616,7 @@ async function updateInventoryAfterSale(
           updatePayload,
           { headers }
         );
-        
+
         console.log(`✅ [Inventory VAT] Update: ${productCode} - Giữ tồn: ${reservedQuantity} → ${newReservedQuantity} (KHÔNG cập nhật tồn kho lý thuyết bỏ mua)`);
       }
     }
@@ -701,9 +701,24 @@ export default async function handler(
     const customerIdToStamp = normalizeGuid(customerLoginId) || normalizeGuid(customerId);
 
     // Lookup systemuser ID từ userInfo (ưu tiên dùng systemuser thay vì customer)
+    // NOTE: Try email first (more reliable), then fallback to username if email lookup fails.
     let systemUserId: string | null = null;
     if (userInfo && (userInfo.username || userInfo.email)) {
-      systemUserId = await lookupSystemUserId(headers, userInfo.username, userInfo.email);
+      console.log('[Save SOD] 🔍 Looking up systemuser (email then username):', {
+        email: userInfo.email,
+        username: userInfo.username,
+      });
+
+      // Try email lookup first (matches SOBG behavior)
+      if (userInfo.email) {
+        systemUserId = await lookupSystemUserId(headers, undefined, userInfo.email);
+      }
+
+      // Fallback to username lookup if email lookup did not find a system user
+      if (!systemUserId && userInfo.username) {
+        systemUserId = await lookupSystemUserId(headers, userInfo.username, undefined);
+      }
+
       if (systemUserId) {
         console.log('[Save SOD] ✅ Found systemuser:', {
           systemUserId,
@@ -722,7 +737,7 @@ export default async function handler(
     const isNonVatOrder = !isVatOrder;
     // Kiểm tra warehouseName có giá trị (không phải empty string, null, hoặc undefined)
     const hasWarehouseName = warehouseName && typeof warehouseName === 'string' && warehouseName.trim().length > 0;
-    
+
     if (isNonVatOrder && hasWarehouseName) {
       // Check inventory for each product (excluding allowed product groups)
       const allowedProductGroupCodes = [
@@ -747,7 +762,7 @@ export default async function handler(
         // Query inventory với fallback logic (giống inventory.ts)
         const safeCode = (product.productCode || "").trim().replace(/'/g, "''");
         const safeWarehouse = warehouseName?.trim().replace(/'/g, "''") || "";
-        
+
         const queryInventory = async () => {
           // Thử query với warehouse filter trước
           let filter = `cr44a_masanpham eq '${safeCode}' and statecode eq 0`;
@@ -911,11 +926,11 @@ export default async function handler(
         product.deliveryDate,
         headers
       );
-      
+
       if (deliveryDateNew) {
         payload.crdfd_exdeliverynew = deliveryDateNew;
       }
-      
+
       if (shift !== null) {
         payload.cr1bb_ca = shift;
       }
@@ -951,10 +966,25 @@ export default async function handler(
         } else {
           // Create new record
           const createEndpoint = `${SALE_ORDER_DETAILS_TABLE}`;
+
+          // Use impersonation to set the correct createdby user
+          // MSCRMCallerID header tells Dynamics 365 to create the record as if this user did it
+          const createHeaders: any = { ...headers };
+          if (systemUserId) {
+            createHeaders['MSCRMCallerID'] = systemUserId;
+            console.log('[Save SOD] 🎭 Impersonating systemuser for creation:', systemUserId);
+          } else {
+            console.warn('[Save SOD] ⚠️ No systemUserId found for impersonation');
+          }
+
+          console.log('[Save SOD] 🚀 Sending POST to:', createEndpoint);
+          console.log('[Save SOD] 🚀 Creation Headers:', JSON.stringify(createHeaders, null, 2));
+
           const createResponse = await apiClient.post(createEndpoint, payload, {
-            headers,
+            headers: createHeaders,
           });
           detailId = createResponse.data.crdfd_saleorderdetailid;
+          console.log('[Save SOD] ✅ Created record ID:', detailId);
         }
 
         // Stamp owner/created-by: ưu tiên systemuser, fallback về customer
@@ -980,7 +1010,7 @@ export default async function handler(
           status: saveError.response?.status,
           payload: JSON.stringify(payload, null, 2)
         });
-        
+
         // Lưu thông tin sản phẩm thất bại thay vì throw ngay
         failedProducts.push({
           productCode: product.productCode,
@@ -997,7 +1027,7 @@ export default async function handler(
       const successCount = savedDetails.length;
       const failCount = failedProducts.length;
       const failedProductNames = failedProducts.map(p => p.productName || p.productCode).join(', ');
-      
+
       return res.status(207).json({ // 207 Multi-Status
         success: false,
         partialSuccess: successCount > 0,
@@ -1016,7 +1046,7 @@ export default async function handler(
     // CHỈ update inventory cho các sản phẩm đã save thành công
     if (hasWarehouseName && savedDetails.length > 0) {
       const inventoryErrors: any[] = [];
-      
+
       // Atomic check và cập nhật tồn kho cho từng sản phẩm ĐÃ SAVE THÀNH CÔNG
       for (const savedProduct of savedDetails) {
         if (savedProduct.productCode && savedProduct.quantity > 0) {
@@ -1046,7 +1076,7 @@ export default async function handler(
           }
         }
       }
-      
+
       // Nếu có lỗi inventory, thêm vào failedProducts
       if (inventoryErrors.length > 0) {
         failedProducts.push(...inventoryErrors.map(err => ({
