@@ -134,6 +134,16 @@ export default async function handler(
       const productId = item._crdfd_sanpham_value;
       const productCode = item.crdfd_masanpham || (productId ? productIdToCodeMap.get(productId) : undefined);
 
+      // Compute canonical subtotal/vat/total so UI always shows the 'Tổng' (subtotal + VAT)
+      const vatPercent = getVatFromIeuChinhGtgt(item.crdfd_ieuchinhgtgt);
+      const quantity = item.crdfd_productnum || item.crdfd_soluong || 0;
+      const unitDiscountedPrice = item.crdfd_tongtienchuavat && quantity > 0
+        ? (item.crdfd_tongtienchuavat / quantity)
+        : (item.crdfd_giagoc || item.crdfd_gia || 0);
+      const subtotalComputed = item.crdfd_tongtienchuavat ?? (unitDiscountedPrice * quantity);
+      const vatComputed = item.crdfd_thue ?? Math.round((subtotalComputed * (vatPercent || 0)) / 100);
+      const totalComputed = item.crdfd_tongtiencovat ?? (subtotalComputed + vatComputed);
+
       return {
         id: item.crdfd_saleorderdetailid || "",
         stt: item.crdfd_stton || 0, // Stt đơn (correct field name)
@@ -144,8 +154,10 @@ export default async function handler(
         surcharge: item.crdfd_phuphi_hoadon || item.crdfd_phuphi || 0,
         discount: item.crdfd_chieckhau ? item.crdfd_chieckhau * 100 : 0, // Chuyển từ thập phân (0.04) sang phần trăm (4%)
         discountedPrice: item.crdfd_giagoc || item.crdfd_gia || 0,
-        vat: getVatFromIeuChinhGtgt(item.crdfd_ieuchinhgtgt),
-        totalAmount: item.crdfd_tongtiencovat || item.crdfd_tongtienchuavat || 0,
+        vat: vatPercent,
+        subtotal: Math.round(subtotalComputed),
+        vatAmount: Math.round(vatComputed),
+        totalAmount: Math.round(totalComputed),
         approver: item.crdfd_duyetgia || "",
         deliveryDate: item.crdfd_ngaygiaodukientonghop || "",
         productCode: productCode, // Thêm productCode

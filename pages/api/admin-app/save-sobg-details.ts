@@ -214,6 +214,69 @@ export default async function handler(
         let totalSaved = 0;
         let failedProducts = [];
 
+        // Helper constants for shift OptionSet values (match CRM)
+        const CA_SANG = 283640000; // "Ca sáng"
+        const CA_CHIEU = 283640001; // "Ca chiều"
+        // Helper to calculate delivery date and shift similar to save-sale-order-details logic
+        async function calculateDeliveryDateAndShift(
+            product: any,
+            allProducts: any[],
+            customerIndustry: number | undefined,
+            baseDeliveryDate: string | undefined
+        ): Promise<{ deliveryDateNew: string | null; shift: number | null }> {
+            try {
+                const baseDate = baseDeliveryDate
+                    ? new Date(baseDeliveryDate.split('/').reverse().join('-'))
+                    : new Date();
+                if (isNaN(baseDate.getTime())) return { deliveryDateNew: null, shift: null };
+
+                // Special logic for Shop industry (191920001) - same heuristics as SO save
+                if (customerIndustry === 191920001) {
+                    const thietBiNuoc = allProducts.filter(p =>
+                        p.productCategoryLevel2 === "Thiết bị nước" || p.productCategoryLevel4 === "Ống cứng PVC"
+                    );
+                    const thietBiDien = allProducts.filter(p => p.productCategoryLevel2 === "Thiết bị điện");
+                    const vatTuKimKhi = allProducts.filter(p => p.productCategoryLevel2 === "Vật tư kim khí");
+
+                    const sumThietBiNuoc = thietBiNuoc.reduce((s, p) => s + (p.totalAmount || 0), 0);
+                    const countThietBiNuoc = thietBiNuoc.reduce((s, p) => s + (p.quantity || 0), 0);
+                    const sumOngCung = allProducts.filter(p => p.productCategoryLevel4 === "Ống cứng PVC").reduce((s, p) => s + (p.totalAmount || 0), 0);
+                    const sumThietBiDien = thietBiDien.reduce((s, p) => s + (p.totalAmount || 0), 0);
+                    const countKimKhi = vatTuKimKhi.reduce((s, p) => s + (p.quantity || 0), 0);
+
+                    let leadTimeHours = 0;
+                    let shouldApplySpecialLogic = false;
+                    if (thietBiNuoc.length > 0 && ((countThietBiNuoc >= 50 && sumThietBiNuoc >= 100000000) || sumOngCung >= 100000000)) {
+                        shouldApplySpecialLogic = true;
+                        leadTimeHours = (sumThietBiNuoc >= 200000000 || sumOngCung >= 200000000) ? 24 : 12;
+                    } else if (thietBiDien.length > 0 && sumThietBiDien >= 200000000) {
+                        shouldApplySpecialLogic = true;
+                        leadTimeHours = 12;
+                    } else if (vatTuKimKhi.length > 0 && countKimKhi >= 100) {
+                        shouldApplySpecialLogic = true;
+                        leadTimeHours = 12;
+                    }
+
+                    if (shouldApplySpecialLogic) {
+                        const newDate = new Date(baseDate);
+                        newDate.setHours(newDate.getHours() + leadTimeHours);
+                        const hour = newDate.getHours();
+                        const shift = (hour >= 0 && hour <= 12) ? CA_SANG : CA_CHIEU;
+                        const dateStr = newDate.toISOString().split('T')[0];
+                        return { deliveryDateNew: dateStr, shift };
+                    }
+                }
+
+                // Default: use baseDeliveryDate hour to determine shift
+                const hour = baseDate.getHours();
+                const shift = (hour >= 0 && hour <= 12) ? CA_SANG : CA_CHIEU;
+                const dateStr = baseDate.toISOString().split('T')[0];
+                return { deliveryDateNew: dateStr, shift };
+            } catch (e) {
+                return { deliveryDateNew: null, shift: null };
+            }
+        }
+
         for (const product of products) {
             try {
                 let productId = product.productId;
@@ -226,6 +289,14 @@ export default async function handler(
                 if (product.productCode && product.unit) {
                     unitConvId = await lookupUnitConversionId(product.productCode, product.unit, headers) || undefined;
                 }
+
+                // Compute canonical subtotal/vat/total to match UI 'Tổng' (subtotal + VAT)
+                const computedSubtotal = product.subtotal ?? ((product.discountedPrice ?? product.price) * (product.quantity || 0));
+                const computedVatAmount = product.vatAmount ?? Math.round((computedSubtotal * (product.vat || 0)) / 100);
+                const computedTotal = product.totalAmount ?? (computedSubtotal + computedVatAmount);
+
+                // Compute deliveryDateNew and shift (ca) server-side if frontend didn't provide shift
+                const { deliveryDateNew, shift } = await calculateDeliveryDateAndShift(product, products, customerIndustry, product.deliveryDate);
 
                 // Map fields based on Metadata & Prediction (Vietnamese Schema)
                 const entity: any = {
@@ -244,27 +315,29 @@ export default async function handler(
 
                     // Data fields (Mapped from Metadata)
                     "crdfd_soluong": product.quantity,
-                    // Price logic based on industry: Shop uses discounted price, others use regular price
-                    "crdfd_ongia": (customerIndustry === "Shop" ? product.discountedPrice : product.price) || product.price, // Schema name typo: ongia
+                    // Price mapping: store original/display price in crdfd_ongia and discounted unit price in crdfd_giagoc
+                    "crdfd_ongia": product.originalPrice ?? product.price,
                     // Map VAT percent -> OptionSet value for CRM (crdfd_gtgt)
                     "crdfd_ieuchinhgtgt": mapVatPercentToChoice(product.vat),
                     "crdfd_gtgt": mapVatPercentToChoice(product.vat),
-                    "crdfd_tongtienkhongvat": product.subtotal, // Total exclude VAT
+                    // Ensure saved totals match UI 'Tổng' calculations
+                    "crdfd_tongtienkhongvat": computedSubtotal, // Total exclude VAT
                     // "crdfd_thanhtien": product.totalAmount, // Field not found in metadata. Skip.
 
                     // Name (Common field)
                     // "crdfd_name": product.productName || "SOBG Detail",
 
                     // NEW FIELDS
-                    "cr1bb_ca": mapShiftToChoice(product.shift),
-                    "crdfd_ngaygiaodukien": formatDateForCRM(product.deliveryDate),
+                    // Use computed delivery date if available, and set shift (ca) from calculation
+                    ...(shift ? { "cr1bb_ca": shift } : {}),
+                    "crdfd_ngaygiaodukien": deliveryDateNew ? deliveryDateNew : formatDateForCRM(product.deliveryDate),
                     "crdfd_chietkhau": product.discount ? product.discount / 100 : 0,
                     "crdfd_chietkhauvn": product.discountVND || 0,
                     "crdfd_chietkhau2": product.discount2 ? product.discount2 / 100 : 0,
                     "crdfd_giack1": product.originalPrice || product.price || 0, // Giá gốc (original price)
                     "crdfd_giack2": product.discountedPrice || product.priceDiscount2 || 0,
-                    // Logical name `crdfd_giagoc` expected by integration — ensure we write Giá gốc
-                    "crdfd_giagoc": product.originalPrice || product.price || 0,
+                    // Also set crdfd_giagoc to the discounted price for consistency
+                    "crdfd_giagoc": product.discountedPrice ?? product.price,
                     "crdfd_phu_phi_hoa_don": product.surcharge || 0,
 
                     // MISSING FIELDS FROM POWER APPS REQUIREMENTS

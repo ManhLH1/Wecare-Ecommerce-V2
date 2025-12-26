@@ -175,7 +175,9 @@ export default async function handler(
         productGroupCode: item.crdfd_manhomsanpham || "",
         unit: item.crdfd_onvi || "",
         quantity: quantity,
-        price: item.crdfd_giagoc || item.crdfd_ongia || 0,
+        // Display the original/unit price in the UI (`price`) and keep discounted unit in `discountedPrice`.
+        // This ensures the table shows the same "Giá" as the entry form (original/display price).
+        price: item.crdfd_ongia || item.crdfd_giagoc || 0,
         surcharge: 0, // Phụ phí hoá đơn có thể tính từ crdfd_phu_phi_hoa_don
         discount: item.crdfd_tienchietkhau || 0,
         discountedPrice: discountedPrice,

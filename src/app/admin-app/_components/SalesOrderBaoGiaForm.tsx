@@ -313,11 +313,11 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     const isNonVat = vatPercent === 0;
     const invoiceSurchargeRate = isHoKinhDoanh && isNonVat ? 0.015 : 0;
 
-    // Calculate discounted price (giá đã giảm) - ensure discounted price EXCLUDES VAT.
-    // If input price includes VAT (common in UI), remove VAT first before applying discounts.
-    const vatRate = vatPercent || 0;
-    const basePriceExVat = vatRate > 0 ? priceNum / (1 + vatRate / 100) : priceNum;
-    const discountedPriceCalc = basePriceExVat * (1 - discountPercent / 100) - discountAmount;
+    // Calculate discounted price using the same method as ProductEntryForm/SalesOrderForm:
+    // apply percentage discount directly on the displayed price (priceNum), then subtract any VND discount,
+    // then apply invoice surcharge if applicable.
+    const basePrice = priceNum;
+    const discountedPriceCalc = basePrice * (1 - (discountPercent || 0) / 100) - (discountAmount || 0);
     const finalPrice = discountedPriceCalc * (1 + invoiceSurchargeRate);
 
     // Check if product already exists with same productCode/productName, unit, and price

@@ -928,7 +928,7 @@ export default async function handler(
         payload.crdfd_tylechuyenoi = tyleChuyenDoi;
       }
 
-      // Tính ngày giao mới (crdfd_exdeliverynew) và ca làm việc (cr1bb_ca) dựa trên lead time logic
+      // Tính ngày giao mới (crdfd_exdeliverrydate) và ca làm việc (cr1bb_ca) dựa trên lead time logic
       const { deliveryDateNew, shift } = await calculateDeliveryDateAndShift(
         product,
         products,
@@ -937,8 +937,8 @@ export default async function handler(
         headers
       );
 
-      if (deliveryDateNew) {
-        payload.crdfd_exdeliverynew = deliveryDateNew;
+          if (deliveryDateNew) {
+        payload.crdfd_exdeliverrydate = deliveryDateNew;
       }
 
       if (shift !== null) {
