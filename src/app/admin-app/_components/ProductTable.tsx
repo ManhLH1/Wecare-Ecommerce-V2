@@ -413,7 +413,15 @@ export default function ProductTable({
                       : '-'}
                   </td>
                   <td className="admin-app-cell-right">{product.vat}%</td>
-                    <td className="admin-app-cell-right admin-app-cell-total">{product.totalAmount.toLocaleString('vi-VN')}</td>
+                    {/* Ensure 'Tổng' shows subtotal + VAT (trust subtotal & vatAmount or compute them) */}
+                    {(() => {
+                      const displaySubtotal = product.subtotal ?? ((product.discountedPrice || product.price) * product.quantity);
+                      const displayVatAmount = product.vatAmount ?? Math.round((displaySubtotal * (product.vat || 0)) / 100);
+                      const displayTotal = Math.round(displaySubtotal + displayVatAmount);
+                      return (
+                        <td className="admin-app-cell-right admin-app-cell-total">{displayTotal.toLocaleString('vi-VN')}</td>
+                      );
+                    })()}
                     <td className="admin-app-cell-center" title={`Người duyệt: ${product.approver || '-'}\nNgày giao: ${formatDate(product.deliveryDate)}`}>
                       {getStatusBadge(product)}
                   </td>

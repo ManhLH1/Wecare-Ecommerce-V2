@@ -833,18 +833,27 @@ export default async function handler(
 
       // Reference to Sale Order using Navigation property with @odata.bind
       // Field name is crdfd_SOcode (with capital S and O), not crdfd_socode
+      // Ensure subtotal/vat/total use the same calculation as UI 'Tổng' cell:
+      const computedSubtotal = product.subtotal ?? ((product.discountedPrice ?? product.price) * (product.quantity || 0));
+      const computedVatAmount = product.vatAmount ?? Math.round((computedSubtotal * (product.vat || 0)) / 100);
+      const computedTotal = product.totalAmount ?? (computedSubtotal + computedVatAmount);
+
       const payload: any = {
         [`crdfd_SOcode@odata.bind`]: `/crdfd_sale_orders(${soId})`,
         statecode: 0, // Set statecode = 0 (Active) để record có thể query được
         crdfd_tensanphamtext: product.productName,
         crdfd_productnum: product.quantity,
-        crdfd_gia: product.discountedPrice ?? product.price,
-        crdfd_giagoc: product.originalPrice ?? product.price,
+        // Save original/display price as `crdfd_gia` and the discounted unit price as `crdfd_giagoc`
+        // so that reading code (sale-order-details) maps `price` -> crdfd_gia (display price)
+        // and `discountedPrice` -> crdfd_giagoc.
+        crdfd_gia: product.originalPrice ?? product.price,
+        crdfd_giagoc: product.discountedPrice ?? product.price,
         crdfd_ieuchinhgtgt: vatOptionSet,
         crdfd_stton: product.stt, // Stt đơn (correct field name)
-        crdfd_thue: product.vatAmount, // Thuế (GTGT amount)
-        crdfd_tongtienchuavat: product.subtotal,
-        crdfd_tongtiencovat: product.totalAmount,
+        // Use computed values to guarantee 'Tổng' saved equals UI display (subtotal + VAT)
+        crdfd_thue: computedVatAmount, // Thuế (GTGT amount)
+        crdfd_tongtienchuavat: computedSubtotal,
+        crdfd_tongtiencovat: computedTotal,
         crdfd_chieckhau: product.discountPercent ? product.discountPercent / 100 : 0, // Chuyển từ phần trăm (4%) sang thập phân (0.04)
         crdfd_chieckhauvn: product.discountAmount ?? 0,
         // Secondary discount (Chiết khấu 2) stored as decimal (e.g., 0.05 for 5%)

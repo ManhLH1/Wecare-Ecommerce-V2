@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { computeDeliveryDate } from '../../../utils/computeDeliveryDate';
 import Dropdown from './Dropdown';
 import { useProducts, useUnits, useWarehouses } from '../_hooks/useDropdownData';
 import {
@@ -47,6 +48,7 @@ interface ProductEntryFormProps {
   setWarehouse: (value: string) => void;
   customerId?: string;
   customerCode?: string;
+  customerIndustry?: number | null;
   customerName?: string;
   soId?: string;
   orderType?: number | null; // Loại đơn hàng OptionSet value (optional)
@@ -114,6 +116,7 @@ export default function ProductEntryForm({
   setUnit,
   warehouse,
   setWarehouse,
+  customerIndustry,
   customerId,
   customerCode,
   customerName,
@@ -1685,22 +1688,75 @@ export default function ProductEntryForm({
 
   // Auto-calculate deliveryDate similar to ngay_giao logic (simplified)
   useEffect(() => {
-    // If user already picked a date, still allow auto-update when core inputs change (mimic canvas behavior)
-    const today = new Date();
+    // Compute delivery date following canvas logic:
+    // 1) Promotion lead time (promotion lead * 12 hours) when applicable
+    // 2) If customer is Shop -> district leadtime * 12 hours (we approximate using customerIndustry or name)
+    // 3) If requestedQty * conversion > theoreticalStock -> Today + productLeadtime (days)
+    // 4) Default Today + 1 day
+    try {
+      const promo = selectedPromotion as any;
+      const promoLeadRaw =
+        promo?.cr1bb_leadtimepromotion ??
+        promo?.leadtime ??
+        promo?.leadTime ??
+        promo?.lead_time ??
+        promo?.value; // fallback - some APIs embed numeric in value
 
-    // TODO: when industry & leadtime by district are available, refine logic for "Shop"
-    // Current simplified logic:
-    // - If quantity converted > stock -> today + 2 days
-    // - Else today + 1 day
-    const qty = quantity || 0;
-    const stock = stockQuantity || 0;
+      const promoRecord = {
+        cr1bb_leadtimepromotion: promoLeadRaw,
+        cr1bb_phanloaichuongtrinh: (promo as any)?.phânLoai || (promo as any)?.type || undefined,
+      };
 
-    const daysToAdd = qty > stock ? 2 : 1;
-    const target = new Date(today);
-    target.setDate(today.getDate() + daysToAdd);
+      // Determine varNganhNghe ("Shop" or other)
+      let varNganhNghe: string | undefined = undefined;
+      // Common heuristic: customerIndustry option value may indicate Shop (value 5 in PowerApps canvas),
+      // also fallback to customerName containing 'shop'
+      if (typeof customerIndustry === 'number') {
+        // If option-set uses small integers for industry, check for 5 (Shop) or specific known code 191920004
+        if (customerIndustry === 5 || customerIndustry === 191920004) {
+          varNganhNghe = 'Shop';
+        }
+      }
+      if (!varNganhNghe && customerName && String(customerName).toLowerCase().includes('shop')) {
+        varNganhNghe = 'Shop';
+      }
 
-    setDeliveryDate(formatDate(target));
-  }, [quantity, stockQuantity, setDeliveryDate]);
+      // product lead time (days) - try common fields from selectedProduct
+      const productLeadTime =
+        Number((selectedProduct as any)?.crdfd_leadtime) ||
+        Number((selectedProduct as any)?.leadtime) ||
+        Number((selectedProduct as any)?.leadTime) ||
+        Number((selectedProduct as any)?.cr1bb_leadtime) ||
+        0;
+
+      // unit conversion factor
+      const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
+      const conversionFactor =
+        (currentUnit as any)?.crdfd_giatrichuyenoi ??
+        (currentUnit as any)?.crdfd_giatrichuyendoi ??
+        (currentUnit as any)?.crdfd_conversionvalue ??
+        1;
+
+      const computed = computeDeliveryDate({
+        promotion: promoRecord,
+        varNganhNghe: varNganhNghe ?? undefined,
+        var_leadtime_quanhuyen: 0, // district leadtime not available here - default 0
+        var_input_soluong: quantity || 0,
+        var_selected_donvi_conversion: Number(conversionFactor) || 1,
+        var_selected_SP_tonkho: inventoryTheoretical ?? 0,
+        var_selected_SP_leadtime: productLeadTime || 0,
+      });
+
+      setDeliveryDate(formatDate(computed));
+    } catch (e) {
+      // fallback: simple logic
+      const today = new Date();
+      const daysToAdd = (quantity || 0) > (stockQuantity || 0) ? 2 : 1;
+      const t = new Date(today);
+      t.setDate(today.getDate() + daysToAdd);
+      setDeliveryDate(formatDate(t));
+    }
+  }, [selectedPromotionId, promotions, selectedPromotion, customerIndustry, customerName, quantity, unitId, units, inventoryTheoretical, selectedProduct, stockQuantity]);
 
   // Keep quantity disabled until product is selected, default to empty (0)
   useEffect(() => {

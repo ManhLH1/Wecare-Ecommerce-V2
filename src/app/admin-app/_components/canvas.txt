@@ -1,0 +1,1404 @@
+Screen_Admin = [
+    {
+        Screen: "Duyệt đơn hàng",
+        Value: Screen_SO_tam
+    },
+    {
+        Screen: "SO",
+        Value: Main
+    },
+    {
+        Screen: "SO báo giá",
+        Value: 'SO_báo giá'
+    }
+];
+var_input_gia = Switch(
+    true,
+    is_Screen_SOBG,
+    Value(txt_Gia_SOBG.Text),
+    is_Screen_SO_New,
+    Value(lbl_GiaDaGiam_SOBG.Text),
+    Value(lbl_GiaDaGiam.Text)
+);
+var_selected_khachhang = Switch(
+    true,
+    is_Screen_SOBG,
+    cb_khach_hang_SOBG.Selected,
+    is_Screen_SO_Tmp,
+    cb_khach_hang_tam.Selected,
+    is_Screen_SO,
+    cb_khach_hang.Selected,
+    is_Screen_SO_New,
+    cb_khach_hang_SO_new.Selected
+);
+var_selected_dieukhoanthanhtoan = Switch(
+    true,
+    is_Screen_SOBG,
+    dp_MaDH_SOBG.Selected.'Điều khoản thanh toán CAL',
+    is_Screen_SO_New,
+    cb_donhang_SO_new.Selected.'Điều khoản thanh toán CAL',
+    dp_MaDH.Selected.'Điều khoản thanh toán CAL'
+);
+var_selected_VAT_SO = Switch(
+    true,
+    is_Screen_SOBG,
+    dp_MaDH_SOBG.Selected.VAT,
+    is_Screen_SO,
+    dp_MaDH.Selected.VAT,
+    is_Screen_SO_New,
+    cb_donhang_SO_new.Selected.VAT
+);
+var_selected_SO_MK = Switch(
+    true,
+    is_Screen_SO,
+    dp_MaDH.Selected.'SO mua kèm'.Id,
+    is_Screen_SO_New,
+    cb_donhang_SO_new.Selected.'SO mua kèm'.Id
+);
+/*var_KenhTiepNhan = Switch(
+    true,
+    is_Screen_SOBG,
+    dp_MaDH_SOBG.Selected.'Kênh tiếp nhận SOBG',
+    is_Screen_SO_New,
+    cb_donhang_SO_new.Selected.'Kênh tiếp nhận',
+    dp_MaDH.Selected.'Kênh tiếp nhận'
+);*/
+var_selected_dieukhoanthanhtoan_choice = Switch(
+    true,
+    is_Screen_SOBG,
+    dp_MaDH_SOBG.Selected.'Điều khoản thanh toán',
+    is_Screen_SO_New,
+    cb_donhang_SO_new.Selected.'Điều khoản thanh toán',
+    dp_MaDH.Selected.'Điều khoản thanh toán'
+);
+var_selected_Checkbox_duyetgia = Switch(
+    true,
+    is_Screen_SOBG,
+    Checkbox_duyetgia_SOBG.Value And dp_nhapthucong_theochietkhau_SOBG.Selected.Value = "Theo chiết khấu",
+    is_Screen_SO_New,
+    Checkbox_DuyetGiaSO.Checked And dp_nhapthucong_theochietkhau_SO.Selected.Value = "Theo chiết khấu",
+    Checkbox_duyetgia.Value And dp_nhapthucong_theochietkhau.Selected.Value = "Theo chiết khấu"
+);
+var_selected_id_donhang = Switch(
+    true,
+    is_Screen_SOBG,
+    dp_MaDH_SOBG.Selected.ID,
+    is_Screen_SO_New,
+    cb_donhang_SO_new.Selected.Id,
+    dp_MaDH.Selected.Id
+);
+var_selected_VAT = Switch(
+    true,
+    is_Screen_SOBG,
+    dp_VAT_SOBG.Selected.Value,
+    is_Screen_SO_New,
+    Dropdown_VAT_New.Selected.Value,
+    dp_VAT.Selected.Value
+);
+fx_GetInvoiceType = Switch(
+    true,
+    is_Screen_SOBG, 
+        Text(dp_MaDH_SOBG.Selected.'Loại hóa đơn'),
+    is_Screen_SO, 
+        Text(dp_MaDH.Selected.'Loại hóa đơn'), 
+    is_Screen_SO_New, 
+        Text(cb_donhang_SO_new.Selected.'Loại hóa đơn'),
+    Blank()
+);
+var_selected_SP = Switch(
+    true,
+    is_Screen_SOBG,
+    cb_san_pham_SOBG.Selected,
+    is_Screen_SO_New,
+    cb_SanPham_SO_New.Selected,
+    cb_san_pham.Selected
+);
+var_selected_manhomSP = Switch(
+    true,
+    is_Screen_SOBG,
+    cb_san_pham_SOBG.Selected.'Mã nhóm sp',
+    is_Screen_SO_New,
+    cb_SanPham_SO_New.Selected.'Mã nhóm sp',
+    cb_san_pham.Selected.'Mã nhóm sp'
+);
+var_selected_maSP = Switch(
+    true,
+    is_Screen_SOBG,
+    cb_san_pham_SOBG.Selected.'Mã sản phẩm',
+    is_Screen_SO,
+    cb_san_pham.Selected.'Mã sản phẩm',
+    is_Screen_SO_New,
+    cb_SanPham_SO_New.Selected.'Mã sản phẩm'
+);
+var_input_soluong = Switch(
+    true,
+    is_Screen_SOBG,
+    Value(txt_So_luong_SOBG.Text),
+    is_Screen_SO_New,
+    NumberInput_SL.Value,
+    Value(txt_So_luong.Text)
+);
+var_selected_Promotion = Switch(
+    true,
+    is_Screen_SOBG,
+    cb_listPromotion_SOBG.Selected,
+    is_Screen_SO_New,
+    Dropdown_Promotion.Selected,
+    cb_listPromotion_SO.Selected
+);
+var_selected_nhomgia = Switch(
+    true,
+    is_Screen_SOBG,
+    dp_nhom_gia_SOBG.Selected,
+    is_Screen_SO_New,
+    Dropdown_NhomGia_New.Selected,
+    dp_nhom_gia.Selected
+);
+var_selected_donvi = Switch(
+    true,
+    is_Screen_SOBG,
+    dp_Don_vi_SOBG.Selected,
+    is_Screen_SO_New,
+    Dropdown_DVT_new.Selected,
+    dp_Don_vi.Selected
+);
+var_selected_vitrikho = Switch(
+    true,
+    is_Screen_SOBG,
+    dp_ViTriKho_SOBG.Selected,
+    is_Screen_SO_New,
+    Dropdown_KhoDapUngSO.Selected,
+    dp_ViTriKho.Selected
+);
+var_selected_theochietkhau = Switch(
+    true,
+    is_Screen_SOBG,
+    dp_theochietkhau_SOBG.Selected.Value,
+    is_Screen_SO,
+    dp_theochietkhau.Selected.Value,
+    is_Screen_SO_New,
+    dp_theochietkhau_SO.Selected.Value
+);
+var_MaKH = var_selected_khachhang.'Mã khách hàng';
+var_Nganh_nghe = If(
+    var_selected_khachhang.'Ngành nghề text' = "5. Shop bán lẻ",
+    "Shop",
+    "Nhà máy"
+);
+var_sinhnhat = Text(
+    khachhang_selected.'Ngày sinh',
+    "mm"
+) = Text(
+    Now(),
+    "mm"
+);
+var_last_order_date = DateDiff(
+    khachhang_selected.Last_order_date,
+    Now(),
+    TimeUnit.Months
+) >= 3;
+var_Tinh_thanh = var_selected_khachhang.'Tỉnh/thành CAL';
+var_QuanHuyen = var_selected_khachhang.'Quận huyện CAL';
+var_QuanHuyen_key = var_selected_khachhang.'Key quận huyện';
+var_leadtime_tinhthanh = If(
+    !IsBlank(var_Tinh_thanh),
+    LookUp(
+        'Tỉnh/Thành',
+        'Tên Tỉnh/Thành' = var_Tinh_thanh
+    ).'Lead time - local',
+    LookUp(
+        'Tỉnh/Thành',
+        'Tên Tỉnh/Thành' = "Bình Định"
+    ).'Lead time - local'
+);
+var_leadtime_quanhuyen = LookUp(
+    'Quận/Huyện',
+    Status = 'Status (Quận/Huyện)'.Active And Key_Auto = var_QuanHuyen_key
+).'Lead time theo ca';
+var_KH_vip = LookUp(
+    'Group - KH',
+    'Mã KH' = var_MaKH And !IsBlank('VIP NhomKH') And Status = 'Status (Group - KH)'.Active
+);
+List_Product = Filter(
+    products,
+    Status = 'Status (products)'.Active,
+    !IsBlank('Tên sản phẩm')//,(var_selected_VAT_SO = VAT_choice.'Có VAT' And GTGT <> 'GTGT (products)'.'0%')
+);
+List_Customer = Sort(
+    Filter(
+        Customers,
+        Status = 'Status (Customers)'.Active,
+        'Loại đối tượng' = 'Loại đối tượng - KH'.'Khách hàng',
+        //'Local ' = "Quy Nhơn",
+        'Trạng thái KH' = 'Trạng thái KH (Customers)'.'Khách hàng chính thức'
+    ),
+    'Customer name'
+);
+var_list_gia = Filter(
+    'Báo giá - chi tiếts',
+    'Đơn vị'.ID = var_selected_donvi.ID,
+    'Trạng thái hiệu lực' <> 'trạng thái hiệu lực'.'Hết hiệu lực',
+    Status = 'Status (Báo giá - chi tiếts)'.Active,
+    'Pricing deactive' = Pricing.Active
+);
+var_list_gia_KH = Filter(
+    'Báo giá - chi tiếts',
+    'Mã KH' = var_MaKH,
+    'Đơn vị'.ID = var_selected_donvi.ID,
+    Status = 'Status (Báo giá - chi tiếts)'.Active,
+    'Trạng thái hiệu lực' <> 'trạng thái hiệu lực'.'Hết hiệu lực',
+    'Pricing deactive' = Pricing.Active
+);
+var_duyetgiasup = Filter(
+    'Duyệt giá',
+    Status = 'Status (Duyệt giá)'.Active,
+    'Manager duyệt' = 'Manager duyệt (Duyệt giá)'.'Đã duyệt',
+    'Khách hàng'.'Mã khách hàng' = var_MaKH,
+    'Đơn vị'.ID = var_selected_donvi.ID,
+    IsBlank('Mã đơn hàng CT text')
+);
+var_List_GR_KH = ShowColumns(
+    Filter(
+        'Group - KH',
+        'Mã KH' = var_MaKH And Status = 'Status (Group - KH)'.Active And 'Nhóm khách hàng - BGCT' = "Yes"
+    ),
+    'Mã nhóm KH'
+);
+Var_ton_kho_lythuyet_bomua = LookUp(
+    'Kho Bình Định',
+    'Vị trí kho'.'Tên kho' = var_selected_vitrikho.'Tên kho' && 'Tên sản phẩm'.'Mã sản phẩm' = var_selected_maSP,
+    'Tồn kho lý thuyết - Bỏ mua'
+);
+Var_ton_kho_lythuyet_inventory = LookUp(
+    'Inventory Weshops',
+    'Vị trí kho'.'Tên kho' = var_selected_vitrikho.'Tên kho' && 'Sản phẩm'.'Mã sản phẩm' = var_selected_maSP && Status = 'Status (Inventory Weshops)'.Active && 'Số lượng tồn thực tế' > 0,
+    'Số lượng tồn lý thuyết'
+);
+
+
+Var_ton_kho_lythuyet_inventory_vitrikho = LookUp(
+    'Inventory Weshops',
+    'Vị trí kho'.'Tên kho' = var_selected_vitrikho.'Tên kho' && 'Sản phẩm'.'Mã sản phẩm' = var_selected_maSP && Status = 'Status (Inventory Weshops)'.Active && 'Số lượng tồn thực tế' > 0,'Vị trí kho' 
+);
+
+var_ton_kho_lythuyet_KT = 
+LookUp(
+    'Tồn kho kế toáns',
+    'Mã sản phẩm' = var_selected_maSP And ((var_selected_VAT_SO = VAT_choice.'Có VAT' And 'Tên thương mại text' = "WECARE")||(var_selected_VAT_SO = VAT_choice.'Không VAT' And fx_GetInvoiceType = "Hộ kinh doanh" And 'Tên thương mại text' = "WESHOP")),
+    'Tồn lý thuyết'
+);
+var_list_gia_nhom = Sort(
+    AddColumns(
+        If(
+            var_Nganh_nghe = "Nhà máy",
+            Filter(
+                var_list_gia,
+                'Ngành nghề' = var_Nganh_nghe
+            ),
+            If(
+                CountRows(var_list_gia_KH) = 1,
+                Filter(
+                    var_list_gia_KH,
+                    'Mã KH' = var_MaKH
+                ),
+
+                Filter(
+                    'Báo giá - chi tiếts',
+                    'Đơn vị'.ID = var_selected_donvi.ID,
+                    Status = 'Status (Báo giá - chi tiếts)'.Active,
+                    'Trạng thái hiệu lực' <> 'trạng thái hiệu lực'.'Hết hiệu lực',
+                    'Pricing deactive' = Pricing.Active,
+                    ('Nhóm đối tượng'.'Mã nhóm KH' in var_List_GR_KH And CountRows(var_List_GR_KH) > 0)
+                )
+            )
+        ),
+        Gia_format,
+        Text(
+            Value(
+                Switch(
+                    true,
+                    // ✅ Que hàn đặc biệt
+
+                    var_selected_SP.'Bản chất giá phát ra' = 'Bản chất giá phát ra (products)'.'Giá đã bao gồm VAT( VAT hỗ trợ)' && var_selected_VAT_SO = VAT_choice.'Có VAT',
+                    'Giá không VAT',
+                    var_selected_SP.'Bản chất giá phát ra' = 'Bản chất giá phát ra (products)'.'Giá đã bao gồm VAT( VAT hỗ trợ)' && var_selected_VAT_SO = VAT_choice.'Không VAT',
+                    Giá,
+                    // ✅ Các trường hợp khác theo bản chất
+
+                    var_selected_SP.'Bản chất giá phát ra' = 'Bản chất giá phát ra (products)'.'Giá đã bao gồm VAT',
+                    If(
+                        var_selected_VAT_SO = VAT_choice.'Có VAT',
+                        'Giá không VAT',
+                        Giá
+                    ),
+                    var_selected_SP.'Bản chất giá phát ra' = 'Bản chất giá phát ra (products)'.'Giá chưa bao gồm VAT',
+                    'Giá không VAT',
+                    // ✅ Mặc định
+
+                    Giá
+                )
+            ),
+            "#,###"
+        )
+    ),
+    Gia_format,
+    SortOrder.Ascending
+);
+gia_duyet = If(
+    CountRows(var_duyetgiasup) > 0 And (Checkbox_duyetgiasup.Value || Checkbox_DuyetGiaSUPSO.Checked),
+    First(var_duyetgiasup).'Giá đáp ứng',
+    If(
+        !IsEmpty(var_list_gia_nhom),
+        var_selected_nhomgia.Gia_format
+    )
+);
+ngay_giao = 
+    If(
+        // Điều kiện 1: Kiểm tra promotion lead time
+        !IsBlank(cb_listPromotion_SO.Selected) 
+        && !IsBlank(cb_listPromotion_SO.Selected.cr1bb_leadtimepromotion)
+        && (IsBlank(cb_listPromotion_SO.Selected.cr1bb_phanloaichuongtrinh) 
+            || cb_listPromotion_SO.Selected.cr1bb_phanloaichuongtrinh = 'Phân loại promotion'.Hãng),
+        DateAdd(
+            Now(),
+            Value(cb_listPromotion_SO.Selected.cr1bb_leadtimepromotion) * 12,
+            TimeUnit.Hours
+        ),
+        
+        // Điều kiện 2: Nếu là Shop
+        var_Nganh_nghe = "Shop",
+        DateAdd(
+            Now(),
+            var_leadtime_quanhuyen * 12,
+            TimeUnit.Hours
+        ),
+        
+        // Điều kiện 3: Kiểm tra tồn kho
+        var_input_soluong * var_selected_donvi.'Giá trị chuyển đổi (Chuyển đổi/chuẩn)' > var_selected_SP.'Tồn kho lý thuyết (bỏ mua) - BD',
+        DateAdd(Today(), var_selected_SP.'Lead time'),
+        
+        // Mặc định: +1 ngày
+        DateAdd(Today(), 1)
+    );
+Max_stt = If(
+    !IsBlank(var_selected_id_donhang),
+    First(
+        Sort(
+            Filter(
+                'Sale Order Details',
+                'Mã đơn hàng'.Id = var_selected_id_donhang,
+                Status = 'Status (Sale Order Details)'.Active
+            ),
+            'Stt đơn',
+            SortOrder.Descending
+        )
+    ).'Stt đơn',
+    0
+);
+
+List_DVT = Filter(
+    'Unit conversions',
+    Status = 'Status (Unit conversions)'.Active,
+    'Mã SP' = var_selected_maSP
+);
+var_DHSO = Sort(
+    Filter(
+        Sale_Orders,
+        'Mã khách hàng' = var_MaKH,
+        'Trạng thái giao nhận 1' = 'trạng thái giao nhận sale'.'Chưa giao',
+        Status = 'Status (Sale_Orders)'.Active,
+        'Active data' = 'Active data (Sale_Orders)'.Active
+    ),
+    'Created On',
+    SortOrder.Descending
+);
+var_SODBG = Filter(
+    'SOD báo giá',
+    Status = 'Status (SOD báo giá)'.Active,
+    'Mã đơn hàng'.ID = dp_MaDH_SOBG.Selected.ID
+);
+var_SOD = Filter(
+    'Sale Order Details',
+    Status = 'Status (Sale Order Details)'.Active,
+    'Mã đơn hàng'.Id = var_selected_id_donhang
+);
+gia_duyet_SOBG = If(
+    CountRows(var_duyetgiasup_SOBG) > 0 And Checkbox_duyetgiasup_SOBG.Value,
+    First(var_duyetgiasup_SOBG).'Giá đáp ứng',
+    If(
+        !IsBlank(var_selected_donvi.ID),
+        var_selected_nhomgia.Gia_format
+    )
+);
+/////////////////////////Promotion cải tiến
+ListFilterPromotion = ShowColumns(
+    Filter(
+        Promotion,
+        (Coalesce(
+            var_MaKH,
+            khachhang_selected.'Mã khách hàng'
+        ) & ",") in 'Mã khách hàng áp dụng',
+        Status = 'Status (Promotion)'.Active,
+        'Promotion Deactive' = "Active",
+        'Start date' <= Now()
+    ),
+    ID,
+    Promotion,
+    'Phân Loại chương trình',
+    'Lead time promotion',
+    'Chiết khấu 2',
+    'Mã sản phẩm_Multiple',
+    'Mã nhóm sp_multiple',
+    'Mã nhóm sp (Mua kèm)',
+    'Mã sản phẩm (mua kèm)',
+    'Mã khách hàng áp dụng',
+    
+    Type,
+    Status,
+    'Điều khoản thanh toán áp dụng',
+    'Mã promotion',
+    'Tổng tiền áp dụng',
+    'Cộng dồn số lượng',
+    'Promotion type (text)',
+    'Số lượng áp dụng',
+    'Số lượng áp dụng mức 3',
+    Value,
+    'Value 2',
+    'Value 3',
+    'Value mua kèm',
+    'Value có VAT','Value không VAT',
+    'VNĐ/%',
+    'Điều khoản thanh toán áp dụng mức 3',
+    'Điều khoản thanh toán áp dụng mức 2', 
+    'Nhóm BG khách hàng áp dụng',
+    'Đơn vị tính','Sale hàng tồn'
+);
+var_cong_don = Switch(
+    true,
+    is_Screen_SO,
+    Sum(
+        Filter(
+            formData,
+            PromotionRecord.'Promotion type (text)' = var_selected_Promotion.TypePromotion
+        ),
+        'Số lượng'
+    ),
+    is_Screen_SO_New,
+    Sum(
+        Filter(
+            formData_new,
+            PromotionRecord.'Promotion type (text)' = var_selected_Promotion.TypePromotion
+        ),
+        'Số lượng'
+    ),
+    Sum(
+        Filter(
+            formData_SOBG,
+            PromotionRecord.'Promotion type (text)' = var_selected_Promotion.TypePromotion
+        ),
+        'Số lượng'
+    )
+);
+ListPromotion_Order = 
+    Filter(
+        Sort(
+            AddColumns(
+                Filter(
+                    Filter(ListFilterPromotion, crdfd_type = "Order"),
+                    
+                    With(
+                        {
+                            // Tính toán helper trong mỗi record
+                            HasSPMatch: CountIf(var_table_SP, Text(Value) in crdfd_masanpham_multiple) > 0,
+                            HasNSPMatch: CountIf(var_table_NSP, Text(Value) in cr1bb_manhomsp_multiple) > 0,
+                            PaymentTerms_Concat: Concat(cr1bb_ieukhoanthanhtoanapdung, Value, ", ")
+                        },
+                        
+                        // === ĐIỀU KIỆN TỔNG HỢP ===
+                        statecode = 'Status (Promotion)'.Active &&
+                        
+                        // Chiết khấu 2
+                        (cr1bb_chietkhau2 <> 'Chiết khấu 2 (Promotion)'.Yes || (HasSPMatch || HasNSPMatch)) &&
+                        
+                        // Điều khoản thanh toán
+                        (IsBlank(PaymentTerms_Concat) || 
+                         (var_dieukhoanthanhtoan in PaymentTerms_Concat && (HasSPMatch || HasNSPMatch))) &&
+                        
+                        // Điều kiện đặc biệt
+                        (crdfd_name <> "Voucher sinh nhật" || var_sinhnhat) &&
+                        (crdfd_name <> "Giảm giá đặc biệt_Khách hàng 3 tháng đặt lại hàng" || 
+                         (var_last_order_date && var_check_promotion_SOD)) &&
+                        
+                        // Tổng tiền tối thiểu
+                        (IsBlank(cr1bb_tongtienapdung) || Total_Order >= cr1bb_tongtienapdung)
+                    )
+                ),
+                
+                // === THÊM CÁC CỘT ===
+                NamePromotion, crdfd_name,
+                ValuePromotion, crdfd_value,
+                VND_Percent, crdfd_vn,
+                DKTT, Concat(cr1bb_ieukhoanthanhtoanapdung, Value, ", "),
+                Ma_SP, crdfd_masanpham_multiple,
+                Ma_NSP, cr1bb_manhomsp_multiple,
+                'Chiết khấu 2', cr1bb_chietkhau2
+            ),
+            NamePromotion,
+            SortOrder.Ascending
+        ),
+        
+        // === FILTER CUỐI CHO CHIẾT KHẤU 2 ===
+        ('Chiết khấu 2' = 'Chiết khấu 2 (Promotion)'.No || IsBlank('Chiết khấu 2')) ||
+        ('Chiết khấu 2' = 'Chiết khấu 2 (Promotion)'.Yes && var_count_notIn_Promotions > 0)
+    );
+Promotion_Order_Max = 
+    With(
+        {
+            // Tính max value cho các khuyến mãi phần trăm
+            MaxPercentValue: Max(
+                Filter(
+                    ListPromotion_Order,
+                    VND_Percent = 'VNĐ/% (Promotion)'.'%'
+                ),
+                ValuePromotion
+            )
+        },
+        Filter(
+            ListPromotion_Order,
+            // Lấy tất cả VNĐ hoặc % có giá trị cao nhất
+            VND_Percent = 'VNĐ/% (Promotion)'.VNĐ ||
+            (VND_Percent = 'VNĐ/% (Promotion)'.'%' && ValuePromotion = MaxPercentValue)
+        )
+    );  
+ListPromotion =
+Sort(
+    AddColumns(
+        With(
+            {
+                var_SP_Selected: var_selected_maSP & ",",
+                var_NSP_Selected: var_selected_manhomSP & ","
+            },
+            Filter(
+                ListFilterPromotion,
+                With(
+                    {
+                        IsActivePromotion: statecode = 'Status (Promotion)'.Active,
+                        IsValidType: crdfd_type <> "Order" && crdfd_type <> "Revenue",
+                        IsDVT:
+                            var_selected_vitrikho.'Tên kho' = Var_ton_kho_lythuyet_inventory_vitrikho.'Tên kho' &&
+                            If(
+                                !IsBlank(cr1bb_onvitinh) && cr1bb_onvitinh.'Tên đơn vị' = var_selected_donvi.'Đơn vị chuyển đổi-Transfome',
+                                (var_SP_Selected in crdfd_masanpham_multiple && IsBlank(cr1bb_masanphammuakem)) ||
+                                (var_NSP_Selected in cr1bb_manhomsp_multiple && IsBlank(cr1bb_manhomspmuakem))
+                            ),
+                        IsNSPApdung:
+                            If(
+                                !IsBlank(cr1bb_Nhomkhachhangapdung.'Nhóm khách hàng') &&
+                                cr1bb_Nhomkhachhangapdung.'Nhóm khách hàng' = var_selected_nhomgia.'Nhóm đối tượng text',
+                                (var_SP_Selected in crdfd_masanpham_multiple && IsBlank(cr1bb_masanphammuakem)) ||
+                                (var_NSP_Selected in cr1bb_manhomsp_multiple && IsBlank(cr1bb_manhomspmuakem))
+                            ),
+                        IsNotExcludedGroup:
+                            Not(var_selected_manhomSP in var_selected_khachhang.'Promotion json mã nhóm SP' &&
+                                crdfd_name = "[ALL] GIẢM GIÁ NHÓM SẢN PHẨM MỚI _ V1"),
+                        IsNotExcludedGroupMN:
+                            Not(var_selected_manhomSP in var_selected_khachhang.'Promotion json mã nhóm SP' &&
+                                crdfd_name = "[MIỀN NAM] GIẢM GIÁ NHÓM SẢN PHẨM MỚI_V1"),
+                        PaymentTermsMatch:
+                            IsBlank(Concat(cr1bb_ieukhoanthanhtoanapdung, Value, ", ")) ||
+                            var_selected_dieukhoanthanhtoan in Concat(cr1bb_ieukhoanthanhtoanapdung, Value, ", "),
+                        txtPromotionTonKho: crdfd_promotiontypetext,
+                        IsHangTonKhoBD:
+                            Var_ton_kho_lythuyet_bomua > 0 &&
+                            ((var_SP_Selected in crdfd_masanpham_multiple && IsBlank(cr1bb_masanphammuakem)) ||
+                             (var_NSP_Selected in cr1bb_manhomsp_multiple && IsBlank(cr1bb_manhomspmuakem))),
+                        ProductMatches:
+                            crdfd_type = "All product" ||
+                            If(
+                                !IsBlank(cr1bb_tongtienapdung),
+                                ((var_SP_Selected in crdfd_masanpham_multiple && IsBlank(cr1bb_masanphammuakem)) ||
+                                 (var_NSP_Selected in cr1bb_manhomsp_multiple && IsBlank(cr1bb_manhomspmuakem))) &&
+                                var_Total_Order >= cr1bb_tongtienapdung,
+                                (var_SP_Selected in crdfd_masanpham_multiple && IsBlank(cr1bb_masanphammuakem)) ||
+                                (var_NSP_Selected in cr1bb_manhomsp_multiple && IsBlank(cr1bb_manhomspmuakem))
+                            ) ||
+                            (
+                                (CountIf(List_Ma_NSP_formdata, Text(Value & ",") in cr1bb_manhomspmuakem) > 0 &&
+                                 !IsBlank(cr1bb_manhomsp_multiple) &&
+                                 var_NSP_Selected in cr1bb_manhomsp_multiple) ||
+                                (CountIf(List_Ma_SP_formdata, Text(Value & ",") in crdfd_masanpham_multiple) > 0 &&
+                                 !IsBlank(crdfd_masanpham_multiple) &&
+                                 var_SP_Selected in crdfd_masanpham_multiple)
+                            ) ||
+                            (
+                                (
+                                    CountIf(List_Ma_NSP_SOD_MK, Text(Value & ",") in cr1bb_manhomspmuakem) > 0 &&
+                                    (var_NSP_Selected in cr1bb_manhomsp_multiple || var_SP_Selected in crdfd_masanpham_multiple)
+                                ) ||
+                                (
+                                    CountIf(List_Ma_SP_SOD_MK, Text(Value & ",") in cr1bb_masanphammuakem) > 0 &&
+                                    (var_NSP_Selected in cr1bb_manhomsp_multiple || var_SP_Selected in crdfd_masanpham_multiple)
+                                )
+                            ) &&
+                            (IsBlank(cr1bb_tongtienapdung) || Total_order_MK >= cr1bb_tongtienapdung),
+                        Salehangton:
+                            If(
+                                crdfd_salehangton = 'Sale hàng tồn (Promotion)'.Yes,
+                                Var_ton_kho_lythuyet_inventory > 0 ||
+                                cb_san_pham_SOBG.Selected.'Mã nhóm sp' in ["NSP-00027","NSP-000872","NSP-000409","NSP-000474"] ||
+                                cb_san_pham.Selected.'Mã nhóm sp' in ["NSP-00027","NSP-000872","NSP-000409","NSP-000474"],
+                                true
+                            )
+                    },
+                    (
+                        If(!IsBlank(cr1bb_onvitinh), IsDVT, ProductMatches) &&
+                        If(!IsBlank(cr1bb_Nhomkhachhangapdung), IsNSPApdung, ProductMatches) &&
+                        If(txtPromotionTonKho = "Promotion - Áp dụng cho hàng có tồn kho", IsHangTonKhoBD, ProductMatches) &&
+                        IsActivePromotion &&
+                        IsValidType &&
+                        PaymentTermsMatch &&
+                        IsNotExcludedGroup &&
+                        IsNotExcludedGroupMN
+                    ) &&
+                    Salehangton
+                )
+            )
+        ),
+        TypePromotion, crdfd_promotiontypetext,
+        NamePromotion, crdfd_name,
+        Cong_don_so_luong, cr1bb_congdonsoluong,
+        SL_Apdung, cr1bb_soluongapdung,
+        SL_ApDungMuc3, crdfd_soluongapdungmuc3,
+        ValuePromotion, crdfd_value,
+        Value2Promotion, cr1bb_value2,
+        Value3Promotion, crdfd_value3,
+        Value_muakem, cr3b9_valuemuakem,
+        Value_VAT, crdfd_value_co_vat,
+        Value_NonVAT, crdfd_value_khong_vat,
+        VND_Percent, crdfd_vn,
+        chietkhau,
+        With(
+            {
+                BasePrice: If(is_Screen_SOBG, gia_duyet_SOBG, gia_duyet),
+                TotalDiscount: crdfd_value + cr3b9_valuemuakem
+            },
+            If(
+                crdfd_vn = 'VNĐ/% (Promotion)'.VNĐ,
+                BasePrice - TotalDiscount,
+                BasePrice * (1 - TotalDiscount / 100)
+            )
+        ),
+        DKTT, Concat(cr1bb_ieukhoanthanhtoanapdung, Value, ", "),
+        DKTT_Muc3, cr1bb_ieukhoanthanhtoanapdungmuc3,
+        DKTT_Muc2, cr3b9_dieukhoanthanhtoanapdungmuc2
+    ),
+    chietkhau,
+    SortOrder.Descending   // đổi sang Descending để ưu tiên chiết khấu lớn
+);
+Value_Promotion = With(
+    var_selected_Promotion,
+    With(
+        {
+            SL_ApDung1: ThisRecord.cr1bb_soluongapdung,
+            SL_ApDung3: ThisRecord.SL_ApDungMuc3,
+            TT_ApDung: ThisRecord.cr1bb_tongtienapdung,
+            DKTT_M2: ThisRecord.DKTT_Muc2,
+            DKTT_M3: ThisRecord.DKTT_Muc3,
+            TongSL: If(
+                ThisRecord.Cong_don_so_luong = 'Cộng dồn số lượng (Promotion)'.Yes,
+                var_input_soluong + var_cong_don,
+                var_input_soluong
+            ),
+            Total_Order_SO: var_Total_Order,
+            Value1: ThisRecord.ValuePromotion,
+            Value2: ThisRecord.Value2Promotion,
+            Value3: ThisRecord.Value3Promotion,
+            ValueVAT:ThisRecord.Value_VAT,
+            ValueNonVAT: ThisRecord.Value_NonVAT
+        },
+        Switch(
+            true,
+            //Value VAT
+            !IsBlank(ValueVAT) && var_selected_VAT_SO = VAT_choice.'Có VAT',
+            ThisRecord.ValueVAT,
+
+            //Value NonVAT
+            !IsBlank(ValueNonVAT) && var_selected_VAT_SO = VAT_choice.'Không VAT',
+            ThisRecord.ValueNonVAT,
+
+            // Áp dụng mức 1
+            IsBlank(SL_ApDung1),
+            ThisRecord.Value1,
+
+            !IsBlank(SL_ApDung1) && TongSL < SL_ApDung1,
+            ThisRecord.Value1,
+
+            // Áp dụng mức 2
+            !IsBlank(SL_ApDung1) && TongSL >= SL_ApDung1 && (IsBlank(SL_ApDung3) || TongSL < SL_ApDung3) && (IsBlank(DKTT_M2) || DKTT_M2 = var_selected_dieukhoanthanhtoan_choice),
+            ThisRecord.Value2,
+
+            // Áp dụng mức 3
+            !IsBlank(SL_ApDung3) && TongSL >= SL_ApDung3 && (IsBlank(DKTT_M3) || DKTT_M3 = var_selected_dieukhoanthanhtoan_choice),
+            ThisRecord.Value3,
+            !IsBlank(TT_ApDung) && Total_Order_SO < TT_ApDung,
+            ThisRecord.Value1,
+            !IsBlank(TT_ApDung) && Total_Order_SO >= TT_ApDung,
+            ThisRecord.Value2,
+            // Mặc định
+
+            If(
+                DKTT_M2 = var_selected_dieukhoanthanhtoan_choice,
+                ThisRecord.Value2,
+                ThisRecord.Value1
+            )
+        )
+    )
+);
+Value_Promtion_Muakem = If(
+    !IsBlank(var_selected_Promotion.Value_muakem) && (IsBlank(var_selected_Promotion.SL_ApDungMuc3) || var_selected_Promotion.SL_ApDungMuc3 > var_input_soluong),
+    var_selected_Promotion.Value_muakem,
+    0
+);
+List_Ma_SP_formdata = Filter(
+    Split(
+        Concat(
+            ShowColumns(
+                Switch(
+                    true,
+                    is_Screen_SOBG,
+                    formData_SOBG,
+                    is_Screen_SO_New,
+                    formData_new,
+                    formData
+                ),
+                'Mã sản phẩm'
+            ),
+            'Mã sản phẩm',
+            ","
+        ),
+        ","
+    ),
+    !IsBlank(Value)
+);
+List_Ma_NSP_formdata = Filter(
+    Split(
+        Concat(
+            ShowColumns(
+                Switch(
+                    true,
+                    is_Screen_SOBG,
+                    formData_SOBG,
+                    is_Screen_SO_New,
+                    formData_new,
+                    formData
+                ),
+                'Mã nhóm SP'
+            ),
+            'Mã nhóm SP',
+            ","
+        ),
+        ","
+    ),
+    !IsBlank(Value)
+);
+Total_order_MK = Switch(
+    true,
+    is_Screen_SO,
+    LookUp(
+        Sale_Orders,
+        Id = var_selected_SO_MK
+    ).'Tổng tiền',
+    LookUp(
+        'SO báo giá',
+        ID = dp_MaDH_SOBG.Selected.'SOBG Mua kèm'.ID
+    ).'Tổng tiền'
+);
+List_Ma_NSP_SOD_MK = Filter(
+    Split(
+        If(
+            is_Screen_SO,
+            Concat(
+                ShowColumns(
+                    Filter(
+                        'Sale Order Details',
+                        'Mã đơn hàng'.Id = var_selected_SO_MK,
+                        !IsBlank(var_selected_SO_MK),
+                        Status = 'Status (Sale Order Details)'.Active
+                    ),
+                    'Mã nhóm sp'
+                ),
+                crdfd_manhomsp,
+                ","
+            ),
+            Concat(
+                ShowColumns(
+                    Filter(
+                        'SOD báo giá',
+                        'Mã đơn hàng'.ID = dp_MaDH_SOBG.Selected.'SOBG Mua kèm'.ID,
+                        !IsBlank(dp_MaDH_SOBG.Selected.'SOBG Mua kèm'),
+                        Status = 'Status (SOD báo giá)'.Active
+                    ),
+                    'Mã nhóm sản phẩm'
+                ),
+                crdfd_manhomsanpham,
+                ","
+            )
+        ),
+        ","
+    ),
+    !IsBlank(Value)
+);
+List_Ma_SP_SOD_MK = Filter(
+    Split(
+        If(
+            is_Screen_SO,
+            Concat(
+                ShowColumns(
+                    Filter(
+                        'Sale Order Details',
+                        'Mã đơn hàng'.Id = var_selected_SO_MK,
+                        !IsBlank(var_selected_SO_MK),
+                        Status = 'Status (Sale Order Details)'.Active
+                    ),
+                    'Mã sản phẩm'
+                ),
+                crdfd_masanpham,
+                ","
+            ),
+            Concat(
+                ShowColumns(
+                    Filter(
+                        'SOD báo giá',
+                        'Mã đơn hàng'.ID = dp_MaDH_SOBG.Selected.'SOBG Mua kèm'.ID,
+                        !IsBlank(dp_MaDH_SOBG.Selected.'SOBG Mua kèm'),
+                        Status = 'Status (SOD báo giá)'.Active
+                    ),
+                    'Mã sản phẩm'
+                ),
+                crdfd_masanpham,
+                ","
+            )
+        ),
+        ","
+    ),
+    !IsBlank(Value)
+);
+var_Total_Order = Sum(
+    Switch(
+        true,
+        is_Screen_SOBG,
+        formData_SOBG,
+        is_Screen_SO_New,
+        formData_new,
+        formData
+    ),
+    'Tổng tiền'
+) + (gia_duyet * var_input_soluong) + ((gia_duyet * var_input_soluong) * (var_selected_VAT / 100));
+////////////////////////////////////////////////SO tạm
+var_dhSOTam = Sort(
+    Filter(
+        'Đặt hàng SOS',
+        Status = 'Status (Đặt hàng SOS)'.Active,
+        'Khách hàng'.'Mã khách hàng' = var_selected_khachhang.'Mã khách hàng',
+        'Trạng thái đơn hàng' = 'Trạng thái đơn hàng (Đặt hàng SOS)'.'Chờ xác nhận'
+    ),
+    'Created On',
+    SortOrder.Descending
+);
+Var_check_duyetgia = LookUp(
+    'Đặt hàng SOS',
+    'Mã SO' = cb_donhang_tam.Selected.Value And Status = 'Status (Đặt hàng SOS)'.Active And 'Trạng thái duyệt giá' = "Chờ xác nhận"
+);
+var_selected_donhangtam = CountIf(
+    List_SO_tam,
+    SelectedSP = true
+);
+/////////////////////////////////////// SO báo giá
+var_DHBG = Sort(
+    Filter(
+        'SO báo giá',
+        'Khách hàng'.'Mã khách hàng' = var_MaKH,
+        'Trạng thái báo giá' = 'Trạng thái báo giá (SO báo giá)'.'Đang báo giá',
+        Status = 'Status (SO báo giá)'.Active
+    ),
+    'Created On',
+    SortOrder.Descending
+);
+var_duyetgiasup_SOBG = Filter(
+    'Duyệt giá',
+    Status = 'Status (Duyệt giá)'.Active,
+    'Manager duyệt' = 'Manager duyệt (Duyệt giá)'.'Đã duyệt',
+    'Khách hàng'.'Mã khách hàng' = var_MaKH,
+    'Đơn vị'.ID = var_selected_donvi.ID,
+    IsBlank('Mã đơn hàng CT text')
+);
+var_leadtime_tinhthanh_SOBG = If(
+    !IsBlank(var_Tinh_thanh),
+    LookUp(
+        'Tỉnh/Thành',
+        'Tên Tỉnh/Thành' = var_Tinh_thanh
+    ).'Lead time - local',
+    LookUp(
+        'Tỉnh/Thành',
+        'Tên Tỉnh/Thành' = "Bình Định"
+    ).'Lead time - local'
+);
+var_leadtime_quanhuyen_SOBG = LookUp(
+    'Quận/Huyện',
+    Status = 'Status (Quận/Huyện)'.Active And Key_Auto = var_QuanHuyen_key
+).'Lead time theo ca';
+ngay_giao_SOBG = If(
+    var_Nganh_nghe = "Shop",
+    DateAdd(
+        Now(),
+        var_leadtime_quanhuyen * 12,
+        TimeUnit.Hours
+    ),
+    If(
+        var_input_soluong * var_selected_donvi.'Giá trị chuyển đổi (Chuyển đổi/chuẩn)' > var_selected_SP.'Tồn kho lý thuyết (bỏ mua) - BD',
+        DateAdd(Today(), var_selected_SP.'Lead time'),
+        DateAdd(Today(), 1)
+    )
+);
+Max_stt_SOBG = First(
+    Sort(
+        Filter(
+            'SOD báo giá',
+            'Mã đơn hàng'.ID = var_selected_id_donhang,
+            Status = 'Status (SOD báo giá)'.Active
+        ),
+        'Stt đơn',
+        SortOrder.Descending
+    )
+).'Stt đơn';
+var_MultiChoiceKho = LookUp(
+    Customers,
+    'Mã khách hàng' = var_MaKH
+);
+var_filterkho = With(
+    {
+        danhSachPhu: ForAll(
+            var_MultiChoiceKho.'Vị trí kho phụ',
+            Text(Value)
+        )
+    },
+    Filter(
+        'Kho WECARE',
+        'Tên kho' = var_MultiChoiceKho.'Vị trí kho'.'Tên kho' || 'Tên kho' in danhSachPhu
+    )
+);
+var_Ca = If(
+    is_Screen_SOBG,
+    If(
+        Hour(ngay_giao_SOBG) >= 0 && Hour(ngay_giao_SOBG) <= 12,
+        true,
+        false
+    ),
+    If(
+        Hour(ngay_giao) >= 0 && Hour(ngay_giao) <= 12,
+        true,
+        false
+    )
+);
+var_MultiChoiceKho_SOBG = LookUp(
+    Customers,
+    'Mã khách hàng' = var_selected_khachhang.'Mã khách hàng'
+);
+var_filterkho_SOBG = With(
+    {
+        danhSachPhu: ForAll(
+            var_MultiChoiceKho_SOBG.'Vị trí kho phụ',
+            Text(Value)
+        )
+    },
+    Filter(
+        'Kho WECARE',
+        'Tên kho' = var_MultiChoiceKho_SOBG.'Vị trí kho'.'Tên kho' || 'Tên kho' in danhSachPhu
+    )
+);
+var_Ca_SOBG = If(
+    Hour(ngay_giao_SOBG) >= 0 && Hour(ngay_giao_SOBG) <= 12,
+    true,
+    false
+);
+var_count_thiet_bi_nuoc = Switch(
+    true,
+    is_Screen_SO,
+    CountRows(
+        Filter(
+            formData As fdata,
+            fdata.'Record sản phẩm'.'Cấp 2 NHSP' = "Thiết bị nước"
+        )
+    ),
+    is_Screen_SO_New,
+    CountRows(
+        Filter(
+            formData_new As fdata,
+            fdata.'Record sản phẩm'.'Cấp 2 NHSP' = "Thiết bị nước"
+        )
+    ),
+    CountRows(
+        Filter(
+            formData_SOBG As fdataSOBG,
+            fdataSOBG.'Record sản phẩm'.'Cấp 2 NHSP' = "Thiết bị nước"
+        )
+    )
+);
+var_count_dien = Switch(
+    true,
+    is_Screen_SO,
+    CountRows(
+        Filter(
+            formData As fdata,
+            fdata.'Record sản phẩm'.'Cấp 2 NHSP' = "Thiết bị điện"
+        )
+    ),
+    is_Screen_SO_New,
+    CountRows(
+        Filter(
+            formData_new As fdata,
+            fdata.'Record sản phẩm'.'Cấp 2 NHSP' = "Thiết bị điện"
+        )
+    ),
+    CountRows(
+        Filter(
+            formData_SOBG As fdataSOBG,
+            fdataSOBG.'Record sản phẩm'.'Cấp 2 NHSP' = "Thiết bị điện"
+        )
+    )
+);
+var_count_kim_khi = Switch(
+    true,
+    is_Screen_SO,
+    CountRows(
+        Filter(
+            formData As fdata,
+            fdata.'Record sản phẩm'.'Cấp 2 NHSP' = "Vật tư kim khí"
+        )
+    ),
+    is_Screen_SO_New,
+    CountRows(
+        Filter(
+            formData_new As fdata,
+            fdata.'Record sản phẩm'.'Cấp 2 NHSP' = "Vật tư kim khí"
+        )
+    ),
+    CountRows(
+        Filter(
+            formData_SOBG As fdataSOBG,
+            fdataSOBG.'Record sản phẩm'.'Cấp 2 NHSP' = "Vật tư kim khí"
+        )
+    )
+);
+var_sum_thiet_bi_nuoc = Switch(
+    true,
+    is_Screen_SO,
+    Sum(
+        Filter(
+            formData As fData,
+            fData.'Record sản phẩm'.'Cấp 2 NHSP' = "Thiết bị nước"
+        ),
+        'Tổng tiền'
+    ),
+    is_Screen_SO_New,
+    Sum(
+        Filter(
+            formData_new As fdata,
+            fdata.'Record sản phẩm'.'Cấp 2 NHSP' = "Thiết bị nước"
+        ),
+        'Tổng tiền'
+    ),
+    Sum(
+        Filter(
+            formData_SOBG As fDataBG,
+            fDataBG.'Record sản phẩm'.'Cấp 2 NHSP' = "Thiết bị nước"
+        ),
+        'Tổng tiền'
+    )
+);
+var_sum_thiet_bi_dien = Switch(
+    true,
+    is_Screen_SO,
+    Sum(
+        Filter(
+            formData As fData,
+            fData.'Record sản phẩm'.'Cấp 2 NHSP' = "Thiết bị điện"
+        ),
+        'Tổng tiền'
+    ),
+    is_Screen_SO_New,
+    Sum(
+        Filter(
+            formData_new As fdata,
+            fdata.'Record sản phẩm'.'Cấp 2 NHSP' = "Thiết bị điện"
+        ),
+        'Tổng tiền'
+    ),
+    Sum(
+        Filter(
+            formData_SOBG As fDataBG,
+            fDataBG.'Record sản phẩm'.'Cấp 2 NHSP' = "Thiết bị điện"
+        ),
+        'Tổng tiền'
+    )
+);
+var_sum_kim_khi = Switch(
+    true,
+    is_Screen_SO,
+    Sum(
+        Filter(
+            formData As fData,
+            fData.'Record sản phẩm'.'Cấp 2 NHSP' = "Vật tư kim khí"
+        ),
+        'Tổng tiền'
+    ),
+    is_Screen_SO_New,
+    Sum(
+        Filter(
+            formData_new As fdata,
+            fdata.'Record sản phẩm'.'Cấp 2 NHSP' = "Vật tư kim khí"
+        ),
+        'Tổng tiền'
+    ),
+    Sum(
+        Filter(
+            formData_SOBG As fDataBG,
+            fDataBG.'Record sản phẩm'.'Cấp 2 NHSP' = "Vật tư kim khí"
+        ),
+        'Tổng tiền'
+    )
+);
+var_sum_ong_cung = Switch(
+    true,
+    is_Screen_SO,
+    Sum(
+        Filter(
+            formData As fData,
+            fData.'Record sản phẩm'.'Cấp 4' = "Ống cứng PVC"
+        ),
+        'Tổng tiền'
+    ),
+    is_Screen_SO_New,
+    Sum(
+        Filter(
+            formData_new As fdata,
+            fdata.'Record sản phẩm'.'Cấp 2 NHSP' = "Ống cứng PVC"
+        ),
+        'Tổng tiền'
+    ),
+    Sum(
+        Filter(
+            formData_SOBG As fDataBG,
+            fDataBG.'Record sản phẩm'.'Cấp 4' = "Ống cứng PVC"
+        ),
+        'Tổng tiền'
+    )
+);
+var_table_supduyet = [
+    "Bùi Tuấn Dũng",
+    "Lê Sinh Thông",
+    "Lê Thị Ngọc Anh",
+    "Nguyễn Quốc Chinh",
+    "Phạm Quốc Hưng",
+    "Huỳnh Minh Trung",
+    "Bùi Thị Mỹ Trang",
+    "Hà Bông",
+    "Vũ Thành Minh",
+    "Phạm Thị Mỹ Hương",
+    "La Hoài Phương",
+    "Trần Thái Huy",
+    "Phạm Thị Ngọc Nữ",
+    "Trần Thanh Phong",
+    "Nguyễn Quốc Hào",
+    "Đỗ Nguyễn Hoàng Nhân",
+    "Hoàng Thị Mỹ Linh"
+];
+var_table_duyetgia = Table(
+    {
+        Name: "Bùi Tuấn Dũng",
+        Value: 'Duyệt giá (Sale Order Details)'.'Bùi Tuấn Dũng'
+    },
+    {
+        Name: "Lê Sinh Thông",
+        Value: 'Duyệt giá (Sale Order Details)'.'Lê Sinh Thông'
+    },
+    {
+        Name: "Lê Thị Ngọc Anh",
+        Value: 'Duyệt giá (Sale Order Details)'.'Lê Thị Ngọc Anh'
+    },
+    {
+        Name: "Nguyễn Quốc Chinh",
+        Value: 'Duyệt giá (Sale Order Details)'.'Nguyễn Quốc Chinh'
+    },
+    {
+        Name: "Phạm Quốc Hưng",
+        Value: 'Duyệt giá (Sale Order Details)'.'Phạm Quốc Hưng'
+    },
+    {
+        Name: "Huỳnh Minh Trung",
+        Value: 'Duyệt giá (Sale Order Details)'.'Huỳnh Minh Trung'
+    },
+    {
+        Name: "Bùi Thị Mỹ Trang",
+        Value: 'Duyệt giá (Sale Order Details)'.'Bùi Thị Mỹ Trang'
+    },
+    {
+        Name: "Hà Bông",
+        Value: 'Duyệt giá (Sale Order Details)'.'Hà Bông'
+    },
+    {
+        Name: "Vũ Thành Minh",
+        Value: 'Duyệt giá (Sale Order Details)'.'Vũ Thành Minh'
+    },
+    {
+        Name: "Phạm Thị Mỹ Hương",
+        Value: 'Duyệt giá (Sale Order Details)'.'Phạm Thị Mỹ Hương'
+    },
+    {
+        Name: "La Hoài Phương",
+        Value: 'Duyệt giá (Sale Order Details)'.'La Hoài Phương'
+    },
+    {
+        Name: "Trần Thái Huy",
+        Value: 'Duyệt giá (Sale Order Details)'.'Trần Thái Huy'
+    },
+    {
+        Name: "Phạm Thị Ngọc Nữ",
+        Value: 'Duyệt giá (Sale Order Details)'.'Phạm Thị Ngọc Nữ'
+    },
+    {
+        Name: "Trần Thanh Phong",
+        Value: 'Duyệt giá (Sale Order Details)'.'Trần Thanh Phong'
+    }
+);
+var_table_duyetgia_SOBG = Table(
+    {
+        Name: "Bùi Tuấn Dũng",
+        Value: 'Duyệt giá (SOD báo giá)'.'Bùi Tuấn Dũng'
+    },
+    {
+        Name: "Lê Sinh Thông",
+        Value: 'Duyệt giá (SOD báo giá)'.'Lê Sinh Thông'
+    },
+    {
+        Name: "Lê Thị Ngọc Anh",
+        Value: 'Duyệt giá (SOD báo giá)'.'Lê Thị Ngọc Anh'
+    },
+    {
+        Name: "Nguyễn Quốc Chinh",
+        Value: 'Duyệt giá (SOD báo giá)'.'Nguyễn Quốc Chinh'
+    },
+    {
+        Name: "Phạm Quốc Hưng",
+        Value: 'Duyệt giá (SOD báo giá)'.'Phạm Quốc Hưng'
+    },
+    {
+        Name: "Huỳnh Minh Trung",
+        Value: 'Duyệt giá (SOD báo giá)'.'Huỳnh Minh Trung'
+    },
+    {
+        Name: "Bùi Thị Mỹ Trang",
+        Value: 'Duyệt giá (SOD báo giá)'.'Bùi Thị Mỹ Trang'
+    },
+    {
+        Name: "Hà Bông",
+        Value: 'Duyệt giá (SOD báo giá)'.'Hà Bông'
+    },
+    {
+        Name: "Vũ Thành Minh",
+        Value: 'Duyệt giá (SOD báo giá)'.'Vũ Thành Minh'
+    },
+    {
+        Name: "Phạm Thị Mỹ Hương",
+        Value: 'Duyệt giá (SOD báo giá)'.'Phạm Thị Mỹ Hương'
+    },
+    {
+        Name: "La Hoài Phương",
+        Value: 'Duyệt giá (SOD báo giá)'.'La Hoài Phương'
+    },
+    {
+        Name: "Trần Thái Huy",
+        Value: 'Duyệt giá (SOD báo giá)'.'Trần Thái Huy'
+    },
+    {
+        Name: "Phạm Thị Ngọc Nữ",
+        Value: 'Duyệt giá (SOD báo giá)'.'Phạm Thị Ngọc Nữ'
+    },
+    {
+        Name: "Trần Thanh Phong",
+        Value: 'Duyệt giá (SOD báo giá)'.'Trần Thanh Phong'
+    }
+);
+
+var_warning_gia = With(
+    {
+        record_Giamuadaidien: LookUp( 
+            Margins,
+            'Sản phẩm'.'Mã sản phẩm' = var_selected_maSP
+        ).'Giá mua đại diện',
+        value_giatrichuyendoi: var_selected_donvi.'Giá trị chuyển đổi (Chuyển đổi/chuẩn)'
+    },
+    If(
+        var_Nganh_nghe = "Shop",
+            If( 
+                record_Giamuadaidien > 0,
+                If(
+                    !IsBlank(var_input_gia) && (var_input_gia / value_giatrichuyendoi) / record_Giamuadaidien < 0.1,
+                    {
+                        value: true,
+                        Label: "Giá lỗ 90%",
+                        Giá: (var_input_gia / value_giatrichuyendoi) / record_Giamuadaidien
+                    },
+                    If(
+                        !IsBlank(var_input_gia) && (var_input_gia / value_giatrichuyendoi) / record_Giamuadaidien >= 9,
+                        {
+                            value: true,
+                            Label: "Giá vượt 100%",
+                            Giá: (var_input_gia / value_giatrichuyendoi) / record_Giamuadaidien
+                        },
+                        {
+                            value: false,
+                            Label: "Giá bình thường",
+                            Giá: (var_input_gia / value_giatrichuyendoi) / record_Giamuadaidien
+                        }
+                    )
+                ),
+                {
+                    value: false,
+                    Label: "Giá bình thường",
+                    Giá: (var_input_gia / value_giatrichuyendoi) / record_Giamuadaidien
+                }
+            ),
+        {
+            value: false,
+            Label: "Giá bình thường",
+            Giá: (var_input_gia / value_giatrichuyendoi) / record_Giamuadaidien
+        }
+    )
+);
+var_choice_nhapthucong_theochietkhau = If(
+    (var_Nganh_nghe = "Shop" And var_selected_nhomgia.'Nhóm đối tượng text' = "Shop") Or var_selected_nhomgia.'Nhóm đối tượng text' = "Miền Nam" , 
+    [
+        "Nhập thủ công",
+        "Theo chiết khấu"
+    ],
+    ["Nhập thủ công"]
+);
+var_choice_theochietkhau = [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "20"
+];
+gia_theochietkhau = var_selected_nhomgia.Gia_format - (var_selected_nhomgia.Gia_format * var_selected_theochietkhau / 100);
+Lk_donhangtam = LookUp(
+    var_dhSOTam,
+    'Mã SO' = cb_donhang_tam.Selected.Value
+);

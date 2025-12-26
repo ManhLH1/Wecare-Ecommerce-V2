@@ -239,7 +239,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             vat: detail.vat,
             subtotal,
             vatAmount,
-            totalAmount: detail.totalAmount,
+            // Nếu API không trả về `totalAmount` (hoặc trả nhầm là tổng chưa VAT), fallback sang tính toán cục bộ
+            totalAmount: detail.totalAmount ?? (subtotal + vatAmount),
             approver: detail.approver,
             deliveryDate: detail.deliveryDate || '',
             warehouse: warehouse, // Lấy từ state warehouse
@@ -301,11 +302,11 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     const isNonVat = vatPercent === 0;
     const invoiceSurchargeRate = isHoKinhDoanh && isNonVat ? 0.015 : 0;
 
-    // Calculate discounted price (giá đã giảm) - ensure discounted price EXCLUDES VAT.
-    // If input price includes VAT (common in UI), remove VAT first before applying discounts.
-    const vatRate = vatPercent || 0;
-    const basePriceExVat = vatRate > 0 ? priceNum / (1 + vatRate / 100) : priceNum;
-    const discountedPriceCalc = basePriceExVat * (1 - discountPercent / 100) - discountAmount;
+    // Calculate discounted price using the same method as ProductEntryForm:
+    // apply percentage discount directly on the displayed price (priceNum), then subtract any VND discount,
+    // then apply invoice surcharge if applicable.
+    const basePrice = priceNum;
+    const discountedPriceCalc = basePrice * (1 - (discountPercent || 0) / 100) - (discountAmount || 0);
     const finalPrice = discountedPriceCalc * (1 + invoiceSurchargeRate);
 
     // Check if product already exists with same productCode/productName, unit, and price
@@ -587,7 +588,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
               vat: detail.vat,
               subtotal,
               vatAmount,
-              totalAmount: detail.totalAmount,
+              // Nếu API không trả về `totalAmount`, sử dụng subtotal + vatAmount làm fallback
+              totalAmount: detail.totalAmount ?? (subtotal + vatAmount),
               approver: detail.approver,
               deliveryDate: detail.deliveryDate || '',
               isSodCreated: true, // Đánh dấu là đã save vào CRM
@@ -1497,6 +1499,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             setUrgentOrder={setUrgentOrder}
             deliveryDate={deliveryDate}
             setDeliveryDate={setDeliveryDate}
+            customerIndustry={customerIndustry}
             note={note}
             setNote={setNote}
             approver={approver}
