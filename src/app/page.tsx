@@ -30,6 +30,7 @@ import ProductGroupList from "./product-list/productgroup-list";
 import NewsSection from "@/components/NewsSection";
 import CategorySection from "@/components/CategorySection";
 import ShortcutSection from "@/components/ShortcutSection";
+import HomeBenefitsPanel from "@/components/HomeBenefitsPanel";
 import HeroSection from "@/components/HeroSection";
 import UnifiedHeaderHero from "@/components/UnifiedHeaderHero";
 import JDStyleHeader from "@/components/JDStyleHeader";
@@ -49,6 +50,10 @@ import {
   FaCalculator,
   FaUserTie,
   FaHandshake,
+  FaTruck,
+  FaRedo,
+  FaShieldAlt,
+  FaMoneyBillWave,
 } from "react-icons/fa";
 import TopProductsList from "./product-list/_components/top-products/top-products-list";
 import BusinessOpportunitySection from "@/components/BusinessOpportunitySection";
@@ -1076,6 +1081,8 @@ const HomeContent = () => {
               : []),
           ]}
         />
+        {/* Home Benefits Panel - banners similar to sample */}
+        <HomeBenefitsPanel />
         {/* Shortcut Section - DESKTOP với thiết kế tròn (ẩn theo yêu cầu) */}
         <section className="hidden">
           <div className="flex flex-nowrap w-full gap-4 p-6 bg-transparent justify-center">
@@ -1235,6 +1242,62 @@ const HomeContent = () => {
             </Reveal>
           </div>
         </section>
+      {/* Panels Section - add below BusinessOpportunity like mẫu */}
+      <section className="py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Reveal as="div" direction="up">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+              <a href="/policy/freeship" className="group block bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
+                <div className="flex items-center gap-3 p-4">
+                  <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-orange-400 to-yellow-400 flex items-center justify-center text-white text-2xl">
+                    <FaTruck />
+                  </div>
+                  <div>
+                    <div className="text-lg font-bold text-gray-900">FREE SHIP</div>
+                    <div className="text-sm text-gray-500">Miễn phí vận chuyển trên toàn quốc</div>
+                  </div>
+                </div>
+              </a>
+
+              <a href="/policy/returns" className="group block bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
+                <div className="flex items-center gap-3 p-4">
+                  <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-2xl">
+                    <FaRedo />
+                  </div>
+                  <div>
+                    <div className="text-lg font-bold text-gray-900">ĐỔI TRẢ</div>
+                    <div className="text-sm text-gray-500">Đổi trả trong vòng 10 ngày</div>
+                  </div>
+                </div>
+              </a>
+
+              <a href="/about/authentic" className="group block bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
+                <div className="flex items-center gap-3 p-4">
+                  <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-2xl">
+                    <FaShieldAlt />
+                  </div>
+                  <div>
+                    <div className="text-lg font-bold text-gray-900">HÀNG CHÍNH HÃNG</div>
+                    <div className="text-sm text-gray-500">Cam kết hàng chính hãng 100%</div>
+                  </div>
+                </div>
+              </a>
+
+              <a href="/payment/cod" className="group block bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
+                <div className="flex items-center gap-3 p-4">
+                  <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white text-2xl">
+                    <FaMoneyBillWave />
+                  </div>
+                  <div>
+                    <div className="text-lg font-bold text-gray-900">THANH TOÁN TẠI NHÀ</div>
+                    <div className="text-sm text-gray-500">Thanh toán khi nhận hàng (COD)</div>
+                  </div>
+                </div>
+              </a>
+            </div>
+          </Reveal>
+        </div>
+      </section>
 
         {/* Divider */}
         {/* <div className="w-full h-[6px] bg-gray-100 rounded-full my-2"></div> */}
