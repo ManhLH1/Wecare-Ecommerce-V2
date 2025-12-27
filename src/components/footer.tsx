@@ -125,7 +125,7 @@ const Footer = () => {
               <div>
                 <p className="font-medium text-white uppercase tracking-wide text-xs">Trụ sở 1</p>
                 <p>14-16-18-20, Đường 36, P. Bình Phú, Q6, HCM</p>
-                <p>📞 0983 161 162</p>
+                <p>📞 037 833 9009</p>
               </div>
               <div>
                 <p className="font-medium text-white uppercase tracking-wide text-xs">Trụ sở 2</p>

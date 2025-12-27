@@ -3,11 +3,191 @@ import axios from "axios";
 import { getAccessToken } from "../getAccessToken";
 import http from "http";
 import https from "https";
+import { createBackgroundJob, updateJobStatus, cleanupOldJobs } from "./_backgroundJobs";
+import { createJobNotification } from "./_notifications";
+
+// Background processing functions
+async function processInventoryUpdatesInBackground(
+  jobId: string,
+  savedDetails: any[],
+  warehouseName: string,
+  isVatOrder: boolean,
+  headers: any
+) {
+  updateJobStatus(jobId, 'running', {
+    progress: { total: savedDetails.length, completed: 0, currentStep: 'Grouping products' }
+  });
+
+  try {
+    console.log(`[Background Job ${jobId}] 🔄 Starting inventory updates for ${savedDetails.length} products...`);
+
+    // Group products by productCode and warehouse for batch processing
+    const inventoryGroups = new Map<string, Array<{product: any, quantity: number}>>();
+
+    for (const savedProduct of savedDetails) {
+      if (savedProduct.productCode && savedProduct.quantity > 0) {
+        const key = `${savedProduct.productCode}::${warehouseName}`;
+        if (!inventoryGroups.has(key)) {
+          inventoryGroups.set(key, []);
+        }
+        inventoryGroups.get(key)!.push({
+          product: savedProduct,
+          quantity: savedProduct.quantity
+        });
+      }
+    }
+
+    updateJobStatus(jobId, 'running', {
+      progress: {
+        total: inventoryGroups.size,
+        completed: 0,
+        currentStep: `Processing ${inventoryGroups.size} product groups`
+      }
+    });
+
+    const inventoryErrors: any[] = [];
+    const INVENTORY_BATCH_SIZE = 3; // Process 3 different products at a time
+
+    // Process inventory updates in parallel batches
+    let processedCount = 0;
+    const inventoryPromises: Promise<void>[] = [];
+
+    for (const [groupKey, products] of inventoryGroups) {
+      const inventoryPromise = (async () => {
+        const [productCode] = groupKey.split('::');
+        const firstProduct = products[0].product;
+
+        try {
+          const totalQuantity = products.reduce((sum, p) => sum + p.quantity, 0);
+
+          await updateInventoryAfterSale(
+            productCode,
+            totalQuantity,
+            warehouseName,
+            isVatOrder,
+            headers,
+            firstProduct.productGroupCode,
+            false
+          );
+
+          console.log(`✅ [Background Job ${jobId}] Inventory updated: ${productCode} - ${totalQuantity}`);
+        } catch (invError: any) {
+          console.error(`❌ [Background Job ${jobId}] Inventory error for ${productCode}:`, invError);
+          inventoryErrors.push({
+            productCode: productCode,
+            productName: firstProduct.productName,
+            quantity: products.reduce((sum, p) => sum + p.quantity, 0),
+            error: invError.message
+          });
+        }
+      })();
+
+      inventoryPromises.push(inventoryPromise);
+
+      // If we've reached batch size, wait for current batch to complete before starting next
+      if (inventoryPromises.length >= INVENTORY_BATCH_SIZE) {
+        await Promise.allSettled(inventoryPromises);
+        inventoryPromises.length = 0; // Clear array
+
+        processedCount += INVENTORY_BATCH_SIZE;
+        updateJobStatus(jobId, 'running', {
+          progress: {
+            total: inventoryGroups.size,
+            completed: processedCount,
+            currentStep: `Processed ${processedCount}/${inventoryGroups.size} product groups`
+          }
+        });
+      }
+    }
+
+    // Wait for any remaining inventory updates
+    if (inventoryPromises.length > 0) {
+      await Promise.allSettled(inventoryPromises);
+    }
+
+    const result = {
+      totalProducts: savedDetails.length,
+      totalProductGroups: inventoryGroups.size,
+      errors: inventoryErrors.length,
+      errorDetails: inventoryErrors
+    };
+
+    const success = inventoryErrors.length === 0;
+    updateJobStatus(jobId, success ? 'completed' : 'completed', { result });
+
+    // Create notification for user
+    createJobNotification(
+      'Cập nhật tồn kho',
+      jobId,
+      success,
+      success ? undefined : `${inventoryErrors.length} sản phẩm có lỗi cập nhật tồn kho`,
+      undefined // userId - can be passed from request if needed
+    );
+
+    console.log(`✅ [Background Job ${jobId}] Inventory updates completed. Errors: ${inventoryErrors.length}`);
+
+  } catch (error: any) {
+    console.error(`❌ [Background Job ${jobId}] Critical error:`, error);
+    updateJobStatus(jobId, 'failed', { error: error.message });
+  }
+}
+
+async function processSaleOrderUpdatesInBackground(
+  jobId: string,
+  soId: string,
+  headers: any
+) {
+  updateJobStatus(jobId, 'running', {
+    progress: { total: 1, completed: 0, currentStep: 'Updating sale order delivery method' }
+  });
+
+  try {
+    console.log(`[Background Job ${jobId}] 🔄 Updating sale order ${soId} delivery method...`);
+
+    const soUpdateEndpoint = `${SALE_ORDERS_TABLE}(${soId}`;
+
+    await apiClient.patch(
+      soUpdateEndpoint,
+      {
+        crdfd_hinhthucgiaohang: 191920000, // "Giao 1 lần"
+      },
+      { headers }
+    );
+
+    updateJobStatus(jobId, 'completed', {
+      result: { message: 'Sale order delivery method updated successfully' }
+    });
+
+    // Create notification for user
+    createJobNotification(
+      'Cập nhật đơn hàng',
+      jobId,
+      true,
+      undefined,
+      undefined // userId - can be passed from request if needed
+    );
+
+    console.log(`✅ [Background Job ${jobId}] Sale order update completed`);
+
+  } catch (error: any) {
+    console.error(`❌ [Background Job ${jobId}] Sale order update error:`, error);
+    updateJobStatus(jobId, 'failed', { error: error.message });
+
+    // Create notification for user
+    createJobNotification(
+      'Cập nhật đơn hàng',
+      jobId,
+      false,
+      error.message,
+      undefined // userId - can be passed from request if needed
+    );
+  }
+}
 
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
 
 // Axios configuration for better performance and timeout handling
-const DEFAULT_TIMEOUT = 30000; // 30 seconds per request
+const DEFAULT_TIMEOUT = 60000; // 60 seconds per request (increased for complex operations)
 const MAX_SOCKETS = 50;
 const MAX_FREE_SOCKETS = 10;
 const KEEP_ALIVE_MS = 50000; // 50 seconds
@@ -733,10 +913,26 @@ export default async function handler(
       }
     }
 
+    // ============ PROGRESS TRACKING ============
+    const progress = {
+      startTime: Date.now(),
+      totalProducts: products.length,
+      completedSteps: [] as string[],
+      inventoryIssues: false,
+      addStep: function(step: string) {
+        this.completedSteps.push(`${new Date().toISOString()}: ${step}`);
+        console.log(`[Save SOD Progress] ${step}`);
+      }
+    };
+
+    progress.addStep(`Starting save operation for ${products.length} products`);
+
     // ============ KIỂM TRA TỒN KHO CHO ĐƠN HÀNG KHÔNG VAT ============
     const isNonVatOrder = !isVatOrder;
     // Kiểm tra warehouseName có giá trị (không phải empty string, null, hoặc undefined)
     const hasWarehouseName = warehouseName && typeof warehouseName === 'string' && warehouseName.trim().length > 0;
+
+    progress.addStep('Completed inventory validation checks');
 
     if (isNonVatOrder && hasWarehouseName) {
       // Check inventory for each product (excluding allowed product groups)
@@ -817,222 +1013,338 @@ export default async function handler(
       }
     }
 
-    // ============ PATCH SALE ORDER DETAILS ============
+    // ============ PRE-FETCH LOOKUP DATA FOR ALL PRODUCTS ============
+    console.log('[Save SOD] 🔍 Pre-fetching lookup data for all products...');
+
+    // Extract unique product codes and unit combinations for batch lookups
+    const productLookupRequests: Array<{productCode?: string, productName?: string, index: number}> = [];
+    const unitLookupRequests: Array<{productCode: string, unit: string, index: number}> = [];
+
+    products.forEach((product, index) => {
+      // Collect product lookup requests
+      if (!product.productId && (product.productCode || product.productName)) {
+        productLookupRequests.push({
+          productCode: product.productCode,
+          productName: product.productName,
+          index
+        });
+      }
+
+      // Collect unit conversion lookup requests
+      if (!product.unitId && product.productCode && product.unit) {
+        unitLookupRequests.push({
+          productCode: product.productCode,
+          unit: product.unit,
+          index
+        });
+      }
+    });
+
+    // Batch lookup all products in parallel
+    const productLookupPromises = productLookupRequests.map(async (req) => {
+      try {
+        const productId = await lookupProductId(req.productCode, req.productName, headers);
+        return { index: req.index, productId, success: true };
+      } catch (error) {
+        console.warn(`[Save SOD] Product lookup failed for index ${req.index}:`, error);
+        return { index: req.index, productId: null, success: false };
+      }
+    });
+
+    // Batch lookup all unit conversions in parallel
+    const unitLookupPromises = unitLookupRequests.map(async (req) => {
+      try {
+        const unitId = await lookupUnitConversionId(req.productCode, req.unit, headers);
+        return { index: req.index, unitId, success: true };
+      } catch (error) {
+        console.warn(`[Save SOD] Unit lookup failed for index ${req.index}:`, error);
+        return { index: req.index, unitId: null, success: false };
+      }
+    });
+
+    // Execute all lookups in parallel
+    const [productLookupResults, unitLookupResults] = await Promise.all([
+      Promise.allSettled(productLookupPromises),
+      Promise.allSettled(unitLookupPromises)
+    ]);
+
+    // Build lookup maps
+    const productIdMap = new Map<number, string>();
+    const unitIdMap = new Map<number, string>();
+
+    productLookupResults.forEach((result) => {
+      if (result.status === 'fulfilled' && result.value.success && result.value.productId) {
+        productIdMap.set(result.value.index, result.value.productId);
+      }
+    });
+
+    unitLookupResults.forEach((result) => {
+      if (result.status === 'fulfilled' && result.value.success && result.value.unitId) {
+        unitIdMap.set(result.value.index, result.value.unitId);
+      }
+    });
+
+    console.log(`[Save SOD] ✅ Pre-fetched ${productIdMap.size} product IDs and ${unitIdMap.size} unit IDs`);
+    progress.addStep(`Pre-fetched ${productIdMap.size} product IDs and ${unitIdMap.size} unit IDs`);
+
+    // ============ PATCH SALE ORDER DETAILS (PARALLEL PROCESSING) ============
     const savedDetails: any[] = [];
     const failedProducts: any[] = [];
 
-    for (const product of products) {
-      const vatOptionSet = VAT_TO_IEUCHINHGTGT_MAP[product.vat] ?? 191920000;
-      const gttgOptionSet = VAT_TO_GTGT_MAP[product.vat] ?? 191920000;
+    // Process products in parallel batches to avoid overwhelming the server
+    const BATCH_SIZE = 5; // Process 5 products at a time
+    for (let i = 0; i < products.length; i += BATCH_SIZE) {
+      const batch = products.slice(i, i + BATCH_SIZE);
+      console.log(`[Save SOD] Processing batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(products.length/BATCH_SIZE)} (${batch.length} products)`);
 
-      // Determine delivery date field based on customer industry
-      const deliveryDateField =
-        customerIndustry === 191920001 // "Shop" ngành nghề
-          ? product.deliveryDate
-          : product.deliveryDate;
+      // Process batch in parallel
+      const batchPromises = batch.map(async (product, batchIndex) => {
+        const globalIndex = i + batchIndex;
+        const vatOptionSet = VAT_TO_IEUCHINHGTGT_MAP[product.vat] ?? 191920000;
+        const gttgOptionSet = VAT_TO_GTGT_MAP[product.vat] ?? 191920000;
 
-      // Reference to Sale Order using Navigation property with @odata.bind
-      // Field name is crdfd_SOcode (with capital S and O), not crdfd_socode
-      // Ensure subtotal/vat/total use the same calculation as UI 'Tổng' cell:
-      const computedSubtotal = product.subtotal ?? ((product.discountedPrice ?? product.price) * (product.quantity || 0));
-      const computedVatAmount = product.vatAmount ?? Math.round((computedSubtotal * (product.vat || 0)) / 100);
-      const computedTotal = product.totalAmount ?? (computedSubtotal + computedVatAmount);
+        // Determine delivery date field based on customer industry
+        const deliveryDateField =
+          customerIndustry === 191920001 // "Shop" ngành nghề
+            ? product.deliveryDate
+            : product.deliveryDate;
 
-      const payload: any = {
-        [`crdfd_SOcode@odata.bind`]: `/crdfd_sale_orders(${soId})`,
-        statecode: 0, // Set statecode = 0 (Active) để record có thể query được
-        crdfd_tensanphamtext: product.productName,
-        crdfd_productnum: product.quantity,
-        // Save original/display price as `crdfd_gia` and the discounted unit price as `crdfd_giagoc`
-        // so that reading code (sale-order-details) maps `price` -> crdfd_gia (display price)
-        // and `discountedPrice` -> crdfd_giagoc.
-        crdfd_gia: product.originalPrice ?? product.price,
-        crdfd_giagoc: product.discountedPrice ?? product.price,
-        crdfd_ieuchinhgtgt: vatOptionSet,
-        crdfd_stton: product.stt, // Stt đơn (correct field name)
-        // Use computed values to guarantee 'Tổng' saved equals UI display (subtotal + VAT)
-        crdfd_thue: computedVatAmount, // Thuế (GTGT amount)
-        crdfd_tongtienchuavat: computedSubtotal,
-        crdfd_tongtiencovat: computedTotal,
-        crdfd_chieckhau: product.discountPercent ? product.discountPercent / 100 : 0, // Chuyển từ phần trăm (4%) sang thập phân (0.04)
-        crdfd_chieckhauvn: product.discountAmount ?? 0,
-        // Secondary discount (Chiết khấu 2) stored as decimal (e.g., 0.05 for 5%)
-        crdfd_chieckhau2 : product.discount2 ? product.discount2 / 100 : 0,
-        crdfd_phuphi_hoadon: product.invoiceSurcharge ?? 0,
-        cr1bb_donhanggap: product.urgentOrder ?? false,
-        crdfd_promotiontext: product.promotionText || "",
-      };
+        // Reference to Sale Order using Navigation property with @odata.bind
+        // Field name is crdfd_SOcode (with capital S and O), not crdfd_socode
+        // Ensure subtotal/vat/total use the same calculation as UI 'Tổng' cell:
+        const computedSubtotal = product.subtotal ?? ((product.discountedPrice ?? product.price) * (product.quantity || 0));
+        const computedVatAmount = product.vatAmount ?? Math.round((computedSubtotal * (product.vat || 0)) / 100);
+        const computedTotal = product.totalAmount ?? (computedSubtotal + computedVatAmount);
 
-      // Add note (ghi chú) if available
-      if (product.note) {
-        payload.crdfd_notes = product.note;
-      }
+        const payload: any = {
+          [`crdfd_SOcode@odata.bind`]: `/crdfd_sale_orders(${soId})`,
+          statecode: 0, // Set statecode = 0 (Active) để record có thể query được
+          crdfd_tensanphamtext: product.productName,
+          crdfd_productnum: product.quantity,
+          // Save discounted price as `crdfd_gia` (đơn giá sau chiết khấu) and original price as `crdfd_giagoc` (đơn giá gốc)
+          // so that reading code (sale-order-details) maps:
+          // `price` -> crdfd_giagoc (đơn giá gốc)
+          // `discountedPrice` -> crdfd_gia (đơn giá sau chiết khấu - hiển thị)
+          crdfd_gia: product.discountedPrice ?? product.price,   // Đơn giá sau chiết khấu (hiển thị)
+          crdfd_giagoc: product.originalPrice ?? product.price,  // Đơn giá gốc (trước chiết khấu)
+          crdfd_ieuchinhgtgt: vatOptionSet,
+          crdfd_stton: product.stt, // Stt đơn (correct field name)
+          // Use computed values to guarantee 'Tổng' saved equals UI display (subtotal + VAT)
+          crdfd_thue: computedVatAmount, // Thuế (GTGT amount)
+          crdfd_tongtienchuavat: computedSubtotal,
+          crdfd_tongtiencovat: computedTotal,
+          crdfd_chieckhau: product.discountPercent ? product.discountPercent / 100 : 0, // Chuyển từ phần trăm (4%) sang thập phân (0.04)
+          crdfd_chieckhauvn: product.discountAmount ?? 0,
+          // Secondary discount (Chiết khấu 2) stored as decimal (e.g., 0.05 for 5%)
+          crdfd_chieckhau2 : product.discount2 ? product.discount2 / 100 : 0,
+          crdfd_phuphi_hoadon: product.invoiceSurcharge ?? 0,
+          cr1bb_donhanggap: product.urgentOrder ?? false,
+          crdfd_promotiontext: product.promotionText || "",
+        };
 
-      // Add delivery date if available
-      // CRM requires Edm.Date format (YYYY-MM-DD), not ISO string with time
-      if (product.deliveryDate) {
-        let dateStr = '';
-        // Parse date string (format: dd/mm/yyyy) to YYYY-MM-DD
-        const dateParts = product.deliveryDate.split('/');
-        if (dateParts.length === 3) {
-          const [day, month, year] = dateParts;
-          // Format as YYYY-MM-DD
-          dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-        } else {
-          // Try to parse as ISO string or other format
-          const dateObj = new Date(product.deliveryDate);
-          if (!isNaN(dateObj.getTime())) {
-            const year = dateObj.getFullYear();
-            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-            const day = String(dateObj.getDate()).padStart(2, '0');
-            dateStr = `${year}-${month}-${day}`;
-          }
+        // Add note (ghi chú) if available
+        if (product.note) {
+          payload.crdfd_notes = product.note;
         }
-        if (dateStr) {
-          payload.crdfd_ngaygiaodukientonghop = dateStr;
-        }
-      }
 
-      // Lookup product ID từ product code hoặc product name nếu chưa có productId
-      let finalProductId = product.productId;
-      if (!finalProductId && (product.productCode || product.productName)) {
-        finalProductId = await lookupProductId(product.productCode, product.productName, headers);
-      }
-
-      // Add product reference if available (using Navigation property)
-      if (finalProductId) {
-        payload[`crdfd_Sanpham@odata.bind`] = `/crdfd_productses(${finalProductId})`;
-      }
-
-      // Add unit reference if available
-      // ID_Unit_Sp (crdfd_onvi) là lookup đến crdfd_unitconversions table
-      // crdfd_onvionhang là lookup đến crdfd_unitses table
-      // Từ buttonSave: ID_Unit_Sp: formData[@'Record Đơn vị'] - đây là Unit Conversion record
-      // product.unitId là crdfd_unitconvertionid (từ units.ts)
-
-      // Lookup unitId từ Unit Conversions nếu chưa có
-      let finalUnitId = product.unitId;
-      if (!finalUnitId && product.productCode && product.unit) {
-        finalUnitId = await lookupUnitConversionId(product.productCode, product.unit, headers);
-      }
-
-      if (finalUnitId) {
-        // Set ID_Unit_Sp (crdfd_onvi) - lookup đến Unit Conversions
-        payload[`crdfd_onvi@odata.bind`] = `/crdfd_unitconvertions(${finalUnitId})`;
-      }
-
-      // Lookup và thêm crdfd_tylechuyenoi từ crdfd_unitconversions
-      // crdfd_tylechuyenoi = crdfd_giatrichuyenoi từ Unit Conversion record
-      const tyleChuyenDoi = await lookupTyleChuyenDoi(finalUnitId, product.productCode, product.unit, headers);
-      if (tyleChuyenDoi !== null && tyleChuyenDoi !== undefined) {
-        payload.crdfd_tylechuyenoi = tyleChuyenDoi;
-      }
-
-      // Tính ngày giao mới (crdfd_exdeliverrydate) và ca làm việc (cr1bb_ca) dựa trên lead time logic
-      const { deliveryDateNew, shift } = await calculateDeliveryDateAndShift(
-        product,
-        products,
-        customerIndustry,
-        product.deliveryDate,
-        headers
-      );
-
-          if (deliveryDateNew) {
-        payload.crdfd_exdeliverrydate = deliveryDateNew;
-      }
-
-      if (shift !== null) {
-        payload.cr1bb_ca = shift;
-      }
-
-      // Add approver if available
-      if (product.approver) {
-        // TODO: Lookup approver record ID from "Duyệt giá" table
-        // payload.crdfd_duyetgia = approverRecordId;
-      }
-
-      // Add approval status
-      if (product.approvePrice) {
-        // TODO: Map approver to OptionSet value
-        // payload.crdfd_duyetgia = mappedApprovalOptionSet;
-      }
-
-      // Add SUP approval if available (using Navigation property)
-      if (product.approveSupPrice && product.approveSupPriceId) {
-        payload[`cr1bb_duyetgiasup@odata.bind`] = `/crdfd_duyetgias(${product.approveSupPriceId})`;
-      }
-
-      // Add Ca (shift) - default to null for now
-      // payload.cr1bb_ca = null;
-
-      let detailId: string;
-
-      try {
-        if (product.id) {
-          // Update existing record
-          const updateEndpoint = `${SALE_ORDER_DETAILS_TABLE}(${product.id})`;
-          await apiClient.patch(updateEndpoint, payload, { headers });
-          detailId = product.id;
-        } else {
-          // Create new record
-          const createEndpoint = `${SALE_ORDER_DETAILS_TABLE}`;
-
-          // Use impersonation to set the correct createdby user
-          // MSCRMCallerID header tells Dynamics 365 to create the record as if this user did it
-          const createHeaders: any = { ...headers };
-          if (systemUserId) {
-            createHeaders['MSCRMCallerID'] = systemUserId;
-            console.log('[Save SOD] 🎭 Impersonating systemuser for creation:', systemUserId);
+        // Add delivery date if available
+        // CRM requires Edm.Date format (YYYY-MM-DD), not ISO string with time
+        if (product.deliveryDate) {
+          let dateStr = '';
+          // Parse date string (format: dd/mm/yyyy) to YYYY-MM-DD
+          const dateParts = product.deliveryDate.split('/');
+          if (dateParts.length === 3) {
+            const [day, month, year] = dateParts;
+            // Format as YYYY-MM-DD
+            dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
           } else {
-            console.warn('[Save SOD] ⚠️ No systemUserId found for impersonation');
+            // Try to parse as ISO string or other format
+            const dateObj = new Date(product.deliveryDate);
+            if (!isNaN(dateObj.getTime())) {
+              const year = dateObj.getFullYear();
+              const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+              const day = String(dateObj.getDate()).padStart(2, '0');
+              dateStr = `${year}-${month}-${day}`;
+            }
+          }
+          if (dateStr) {
+            payload.crdfd_ngaygiaodukientonghop = dateStr;
+          }
+        }
+
+        // Get pre-fetched product ID (no additional API call needed)
+        let finalProductId = product.productId;
+        if (!finalProductId) {
+          finalProductId = productIdMap.get(globalIndex);
+        }
+
+        // Add product reference if available (using Navigation property)
+        if (finalProductId) {
+          payload[`crdfd_Sanpham@odata.bind`] = `/crdfd_productses(${finalProductId})`;
+        }
+
+        // Add unit reference if available
+        // ID_Unit_Sp (crdfd_onvi) là lookup đến crdfd_unitconversions table
+        // crdfd_onvionhang là lookup đến crdfd_unitses table
+        // Từ buttonSave: ID_Unit_Sp: formData[@'Record Đơn vị'] - đây là Unit Conversion record
+        // product.unitId là crdfd_unitconvertionid (từ units.ts)
+
+        // Get pre-fetched unit ID (no additional API call needed)
+        let finalUnitId = product.unitId;
+        if (!finalUnitId) {
+          finalUnitId = unitIdMap.get(globalIndex);
+        }
+
+        if (finalUnitId) {
+          // Set ID_Unit_Sp (crdfd_onvi) - lookup đến Unit Conversions
+          payload[`crdfd_onvi@odata.bind`] = `/crdfd_unitconvertions(${finalUnitId})`;
+        }
+
+        // Lookup và thêm crdfd_tylechuyenoi từ crdfd_unitconversions
+        // crdfd_tylechuyenoi = crdfd_giatrichuyenoi từ Unit Conversion record
+        const tyleChuyenDoi = await lookupTyleChuyenDoi(finalUnitId, product.productCode, product.unit, headers);
+        if (tyleChuyenDoi !== null && tyleChuyenDoi !== undefined) {
+          payload.crdfd_tylechuyenoi = tyleChuyenDoi;
+        }
+
+        // Tính ngày giao mới (crdfd_exdeliverrydate) và ca làm việc (cr1bb_ca) dựa trên lead time logic
+        const { deliveryDateNew, shift } = await calculateDeliveryDateAndShift(
+          product,
+          products,
+          customerIndustry,
+          product.deliveryDate,
+          headers
+        );
+
+            if (deliveryDateNew) {
+          payload.crdfd_exdeliverrydate = deliveryDateNew;
+        }
+
+        if (shift !== null) {
+          payload.cr1bb_ca = shift;
+        }
+
+        // Add approver if available
+        if (product.approver) {
+          // TODO: Lookup approver record ID from "Duyệt giá" table
+          // payload.crdfd_duyetgia = approverRecordId;
+        }
+
+        // Add approval status
+        if (product.approvePrice) {
+          // TODO: Map approver to OptionSet value
+          // payload.crdfd_duyetgia = mappedApprovalOptionSet;
+        }
+
+        // Add SUP approval if available (using Navigation property)
+        if (product.approveSupPrice && product.approveSupPriceId) {
+          payload[`cr1bb_duyetgiasup@odata.bind`] = `/crdfd_duyetgias(${product.approveSupPriceId})`;
+        }
+
+        // Add Ca (shift) - default to null for now
+        // payload.cr1bb_ca = null;
+
+        let detailId: string;
+
+        try {
+          if (product.id) {
+            // Update existing record
+            const updateEndpoint = `${SALE_ORDER_DETAILS_TABLE}(${product.id})`;
+            await apiClient.patch(updateEndpoint, payload, { headers });
+            detailId = product.id;
+          } else {
+            // Create new record
+            const createEndpoint = `${SALE_ORDER_DETAILS_TABLE}`;
+
+            // Use impersonation to set the correct createdby user
+            // MSCRMCallerID header tells Dynamics 365 to create the record as if this user did it
+            const createHeaders: any = { ...headers };
+            if (systemUserId) {
+              createHeaders['MSCRMCallerID'] = systemUserId;
+              console.log('[Save SOD] 🎭 Impersonating systemuser for creation:', systemUserId);
+            } else {
+              console.warn('[Save SOD] ⚠️ No systemUserId found for impersonation');
+            }
+
+            console.log('[Save SOD] 🚀 Sending POST to:', createEndpoint);
+            console.log('[Save SOD] 🚀 Creation Headers:', JSON.stringify(createHeaders, null, 2));
+
+            const createResponse = await apiClient.post(createEndpoint, payload, {
+              headers: createHeaders,
+            });
+            detailId = createResponse.data.crdfd_saleorderdetailid;
+            console.log('[Save SOD] ✅ Created record ID:', detailId);
           }
 
-          console.log('[Save SOD] 🚀 Sending POST to:', createEndpoint);
-          console.log('[Save SOD] 🚀 Creation Headers:', JSON.stringify(createHeaders, null, 2));
+          // Stamp owner/created-by: ưu tiên systemuser, fallback về customer
+          if (systemUserId) {
+            await trySetOwnerAndCreatedBySystemUser(detailId, systemUserId, headers);
+          } else if (customerIdToStamp) {
+            // Fallback: set customer nếu không tìm thấy systemuser
+            await trySetOwnerAndCreatedByCustomer(detailId, customerIdToStamp, headers);
+          }
 
-          const createResponse = await apiClient.post(createEndpoint, payload, {
-            headers: createHeaders,
+          // Set cr44a_Tensanpham lookup (additional product lookup field)
+          if (finalProductId) {
+            await trySetTensanphamLookup(detailId, finalProductId, headers);
+          }
+
+          return { success: true, id: detailId, product };
+        } catch (saveError: any) {
+          console.error(`[Save SOD] ❌ Error saving product:`, {
+            productCode: product.productCode,
+            productName: product.productName,
+            error: saveError.message,
+            response: saveError.response?.data,
+            status: saveError.response?.status,
+            payload: JSON.stringify(payload, null, 2)
           });
-          detailId = createResponse.data.crdfd_saleorderdetailid;
-          console.log('[Save SOD] ✅ Created record ID:', detailId);
+
+          return {
+            success: false,
+            product,
+            error: saveError.response?.data?.error?.message || saveError.response?.data?.error || saveError.message,
+            fullError: saveError.response?.data
+          };
         }
+      });
 
-        // Stamp owner/created-by: ưu tiên systemuser, fallback về customer
-        if (systemUserId) {
-          await trySetOwnerAndCreatedBySystemUser(detailId, systemUserId, headers);
-        } else if (customerIdToStamp) {
-          // Fallback: set customer nếu không tìm thấy systemuser
-          await trySetOwnerAndCreatedByCustomer(detailId, customerIdToStamp, headers);
+      // Wait for all products in this batch to complete
+      const batchResults = await Promise.allSettled(batchPromises);
+
+      // Process results
+      batchResults.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          const outcome = result.value;
+          if (outcome.success) {
+            savedDetails.push({ id: outcome.id, ...outcome.product });
+          } else {
+            failedProducts.push({
+              productCode: outcome.product.productCode,
+              productName: outcome.product.productName,
+              quantity: outcome.product.quantity,
+              error: outcome.error,
+              fullError: outcome.fullError
+            });
+          }
+        } else {
+          // Promise rejected - this shouldn't happen with our error handling
+          console.error('[Save SOD] Unexpected promise rejection:', result.reason);
+          failedProducts.push({
+            productCode: 'Unknown',
+            productName: 'Unknown',
+            quantity: 0,
+            error: 'Unexpected error during parallel processing',
+            fullError: result.reason
+          });
         }
-
-        // Set cr44a_Tensanpham lookup (additional product lookup field)
-        if (finalProductId) {
-          await trySetTensanphamLookup(detailId, finalProductId, headers);
-        }
-
-        savedDetails.push({ id: detailId, ...product });
-      } catch (saveError: any) {
-        console.error(`[Save SOD] ❌ Error saving product:`, {
-          productCode: product.productCode,
-          productName: product.productName,
-          error: saveError.message,
-          response: saveError.response?.data,
-          status: saveError.response?.status,
-          payload: JSON.stringify(payload, null, 2)
-        });
-
-        // Lưu thông tin sản phẩm thất bại thay vì throw ngay
-        failedProducts.push({
-          productCode: product.productCode,
-          productName: product.productName,
-          quantity: product.quantity,
-          error: saveError.response?.data?.error?.message || saveError.response?.data?.error || saveError.message,
-          fullError: saveError.response?.data
-        });
-      }
+      });
     }
 
-    // Nếu có sản phẩm thất bại, trả về thông báo chi tiết
+    progress.addStep(`Completed saving ${savedDetails.length} products (${failedProducts.length} failed)`);
+
+    // ============ IMMEDIATE RESPONSE - FAST SUCCESS PATH ============
+    // Nếu có sản phẩm thất bại trong việc save, trả về ngay lập tức
     if (failedProducts.length > 0) {
       const successCount = savedDetails.length;
       const failCount = failedProducts.length;
@@ -1050,78 +1362,75 @@ export default async function handler(
       });
     }
 
-    // ============ CẬP NHẬT TỒN KHO KHI SAVE ĐƠN HÀNG (Bước 3: Chốt đơn) ============
-    // Khi save: Trả lại số giữ tồn cũ (release reserved quantity) và trừ tồn kho (final operation)
-    // Sử dụng atomic operation để đảm bảo tính nguyên tố
-    // CHỈ update inventory cho các sản phẩm đã save thành công
+    // ============ BACKGROUND PROCESSING SETUP ============
+    // Tạo background jobs cho các operations còn lại (inventory + sale order updates)
+    const backgroundJobIds: string[] = [];
+
+    // Job cho inventory updates (nếu có)
+    let inventoryJobId: string | null = null;
     if (hasWarehouseName && savedDetails.length > 0) {
-      const inventoryErrors: any[] = [];
-
-      // Atomic check và cập nhật tồn kho cho từng sản phẩm ĐÃ SAVE THÀNH CÔNG
-      for (const savedProduct of savedDetails) {
-        if (savedProduct.productCode && savedProduct.quantity > 0) {
-          try {
-            // updateInventoryAfterSale sẽ:
-            // 1. Release reserved quantity (trả lại số giữ tồn cũ)
-            // 2. Trừ tồn kho (final operation)
-            await updateInventoryAfterSale(
-              savedProduct.productCode,
-              savedProduct.quantity,
-              warehouseName,
-              !isNonVatOrder, // isVatOrder
-              headers,
-              savedProduct.productGroupCode, // productGroupCode để kiểm tra nhóm đặc biệt
-              false // skipStockCheck - sẽ được xác định trong hàm
-            );
-            console.log(`✅ [Inventory] Đã chốt tồn kho cho ${savedProduct.productCode}: trả lại ${savedProduct.quantity} giữ tồn và trừ ${savedProduct.quantity} tồn kho`);
-          } catch (invError: any) {
-            // Lưu lỗi inventory nhưng không throw để tiếp tục xử lý các sản phẩm khác
-            console.error(`❌ [Inventory] Lỗi khi chốt tồn kho cho ${savedProduct.productCode}:`, invError);
-            inventoryErrors.push({
-              productCode: savedProduct.productCode,
-              productName: savedProduct.productName,
-              quantity: savedProduct.quantity,
-              error: invError.message
-            });
-          }
-        }
-      }
-
-      // Nếu có lỗi inventory, thêm vào failedProducts
-      if (inventoryErrors.length > 0) {
-        failedProducts.push(...inventoryErrors.map(err => ({
-          ...err,
-          error: `Lỗi cập nhật tồn kho: ${err.error}`
-        })));
-      }
+      inventoryJobId = createBackgroundJob('inventory_update');
+      backgroundJobIds.push(inventoryJobId);
     }
 
-    const soUpdateEndpoint = `${SALE_ORDERS_TABLE}(${soId})`;
+    // Job cho sale order updates (nếu có)
+    let saleOrderJobId: string | null = null;
+    const needsSaleOrderUpdate = customerIndustry === 191920001 && // "Shop"
+      products.some(p => p.productCategoryLevel4 === "Dây điện" || p.productCategoryLevel4 === "Cáp điện");
 
-    // Handle special case: Shop + Dây điện/Cáp điện → Giao 1 lần
-    if (
-      customerIndustry === 191920001 && // "Shop"
-      products.some(
-        (p) =>
-          p.productCategoryLevel4 === "Dây điện" ||
-          p.productCategoryLevel4 === "Cáp điện"
-      )
-    ) {
-      await apiClient.patch(
-        soUpdateEndpoint,
-        {
-          crdfd_hinhthucgiaohang: 191920000, // "Giao 1 lần"
-        },
-        { headers }
-      );
+    if (needsSaleOrderUpdate) {
+      saleOrderJobId = createBackgroundJob('sale_order_update');
+      backgroundJobIds.push(saleOrderJobId);
     }
+
+    // ============ FAST RESPONSE - Return immediately ============
+    const totalTime = Date.now() - progress.startTime;
+    progress.addStep(`Fast response sent in ${totalTime}ms`);
 
     res.status(200).json({
       success: true,
-      message: "Tạo đơn bán chi tiết thành công!",
+      message: "Tạo đơn bán chi tiết thành công! Đang xử lý cập nhật tồn kho...",
       savedDetails,
       totalAmount: products.reduce((sum, p) => sum + p.totalAmount, 0),
+      backgroundJobs: backgroundJobIds,
+      performance: {
+        totalTimeMs: totalTime,
+        productsProcessed: savedDetails.length,
+        productsFailed: failedProducts.length,
+        totalRequested: products.length,
+        progressSteps: progress.completedSteps,
+        responseType: 'fast_response_with_background_processing'
+      },
+      info: backgroundJobIds.length > 0
+        ? `Các tác vụ nền đang chạy: ${backgroundJobIds.join(', ')}. Kiểm tra trạng thái qua API /api/admin-app/job-status/[jobId]`
+        : null
     });
+
+    // ============ BACKGROUND PROCESSING - Run after response is sent ============
+
+    // Background inventory processing
+    if (inventoryJobId && hasWarehouseName && savedDetails.length > 0) {
+      processInventoryUpdatesInBackground(
+        inventoryJobId,
+        savedDetails,
+        warehouseName,
+        !isNonVatOrder,
+        headers
+      );
+    }
+
+    // Background sale order processing
+    if (saleOrderJobId && needsSaleOrderUpdate) {
+      processSaleOrderUpdatesInBackground(
+        saleOrderJobId,
+        soId,
+        headers
+      );
+    }
+
+    // Clean up old jobs periodically
+    cleanupOldJobs();
+
   } catch (error: any) {
     console.error("❌ Error saving sale order details:", error);
 
@@ -1164,4 +1473,5 @@ export default async function handler(
     });
   }
 }
+
 

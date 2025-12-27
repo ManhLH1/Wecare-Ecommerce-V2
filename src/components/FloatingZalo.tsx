@@ -122,7 +122,7 @@ export default function FloatingZalo() {
 						<li className="md:hidden">
 							<a href="tel:0983161162" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors">
 								<svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-blue-600"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.08 4.18 2 2 0 0 1 4.06 2h3a2 2 0 0 1 2 1.72c.12.9.31 1.77.57 2.61a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.47-1.09a2 2 0 0 1 2.11-.45c.84.26 1.71.45 2.61.57A2 2 0 0 1 22 16.92z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-								<span className="text-sm text-gray-800">Gọi 0983 161 162</span>
+								<span className="text-sm text-gray-800">Gọi 037 833 9009</span>
 							</a>
 						</li>
 						<li>

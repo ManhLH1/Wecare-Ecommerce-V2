@@ -5,7 +5,7 @@ import { getAccessToken } from "../../getAccessToken";
 
 // Optimized axios instance with connection pooling and timeout
 const axiosClient: AxiosInstance = axios.create({
-  timeout: 30000, // 30 seconds timeout
+  timeout: 60000, // 60 seconds timeout (increased for complex operations)
   maxRedirects: 5,
   // Enable HTTP keep-alive for connection pooling
   httpAgent: new http.Agent({
