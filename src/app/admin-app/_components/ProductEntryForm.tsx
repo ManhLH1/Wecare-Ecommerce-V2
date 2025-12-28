@@ -176,6 +176,23 @@ export default function ProductEntryForm({
   const isFormDisabled = !customerId || customerId === '' || !soId || soId === '';
 
   const [productSearch, setProductSearch] = useState('');
+  // Helpers to convert between dd/mm/yyyy (app format) and yyyy-mm-dd (input[type="date"] format)
+  const formatDdMmYyyyToIso = (d?: string) => {
+    if (!d) return '';
+    const parts = d.split('/');
+    if (parts.length !== 3) return '';
+    const [dd, mm, yyyy] = parts;
+    if (!dd || !mm || !yyyy) return '';
+    return `${yyyy.padStart(4, '0')}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+  };
+  const formatIsoToDdMmYyyy = (iso?: string) => {
+    if (!iso) return '';
+    const parts = iso.split('-');
+    if (parts.length !== 3) return '';
+    const [yyyy, mm, dd] = parts;
+    if (!dd || !mm || !yyyy) return '';
+    return `${dd.padStart(2, '0')}/${mm.padStart(2, '0')}/${yyyy.padStart(4, '0')}`;
+  };
   const [productId, setProductId] = useState('');
   const [unitId, setUnitId] = useState('');
   const [availableUnitsFromPrices, setAvailableUnitsFromPrices] = useState<any[]>([]);
@@ -1967,46 +1984,51 @@ export default function ProductEntryForm({
             </div>
 
             {priceEntryMethod === 'Theo chiết khấu' && (
-              <div className="admin-app-field-compact" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
-                <div style={{ flex: 1 }}>
-                  <label className="admin-app-label-inline">Chiết khấu (%)</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <Dropdown
-                        options={[
-                          ...discountRates.map((rate) => ({ value: rate, label: rate })),
-                          { value: 'Khác', label: 'Khác' },
-                        ]}
-                        value={discountRate}
-                        onChange={(value) => {
-                          setDiscountRate(value);
-                          if (value === 'Khác') {
-                            setDiscountPercent(0);
-                          } else {
-                            const num = Number(value);
-                            setDiscountPercent(isNaN(num) ? 0 : num);
-                          }
-                        }}
-                        placeholder="Chọn tỉ lệ"
-                        disabled={isFormDisabled}
-                      />
-                    </div>
-                    <div style={{ width: '100px', flex: '0 0 100px' }}>
+              <div className="admin-app-field-compact admin-app-field-discount-group">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Dropdown
+                      options={[
+                        ...discountRates.map((rate) => ({ value: rate, label: rate })),
+                        { value: 'Khác', label: 'Khác' },
+                      ]}
+                      value={discountRate}
+                      onChange={(value) => {
+                        setDiscountRate(value);
+                        if (value === 'Khác') {
+                          setDiscountPercent(0);
+                        } else {
+                          const num = Number(value);
+                          setDiscountPercent(isNaN(num) ? 0 : num);
+                        }
+                      }}
+                      placeholder="Chọn tỉ lệ"
+                      disabled={isFormDisabled}
+                    />
+                  </div>
+                  {discountRate === 'Khác' && (
+                    <div style={{ width: '100px', flex: '0 0 100px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                      <label
+                        className="admin-app-label-inline"
+                        style={{ marginBottom: '6px', textAlign: 'left', display: 'block', width: '100%' }}
+                      >
+                        Chiết khấu (%)
+                      </label>
                       <input
                         type="number"
                         className="admin-app-input admin-app-input-compact"
                         min={0}
                         max={100}
-                        value={discountRate === 'Khác' ? discountPercent : (isNaN(Number(discountRate)) ? discountPercent : Number(discountRate))}
+                        value={discountPercent}
                         onChange={(e) => {
                           const v = e.target.value === '' ? 0 : Number(e.target.value);
                           setDiscountPercent(isNaN(v) ? 0 : v);
                         }}
-                        disabled={isFormDisabled || discountRate !== 'Khác'}
+                        disabled={isFormDisabled}
                         placeholder="Nhập %"
                       />
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             )}
@@ -2029,7 +2051,7 @@ export default function ProductEntryForm({
             </div>
           </div>
         )}
-        {/* Row 1: Product, Unit, Warehouse */}
+        {/* Row 1: Product, Unit, Warehouse, Delivery Date */}
         <div className="admin-app-form-row-compact admin-app-product-row-1">
           <div className="admin-app-field-compact admin-app-field-product">
             <label className="admin-app-label-inline">{productLabel}</label>
@@ -2156,6 +2178,20 @@ export default function ProductEntryForm({
               disabled={isFormDisabled}
             />
           </div>
+
+          <div className="admin-app-field-compact">
+            <label className="admin-app-label-inline">Ngày giao</label>
+            <div className="admin-app-input-wrapper" style={{ position: 'relative' }}>
+              <input
+                type="date"
+                className="admin-app-input admin-app-input-compact admin-app-input-small"
+                value={formatDdMmYyyyToIso(deliveryDate)}
+                onChange={(e) => setDeliveryDate(formatIsoToDdMmYyyy(e.target.value))}
+                placeholder="dd/mm/yyyy"
+                disabled={false}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Row 2: Quantity, Price, VAT (%), Add Button */}
@@ -2234,20 +2270,6 @@ export default function ProductEntryForm({
               </div>
             </div>
           )}
-
-          <div className="admin-app-field-compact">
-            <label className="admin-app-label-inline">Ngày giao</label>
-            <div className="admin-app-input-wrapper">
-              <input
-                type="text"
-                className="admin-app-input admin-app-input-compact admin-app-input-small"
-                value={deliveryDate}
-                onChange={(e) => setDeliveryDate(e.target.value)}
-                placeholder="dd/mm/yyyy"
-                disabled={isFormDisabled}
-              />
-            </div>
-          </div>
 
           <div className="admin-app-field-compact admin-app-field-add-button">
             <label className="admin-app-label-inline" style={{ visibility: 'hidden' }}>Add</label>
