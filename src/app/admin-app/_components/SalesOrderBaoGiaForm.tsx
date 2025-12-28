@@ -172,7 +172,23 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   }, []);
 
   // Auto-select SOBG mới nhất (chỉ khi chưa có soId - lần đầu chọn khách hàng)
-  // Auto-select SOBG hook removed to prevent premature API calls
+  useEffect(() => {
+    if ((!soId || soId.trim() === '') && soBaoGiaList && soBaoGiaList.length > 0) {
+      // Find the SOBG with newest created date
+      const parseDate = (s: any) => {
+        const d = s?.createdon ?? s?.createdOn ?? s?.crdfd_createdon ?? s?.created;
+        const t = d ? Date.parse(d) : NaN;
+        return isNaN(t) ? 0 : t;
+      };
+      const newest = soBaoGiaList.reduce((best, cur) => {
+        return parseDate(cur) > parseDate(best) ? cur : best;
+      }, soBaoGiaList[0]);
+      if (newest && newest.id) {
+        setSoId(newest.id);
+        setSo(generateSoLabel(newest));
+      }
+    }
+  }, [soBaoGiaList]); 
 
 
   // Sync SO label

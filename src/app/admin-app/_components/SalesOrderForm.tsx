@@ -191,6 +191,24 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     }
   }, [soId, saleOrders, generateSoLabel]);
 
+  // Auto-select latest SO by created date when saleOrders load and no soId selected
+  useEffect(() => {
+    if ((!soId || soId.trim() === '') && saleOrders && saleOrders.length > 0) {
+      const parseDate = (s: any) => {
+        const d = s?.createdon ?? s?.createdOn ?? s?.crdfd_createdon ?? s?.created;
+        const t = d ? Date.parse(d) : NaN;
+        return isNaN(t) ? 0 : t;
+      };
+      const newest = saleOrders.reduce((best, cur) => {
+        return parseDate(cur) > parseDate(best) ? cur : best;
+      }, saleOrders[0]);
+      if (newest && newest.crdfd_sale_orderid) {
+        setSoId(newest.crdfd_sale_orderid);
+        setSo(generateSoLabel(newest));
+      }
+    }
+  }, [saleOrders]);
+
   // Load Sale Order Details when soId changes (formData equivalent)
   useEffect(() => {
     const loadSaleOrderDetails = async () => {
