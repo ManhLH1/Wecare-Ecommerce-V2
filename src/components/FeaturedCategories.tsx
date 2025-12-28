@@ -39,24 +39,35 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories }) =
             <a href="/san-pham" className="text-sm text-amber-500 hover:underline">Xem tất cả</a>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4 items-stretch">
-            {categories.map(cat => (
-              <Link key={cat.id} href={cat.href || '#'} className="block text-center no-underline">
-                <div className="bg-white rounded-md border border-gray-100 shadow-sm hover:shadow-md transition h-full flex flex-col items-center">
-                  <div className="w-full p-4 flex items-center justify-center">
-                    {cat.image ? (
-                      <img src={cat.image} alt={cat.name} className="mx-auto h-24 w-24 object-contain" />
-                    ) : (
-                      <div className="h-24 w-24 flex items-center justify-center text-sm text-gray-400">No image</div>
-                    )}
-                  </div>
-                  <div className="w-full mt-auto bg-gray-50 border-t px-3 py-3">
-                    <div className="text-sm text-gray-700 truncate no-underline">{cat.name}</div>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+          {/*
+            Display categories in exactly 3 rows.
+            Compute number of columns = ceil(items / 3) and use CSS gridTemplateColumns
+          */}
+          {(() => {
+            const displayItems = categories.slice(0, 30);
+            const columns = Math.max(1, Math.ceil(displayItems.length / 3));
+            const gridStyle: React.CSSProperties = { gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` };
+            return (
+              <div className="grid gap-2 items-stretch" style={gridStyle}>
+                {displayItems.map(cat => (
+                 <Link key={cat.id} href={cat.href || '#'} className="block text-center no-underline">
+                   <div className="bg-white rounded-sm border border-gray-200 hover:shadow-sm transition h-full flex flex-col items-center min-h-[120px]">
+                     <div className="w-full p-2 flex items-center justify-center">
+                       {cat.image ? (
+                      <img src={cat.image} alt={cat.name} className="mx-auto h-20 w-20 object-contain" />
+                       ) : (
+                         <div className="h-20 w-20 flex items-center justify-center text-xs text-gray-400">No image</div>
+                       )}
+                     </div>
+                     <div className="w-full mt-auto bg-gray-50 border-t px-2 py-2">
+                       <div className="text-xs text-gray-700 truncate no-underline">{cat.name}</div>
+                     </div>
+                   </div>
+                 </Link>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       </div>
     </section>

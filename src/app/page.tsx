@@ -317,19 +317,18 @@ const HomeContent = () => {
       setLoadingCategory(true);
       try {
         const data = await fetchWithCache<any>(
-          "cache:getProductGroupHierarchyLeftpanel",
-          1000 * 60 * 60, // 1 hour
+          "cache:getTop30ProductGroupsByOrders",
+          1000 * 60 * 30, // 30 minutes cache
           async () => {
-            const res = await axios.get("/api/getProductGroupHierarchyLeftpanel");
+            const res = await axios.get("/api/getTop30ProductGroupsByOrders");
             return res.data;
           }
         );
-        if (data && data.byLevel) {
-          // Use level 1 groups for featured categories
-          const groups = data.byLevel["1"] || [];
-          setCategoryGroups(groups);
-          console.log(`[FeaturedCategories] loaded categoryGroups level1:`, groups.length, groups.slice(0,3));
-          const filtered = (groups || []).filter((g:any)=> g && (g.crdfd_image_url != null));
+        if (data && Array.isArray(data)) {
+          // Use top 30 product groups by order count for featured categories
+          setCategoryGroups(data);
+          console.log(`[FeaturedCategories] loaded top product groups by orders:`, data.length, data.slice(0,3));
+          const filtered = (data || []).filter((g:any)=> g && (g.imageUrl != null && g.imageUrl.trim() !== ''));
           console.log('[FeaturedCategories] filtered (has image):', filtered.length, filtered.slice(0,3));
           setCategoryHierarchy(data);
         } else {
@@ -1092,55 +1091,18 @@ const HomeContent = () => {
         {/* Featured categories (mapped from categoryGroups) */}
         <FeaturedCategories
           categories={(categoryGroups || [])
-            .filter((g: any) => g && (g.crdfd_image_url != null) && ((g.level === 1) || (g.crdfd_level === 1) || Number(g.level) === 1))
+            .filter((g: any) => !!g)
             .map((g: any) => {
-              // helper to extract a reasonable name from various possible shapes
-              const tryGet = (obj: any, key: string) => {
-                const v = obj?.[key];
-                return typeof v === 'string' && v.trim() ? v.trim() : null;
-              };
-
-              // prefer crdfd_productname if present per request, then crdfd_name etc.
-              const nameCandidates = [
-                tryGet(g, 'crdfd_productname'),
-                tryGet(g, 'crdfd_name'),
-                tryGet(g, 'crdfd_productgroupname'),
-                tryGet(g, 'name'),
-                tryGet(g, 'label'),
-                tryGet(g, 'title'),
-                tryGet(g, 'crdfd_ten') // fallback
-              ].filter(Boolean) as string[];
-
-              // deep check for nested object that may hold name
-              if (nameCandidates.length === 0) {
-                for (const k of Object.keys(g || {})) {
-                  const val = g[k];
-                  if (val && typeof val === 'object') {
-                    const inner = tryGet(val, 'crdfd_name') || tryGet(val, 'name') || tryGet(val, 'label');
-                    if (inner) {
-                      nameCandidates.push(inner);
-                      break;
-                    }
-                  }
-                }
-              }
-
-              const name = nameCandidates[0] ?? `Danh mục ${g.crdfd_productgroupcode ?? g.code ?? g.manhom ?? ''}`;
-
-              const image =
-                g.crdfd_image_url ||
-                (Array.isArray(g.cr1bb_filehinhanh) && g.cr1bb_filehinhanh[0]?.url) ||
-                (typeof g.cr1bb_filehinhanh === "string" && g.cr1bb_filehinhanh) ||
-                g.imageUrl ||
-                g.image ||
-                undefined;
+              // API mới đã trả về trực tiếp productGroupName và imageUrl
+              const name = g.productGroupName || `Danh mục ${g.productGroupCode || ''}`;
+              const image = g.imageUrl;
 
               return {
-                id: g.crdfd_productgroupid ?? g.id ?? g.value ?? String(g.crdfd_productgroupcode || g.code || g.manhom || name),
+                id: g.productGroupId || g.productGroupCode || String(name),
                 name,
-                code: g.crdfd_productgroupcode ?? g.code ?? g.manhom,
+                code: g.productGroupCode,
                 image,
-                href: `/san-pham?group=${encodeURIComponent(String(g.crdfd_productgroupcode ?? g.code ?? g.manhom ?? g.crdfd_name ?? g.name ?? ''))}`,
+                href: `/san-pham?group=${encodeURIComponent(g.productGroupCode || '')}`,
               };
             })}
         />
