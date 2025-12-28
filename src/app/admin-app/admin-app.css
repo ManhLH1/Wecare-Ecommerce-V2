@@ -3024,6 +3024,64 @@ html, body, #__next {
   align-items: center;
 }
 
+/* Strong uniform alignment for all dropdown triggers in the approval row */
+.admin-app-form-row-approval .admin-app-dropdown,
+.admin-app-form-row-approval .admin-app-dropdown-trigger,
+.admin-app-form-row-approval .admin-app-select-with-copy,
+.admin-app-form-row-approval .admin-app-dropdown .admin-app-dropdown-trigger {
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 6px 12px !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  vertical-align: middle !important;
+}
+
+/* Ensure dropdown value text centers vertically and doesn't wrap */
+.admin-app-form-row-approval .admin-app-dropdown .admin-app-dropdown-value,
+.admin-app-form-row-approval .admin-app-dropdown-value {
+  display: inline-flex !important;
+  align-items: center !important;
+  height: 36px !important;
+  line-height: 18px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* If a specific field uses extra wrappers, normalize them */
+.admin-app-form-row-approval .admin-app-field-compact,
+.admin-app-form-row-approval .admin-app-field-compact > .admin-app-dropdown,
+.admin-app-form-row-approval .admin-app-field-compact > .admin-app-input-wrapper {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+}
+
+/* Target discount group's dropdown specifically and center it vertically */
+.admin-app-form-row-compact.admin-app-form-row-approval .admin-app-field-discount-group .admin-app-dropdown,
+.admin-app-form-row-compact.admin-app-form-row-approval .admin-app-field-discount-group .admin-app-dropdown-trigger {
+  align-self: center !important;
+  margin-top: 0 !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 6px 10px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
+}
+
+/* If dropdown still inherits extra top margin from upstream wrappers, cancel it */
+.admin-app-form-row-compact.admin-app-form-row-approval .admin-app-field-discount-group,
+.admin-app-form-row-compact.admin-app-form-row-approval .admin-app-field-discount-group > div {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
 .admin-app-field-stock {
   display: flex;
   align-items: center;

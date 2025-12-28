@@ -85,10 +85,6 @@ interface ProductEntryFormProps {
   setDiscountRate?: (value: string) => void;
   discountPercent: number;
   setDiscountPercent: (value: number) => void;
-  discount2?: number;
-  setDiscount2?: (value: number) => void;
-  discount2Enabled?: boolean;
-  setDiscount2Enabled?: (value: boolean) => void;
   discountAmount: number;
   setDiscountAmount: (value: number) => void;
   promotionText: string;
@@ -155,10 +151,6 @@ export default function ProductEntryForm({
   setDiscountRate: setDiscountRateProp,
   discountPercent,
   setDiscountPercent,
-  discount2,
-  setDiscount2,
-  discount2Enabled,
-  setDiscount2Enabled,
   discountAmount,
   setDiscountAmount,
   promotionText,
@@ -1353,55 +1345,12 @@ export default function ProductEntryForm({
     const discountFactor = 1 - (promoDiscountPct > 0 ? promoDiscountPct / 100 : 0);
     let effectivePrice = priceNum * discountFactor;
 
-    // If Chiết khấu 2 is enabled and has value, apply it according to promotion type
-    const d2 = Number(discount2) || 0;
-    if (discount2Enabled && d2 > 0) {
-      const promoOrder = orderPromotionInfo;
-      const isPercentType =
-        (promoOrder && promoOrder.vndOrPercent && String(promoOrder.vndOrPercent).trim() === '%') ||
-        // fallback: product-level promotion may expose 'vn' as '%'
-        ((selectedPromotion as any)?.vn && String((selectedPromotion as any).vn).trim() === '%');
-
-      if (isPercentType) {
-        // Additive percent (primary promo + chiết khấu 2)
-        const totalPct = (promoDiscountPct || 0) + d2;
-        const finalFactor = 1 - (totalPct > 0 ? totalPct / 100 : 0);
-        effectivePrice = priceNum * finalFactor;
-      }
-      // VNĐ type will be handled on subtotal level below (distributed by order share)
-    }
 
     const vatTextLower = (vatText || '').toLowerCase();
     const isNonVatOrder = vatTextLower.includes('không vat');
     const effectiveVat = isNonVatOrder ? 0 : vatPct;
 
-    // Subtotal before VNĐ-type chiết khấu 2
     let newSubtotal = qty * effectivePrice;
-
-    // If Chiết khấu 2 is VNĐ type, distribute reduction based on orderTotal if possible
-    const promoOrder = orderPromotionInfo;
-    const isVndType =
-      discount2Enabled &&
-      d2 > 0 &&
-      promoOrder &&
-      promoOrder.vndOrPercent &&
-      String(promoOrder.vndOrPercent).trim() !== '%';
-
-    if (isVndType) {
-      const promoValue = Number(promoOrder.value) || Number((selectedPromotion as any)?.value) || 0;
-      if (promoValue > 0) {
-        if (orderTotal && orderTotal > 0) {
-          // Distribute promoValue proportionally to this line's base amount (before chiết khấu 2)
-          const baseLineAmount = qty * (priceNum * (1 - (promoDiscountPct > 0 ? promoDiscountPct / 100 : 0)));
-          const lineShare = baseLineAmount / orderTotal;
-          const lineReduction = promoValue * lineShare;
-          newSubtotal = Math.max(0, newSubtotal - lineReduction);
-        } else {
-          // No order total available - apply full promoValue up to subtotal
-          newSubtotal = Math.max(0, newSubtotal - promoValue);
-        }
-      }
-    }
 
     const newVat = (newSubtotal * effectiveVat) / 100;
     // Làm tròn đến hàng đơn vị
@@ -1615,22 +1564,6 @@ export default function ProductEntryForm({
     setDiscountPercent(promoPct); // propagate to parent state
     setPromotionText(selected?.name || '');
 
-    // Handle Chiết khấu 2 (promotion secondary discount)
-    try {
-      const promoSupportsChietKhau2 = (selected as any)?.chietKhau2 === 191920001 || (selected as any)?.chietKhau2 === true;
-      if (promoSupportsChietKhau2) {
-        // Prefer value2, fallback to value
-        const rawVal = Number((selected as any)?.value2 ?? (selected as any)?.value ?? 0);
-        const normalized = !isNaN(rawVal) ? (rawVal > 0 && rawVal <= 1 ? Math.round(rawVal * 100) : rawVal) : 0;
-        setDiscount2?.(normalized);
-        setDiscount2Enabled?.(true);
-      } else {
-        // Disable chiết khấu 2 if promo doesn't support it
-        setDiscount2Enabled?.(false);
-      }
-    } catch (e) {
-      // ignore mapping errors
-    }
 
     recomputeTotals(price, quantity, promoPct || discountPercent, vatPercent);
   }, [selectedPromotionId, promotions, approvePrice]);
@@ -1658,10 +1591,8 @@ export default function ProductEntryForm({
           const val = Number(matched.value) || 0;
           const ch2 = String(matched.chietKhau2) === '191920001' || String(matched.chietKhau2) === 'true' || String(matched.chietKhau2) === '1';
           setOrderPromotionInfo({ vndOrPercent, value: val, chietKhau2: ch2 });
-          setDiscount2Enabled?.(Boolean(ch2));
         } else if (!cancelled) {
           setOrderPromotionInfo(null);
-          setDiscount2Enabled?.(false);
         }
       } catch (err) {
         console.warn('[Promotion Order] check failed', err);
@@ -2393,41 +2324,6 @@ export default function ProductEntryForm({
                       Giảm: {promotionDiscountPercent || discountPercent || 0}%
                     </span>
                   )}
-                  {/* Chiết khấu 2 control: checkbox + input (percent) */}
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginLeft: '12px' }}>
-                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
-                      <input
-                        type="checkbox"
-                        checked={Boolean(discount2Enabled)}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setDiscount2Enabled?.(checked);
-                          // if enabling and no value present, seed with 0
-                          if (checked && (discount2 === undefined || discount2 === null)) {
-                            setDiscount2?.(0);
-                          }
-                        }}
-                        disabled={isFormDisabled}
-                      />
-                      <span style={{ fontSize: '12px' }}>Chiết khấu 2</span>
-                    </label>
-                    {discount2Enabled && (
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={discount2 ?? ''}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          const n = v === '' ? 0 : Number(v);
-                          if (!isNaN(n)) setDiscount2?.(n);
-                        }}
-                        className="admin-app-input admin-app-input-compact"
-                        style={{ width: '80px' }}
-                        disabled={isFormDisabled}
-                      />
-                    )}
-                  </div>
                 </>
               ) : null}
             </div>

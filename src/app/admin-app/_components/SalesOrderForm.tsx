@@ -92,8 +92,6 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const [priceEntryMethod, setPriceEntryMethod] = useState<'Nhập thủ công' | 'Theo chiết khấu'>('Nhập thủ công');
   const [discountRate, setDiscountRate] = useState<string>('1');
   const [discountPercent, setDiscountPercent] = useState(0);
-  const [discount2, setDiscount2] = useState(0);
-  const [discount2Enabled, setDiscount2Enabled] = useState(false);
 
   // Danh sách người duyệt
   const approversList = [
@@ -262,6 +260,61 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
 
     loadSaleOrderDetails();
   }, [soId]);
+
+  // Auto-select promotion orders based on total amount condition (cr1bb_tongtienapdung)
+  useEffect(() => {
+    const autoSelectPromotions = async () => {
+      if (!soId || !customerCode || totalAmount <= 0) {
+        return;
+      }
+
+      try {
+        // Fetch available promotions for current order
+        const promotionOrderResult = await fetchPromotionOrders(
+          soId,
+          customerCode,
+          totalAmount,
+          productList.map(p => p.productCode).filter(Boolean),
+          productList.map(p => p.productGroupCode).filter(Boolean)
+        );
+
+        if (promotionOrderResult.availablePromotions && promotionOrderResult.availablePromotions.length > 0) {
+          // Auto-select promotions where totalAmount >= totalAmountCondition
+          const autoSelectedPromotions = promotionOrderResult.availablePromotions.filter((promo: PromotionOrderItem) => {
+            const condition = promo.totalAmountCondition;
+            // If no condition or totalAmount >= condition, auto-select
+            return condition === null || condition === undefined || totalAmount >= condition;
+          });
+
+          if (autoSelectedPromotions.length > 0) {
+            console.log('[Auto-select Promotion] Auto-selecting promotions based on total amount:', {
+              totalAmount,
+              autoSelectedCount: autoSelectedPromotions.length,
+              autoSelectedNames: autoSelectedPromotions.map(p => p.name)
+            });
+
+            // Merge with existing selections (avoid duplicates)
+            const existingIds = selectedPromotionOrders.map(p => p.id);
+            const newSelections = autoSelectedPromotions.filter(p => !existingIds.includes(p.id));
+
+            if (newSelections.length > 0) {
+              setSelectedPromotionOrders([...selectedPromotionOrders, ...newSelections]);
+              setPromotionOrderList(promotionOrderResult.availablePromotions);
+
+              // Auto-show popup if we have new auto-selections and popup is not already shown
+              if (!showPromotionOrderPopup) {
+                setShowPromotionOrderPopup(true);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[Auto-select Promotion] Error auto-selecting promotions:', error);
+      }
+    };
+
+    autoSelectPromotions();
+  }, [soId, customerCode, totalAmount, productList]);
 
   const handleAddProduct = async () => {
     // Validation: product, unit, quantity, price (bắt buộc phải có giá > 0)
@@ -432,7 +485,6 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setDiscountPercent(0);
     setDiscountAmount(0);
     setPromotionText('');
-    setNote('');
     // Keep warehouse, customer, SO, deliveryDate as they are reused
 
     setIsAdding(false);
@@ -653,10 +705,11 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       setDiscountAmount(0);
       setPromotionText('');
 
-      // LUÔN hiển thị popup chiết khấu 2 sau khi lưu thành công
+      // Logic mới: Không tự động show popup promotion order sau khi save
       // Đảm bảo popup hiển thị cho sale chọn promotion bổ sung chiết khấu 2
       // Chỉ check khi có soId và customerCode (đã save thành công)
-      if (savedSoId && savedCustomerCode) {
+      // Logic mới: Không tự động check promotion orders sau khi save
+      // if (savedSoId && savedCustomerCode) {
         try {
           console.log('[Promotion Order] Checking promotion orders after save:', {
             soId: savedSoId,
@@ -702,9 +755,12 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           console.error('[Promotion Order] ❌ Error checking promotion orders:', error);
           // Nếu có lỗi khi fetch, vẫn không hiển thị popup
         }
-      } else {
-        console.log('[Promotion Order] ❌ Không có soId hoặc customerCode - không hiển thị popup');
-      }
+      // } else {
+      //   console.log('[Promotion Order] ❌ Không có soId hoặc customerCode - không hiển thị popup');
+      // }
+
+      // Thay vào đó, promotions được save kèm luôn trong handleSaveWithPromotions
+      console.log('[Promotion Order] Save completed with promotions, no auto-popup needed');
     } catch (error: any) {
       console.error('Error saving sale order details:', error);
       const errorMessage = error.message || 'Có lỗi xảy ra khi lưu đơn hàng. Vui lòng thử lại.';
@@ -822,24 +878,156 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setProductList([]);
   };
 
-  // Xử lý khi xác nhận chọn Promotion Order (multi-select)
-  const handleApplyPromotionOrder = async () => {
-    if (selectedPromotionOrders.length === 0 || !soId) {
-      showToast.warning('Vui lòng chọn ít nhất một Promotion Order');
+  // Save đơn hàng kèm promotion orders
+  const handleSaveWithPromotions = async () => {
+    if (productList.length === 0) {
+      showToast.warning('Vui lòng thêm ít nhất một sản phẩm');
+      return;
+    }
+
+    if (!customer || !customerCode) {
+      showToast.warning('Vui lòng chọn khách hàng');
       return;
     }
 
     setIsApplyingPromotion(true);
     try {
+      console.log('[Save with Promotions] Starting save operation:', {
+        customerCode,
+        customer,
+        products: productList.length,
+        promotions: selectedPromotionOrders.length
+      });
+
+      // Chuẩn bị dữ liệu đơn hàng
+      const orderData = {
+        customerCode,
+        customerName: customer,
+        products: productList.map(item => ({
+          productCode: item.productCode,
+          productId: item.productId,
+          productName: item.productName,
+          productGroupCode: item.productGroupCode,
+          unit: item.unit,
+          unitId: item.unitId,
+          quantity: item.quantity,
+          price: item.price,
+          surcharge: item.surcharge,
+          discount: item.discount,
+          discountedPrice: item.discountedPrice,
+          vat: item.vat,
+          approvePrice: item.approvePrice,
+          approveSupPrice: item.approveSupPrice,
+          urgentOrder: item.urgentOrder,
+          deliveryDate: item.deliveryDate,
+          stockQuantity: item.stockQuantity,
+        })),
+        promotions: selectedPromotionOrders.map(promo => ({
+          promotionId: promo.id,
+          promotionName: promo.name,
+          promotionValue: promo.value || 0,
+          vndOrPercent: String(promo.vndOrPercent ?? '%'),
+          chietKhau2: promo.chietKhau2 === 191920001,
+          productCodes: promo.productCodes,
+          productGroupCodes: promo.productGroupCodes,
+        }))
+      };
+
+      // Validate promotions against order total (cr1bb_tongtienapdung)
+      const orderTotalForValidation = orderSummary?.total || totalAmount || productList.reduce((s, p) => s + (p.totalAmount || ((p.discountedPrice ?? p.price) * (p.quantity || 0) + ((p.vat || 0) ? Math.round(((p.discountedPrice ?? p.price) * (p.quantity || 0) * (p.vat || 0)) / 100) : 0))), 0);
+      const invalidPromos = selectedPromotionOrders.filter((promo) => {
+        const cond = (promo as any).totalAmountCondition;
+        return typeof cond === 'number' && cond > 0 && orderTotalForValidation < cond;
+      });
+      if (invalidPromos.length > 0) {
+        const names = invalidPromos.map(p => p.name).join(', ');
+        showToast.error(`Đơn hàng chưa đạt điều kiện áp dụng Promotion: ${names}. Vui lòng điều chỉnh đơn hàng hoặc bỏ chọn promotion.`);
+        setIsApplyingPromotion(false);
+        return;
+      }
+
+      // Gọi API save với promotions
+      const result = await saveSaleOrderDetails(orderData);
+
+      if (result.success) {
+        console.log('[Save with Promotions] ✅ Save successful:', result);
+
+        // Cập nhật state
+        const newSoId = result.soId;
+        const newSoNumber = result.soNumber;
+
+        if (newSoId) {
+          setSoId(newSoId);
+          setSo(newSoNumber || newSoId);
+
+          // Reload sale order details để hiển thị data mới
+          await loadSaleOrderDetails(newSoId);
+
+          // Cập nhật total amount
+          if (result.totalAmount) {
+            setTotalAmount(result.totalAmount);
+          }
+        }
+
+        // Đóng popup promotion order
+        setShowPromotionOrderPopup(false);
+        setSelectedPromotionOrders([]);
+
+        showToast.success('Đã lưu đơn hàng với khuyến mãi thành công!');
+      } else {
+        console.error('[Save with Promotions] ❌ Save failed:', result);
+        showToast.error(result.message || 'Lưu đơn hàng thất bại');
+      }
+
+    } catch (error: any) {
+      console.error('[Save with Promotions] ❌ Error:', error);
+      showToast.error(error.message || 'Có lỗi xảy ra khi lưu đơn hàng');
+    } finally {
+      setIsApplyingPromotion(false);
+    }
+  };
+
+  // Xử lý khi xác nhận chọn Promotion Order (multi-select)
+  const handleApplyPromotionOrder = async () => {
+    if (selectedPromotionOrders.length === 0) {
+      showToast.warning('Vui lòng chọn ít nhất một Promotion Order');
+      return;
+    }
+
+    // Nếu chưa có soId (chưa save đơn hàng), save kèm promotion orders
+    if (!soId) {
+      await handleSaveWithPromotions();
+      return;
+    }
+
+    // Nếu đã có soId (đã save), apply promotion như bình thường
+    setIsApplyingPromotion(true);
+    try {
+      // Validate promotions against current order total before applying
+      const currentOrderTotal = totalAmount || orderSummary?.total || productList.reduce((s, p) => s + (p.totalAmount || ((p.discountedPrice ?? p.price) * (p.quantity || 0) + ((p.vat || 0) ? Math.round(((p.discountedPrice ?? p.price) * (p.quantity || 0) * (p.vat || 0)) / 100) : 0))), 0);
+      const invalid = selectedPromotionOrders.filter(p => {
+        const cond = (p as any).totalAmountCondition;
+        return typeof cond === 'number' && cond > 0 && currentOrderTotal < cond;
+      });
+      if (invalid.length > 0) {
+        const names = invalid.map(p => p.name).join(', ');
+        showToast.error(`Không thể áp dụng Promotion vì đơn hàng chưa đạt điều kiện: ${names}`);
+        setIsApplyingPromotion(false);
+        return;
+      }
       // Áp dụng từng promotion order
       const results = [];
       for (const promo of selectedPromotionOrders) {
         try {
           // Chuẩn hóa vndOrPercent để đảm bảo khớp với API
           // API expects "VNĐ" (với Đ tiếng Việt) hoặc "%"
-          let normalizedVndOrPercent = promo.vndOrPercent || '%';
+          // Ensure vndOrPercent is a string before calling trim()
+          const rawVndOrPercent = promo.vndOrPercent ?? '%';
+          let normalizedVndOrPercent = typeof rawVndOrPercent === 'string'
+            ? rawVndOrPercent.trim()
+            : String(rawVndOrPercent).trim();
           // Kiểm tra nếu là % (case-insensitive)
-          if (normalizedVndOrPercent.trim().toLowerCase() === '%' || normalizedVndOrPercent.trim() === '%') {
+          if (normalizedVndOrPercent.toLowerCase() === '%') {
             normalizedVndOrPercent = '%';
           } else {
             // Nếu không phải %, coi như là VNĐ (có thể là "VNĐ", "VND", "vnd", etc.)
@@ -1506,10 +1694,6 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             setApprover={setApprover}
             discountPercent={discountPercent}
             setDiscountPercent={setDiscountPercent}
-            discount2={discount2}
-            setDiscount2={setDiscount2}
-            discount2Enabled={discount2Enabled}
-            setDiscount2Enabled={setDiscount2Enabled}
             discountAmount={discountAmount}
             setDiscountAmount={setDiscountAmount}
             promotionText={promotionText}
