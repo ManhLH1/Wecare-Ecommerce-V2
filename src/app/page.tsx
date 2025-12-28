@@ -31,6 +31,7 @@ import NewsSection from "@/components/NewsSection";
 import CategorySection from "@/components/CategorySection";
 import ShortcutSection from "@/components/ShortcutSection";
 import HomeBenefitsPanel from "@/components/HomeBenefitsPanel";
+import FeaturedCategories from "@/components/FeaturedCategories";
 import HeroSection from "@/components/HeroSection";
 import UnifiedHeaderHero from "@/components/UnifiedHeaderHero";
 import JDStyleHeader from "@/components/JDStyleHeader";
@@ -323,8 +324,13 @@ const HomeContent = () => {
             return res.data;
           }
         );
-        if (data && data.byLevel && data.byLevel["1"]) {
-          setCategoryGroups(data.byLevel["1"]);
+        if (data && data.byLevel) {
+          // Use level 1 groups for featured categories
+          const groups = data.byLevel["1"] || [];
+          setCategoryGroups(groups);
+          console.log(`[FeaturedCategories] loaded categoryGroups level1:`, groups.length, groups.slice(0,3));
+          const filtered = (groups || []).filter((g:any)=> g && (g.crdfd_image_url != null));
+          console.log('[FeaturedCategories] filtered (has image):', filtered.length, filtered.slice(0,3));
           setCategoryHierarchy(data);
         } else {
           setCategoryGroups([]);
@@ -1009,7 +1015,7 @@ const HomeContent = () => {
         />
 
         {/* Main Layout */}
-        <div className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 xl:px-16 pt-[115px]">
+        <div className="w-full max-w-[1920px] mx-auto pt-[115px]">
           <div className="flex flex-col lg:flex-row">
             {/* Spacer for CategoryMenu dropdown on Desktop */}
             <div className="hidden lg:block w-[280px] flex-shrink-0" />
@@ -1025,7 +1031,7 @@ const HomeContent = () => {
         </div>
       </div>
 
-      <main className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 xl:px-16 pt-0">
+      <main className="w-full max-w-[1920px] mx-auto pt-0">
 
         {/* DESKTOP Feature Cards dưới Hero (ẩn theo yêu cầu) */}
         <section id="features-b2b" className="hidden">
@@ -1083,6 +1089,61 @@ const HomeContent = () => {
         />
         {/* Home Benefits Panel - banners similar to sample */}
         <HomeBenefitsPanel />
+        {/* Featured categories (mapped from categoryGroups) */}
+        <FeaturedCategories
+          categories={(categoryGroups || [])
+            .filter((g: any) => g && (g.crdfd_image_url != null) && ((g.level === 1) || (g.crdfd_level === 1) || Number(g.level) === 1))
+            .map((g: any) => {
+              // helper to extract a reasonable name from various possible shapes
+              const tryGet = (obj: any, key: string) => {
+                const v = obj?.[key];
+                return typeof v === 'string' && v.trim() ? v.trim() : null;
+              };
+
+              // prefer crdfd_productname if present per request, then crdfd_name etc.
+              const nameCandidates = [
+                tryGet(g, 'crdfd_productname'),
+                tryGet(g, 'crdfd_name'),
+                tryGet(g, 'crdfd_productgroupname'),
+                tryGet(g, 'name'),
+                tryGet(g, 'label'),
+                tryGet(g, 'title'),
+                tryGet(g, 'crdfd_ten') // fallback
+              ].filter(Boolean) as string[];
+
+              // deep check for nested object that may hold name
+              if (nameCandidates.length === 0) {
+                for (const k of Object.keys(g || {})) {
+                  const val = g[k];
+                  if (val && typeof val === 'object') {
+                    const inner = tryGet(val, 'crdfd_name') || tryGet(val, 'name') || tryGet(val, 'label');
+                    if (inner) {
+                      nameCandidates.push(inner);
+                      break;
+                    }
+                  }
+                }
+              }
+
+              const name = nameCandidates[0] ?? `Danh mục ${g.crdfd_productgroupcode ?? g.code ?? g.manhom ?? ''}`;
+
+              const image =
+                g.crdfd_image_url ||
+                (Array.isArray(g.cr1bb_filehinhanh) && g.cr1bb_filehinhanh[0]?.url) ||
+                (typeof g.cr1bb_filehinhanh === "string" && g.cr1bb_filehinhanh) ||
+                g.imageUrl ||
+                g.image ||
+                undefined;
+
+              return {
+                id: g.crdfd_productgroupid ?? g.id ?? g.value ?? String(g.crdfd_productgroupcode || g.code || g.manhom || name),
+                name,
+                code: g.crdfd_productgroupcode ?? g.code ?? g.manhom,
+                image,
+                href: `/san-pham?group=${encodeURIComponent(String(g.crdfd_productgroupcode ?? g.code ?? g.manhom ?? g.crdfd_name ?? g.name ?? ''))}`,
+              };
+            })}
+        />
         {/* Shortcut Section - DESKTOP với thiết kế tròn (ẩn theo yêu cầu) */}
         <section className="hidden">
           <div className="flex flex-nowrap w-full gap-4 p-6 bg-transparent justify-center">
@@ -1242,62 +1303,7 @@ const HomeContent = () => {
             </Reveal>
           </div>
         </section>
-      {/* Panels Section - add below BusinessOpportunity like mẫu */}
-      <section className="py-4">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Reveal as="div" direction="up">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-              <a href="/policy/freeship" className="group block bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
-                <div className="flex items-center gap-3 p-4">
-                  <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-orange-400 to-yellow-400 flex items-center justify-center text-white text-2xl">
-                    <FaTruck />
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-gray-900">FREE SHIP</div>
-                    <div className="text-sm text-gray-500">Miễn phí vận chuyển trên toàn quốc</div>
-                  </div>
-                </div>
-              </a>
-
-              <a href="/policy/returns" className="group block bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
-                <div className="flex items-center gap-3 p-4">
-                  <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-2xl">
-                    <FaRedo />
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-gray-900">ĐỔI TRẢ</div>
-                    <div className="text-sm text-gray-500">Đổi trả trong vòng 10 ngày</div>
-                  </div>
-                </div>
-              </a>
-
-              <a href="/about/authentic" className="group block bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
-                <div className="flex items-center gap-3 p-4">
-                  <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-2xl">
-                    <FaShieldAlt />
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-gray-900">HÀNG CHÍNH HÃNG</div>
-                    <div className="text-sm text-gray-500">Cam kết hàng chính hãng 100%</div>
-                  </div>
-                </div>
-              </a>
-
-              <a href="/payment/cod" className="group block bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
-                <div className="flex items-center gap-3 p-4">
-                  <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white text-2xl">
-                    <FaMoneyBillWave />
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-gray-900">THANH TOÁN TẠI NHÀ</div>
-                    <div className="text-sm text-gray-500">Thanh toán khi nhận hàng (COD)</div>
-                  </div>
-                </div>
-              </a>
-            </div>
-          </Reveal>
-        </div>
-      </section>
+      {/* Panels Section removed */}
 
         {/* Divider */}
         {/* <div className="w-full h-[6px] bg-gray-100 rounded-full my-2"></div> */}

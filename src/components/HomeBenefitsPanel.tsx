@@ -12,7 +12,7 @@ const items = [
 
 const HomeBenefitsPanel: React.FC = () => {
   return (
-    <section className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 xl:px-16 mt-2">
+    <section className="w-full max-w-[1920px] mx-auto mt-2">
       <div className="bg-white rounded-lg shadow-sm py-1">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 items-stretch">
