@@ -44,6 +44,7 @@ interface ProductItem {
   discount2Enabled?: boolean;
   promotionText?: string;
   invoiceSurcharge?: number; // Phụ phí hoá đơn
+  stockQuantity?: number;
   createdOn?: string;
   isModified?: boolean; // Flag để đánh dấu dòng đã sửa
   originalQuantity?: number; // Lưu số lượng gốc để so sánh
@@ -292,8 +293,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           soId,
           customerCode,
           totalAmount,
-          productList.map(p => p.productCode).filter(Boolean),
-          productList.map(p => p.productGroupCode).filter(Boolean)
+          // Ensure arrays are typed as string[] (filter out undefined/null)
+          productList.map(p => p.productCode).filter((c): c is string => typeof c === 'string' && c.trim() !== ''),
+          productList.map(p => p.productGroupCode).filter((c): c is string => typeof c === 'string' && c.trim() !== '')
         );
 
         if (promotionOrderResult.availablePromotions && promotionOrderResult.availablePromotions.length > 0) {
@@ -921,25 +923,43 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       const orderData = {
         customerCode,
         customerName: customer,
-        products: productList.map(item => ({
-          productCode: item.productCode,
-          productId: item.productId,
-          productName: item.productName,
-          productGroupCode: item.productGroupCode,
-          unit: item.unit,
-          unitId: item.unitId,
-          quantity: item.quantity,
-          price: item.price,
-          surcharge: item.surcharge,
-          discount: item.discount,
-          discountedPrice: item.discountedPrice,
-          vat: item.vat,
-          approvePrice: item.approvePrice,
-          approveSupPrice: item.approveSupPrice,
-          urgentOrder: item.urgentOrder,
-          deliveryDate: item.deliveryDate,
-          stockQuantity: item.stockQuantity,
-        })),
+        products: productList.map((item, idx) => {
+          const computedSubtotal = item.subtotal ?? ((item.discountedPrice ?? item.price) * (item.quantity || 0));
+          const computedVatAmount = item.vatAmount ?? Math.round((computedSubtotal * (item.vat || 0)) / 100);
+          const computedTotal = item.totalAmount ?? (computedSubtotal + computedVatAmount);
+          return {
+            id: item.id,
+            productCode: item.productCode,
+            productId: item.productId,
+            productName: item.productName,
+            productGroupCode: item.productGroupCode,
+            unit: item.unit,
+            unitId: item.unitId,
+            quantity: item.quantity,
+            price: item.price,
+            discountedPrice: item.discountedPrice,
+            originalPrice: item.price,
+            surcharge: item.surcharge,
+            discount: item.discount,
+            vat: item.vat,
+            vatAmount: computedVatAmount,
+            subtotal: computedSubtotal,
+            totalAmount: computedTotal,
+            stt: item.stt ?? (idx + 1),
+            deliveryDate: item.deliveryDate,
+            note: item.note,
+            urgentOrder: item.urgentOrder,
+            approvePrice: item.approvePrice,
+            approveSupPrice: item.approveSupPrice,
+            approveSupPriceId: item.approveSupPriceId,
+            approver: item.approver,
+            discountPercent: item.discountPercent,
+            discountAmount: item.discountAmount,
+            promotionText: item.promotionText,
+            invoiceSurcharge: item.invoiceSurcharge,
+            stockQuantity: item.stockQuantity,
+          };
+        }),
         promotions: selectedPromotionOrders.map(promo => ({
           promotionId: promo.id,
           promotionName: promo.name,
@@ -978,8 +998,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           setSoId(newSoId);
           setSo(newSoNumber || newSoId);
 
-          // Reload sale order details để hiển thị data mới
-          await loadSaleOrderDetails(newSoId);
+          // Sale order details will be loaded by the effect that watches `soId`
 
           // Cập nhật total amount
           if (result.totalAmount) {

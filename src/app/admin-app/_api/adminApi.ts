@@ -313,7 +313,7 @@ export const fetchSOBGDetails = async (
 
 // Save Sale Order Details (create/update)
 export interface SaveSaleOrderDetailsRequest {
-  soId: string;
+  soId?: string;
   warehouseName?: string;
   isVatOrder?: boolean;
   customerIndustry?: number | null;
@@ -372,6 +372,8 @@ export interface SaveSaleOrderDetailsResponse {
   message: string;
   savedDetails: any[];
   totalAmount: number;
+  soId?: string;
+  soNumber?: string;
   partialSuccess?: boolean;
   failedProducts?: Array<{
     productCode?: string;
