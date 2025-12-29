@@ -331,8 +331,8 @@ export default async function handler(
                     // Use computed delivery date if available, and set shift (ca) from calculation
                     ...(shift ? { "cr1bb_ca": shift } : {}),
                     "crdfd_ngaygiaodukien": deliveryDateNew ? deliveryDateNew : formatDateForCRM(product.deliveryDate),
-                    "crdfd_chietkhau": product.discount ? product.discount / 100 : 0,
-                    "crdfd_chietkhauvn": product.discountVND || 0,
+                    "crdfd_chietkhau": product.discountPercent ? product.discountPercent / 100 : 0,
+                    "crdfd_chietkhauvn": product.discountAmount ?? 0,
                     "crdfd_chietkhau2": product.discount2 ? product.discount2 / 100 : 0,
                     "crdfd_giack1": product.originalPrice || product.price || 0, // Giá gốc (original price)
                     "crdfd_giack2": product.discountedPrice || product.priceDiscount2 || 0,

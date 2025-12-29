@@ -5,7 +5,7 @@ import ProductEntryForm from './ProductEntryForm';
 import ProductTable from './ProductTable';
 import Dropdown from './Dropdown';
 import { useCustomers, useSaleOrderBaoGia } from '../_hooks/useDropdownData';
-import { saveSOBGDetails, fetchSOBGDetails, SaleOrderDetail } from '../_api/adminApi';
+import { saveSOBGDetails, fetchSOBGDetails, SaleOrderDetail, fetchPromotionOrders, applyPromotionOrder, PromotionOrderItem } from '../_api/adminApi';
 import { showToast } from '../../../components/ToastManager';
 import { getItem } from '../../../utils/SecureStorage';
 import { getStoredUser } from '../_utils/implicitAuthService';
@@ -115,6 +115,12 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   const [discountAmount, setDiscountAmount] = useState(0);
   const [promotionText, setPromotionText] = useState('');
   const [productList, setProductList] = useState<ProductItem[]>([]);
+
+  // Promotion Order Popup state
+  const [showPromotionOrderPopup, setShowPromotionOrderPopup] = useState(false);
+  const [promotionOrderList, setPromotionOrderList] = useState<PromotionOrderItem[]>([]);
+  const [selectedPromotionOrders, setSelectedPromotionOrders] = useState<PromotionOrderItem[]>([]);
+  const [isApplyingPromotion, setIsApplyingPromotion] = useState(false);
 
   // Kiểm tra có sản phẩm chưa lưu để enable nút Save
   const hasUnsavedProducts = productList.some(p => p.isSodCreated !== true);
@@ -461,6 +467,11 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
 
     setIsAdding(false);
     showToast.success('Đã thêm sản phẩm vào danh sách!');
+
+    // Trigger promotion popup if this is the first product or total amount qualifies
+    if (customerId && orderSummary.total > 0 && !showPromotionOrderPopup) {
+      setTimeout(() => autoSelectPromotions(), 500); // Small delay to allow UI update
+    }
   };
 
   const handleSave = async () => {
@@ -788,8 +799,194 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     }
   };
 
+  // Auto-select promotion orders based on total amount condition (cr1bb_tongtienapdung)
+  const autoSelectPromotions = async () => {
+    if (!customerId || orderSummary.total <= 0) return;
+
+    try {
+      console.log('[Auto-select Promotion SOBG] Checking promotions for total amount:', orderSummary.total);
+
+      // Fetch available promotions for current order
+      const promotionOrderResult = await fetchPromotionOrders(
+        customerId,
+        orderSummary.total,
+        orderSummary.subtotal,
+        orderSummary.vat
+      );
+
+      if (promotionOrderResult.availablePromotions && promotionOrderResult.availablePromotions.length > 0) {
+        // Auto-select promotions where totalAmount >= totalAmountCondition
+        const autoSelectedPromotions = promotionOrderResult.availablePromotions.filter((promo: PromotionOrderItem) => {
+          const totalAmountCondition = promo.totalAmountCondition || 0;
+          return orderSummary.total >= totalAmountCondition;
+        });
+
+        if (autoSelectedPromotions.length > 0) {
+          console.log('[Auto-select Promotion SOBG] Auto-selecting promotions based on total amount:', {
+            orderTotal: orderSummary.total,
+            autoSelectedCount: autoSelectedPromotions.length,
+            autoSelectedNames: autoSelectedPromotions.map(p => p.name)
+          });
+
+          setPromotionOrderList(promotionOrderResult.availablePromotions);
+          setSelectedPromotionOrders(autoSelectedPromotions);
+          setShowPromotionOrderPopup(true);
+        } else {
+          console.log('[Auto-select Promotion SOBG] No promotions auto-selected, but available promotions exist');
+          setPromotionOrderList(promotionOrderResult.availablePromotions);
+          setSelectedPromotionOrders([]);
+          setShowPromotionOrderPopup(true);
+        }
+      } else {
+        console.log('[Auto-select Promotion SOBG] No available promotions for current order');
+      }
+    } catch (error: any) {
+      console.error('[Auto-select Promotion SOBG] Error:', error);
+      // Silently fail auto-selection - don't block user flow
+    }
+  };
+
+  // Áp dụng Promotion Order
+  const handleApplyPromotionOrder = async () => {
+    if (selectedPromotionOrders.length === 0) {
+      showToast.error('Vui lòng chọn ít nhất một Promotion Order');
+      return;
+    }
+
+    if (!customerId || !soId) {
+      showToast.error('Thiếu thông tin khách hàng hoặc SOBG');
+      return;
+    }
+
+    setIsApplyingPromotion(true);
+    try {
+      console.log('[Apply Promotion SOBG] Applying promotions:', selectedPromotionOrders.map(p => p.name));
+
+      const result = await applyPromotionOrder({
+        customerId,
+        sobgId: soId,
+        promotionOrderIds: selectedPromotionOrders.map(p => p.id),
+        totalAmount: orderSummary.total,
+        subtotalAmount: orderSummary.subtotal,
+        vatAmount: orderSummary.vat,
+      });
+
+      if (result.success) {
+        showToast.success(`Đã áp dụng ${selectedPromotionOrders.length} promotion(s) thành công!`);
+
+        // Update promotion text
+        const promotionNames = selectedPromotionOrders.map(p => p.name).join(', ');
+        setPromotionText(`Promotion: ${promotionNames}`);
+
+        // Close popup
+        setShowPromotionOrderPopup(false);
+        setSelectedPromotionOrders([]);
+        setPromotionOrderList([]);
+
+        // Refresh product list to see promotion discounts
+        await handleRefreshSOBGDetails();
+      } else {
+        showToast.error(result.message || 'Không thể áp dụng Promotion Order');
+      }
+    } catch (error: any) {
+      console.error('[Apply Promotion SOBG] Error:', error);
+      showToast.error(error.message || 'Không thể áp dụng Promotion Order');
+    } finally {
+      setIsApplyingPromotion(false);
+    }
+  };
+
+  // Đóng popup promotion order
+  const handleClosePromotionOrderPopup = () => {
+    setShowPromotionOrderPopup(false);
+    setSelectedPromotionOrders([]);
+    setPromotionOrderList([]);
+    // Clear entire form when closing promotion popup
+    clearFormOnSoChange();
+  };
+
   return (
     <div className="admin-app-compact-layout">
+      {/* Promotion Order Popup */}
+      {showPromotionOrderPopup && (
+        <div className="admin-app-popup-overlay">
+          <div className="admin-app-popup">
+            <div className="admin-app-popup-header">
+              <h3 className="admin-app-popup-title">Promotion Order</h3>
+            </div>
+            <div className="admin-app-popup-content">
+              <div className="admin-app-field-compact">
+                <label className="admin-app-label-inline">Chọn Promotion Order (có thể chọn nhiều)</label>
+                <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '4px', padding: '8px' }}>
+                  {promotionOrderList.map((promo) => {
+                    const isSelected = selectedPromotionOrders.some(p => p.id === promo.id);
+                    return (
+                      <label
+                        key={promo.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '8px',
+                          cursor: 'pointer',
+                          borderRadius: '4px',
+                          marginBottom: '4px',
+                          backgroundColor: isSelected ? '#f0f9ff' : 'transparent',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isSelected) e.currentTarget.style.backgroundColor = '#f8fafc';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedPromotionOrders([...selectedPromotionOrders, promo]);
+                            } else {
+                              setSelectedPromotionOrders(selectedPromotionOrders.filter(p => p.id !== promo.id));
+                            }
+                          }}
+                          style={{ marginRight: '8px', cursor: 'pointer' }}
+                        />
+                        <span style={{ fontSize: '13px', flex: 1 }}>
+                          {promo.name} ({promo.vndOrPercent === '%' ? `${promo.value}%` : `${promo.value?.toLocaleString('vi-VN')} VNĐ`})
+                          {promo.chietKhau2 === 191920001 && (
+                            <span style={{ marginLeft: '8px', color: '#059669', fontSize: '11px', fontWeight: '600' }}>
+                              [Chiết khấu 2]
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            <div className="admin-app-popup-actions">
+              <button
+                type="button"
+                className="admin-app-btn admin-app-btn-secondary"
+                onClick={handleClosePromotionOrderPopup}
+                disabled={isApplyingPromotion}
+              >
+                Huỷ
+              </button>
+              <button
+                type="button"
+                className="admin-app-btn admin-app-btn-primary"
+                onClick={handleApplyPromotionOrder}
+                disabled={selectedPromotionOrders.length === 0 || isApplyingPromotion}
+              >
+                {isApplyingPromotion ? 'Đang xử lý...' : 'Xác nhận'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {!hideHeader && (
         <div className="admin-app-header-compact">
           <div className="admin-app-header-compact-left">
