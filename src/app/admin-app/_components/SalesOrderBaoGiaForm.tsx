@@ -474,6 +474,67 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     }
   };
 
+  // Refresh SOBG details programmatically
+  const handleRefreshSOBGDetails = async () => {
+    if (!soId || soId.trim() === '' || !customerId) {
+      console.warn('Cannot refresh SOBG details: missing soId or customerId', { soId, customerId });
+      return;
+    }
+
+    try {
+      setIsLoadingDetails(true);
+      const details = await fetchSOBGDetails(soId, customerId);
+      const mappedProducts: ProductItem[] = details.map((detail: SaleOrderDetail) => {
+        const subtotal = detail.subtotal ?? ((detail.discountedPrice || detail.price) * detail.quantity);
+        const vatAmount = detail.vatAmount ?? (subtotal * detail.vat / 100);
+        return {
+          id: detail.id,
+          stt: detail.stt,
+          productCode: detail.productCode,
+          productId: detail.productId,
+          productGroupCode: detail.productGroupCode,
+          productName: detail.productName,
+          unit: detail.unit,
+          quantity: detail.quantity,
+          price: detail.price,
+          surcharge: detail.surcharge || 0,
+          discount: detail.discount || 0,
+          discountedPrice: detail.discountedPrice || detail.price,
+          vat: detail.vat,
+          subtotal: detail.subtotal ?? subtotal,
+          vatAmount: detail.vatAmount ?? vatAmount,
+          totalAmount: detail.totalAmount,
+          approver: detail.approver || '',
+          deliveryDate: detail.deliveryDate || '',
+          warehouse: warehouse,
+          note: detail.note || '',
+          approvePrice: detail.approvePrice || false,
+          approveSupPrice: detail.approveSupPrice || false,
+          discountPercent: detail.discountPercent || 0,
+          discountAmount: detail.discountAmount || 0,
+          promotionText: detail.promotionText || '',
+          invoiceSurcharge: detail.invoiceSurcharge || 0,
+          discount2: (() => {
+            const raw = (detail as any).crdfd_chietkhau2 ?? (detail as any).chietKhau2 ?? (detail as any).discount2 ?? 0;
+            const num = Number(raw) || 0;
+            if (num > 0 && num <= 1) return Math.round(num * 100);
+            return num;
+          })(),
+          discount2Enabled: Boolean((detail as any).crdfd_chietkhau2 ?? (detail as any).chietKhau2 ?? (detail as any).discount2),
+          isSodCreated: true,
+          isModified: false,
+          originalQuantity: detail.quantity,
+        };
+      });
+      mappedProducts.sort((a, b) => (b.stt || 0) - (a.stt || 0));
+      setProductList(mappedProducts);
+    } catch (error) {
+      console.error('Error refreshing SOBG details:', error);
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  };
+
   const handleSave = async () => {
     const unsavedProducts = productList.filter(p => !p.isSodCreated);
     if (unsavedProducts.length === 0) {
@@ -808,10 +869,12 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
 
       // Fetch available promotions for current order
       const promotionOrderResult = await fetchPromotionOrders(
-        customerId,
+        soId,
+        customerCode || undefined,
         orderSummary.total,
-        orderSummary.subtotal,
-        orderSummary.vat
+        // Ensure arrays are typed as string[] (filter out undefined/null)
+        productList.map(p => p.productCode).filter((c): c is string => typeof c === 'string' && c.trim() !== ''),
+        productList.map(p => p.productGroupCode).filter((c): c is string => typeof c === 'string' && c.trim() !== '')
       );
 
       if (promotionOrderResult.availablePromotions && promotionOrderResult.availablePromotions.length > 0) {
@@ -862,17 +925,26 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     try {
       console.log('[Apply Promotion SOBG] Applying promotions:', selectedPromotionOrders.map(p => p.name));
 
-      const result = await applyPromotionOrder({
-        customerId,
-        sobgId: soId,
-        promotionOrderIds: selectedPromotionOrders.map(p => p.id),
-        totalAmount: orderSummary.total,
-        subtotalAmount: orderSummary.subtotal,
-        vatAmount: orderSummary.vat,
-      });
+      // Apply promotions one by one (API expects single promotion per request)
+      const applyResults = await Promise.all(selectedPromotionOrders.map(promo =>
+        applyPromotionOrder({
+          soId,
+          promotionId: promo.id,
+          promotionName: promo.name,
+          promotionValue: promo.value,
+          vndOrPercent: promo.vndOrPercent,
+          chietKhau2: promo.chietKhau2 === 191920001,
+          productCodes: promo.productCodes,
+          productGroupCodes: promo.productGroupCodes,
+        }).catch((err) => {
+          console.error('Error applying single promotion:', promo.id, err);
+          return { success: false, message: err?.message || 'Unknown error' } as any;
+        })
+      ));
 
-      if (result.success) {
-        showToast.success(`Đã áp dụng ${selectedPromotionOrders.length} promotion(s) thành công!`);
+      const successfulCount = applyResults.filter(r => r && (r as any).success).length;
+      if (successfulCount > 0) {
+        showToast.success(`Đã áp dụng ${successfulCount} promotion(s) thành công!`);
 
         // Update promotion text
         const promotionNames = selectedPromotionOrders.map(p => p.name).join(', ');
@@ -886,7 +958,8 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         // Refresh product list to see promotion discounts
         await handleRefreshSOBGDetails();
       } else {
-        showToast.error(result.message || 'Không thể áp dụng Promotion Order');
+        const firstFail = applyResults.find(r => !(r as any).success) as any;
+        showToast.error(firstFail?.message || 'Không thể áp dụng Promotion Order');
       }
     } catch (error: any) {
       console.error('[Apply Promotion SOBG] Error:', error);
