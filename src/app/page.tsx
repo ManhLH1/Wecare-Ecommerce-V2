@@ -1106,6 +1106,7 @@ const HomeContent = () => {
                 href: `/san-pham?group=${encodeURIComponent(g.productGroupCode || '')}`,
               };
             })}
+          loading={loadingCategory}
         />
         {/* Shortcut Section - DESKTOP với thiết kế tròn (ẩn theo yêu cầu) */}
         <section className="hidden">

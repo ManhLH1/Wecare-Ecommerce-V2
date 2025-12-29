@@ -19,9 +19,10 @@ interface Category {
 
 interface FeaturedCategoriesProps {
   categories: Category[];
+  loading?: boolean;
 }
 
-const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories }) => {
+const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loading = false }) => {
   console.log('[FeaturedCategories] Received categories:', categories?.length || 0, categories?.slice(0, 3));
 
   // More flexible filtering: accept any category with a name
@@ -39,6 +40,39 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories }) =
   }));
 
   console.log('[FeaturedCategories] Valid categories after filtering:', validCategories.length, validCategories.slice(0, 3));
+
+  // Show loading skeleton when loading
+  if (loading) {
+    return (
+      <section className="w-full py-6">
+        <div className="w-full px-4">
+          <div className="bg-white rounded-lg shadow-sm p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-4">
+                <h3 className="text-xl font-bold">DANH MỤC NỔI BẬT</h3>
+                <span className="inline-block w-14 h-1 bg-amber-300 rounded" />
+              </div>
+              <a href="/san-pham" className="text-sm text-amber-500 hover:underline">Xem tất cả</a>
+            </div>
+            <div className="grid gap-2 items-stretch" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+              {Array.from({ length: 8 }).map((_, index) => (
+                <div key={index} className="block text-center no-underline">
+                  <div className="bg-white rounded-sm border border-gray-200 h-full flex flex-col items-center min-h-[120px] animate-pulse">
+                    <div className="w-full p-2 flex items-center justify-center">
+                      <div className="mx-auto h-20 w-20 bg-gray-200 rounded"></div>
+                    </div>
+                    <div className="w-full mt-auto bg-gray-50 border-t px-2 py-2">
+                      <div className="text-xs bg-gray-200 rounded h-4 w-3/4 mx-auto"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   if (!validCategories || validCategories.length === 0) {
     // Show debug info for production troubleshooting
