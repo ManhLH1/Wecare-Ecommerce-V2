@@ -353,17 +353,31 @@ gia_duyet = If(
     )
 );
 ngay_giao = If(
+    // Điều kiện 1: Kiểm tra promotion lead time
+    !IsBlank(var_selected_Promotion)
+        && !IsBlank(var_selected_Promotion.'Lead time promotion')
+        && (IsBlank(var_selected_Promotion.'Phân Loại chương trình')
+            || var_selected_Promotion.'Phân Loại chương trình' = "Hãng"),
+    DateAdd(
+        Now(),
+        Value(var_selected_Promotion.'Lead time promotion') * 12,
+        TimeUnit.Hours
+    ),
+
+    // Điều kiện 2: Nếu là Shop
     var_Nganh_nghe = "Shop",
     DateAdd(
         Now(),
         var_leadtime_quanhuyen * 12,
         TimeUnit.Hours
     ),
-    If(
-        var_input_soluong * var_selected_donvi.'Giá trị chuyển đổi (Chuyển đổi/chuẩn)' > var_selected_SP.'Tồn kho lý thuyết (bỏ mua) - BD',
-        DateAdd(Today(), var_selected_SP.'Lead time'),
-        DateAdd(Today(), 1)
-    )
+
+    // Điều kiện 3: Kiểm tra tồn kho
+    var_input_soluong * var_selected_donvi.'Giá trị chuyển đổi (Chuyển đổi/chuẩn)' > var_selected_SP.'Tồn kho lý thuyết (bỏ mua) - BD',
+    DateAdd(Today(), var_selected_SP.'Lead time'),
+
+    // Mặc định: +1 ngày
+    DateAdd(Today(), 1)
 );
 Max_stt = If(
     !IsBlank(var_selected_id_donhang),

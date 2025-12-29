@@ -10,6 +10,7 @@ export interface Customer {
   crdfd_phone2?: string;
   cr44a_makhachhang?: string;
   crdfd_nganhnghe?: number; // Ngành nghề (OptionSet)
+  crdfd_keyquanhuyen?: string; // Key quận huyện
   crdfd_tinhthanh?: string; // Province ID
   crdfd_tinhthanh_name?: string; // Province name
   cr1bb_vungmien?: number; // Region OptionSet value
@@ -627,6 +628,36 @@ export interface SaveSOBGDetailsResponse {
   totalSaved?: number;
   totalFailed?: number;
 }
+
+/**
+ * Thông tin district leadtime
+ */
+export interface DistrictLeadtime {
+  keyAuto: string;
+  leadtime: number;
+  districtId: string | null;
+  districtName: string | null;
+}
+
+/**
+ * Lấy district leadtime theo key
+ */
+export const getDistrictLeadtime = async (params: { keyAuto?: string; name?: string }): Promise<DistrictLeadtime> => {
+  try {
+    const qs = params.keyAuto ? `keyAuto=${encodeURIComponent(params.keyAuto)}` : params.name ? `name=${encodeURIComponent(params.name)}` : '';
+    const response = await axios.get(`${BASE_URL}/districts?${qs}`);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching district leadtime:', error);
+    // Return default value if API fails
+    return {
+      keyAuto: params.keyAuto || params.name || '',
+      leadtime: 0,
+      districtId: null,
+      districtName: null
+    };
+  }
+};
 
 /**
  * Lưu chi tiết SO Báo Giá (KHÔNG trừ tồn kho)

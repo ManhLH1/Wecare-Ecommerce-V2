@@ -88,6 +88,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const [urgentOrder, setUrgentOrder] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState('');
   const [customerIndustry, setCustomerIndustry] = useState<number | null>(null);
+  const [customerDistrictKey, setCustomerDistrictKey] = useState<string>('');
   const [note, setNote] = useState('');
   const [approver, setApprover] = useState('');
   const [priceEntryMethod, setPriceEntryMethod] = useState<'Nhập thủ công' | 'Theo chiết khấu'>('Nhập thủ công');
@@ -1579,6 +1580,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                     setCustomer(option?.label || '');
                     setCustomerCode(option?.cr44a_makhachhang || option?.cr44a_st || '');
                     setCustomerIndustry(option?.crdfd_nganhnghe ?? null);
+                    setCustomerDistrictKey(option?.crdfd_keyquanhuyen || '');
                     // Clear SO và các selected khi đổi customer
                     setSo('');
                     setSoId('');
@@ -1725,6 +1727,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             deliveryDate={deliveryDate}
             setDeliveryDate={setDeliveryDate}
             customerIndustry={customerIndustry}
+            customerDistrictKey={customerDistrictKey}
             note={note}
             setNote={setNote}
             approver={approver}

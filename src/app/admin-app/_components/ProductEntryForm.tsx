@@ -10,6 +10,7 @@ import {
   fetchInventory,
   fetchAccountingStock,
   fetchPromotionOrders,
+  getDistrictLeadtime,
   Promotion,
   Product,
 } from '../_api/adminApi';
@@ -50,6 +51,7 @@ interface ProductEntryFormProps {
   customerCode?: string;
   customerIndustry?: number | null;
   customerName?: string;
+  customerDistrictKey?: string;
   soId?: string;
   orderType?: number | null; // Loại đơn hàng OptionSet value (optional)
   vatText?: string; // VAT text từ SO ("Có VAT" hoặc "Không VAT")
@@ -116,6 +118,7 @@ export default function ProductEntryForm({
   customerId,
   customerCode,
   customerName,
+  customerDistrictKey,
   soId,
   orderType,
   vatText,
@@ -201,6 +204,7 @@ export default function ProductEntryForm({
   const [inventoryColor, setInventoryColor] = useState<string | undefined>(undefined);
   const [reservedQuantity, setReservedQuantity] = useState<number>(0); // Số lượng đang giữ đơn
   const [availableToSell, setAvailableToSell] = useState<number | undefined>(undefined); // Số lượng khả dụng
+  const [districtLeadtime, setDistrictLeadtime] = useState<number>(0); // Leadtime quận/huyện
   const [inventoryRefreshKey, setInventoryRefreshKey] = useState<number>(0); // Key để trigger reload inventory
   const [accountingStock, setAccountingStock] = useState<number | null>(null);
   const [accountingStockLoading, setAccountingStockLoading] = useState<boolean>(false);
@@ -494,6 +498,14 @@ export default function ProductEntryForm({
   }, [selectedProductGroupCode]);
 
   const syncInventoryState = (theoretical: number, reserved: number, available: number | undefined, isVatOrder: boolean) => {
+    console.log('📊 [Inventory] Updating inventory state:', {
+      theoretical,
+      reserved,
+      available,
+      isVatOrder,
+      finalAvailable: available !== undefined ? available : (theoretical - reserved)
+    });
+
     setInventoryTheoretical(theoretical);
     setReservedQuantity(reserved);
     const finalAvailable = available !== undefined ? available : (theoretical - reserved);
@@ -548,6 +560,11 @@ export default function ProductEntryForm({
     }
 
     try {
+      console.log('⏳ [Inventory] Starting to load inventory for:', {
+        selectedProductCode,
+        warehouse,
+        isVatOrder
+      });
       setInventoryLoading(true);
       const latest = await fetchInventory(selectedProductCode, warehouse, isVatOrder);
       if (!latest) {
@@ -913,6 +930,15 @@ export default function ProductEntryForm({
       setInventoryMessage(message);
       setInventoryColor('red');
     } finally {
+      // Use state variables (safe outside try) instead of local try-scoped variables
+      console.log('✅ [Inventory] Loading completed for:', {
+        selectedProductCode,
+        warehouse,
+        finalTheoretical: inventoryTheoretical,
+        finalReserved: reservedQuantity,
+        finalAvailable: availableToSell,
+        isVatOrder
+      });
       setInventoryLoading(false);
     }
   };
@@ -1636,6 +1662,11 @@ export default function ProductEntryForm({
 
   // Auto-calculate deliveryDate similar to ngay_giao logic (simplified)
   useEffect(() => {
+    // Only calculate if we have essential data: selected product, basic customer info, and inventory is not loading
+    if (!selectedProduct || !customerId || inventoryLoading) {
+      return;
+    }
+
     // Compute delivery date following canvas logic:
     // 1) Promotion lead time (promotion lead * 12 hours) when applicable
     // 2) If customer is Shop -> district leadtime * 12 hours (we approximate using customerIndustry or name)
@@ -1685,26 +1716,107 @@ export default function ProductEntryForm({
         (currentUnit as any)?.crdfd_conversionvalue ??
         1;
 
+      console.log('🚛 [ProductEntryForm] Calculating delivery date for product:', {
+        productCode: selectedProductCode,
+        productName: selectedProduct?.crdfd_name,
+        customerName,
+        customerIndustry,
+        varNganhNghe,
+        districtLeadtime,
+        quantity,
+        conversionFactor,
+        inventoryTheoretical,
+        productLeadTime,
+        promotion: promoRecord ? {
+          leadtime: promoRecord.cr1bb_leadtimepromotion,
+          phanloai: promoRecord.cr1bb_phanloaichuongtrinh
+        } : null
+      });
+
       const computed = computeDeliveryDate({
         promotion: promoRecord,
         varNganhNghe: varNganhNghe ?? undefined,
-        var_leadtime_quanhuyen: 0, // district leadtime not available here - default 0
+        var_leadtime_quanhuyen: districtLeadtime, // Use actual district leadtime
         var_input_soluong: quantity || 0,
         var_selected_donvi_conversion: Number(conversionFactor) || 1,
         var_selected_SP_tonkho: inventoryTheoretical ?? 0,
         var_selected_SP_leadtime: productLeadTime || 0,
       });
 
-      setDeliveryDate(formatDate(computed));
+      const formattedDate = formatDate(computed);
+      console.log('📅 [ProductEntryForm] Delivery date calculated:', {
+        computed: computed.toLocaleString('vi-VN'),
+        formatted: formattedDate
+      });
+
+      setDeliveryDate(formattedDate);
     } catch (e) {
+      console.error('❌ [ProductEntryForm] Error calculating delivery date, using fallback:', e);
       // fallback: simple logic
       const today = new Date();
       const daysToAdd = (quantity || 0) > (stockQuantity || 0) ? 2 : 1;
       const t = new Date(today);
       t.setDate(today.getDate() + daysToAdd);
-      setDeliveryDate(formatDate(t));
+      const fallbackDate = formatDate(t);
+
+      console.log('🔄 [ProductEntryForm] Using FALLBACK delivery date:', {
+        quantity,
+        stockQuantity,
+        daysToAdd,
+        fallbackDate
+      });
+
+      setDeliveryDate(fallbackDate);
     }
-  }, [selectedPromotionId, promotions, selectedPromotion, customerIndustry, customerName, quantity, unitId, units, inventoryTheoretical, selectedProduct, stockQuantity]);
+  }, [selectedPromotionId, promotions, selectedPromotion, customerIndustry, customerName, quantity, unitId, units, inventoryTheoretical, selectedProduct, stockQuantity, districtLeadtime, inventoryLoading]);
+
+
+  // Fetch district leadtime when customer district key changes
+  useEffect(() => {
+    const fetchDistrictLeadtime = async () => {
+    console.log('🏙️ [District Leadtime] Fetching for key (or fallback name):', customerDistrictKey);
+
+    try {
+      let result;
+      if (customerDistrictKey && customerDistrictKey.trim() !== '') {
+        result = await getDistrictLeadtime({ keyAuto: customerDistrictKey });
+      } else {
+        // Fallback: try extract district name from customerName (e.g. "CT - CH Huyền (Cờ Đỏ)" -> "Cờ Đỏ")
+        let districtNameFromCustomer = undefined;
+        if (customerName) {
+          const m = String(customerName).match(/\\(([^)]+)\\)/);
+          if (m && m[1]) districtNameFromCustomer = m[1].trim();
+          else {
+            // fallback: take part after last '-' if present
+            const parts = String(customerName).split('-');
+            if (parts.length > 1) districtNameFromCustomer = parts[parts.length - 1].trim();
+          }
+        }
+
+        if (!districtNameFromCustomer) {
+          console.log('🏙️ [District Leadtime] No key and could not extract district name from customerName, setting 0');
+          setDistrictLeadtime(0);
+          return;
+        }
+
+        console.log('🏙️ [District Leadtime] Falling back to lookup by name:', districtNameFromCustomer);
+        result = await getDistrictLeadtime({ name: districtNameFromCustomer });
+      }
+
+      console.log('🏙️ [District Leadtime] Fetched successfully:', {
+        key: customerDistrictKey,
+        leadtime: result.leadtime,
+        districtName: result.districtName
+      });
+      setDistrictLeadtime(result.leadtime);
+    } catch (error) {
+      console.error('❌ [District Leadtime] Error fetching:', error);
+      setDistrictLeadtime(0); // Fallback to 0 on error
+    }
+    };
+
+    fetchDistrictLeadtime();
+  }, [customerDistrictKey]);
 
   // Keep quantity disabled until product is selected, default to empty (0)
   useEffect(() => {
@@ -2000,6 +2112,12 @@ export default function ProductEntryForm({
               })}
               value={productId}
               onChange={(value, option) => {
+                console.log('📦 [Product Selection] User selected product:', {
+                  productId: value,
+                  productName: option?.label,
+                  productCode: option?.crdfd_masanpham
+                });
+
                 setProductId(value);
                 setProduct(option?.label || '');
                 const selectedProductData = products.find((p) => p.crdfd_productsid === value);

@@ -37,7 +37,7 @@ export default async function handler(
       filter += ` and (contains(crdfd_name, '${searchTerm}') or contains(cr44a_st, '${searchTerm}') or contains(crdfd_phone2, '${searchTerm}'))`;
     }
 
-    const columns = "crdfd_customerid,crdfd_name,cr44a_st,crdfd_phone2,cr44a_makhachhang,crdfd_nganhnghe,_crdfd_tinhthanh_value";
+    const columns = "crdfd_customerid,crdfd_name,cr44a_st,crdfd_phone2,cr44a_makhachhang,crdfd_nganhnghe,crdfd_keyquanhuyen,_crdfd_tinhthanh_value";
     const expand = "$expand=crdfd_Tinhthanh($select=crdfd_tinhthanhid,crdfd_name,new_vungmienfx)";
     const query = `$select=${columns}&${expand}&$filter=${encodeURIComponent(
       filter
