@@ -166,6 +166,8 @@ export default function ProductEntryForm({
   disableInventoryReserve = false,
   orderTotal,
 }: ProductEntryFormProps) {
+  console.log('🚀 [ProductEntryForm] Component rendered, customerDistrictKey:', customerDistrictKey);
+
   // Disable form if customer or SO is not selected
   // Check for both null/undefined and empty string
   const isFormDisabled = !customerId || customerId === '' || !soId || soId === '';
@@ -1733,10 +1735,19 @@ export default function ProductEntryForm({
         } : null
       });
 
+      console.log('🔄 [ProductEntryForm] Computing delivery date with params:', {
+        districtLeadtime: districtLeadtime,
+        quantity: quantity || 0,
+        conversionFactor: Number(conversionFactor) || 1,
+        inventoryTheoretical: inventoryTheoretical ?? 0,
+        productLeadTime: productLeadTime || 0,
+        varNganhNghe: varNganhNghe ?? undefined
+      });
+
       const computed = computeDeliveryDate({
         promotion: promoRecord,
         varNganhNghe: varNganhNghe ?? undefined,
-        var_leadtime_quanhuyen: districtLeadtime, // Use actual district leadtime
+        var_leadtime_quanhuyen: districtLeadtime, // Use actual district leadtime from cr1bb_leadtimetheoca
         var_input_soluong: quantity || 0,
         var_selected_donvi_conversion: Number(conversionFactor) || 1,
         var_selected_SP_tonkho: inventoryTheoretical ?? 0,
@@ -1773,42 +1784,80 @@ export default function ProductEntryForm({
 
   // Fetch district leadtime when customer district key changes
   useEffect(() => {
+    console.log('🔄 [District Leadtime] customerDistrictKey changed:', {
+      customerDistrictKey,
+      customerName,
+      customerId,
+      hasKey: !!customerDistrictKey && customerDistrictKey.trim() !== ''
+    });
+
     const fetchDistrictLeadtime = async () => {
     console.log('🏙️ [District Leadtime] Fetching for key (or fallback name):', customerDistrictKey);
 
     try {
       let result;
-      if (customerDistrictKey && customerDistrictKey.trim() !== '') {
-        result = await getDistrictLeadtime({ keyAuto: customerDistrictKey });
+      // Prefer fetching by customerId when available (more reliable)
+      if (customerId && customerId.trim() !== '') {
+        result = await getDistrictLeadtime(customerId);
+      } else if (customerDistrictKey && customerDistrictKey.trim() !== '') {
+        result = await getDistrictLeadtime({ keyAuto: customerDistrictKey } as any);
       } else {
-        // Fallback: try extract district name from customerName (e.g. "CT - CH Huyền (Cờ Đỏ)" -> "Cờ Đỏ")
+        // Fallback: try extract district name from customerName
+        // Examples: "CT - CH Huyền (Cờ Đỏ)" -> "Cờ Đỏ"
+        //           "Công ty ABC - Quận 1" -> "Quận 1"
         let districtNameFromCustomer = undefined;
+
+        console.log('🔍 [District Leadtime] Attempting to extract district name from:', customerName);
+
         if (customerName) {
-          const m = String(customerName).match(/\\(([^)]+)\\)/);
-          if (m && m[1]) districtNameFromCustomer = m[1].trim();
-          else {
-            // fallback: take part after last '-' if present
-            const parts = String(customerName).split('-');
-            if (parts.length > 1) districtNameFromCustomer = parts[parts.length - 1].trim();
+          const customerNameStr = String(customerName).trim();
+
+          // Try pattern: (district name) - e.g. "(Cờ Đỏ)", "(Quận 1)"
+          const bracketMatch = customerNameStr.match(/\\(([^)]+)\\)/);
+          if (bracketMatch && bracketMatch[1]) {
+            districtNameFromCustomer = bracketMatch[1].trim();
+            console.log('📍 [District Leadtime] Found district in brackets:', districtNameFromCustomer);
+          } else {
+            // Try pattern: split by '-' and take last meaningful part
+            const parts = customerNameStr.split('-').map(p => p.trim()).filter(p => p.length > 0);
+            if (parts.length > 1) {
+              const lastPart = parts[parts.length - 1];
+              // Check if last part looks like a district name (contains quận/huyện/thị xã)
+              if (lastPart.match(/(quận|huyện|thị xã|thành phố|tp\.?|q\.?)/i)) {
+                districtNameFromCustomer = lastPart;
+                console.log('📍 [District Leadtime] Found district by split:', districtNameFromCustomer);
+              }
+            }
           }
         }
 
         if (!districtNameFromCustomer) {
-          console.log('🏙️ [District Leadtime] No key and could not extract district name from customerName, setting 0');
-          setDistrictLeadtime(0);
+          console.log('⚠️ [District Leadtime] No district data available:', {
+            customerId,
+            customerName,
+            customerDistrictKey: 'NOT_SET',
+            crdfd_keyquanhuyen: 'NOT_SET',
+            action: 'Using default leadtime 2 days (48 hours)'
+          });
+          setDistrictLeadtime(2); // Default 2 days = 48 hours
           return;
         }
 
         console.log('🏙️ [District Leadtime] Falling back to lookup by name:', districtNameFromCustomer);
-        result = await getDistrictLeadtime({ name: districtNameFromCustomer });
+        result = await getDistrictLeadtime({ name: districtNameFromCustomer } as any);
       }
 
-      console.log('🏙️ [District Leadtime] Fetched successfully:', {
-        key: customerDistrictKey,
-        leadtime: result.leadtime,
-        districtName: result.districtName
+      console.log('🏙️ [District Leadtime] Final result:', {
+        customerId,
+        customerName,
+        customerDistrictKey,
+        districtId: result.districtId,
+        districtName: result.districtName,
+        cr1bb_leadtimekhuvuc: result.leadtimeKhuVuc,
+        cr1bb_leadtimetheoca: result.leadtimeTheoCa,
+        usingLeadtime: result.leadtimeTheoCa
       });
-      setDistrictLeadtime(result.leadtime);
+      setDistrictLeadtime(result.leadtimeTheoCa);
     } catch (error) {
       console.error('❌ [District Leadtime] Error fetching:', error);
       setDistrictLeadtime(0); // Fallback to 0 on error
@@ -1816,7 +1865,7 @@ export default function ProductEntryForm({
     };
 
     fetchDistrictLeadtime();
-  }, [customerDistrictKey]);
+  }, [customerDistrictKey, customerId]);
 
   // Keep quantity disabled until product is selected, default to empty (0)
   useEffect(() => {

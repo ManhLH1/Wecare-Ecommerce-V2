@@ -75,8 +75,19 @@ export function computeDeliveryDate(params: {
 
     console.log('📋 [Delivery Date] Parsed promotion data:', { promoLead, promoPhanLoai });
 
-    // 1) Promotion lead time (if present and phan loai is blank or 'Hãng')
-    if (promoLead !== undefined && (promoPhanLoai === undefined || promoPhanLoai === null || promoPhanLoai === '' || promoPhanLoai === 'Hãng')) {
+    // 1) Promotion lead time (mirror Canvas logic)
+    // If promotion selected AND promotion.cr1bb_leadtimepromotion is not blank
+    // AND (phân loại is blank OR phân loại = 'Hãng') -> apply promo lead time (hours = value * 12)
+    if (
+        promotion &&
+        promoLead !== undefined &&
+        (
+            promoPhanLoai === undefined ||
+            promoPhanLoai === null ||
+            String(promoPhanLoai).trim() === '' ||
+            promoPhanLoai === 'Hãng'
+        )
+    ) {
         const result = addHours(effectiveNow, promoLead * 12);
         console.log('✅ [Delivery Date] Applied PROMOTION LEAD TIME:', {
             promoLead,

@@ -55,6 +55,8 @@ interface SalesOrderFormProps {
 }
 
 export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormProps) {
+  console.log('🚀 [SalesOrderForm] Component rendered, hideHeader:', hideHeader);
+
   const [customer, setCustomer] = useState('');
   const [customerId, setCustomerId] = useState('');
   const [customerCode, setCustomerCode] = useState('');
@@ -1576,11 +1578,21 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                   })}
                   value={customerId}
                   onChange={(value, option) => {
+                    console.log('🔄 [Customer Selection] onChange triggered:', { value, option: !!option });
+
                     setCustomerId(value);
                     setCustomer(option?.label || '');
                     setCustomerCode(option?.cr44a_makhachhang || option?.cr44a_st || '');
                     setCustomerIndustry(option?.crdfd_nganhnghe ?? null);
-                    setCustomerDistrictKey(option?.crdfd_keyquanhuyen || '');
+                    const districtKey = option?.crdfd_keyquanhuyen || '';
+                    console.log('👤 [Customer Selection] Customer data:', {
+                      customerId: value,
+                      customerName: option?.label || '',
+                      customerCode: option?.cr44a_makhachhang || option?.cr44a_st || '',
+                      crdfd_keyquanhuyen: option?.crdfd_keyquanhuyen || 'NOT_SET',
+                      hasDistrictKey: !!districtKey
+                    });
+                    setCustomerDistrictKey(districtKey);
                     // Clear SO và các selected khi đổi customer
                     setSo('');
                     setSoId('');
