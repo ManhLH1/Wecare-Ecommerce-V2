@@ -79,8 +79,8 @@ const getCachedData = async <T>(
 
 const baseUrl = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2";
 
-// Main API handler - Get top 30 product groups by order count in last 30 days using crdfd_manhomsp
-const getTop30ProductGroupsByOrders = async (req: NextApiRequest, res: NextApiResponse) => {
+// Main API handler - Get top 20 product groups by order count in last 30 days using crdfd_manhomsp
+const getTop20ProductGroupsByOrders = async (req: NextApiRequest, res: NextApiResponse) => {
   try {
     if (req.method !== "GET") {
       return res.status(405).json({ message: "Method not allowed" });
@@ -220,17 +220,17 @@ const getTop30ProductGroupsByOrders = async (req: NextApiRequest, res: NextApiRe
       return acc;
     }, {} as Record<string, { productGroupCode: string; orderCount: number }>);
 
-    // Chuyển đổi thành mảng và sắp xếp theo số đơn hàng giảm dần (không giới hạn ban đầu)
+    // Chuyển đổi thành mảng và sắp xếp theo số đơn hàng giảm dần
     const sortedAllProductGroups = Object.values(productGroupStats).sort((a, b) => b.orderCount - a.orderCount);
 
-    // Lấy thông tin chi tiết nhóm sản phẩm tuần tự cho tới khi có 30 nhóm có image
+    // Lấy thông tin chi tiết nhóm sản phẩm tuần tự cho tới khi có 20 nhóm có image
     const enrichedProductGroups: Array<any> = [];
-    const maxToCheck = Math.min(sortedAllProductGroups.length, 200); // Optimized: 200 groups should be sufficient
+    const maxToCheck = Math.min(sortedAllProductGroups.length, 150); // Optimized: 150 groups should be sufficient for top 20
 
     // First pass: Get groups with images (parallel processing for better performance)
     const concurrencyLimit = 5; // Process 5 requests at a time to avoid overwhelming the server
 
-    for (let batchStart = 0; batchStart < maxToCheck && enrichedProductGroups.length < 30; batchStart += concurrencyLimit) {
+    for (let batchStart = 0; batchStart < maxToCheck && enrichedProductGroups.length < 20; batchStart += concurrencyLimit) {
       const batchEnd = Math.min(batchStart + concurrencyLimit, maxToCheck);
       const batch = sortedAllProductGroups.slice(batchStart, batchEnd);
 
@@ -278,7 +278,7 @@ const getTop30ProductGroupsByOrders = async (req: NextApiRequest, res: NextApiRe
         enrichedProductGroups.push(...validResults);
 
         // Break if we have enough groups
-        if (enrichedProductGroups.length >= 30) break;
+        if (enrichedProductGroups.length >= 20) break;
       } catch (error) {
         logger.error('Error in batch processing:', error);
         // Continue with next batch
@@ -286,7 +286,7 @@ const getTop30ProductGroupsByOrders = async (req: NextApiRequest, res: NextApiRe
     }
 
     // Second pass: If still don't have enough, get groups without requiring images (for fallback)
-    if (enrichedProductGroups.length < 30 && sortedAllProductGroups.length > enrichedProductGroups.length) {
+    if (enrichedProductGroups.length < 20 && sortedAllProductGroups.length > enrichedProductGroups.length) {
       logger.warn(`Only found ${enrichedProductGroups.length} product groups with images. Adding fallback groups without image requirement.`);
 
       const existingCodes = new Set(enrichedProductGroups.map(g => g.productGroupCode));
@@ -295,7 +295,7 @@ const getTop30ProductGroupsByOrders = async (req: NextApiRequest, res: NextApiRe
       // Use parallel processing for fallback groups too
       const concurrencyLimit = 5;
 
-      for (let batchStart = 0; batchStart < remainingGroups.length && enrichedProductGroups.length < 30; batchStart += concurrencyLimit) {
+      for (let batchStart = 0; batchStart < remainingGroups.length && enrichedProductGroups.length < 20; batchStart += concurrencyLimit) {
         const batchEnd = Math.min(batchStart + concurrencyLimit, remainingGroups.length);
         const batch = remainingGroups.slice(batchStart, batchEnd);
 
@@ -344,7 +344,7 @@ const getTop30ProductGroupsByOrders = async (req: NextApiRequest, res: NextApiRe
           enrichedProductGroups.push(...validResults);
 
           // Break if we have enough groups
-          if (enrichedProductGroups.length >= 30) break;
+          if (enrichedProductGroups.length >= 20) break;
         } catch (error) {
           logger.error('Error in fallback batch processing:', error);
           // Continue with next batch
@@ -355,7 +355,7 @@ const getTop30ProductGroupsByOrders = async (req: NextApiRequest, res: NextApiRe
     res.status(200).json(enrichedProductGroups);
 
   } catch (error) {
-    logger.error("Error in getTop30ProductGroupsByOrders:", {
+    logger.error("Error in getTop20ProductGroupsByOrders:", {
       error: error instanceof Error ? {
         message: error.message,
         stack: error.stack,
@@ -376,4 +376,4 @@ const getTop30ProductGroupsByOrders = async (req: NextApiRequest, res: NextApiRe
   }
 };
 
-export default getTop30ProductGroupsByOrders;
+export default getTop20ProductGroupsByOrders;

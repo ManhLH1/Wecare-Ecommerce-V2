@@ -317,19 +317,20 @@ const HomeContent = () => {
       setLoadingCategory(true);
       try {
         const data = await fetchWithCache<any>(
-          "cache:getTop30ProductGroupsByOrders",
+          "cache:getTop20ProductGroupsByOrders",
           1000 * 60 * 30, // 30 minutes cache
           async () => {
-            const res = await axios.get("/api/getTop30ProductGroupsByOrders");
+            const res = await axios.get("/api/getTop20ProductGroupsByOrders");
             return res.data;
           }
         );
         if (data && Array.isArray(data)) {
-          // Use top 30 product groups by order count for featured categories
+          // Use top 20 product groups by order count for featured categories
           setCategoryGroups(data);
           console.log(`[FeaturedCategories] loaded top product groups by orders:`, data.length, data.slice(0,3));
-          const filtered = (data || []).filter((g:any)=> g && (g.imageUrl != null && g.imageUrl.trim() !== ''));
-          console.log('[FeaturedCategories] filtered (has image):', filtered.length, filtered.slice(0,3));
+          // Include all categories from API (including those with placeholder images)
+          const filtered = (data || []).filter((g:any)=> g && g.productGroupName);
+          console.log('[FeaturedCategories] all valid categories (including placeholders):', filtered.length, filtered.slice(0,3));
           setCategoryHierarchy(data);
         } else {
           setCategoryGroups([]);
