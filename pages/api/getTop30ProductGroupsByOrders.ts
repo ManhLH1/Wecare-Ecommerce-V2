@@ -23,9 +23,9 @@ const caches: Record<string, LRUCache<string, any>> = Object.entries(
 
 // Cấu hình timeout
 const TIMEOUT_CONFIG = {
-  default: 25000,
-  fetchData: 20000,
-  cache: 15000,
+  default: 45000,
+  fetchData: 30000,
+  cache: 35000, // Increased from 15000 to 35000 for complex data processing
   token: 10000
 };
 
@@ -225,45 +225,130 @@ const getTop30ProductGroupsByOrders = async (req: NextApiRequest, res: NextApiRe
 
     // Lấy thông tin chi tiết nhóm sản phẩm tuần tự cho tới khi có 30 nhóm có image
     const enrichedProductGroups: Array<any> = [];
-    const maxToCheck = Math.min(sortedAllProductGroups.length, 200); // safety cap
+    const maxToCheck = Math.min(sortedAllProductGroups.length, 200); // Optimized: 200 groups should be sufficient
 
-    for (let idx = 0; idx < maxToCheck && enrichedProductGroups.length < 30; idx++) {
-      const group = sortedAllProductGroups[idx];
-      try {
-        const productGroupData = await getCachedData(
-          `productGroup_${group.productGroupCode}`,
-          "topProductGroupsData",
-          async () => {
-            const table = "crdfd_productgroups";
-            const select = "$select=crdfd_productgroupid,crdfd_productname,crdfd_image_url,crdfd_manhomsp";
-            const filter = `$filter=crdfd_manhomsp eq '${group.productGroupCode}' and crdfd_image_url ne null`;
+    // First pass: Get groups with images (parallel processing for better performance)
+    const concurrencyLimit = 5; // Process 5 requests at a time to avoid overwhelming the server
 
-            const query = `${select}&${filter}`;
-            const endpoint = `${baseUrl}/${table}?${query}`;
+    for (let batchStart = 0; batchStart < maxToCheck && enrichedProductGroups.length < 30; batchStart += concurrencyLimit) {
+      const batchEnd = Math.min(batchStart + concurrencyLimit, maxToCheck);
+      const batch = sortedAllProductGroups.slice(batchStart, batchEnd);
 
-            const response = await withTimeout(
-              axios.get(endpoint, { headers }),
-              TIMEOUT_CONFIG.fetchData
-            );
-            return response.data.value[0] || null;
+      const batchPromises = batch.map(async (group) => {
+        try {
+          const productGroupData = await getCachedData(
+            `productGroup_${group.productGroupCode}`,
+            "topProductGroupsData",
+            async () => {
+              const table = "crdfd_productgroups";
+              const select = "$select=crdfd_productgroupid,crdfd_productname,crdfd_image_url,crdfd_manhomsp";
+              const filter = `$filter=crdfd_manhomsp eq '${group.productGroupCode}' and crdfd_image_url ne null`;
+
+              const query = `${select}&${filter}`;
+              const endpoint = `${baseUrl}/${table}?${query}`;
+
+              const response = await withTimeout(
+                axios.get(endpoint, { headers }),
+                TIMEOUT_CONFIG.fetchData
+              );
+              return response.data.value[0] || null;
+            }
+          );
+
+          const imageUrl = productGroupData?.crdfd_image_url ? String(productGroupData.crdfd_image_url).trim() : "";
+          if (imageUrl) {
+            return {
+              productGroupCode: group.productGroupCode,
+              productGroupId: productGroupData?.crdfd_productgroupid || '',
+              productGroupName: productGroupData?.crdfd_productname || 'N/A',
+              imageUrl,
+              orderCount: group.orderCount
+            };
           }
-        );
-
-        const imageUrl = productGroupData?.crdfd_image_url ? String(productGroupData.crdfd_image_url).trim() : "";
-        if (imageUrl) {
-          enrichedProductGroups.push({
-            productGroupCode: group.productGroupCode,
-            productGroupId: productGroupData?.crdfd_productgroupid || '',
-            productGroupName: productGroupData?.crdfd_productname || 'N/A',
-            imageUrl,
-            orderCount: group.orderCount
-          });
-        } else {
-          // skip groups without image
+          return null;
+        } catch (error) {
+          logger.error(`Error fetching product group ${group.productGroupCode}:`, error);
+          return null;
         }
+      });
+
+      try {
+        const batchResults = await Promise.all(batchPromises);
+        const validResults = batchResults.filter(result => result !== null);
+        enrichedProductGroups.push(...validResults);
+
+        // Break if we have enough groups
+        if (enrichedProductGroups.length >= 30) break;
       } catch (error) {
-        logger.error(`Error fetching product group ${group.productGroupCode}:`, error);
-        // continue to next group
+        logger.error('Error in batch processing:', error);
+        // Continue with next batch
+      }
+    }
+
+    // Second pass: If still don't have enough, get groups without requiring images (for fallback)
+    if (enrichedProductGroups.length < 30 && sortedAllProductGroups.length > enrichedProductGroups.length) {
+      logger.warn(`Only found ${enrichedProductGroups.length} product groups with images. Adding fallback groups without image requirement.`);
+
+      const existingCodes = new Set(enrichedProductGroups.map(g => g.productGroupCode));
+      const remainingGroups = sortedAllProductGroups.filter(g => !existingCodes.has(g.productGroupCode));
+
+      // Use parallel processing for fallback groups too
+      const concurrencyLimit = 5;
+
+      for (let batchStart = 0; batchStart < remainingGroups.length && enrichedProductGroups.length < 30; batchStart += concurrencyLimit) {
+        const batchEnd = Math.min(batchStart + concurrencyLimit, remainingGroups.length);
+        const batch = remainingGroups.slice(batchStart, batchEnd);
+
+        const batchPromises = batch.map(async (group) => {
+          try {
+            const productGroupData = await getCachedData(
+              `productGroup_fallback_${group.productGroupCode}`,
+              "topProductGroupsData",
+              async () => {
+                const table = "crdfd_productgroups";
+                const select = "$select=crdfd_productgroupid,crdfd_productname,crdfd_image_url,crdfd_manhomsp";
+                const filter = `$filter=crdfd_manhomsp eq '${group.productGroupCode}'`;
+
+                const query = `${select}&${filter}`;
+                const endpoint = `${baseUrl}/${table}?${query}`;
+
+                const response = await withTimeout(
+                  axios.get(endpoint, { headers }),
+                  TIMEOUT_CONFIG.fetchData
+                );
+                return response.data.value[0] || null;
+              }
+            );
+
+            if (productGroupData) {
+              const imageUrl = productGroupData.crdfd_image_url ? String(productGroupData.crdfd_image_url).trim() : "";
+              return {
+                productGroupCode: group.productGroupCode,
+                productGroupId: productGroupData.crdfd_productgroupid || '',
+                productGroupName: productGroupData.crdfd_productname || `Danh mục ${group.productGroupCode}`,
+                imageUrl: imageUrl || '/placeholder-image.jpg', // Use actual placeholder image
+                orderCount: group.orderCount,
+                hasPlaceholderImage: !imageUrl // Flag to indicate this uses placeholder
+              };
+            }
+            return null;
+          } catch (error) {
+            logger.error(`Error fetching fallback product group ${group.productGroupCode}:`, error);
+            return null;
+          }
+        });
+
+        try {
+          const batchResults = await Promise.all(batchPromises);
+          const validResults = batchResults.filter(result => result !== null);
+          enrichedProductGroups.push(...validResults);
+
+          // Break if we have enough groups
+          if (enrichedProductGroups.length >= 30) break;
+        } catch (error) {
+          logger.error('Error in fallback batch processing:', error);
+          // Continue with next batch
+        }
       }
     }
 
