@@ -2135,7 +2135,7 @@ export default function ProductEntryForm({
                 className="admin-app-input admin-app-input-compact admin-app-input-number admin-app-input-small"
                 value={quantity > 0 ? quantity : ''}
                 onChange={(e) => {
-                  const val = e.target.value === '' ? null : parseInt(e.target.value);
+                  const val = e.target.value === '' ? null : parseFloat(e.target.value);
                   handleQuantityChange(val);
                 }}
                 placeholder=""
