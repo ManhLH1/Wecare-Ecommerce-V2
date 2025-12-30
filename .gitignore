@@ -38,3 +38,6 @@ next-env.d.ts
 BUILD_ERROR_PREVENTION_GUIDE.md
 DEVELOPMENT_GUIDELINES.md
 QUICK_BUILD_CHECKLIST.md
+
+# code-mau folder
+public/code-mau/
