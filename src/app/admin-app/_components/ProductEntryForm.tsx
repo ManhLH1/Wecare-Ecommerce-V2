@@ -232,6 +232,7 @@ export default function ProductEntryForm({
   const [isProcessingAdd, setIsProcessingAdd] = useState<boolean>(false); // Flag để ngăn bấm liên tục
   const hasSetUnitFromApiRef = useRef<boolean>(false); // Track nếu đã set đơn vị từ API để không reset lại
   const userSelectedUnitRef = useRef<boolean>(false); // Track nếu người dùng đã chọn đơn vị thủ công
+  const lastPriceFetchKeyRef = useRef<string | null>(null); // Dedupe key for price fetches
 
   const isVatSo = useMemo(() => {
     const vatTextLower = (vatText || '').toLowerCase();
@@ -998,9 +999,11 @@ export default function ProductEntryForm({
 
   useEffect(() => {
     const unitIdIsEmpty = unitId === '' || unitId === null || unitId === undefined;
-    const currentUnitExists = units.some((u) => u.crdfd_unitsid === unitId);
+    const currentUnitExists =
+      (units || []).some((u) => u.crdfd_unitsid === unitId) ||
+      (availableUnitsFromPrices || []).some((u) => u.crdfd_unitsid === unitId);
 
-    // Nếu đã có unitId được chọn và unitId vẫn tồn tại trong danh sách units, KHÔNG làm gì cả
+    // Nếu đã có unitId được chọn và unitId vẫn tồn tại trong danh sách units/availableUnitsFromPrices, KHÔNG làm gì cả
     // Chỉ xử lý khi unitId trống hoặc unitId không còn tồn tại
     if (!unitIdIsEmpty && currentUnitExists) {
       // Người dùng đã chọn đơn vị và đơn vị vẫn hợp lệ, giữ nguyên
@@ -1013,6 +1016,9 @@ export default function ProductEntryForm({
       const found = units.find((u) => u.crdfd_name === unit);
       if (found) {
         setUnitId(found.crdfd_unitsid);
+      } else if ((availableUnitsFromPrices && availableUnitsFromPrices.length > 0)) {
+        setUnitId(availableUnitsFromPrices[0].crdfd_unitsid);
+        setUnit(availableUnitsFromPrices[0].crdfd_name);
       } else if (units.length > 0) {
         setUnitId(units[0].crdfd_unitsid);
         setUnit(units[0].crdfd_name);
@@ -1020,21 +1026,23 @@ export default function ProductEntryForm({
       return;
     }
 
-    if (!unit && unitIdIsEmpty && units.length > 0 && !userSelectedUnitRef.current) {
-      // Auto-select first unit when available (chỉ khi chưa có unit và unitId VÀ người dùng chưa chọn)
-      // CHỈ chạy khi CẢ unit và unitId đều trống VÀ người dùng chưa chọn đơn vị thủ công
-      setUnitId(units[0].crdfd_unitsid);
-      setUnit(units[0].crdfd_name);
+    if (!unit && unitIdIsEmpty && (availableUnitsFromPrices && availableUnitsFromPrices.length > 0) && !userSelectedUnitRef.current) {
+      // Auto-select first unit from availableUnitsFromPrices when available (prefers price-derived units)
+      setUnitId(availableUnitsFromPrices[0].crdfd_unitsid);
+      setUnit(availableUnitsFromPrices[0].crdfd_name);
       return;
     }
 
-    if (!unitIdIsEmpty && !currentUnitExists && units.length > 0) {
-      // If current unitId is no longer in list (e.g., after product change), fallback to first
-      // CHỈ reset khi unitId không còn tồn tại trong danh sách units mới (sau khi đổi sản phẩm)
+    if (!unitIdIsEmpty && !currentUnitExists && (availableUnitsFromPrices && availableUnitsFromPrices.length > 0)) {
+      // If current unitId is no longer in list, fallback to first availableUnitsFromPrices
+      setUnitId(availableUnitsFromPrices[0].crdfd_unitsid);
+      setUnit(availableUnitsFromPrices[0].crdfd_name);
+    } else if (!unitIdIsEmpty && !currentUnitExists && units.length > 0) {
+      // Fallback to real units list
       setUnitId(units[0].crdfd_unitsid);
       setUnit(units[0].crdfd_name);
     }
-  }, [unit, unitId, units]);
+  }, [unit, unitId, units, availableUnitsFromPrices]);
 
   useEffect(() => {
     if (warehouse && !warehouseId) {
@@ -1060,6 +1068,8 @@ export default function ProductEntryForm({
         setPriceLoading(false);
         hasSetUnitFromApiRef.current = false; // Reset flag khi không có sản phẩm
         userSelectedUnitRef.current = false; // Reset flag khi không có sản phẩm
+        // Reset last fetch key when product cleared
+        lastPriceFetchKeyRef.current = null;
         // Clear giá khi không có sản phẩm (trừ khi đang ở chế độ nhập thủ công với duyệt giá)
         if (!(approvePrice && priceEntryMethod === 'Nhập thủ công')) {
           handlePriceChange('');
@@ -1067,6 +1077,16 @@ export default function ProductEntryForm({
         }
         return;
       }
+
+      // Build a simple dedupe key to avoid consecutive identical fetches
+      const fetchKey = `${selectedProductCode}::${customerCode || ''}::${vatPercent || 0}::${vatText || ''}::${shouldReloadPrice || 0}`;
+      if (lastPriceFetchKeyRef.current === fetchKey) {
+        // Skip duplicate fetch
+        // console.debug('[Price] Skipping duplicate fetch for', fetchKey);
+        return;
+      }
+      // Mark this key as in-flight / last fetched
+      lastPriceFetchKeyRef.current = fetchKey;
 
       // QUAN TRỌNG: Clear giá ngay khi chọn sản phẩm mới (trước khi load giá mới)
       // Để tránh hiển thị giá của sản phẩm trước trong khi đang load giá mới
@@ -1108,30 +1128,29 @@ export default function ProductEntryForm({
         // Ưu tiên map theo unitName từ API (đã được lấy từ crdfd_onvi lookup)
         // Sau đó mới map theo crdfd_onvichuan
         let selectedPrice: any = null;
-        // Build list of units that have prices returned by API
-        let matchedUnits: any[] = [];
-        if (allPrices.length > 0 && units && units.length > 0) {
-          matchedUnits = units.filter((u) => {
-            const unitNamesToCheck = [
-              normalizeText((u as any)?.crdfd_name || ''),
-              normalizeText((u as any)?.crdfd_onvichuan || (u as any)?.crdfd_onvichuantext || '')
-            ];
-            return allPrices.some((p: any) => {
-              const apiNames = [
-                normalizeText(p.unitName || ''),
-                normalizeText(p.crdfd_onvichuan || '')
-              ];
-              return apiNames.some(n => n && unitNamesToCheck.includes(n));
-            });
+        // Build list of available units based on prices returned by API.
+        // Strategy:
+        // 1) Extract unit names from API prices (prefer crdfd_onvichuan, fallback to unitName)
+        // 2) Try to find matching real `units` entries by normalized `crdfd_onvichuan` or `crdfd_name`
+        // 3) If no real unit found, create a synthetic unit entry so the dropdown still shows the option
+        const unitsFromPrices: any[] = [];
+        const seenUnitNames = new Set<string>();
+        for (const p of allPrices) {
+          const rawName = (p.crdfd_onvichuan || p.unitName || '').trim();
+          if (!rawName) continue;
+          const normName = normalizeText(rawName);
+          if (seenUnitNames.has(normName)) continue;
+          seenUnitNames.add(normName);
+
+          // Always create a unit entry from the price payload itself (do NOT mix with CRM `units`).
+          // This ensures dropdown shows exactly the units returned by `prices` (e.g., "Bịch 1000 con", "Kg").
+          unitsFromPrices.push({
+            crdfd_unitsid: `price-unit-${normName}`,
+            crdfd_name: rawName,
+            crdfd_onvichuan: rawName,
           });
-          if (matchedUnits.length > 0) {
-            setAvailableUnitsFromPrices(matchedUnits);
-          } else {
-            setAvailableUnitsFromPrices([]);
-          }
-        } else {
-          setAvailableUnitsFromPrices([]);
         }
+        setAvailableUnitsFromPrices(unitsFromPrices);
         if (allPrices.length > 0 && currentUnitName) {
           // Bước 1: Tìm theo unitName từ API (đã được lấy từ crdfd_onvi lookup) - chính xác nhất
           selectedPrice = allPrices.find((p: any) => {
@@ -1164,18 +1183,51 @@ export default function ProductEntryForm({
         const apiUnitName = selectedPrice?.unitName ?? result?.unitName ?? undefined;
         const apiPriceGroupText = selectedPrice?.priceGroupText ?? result?.priceGroupText ?? undefined;
 
-        // Tự động set đơn vị từ API khi có apiUnitName nếu người dùng chưa chọn đơn vị thủ công.
-        if (apiUnitName && units.length > 0 && !userSelectedUnitRef.current) {
-          const normApiUnitName = normalizeText(apiUnitName);
-          const unitsToSearch = matchedUnits && matchedUnits.length > 0 ? matchedUnits : units;
-          const foundUnit = unitsToSearch.find((u) => {
-            const n1 = normalizeText((u as any)?.crdfd_name || '');
-            const n2 = normalizeText((u as any)?.crdfd_onvichuan || (u as any)?.crdfd_onvichuantext || '');
-            return n1 === normApiUnitName || n2 === normApiUnitName;
-          });
-          if (foundUnit) {
-            setUnitId(foundUnit.crdfd_unitsid);
-            setUnit(foundUnit.crdfd_name);
+        // After building the units list from prices, automatically select the unit
+        // based on the canonical `crdfd_onvichuan` value returned in the API if the
+        // user hasn't manually chosen a unit.
+        if (!userSelectedUnitRef.current && unitsFromPrices.length > 0) {
+          // Prefer API's unitName first, then crdfd_onvichuan
+          const preferredRaw =
+            (selectedPrice && (selectedPrice.unitName || selectedPrice.crdfd_onvichuan)) ||
+            result?.unitName ||
+            result?.crdfd_onvichuan ||
+            '';
+          const prefNorm = normalizeText(preferredRaw || '');
+
+          // Try direct match against unitsFromPrices
+          let found = null;
+          if (prefNorm) {
+            found = unitsFromPrices.find((u) => {
+              const n1 = normalizeText((u as any)?.crdfd_onvichuan || '');
+              const n2 = normalizeText((u as any)?.crdfd_onvichuantext || '');
+              const n3 = normalizeText((u as any)?.crdfd_name || '');
+              return n1 === prefNorm || n2 === prefNorm || n3 === prefNorm;
+            });
+          }
+
+          // Fallback: try to find a matching price entry then map to unitsFromPrices
+          if (!found && prefNorm && Array.isArray(allPrices)) {
+            const matchedPriceEntry = allPrices.find((p: any) => {
+              const nA = normalizeText(p.unitName || '');
+              const nB = normalizeText(p.crdfd_onvichuan || '');
+              return nA === prefNorm || nB === prefNorm;
+            });
+            if (matchedPriceEntry) {
+              const rawName = (matchedPriceEntry.crdfd_onvichuan || matchedPriceEntry.unitName || '').trim();
+              const rawNorm = normalizeText(rawName);
+              found = unitsFromPrices.find((u) => {
+                const n1 = normalizeText((u as any)?.crdfd_onvichuan || '');
+                const n2 = normalizeText((u as any)?.crdfd_onvichuantext || '');
+                const n3 = normalizeText((u as any)?.crdfd_name || '');
+                return n1 === rawNorm || n2 === rawNorm || n3 === rawNorm;
+              });
+            }
+          }
+
+          if (found) {
+            setUnitId(found.crdfd_unitsid);
+            setUnit(found.crdfd_name);
             hasSetUnitFromApiRef.current = true;
           }
         }
@@ -1269,7 +1321,7 @@ export default function ProductEntryForm({
     };
 
     loadPrice();
-  }, [selectedProductCode, product, customerCode, unitId, vatPercent, vatText, shouldReloadPrice, units]);
+  }, [selectedProductCode, product, customerCode, vatPercent, vatText, shouldReloadPrice]);
 
   // Fetch promotions based on product code and customer code
   useEffect(() => {
@@ -2251,6 +2303,8 @@ export default function ProductEntryForm({
                 setUnitId(value);
                 setUnit(option?.label || '');
                 userSelectedUnitRef.current = true; // Đánh dấu người dùng đã chọn đơn vị
+                // Trigger price reload for the newly selected unit
+                setShouldReloadPrice((s) => (s || 0) + 1);
               }}
               placeholder={isFormDisabled ? "Chọn KH và SO trước" : "Chọn đơn vị"}
               loading={unitsLoading}

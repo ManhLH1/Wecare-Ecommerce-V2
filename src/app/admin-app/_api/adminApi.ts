@@ -480,7 +480,6 @@ export const fetchPromotionOrders = async (
   try {
     const params: Record<string, string> = { soId };
     if (customerCode) params.customerCode = customerCode;
-    if (totalAmount !== undefined) params.totalAmount = String(totalAmount);
     if (productCodes && productCodes.length > 0) params.productCodes = productCodes.join(",");
     if (productGroupCodes && productGroupCodes.length > 0) params.productGroupCodes = productGroupCodes.join(",");
 

@@ -11,29 +11,515 @@ const escapeODataValue = (value: string) => value.replace(/'/g, "''");
 /**
  * API để lấy danh sách Promotion loại "Order" (áp dụng cho toàn đơn hàng)
  * và kiểm tra xem đã có promotion order nào được áp dụng cho SO chưa
- * 
+ *
  * Query params:
  * - soId: ID của Sales Order để check promotion order đã áp dụng
- * - customerCode: Mã khách hàng để filter promotion
+ * - customerCode: Mã khách hàng để filter promotion (format: KH-XXXX)
  * - totalAmount: Tổng tiền đơn hàng để filter promotion theo điều kiện
- * - productCodes: Danh sách mã sản phẩm (comma-separated) để filter promotion
- * - productGroupCodes: Danh sách mã nhóm sản phẩm (comma-separated) để filter promotion
+ * - productCodes: Danh sách mã sản phẩm (comma-separated, format: SP-XXXXXX)
+ * - productGroupCodes: Danh sách mã nhóm sản phẩm (comma-separated, format: NSP-XXXXXX)
+ *
+ * Example API call:
+ * http://localhost:3000/api/admin-app/promotion-orders?customerCode=KH-4265&productCodes=SP-019397&productGroupCodes=NSP-000373
  */
+
+// ==================== INTERFACES ====================
+
+interface PromotionOrder {
+  id: string;
+  name: string;
+  promotionId: string;
+  type: string;
+  value?: number;
+  vndOrPercent?: string;
+  chietKhau2?: boolean;
+  productCodes?: string;
+  productGroupCodes?: string;
+}
+
+interface AvailablePromotion {
+  id: string;
+  name: string;
+  type: string;
+  value: number;
+  vndOrPercent: string;
+  chietKhau2: boolean;
+  productCodes?: string;
+  productGroupCodes?: string;
+  totalAmountCondition?: number;
+  startDate?: string;
+  endDate?: string;
+}
+
+// ==================== HELPER FUNCTIONS ====================
+
+/**
+ * Validate request method
+ */
+const validateRequestMethod = (req: NextApiRequest, res: NextApiResponse) => {
+  if (req.method !== "GET") {
+    res.status(405).json({ error: "Method not allowed" });
+    return false;
+  }
+  return true;
+};
+
+/**
+ * Get and validate access token
+ */
+const getValidatedToken = async (res: NextApiResponse) => {
+  const token = await getAccessToken();
+  if (!token) {
+    res.status(401).json({ error: "Failed to obtain access token" });
+    return null;
+  }
+  return token;
+};
+
+/**
+ * Parse and normalize promotion value
+ */
+const parsePromotionValue = (rawValue: any): number => {
+  const parsed = typeof rawValue === 'number' ? rawValue : (rawValue ? Number(rawValue) : 0);
+  return !isNaN(parsed) ? parsed : 0;
+};
+
+/**
+ * Normalize chietKhau2 field to boolean
+ */
+const normalizeChietKhau2 = (value: any): boolean => {
+  return value === true || value === 1 || value === '1' || value === 191920001 || value === '191920001';
+};
+
+/**
+ * Parse comma-separated string into array of trimmed codes
+ */
+const parseCodesToArray = (codes: any): string[] => {
+  if (!codes) return [];
+  const codeArray = typeof codes === "string" ? codes.split(",") : codes;
+  return codeArray.map((c: any) => String(c || '').trim()).filter(Boolean);
+};
+
+/**
+ * Validate and format query parameters
+ */
+const validateAndFormatQueryParams = (query: any) => {
+  const {
+    soId,
+    customerCode,
+    totalAmount,
+    productCodes,
+    productGroupCodes
+  } = query;
+
+  // Log incoming request for debugging
+  console.log('[PromotionOrders] Incoming request:', {
+    soId: soId || 'not provided',
+    customerCode: customerCode || 'not provided',
+    totalAmount: totalAmount || 'not provided',
+    productCodes: productCodes || 'not provided',
+    productGroupCodes: productGroupCodes || 'not provided'
+  });
+
+  const validatedParams = {
+    soId: validateSoId(soId),
+    customerCode: validateCustomerCode(customerCode),
+    totalAmount: validateTotalAmount(totalAmount),
+    productCodes: validateProductCodes(productCodes),
+    productGroupCodes: validateProductGroupCodes(productGroupCodes)
+  };
+
+  // Log validated parameters
+  console.log('[PromotionOrders] Validated parameters:', validatedParams);
+
+  return validatedParams;
+};
+
+/**
+ * Validate Sales Order ID
+ */
+const validateSoId = (soId: any): string | undefined => {
+  if (!soId) return undefined;
+  const soIdStr = String(soId).trim();
+  return soIdStr ? soIdStr : undefined;
+};
+
+/**
+ * Validate customer code
+ */
+const validateCustomerCode = (customerCode: any): string | undefined => {
+  if (!customerCode) return undefined;
+  const codeStr = String(customerCode).trim();
+  // Basic validation for customer code format (e.g., KH-XXXX)
+  if (codeStr && codeStr.startsWith('KH-')) {
+    return codeStr;
+  }
+  return codeStr || undefined;
+};
+
+/**
+ * Validate total amount
+ */
+const validateTotalAmount = (totalAmount: any): string | undefined => {
+  if (!totalAmount) return undefined;
+  const amountStr = String(totalAmount).trim();
+  const amount = parseFloat(amountStr);
+  if (!isNaN(amount) && amount >= 0) {
+    return amountStr;
+  }
+  return undefined;
+};
+
+/**
+ * Validate product codes (comma-separated)
+ */
+const validateProductCodes = (productCodes: any): any => {
+  if (!productCodes) return undefined;
+  const codes = parseCodesToArray(productCodes);
+  // Validate each code format (e.g., SP-XXXXXX)
+  const validCodes = codes.filter(code => code.startsWith('SP-'));
+  return validCodes.length > 0 ? validCodes.join(',') : undefined;
+};
+
+/**
+ * Validate product group codes (comma-separated)
+ */
+const validateProductGroupCodes = (productGroupCodes: any): any => {
+  if (!productGroupCodes) return undefined;
+  const codes = parseCodesToArray(productGroupCodes);
+  // Validate each code format (e.g., NSP-XXXXXX)
+  const validCodes = codes.filter(code => code.startsWith('NSP-'));
+  return validCodes.length > 0 ? validCodes.join(',') : undefined;
+};
+
+/**
+ * Check if promotion matches product codes or groups
+ */
+const doesPromotionMatchProducts = (promo: AvailablePromotion, productCodes: string[], productGroups: string[]): boolean => {
+  const hasProductMatch = productCodes.some(code =>
+    promo.productCodes && promo.productCodes.includes(code)
+  );
+
+  const hasGroupMatch = productGroups.some(code =>
+    promo.productGroupCodes && promo.productGroupCodes.includes(code)
+  );
+
+  return hasProductMatch || hasGroupMatch;
+};
+
+// ==================== MAIN BUSINESS LOGIC ====================
+
+/**
+ * Fetch existing promotion orders for a sales order
+ */
+const fetchExistingPromotionOrders = async (
+  soId: string,
+  headers: any
+): Promise<PromotionOrder[]> => {
+  try {
+    const filters = [
+      "statecode eq 0", // Active
+      `_crdfd_so_value eq ${soId}`,
+      "crdfd_type eq 'Order'"
+    ];
+
+    const selectFields = [
+      "crdfd_ordersxpromotionid",
+      "crdfd_name",
+      "_crdfd_promotion_value",
+      "crdfd_type"
+    ];
+
+    const query = `$filter=${encodeURIComponent(filters.join(" and "))}&$select=${selectFields.join(",")}`;
+    const endpoint = `${BASE_URL}${ORDERS_X_PROMOTION_TABLE}?${query}`;
+
+    const response = await axios.get(endpoint, { headers });
+    const orders = (response.data.value || []).map((item: any) => ({
+      id: item.crdfd_ordersxpromotionid,
+      name: item.crdfd_name,
+      promotionId: item._crdfd_promotion_value,
+      type: item.crdfd_type,
+    }));
+
+    return await enrichPromotionOrdersWithDetails(orders, headers);
+  } catch (error) {
+    console.warn("Error fetching existing promotion orders:", error);
+    return [];
+  }
+};
+
+/**
+ * Enrich promotion orders with promotion details
+ */
+const enrichPromotionOrdersWithDetails = async (
+  promotionOrders: PromotionOrder[],
+  headers: any
+): Promise<PromotionOrder[]> => {
+  if (promotionOrders.length === 0) return promotionOrders;
+
+  try {
+    const promotionIds = Array.from(new Set(
+      promotionOrders.map(order => order.promotionId).filter(Boolean)
+    ));
+
+    if (promotionIds.length === 0) return promotionOrders;
+
+    // Fetch promotion details in parallel
+    const promoPromises = promotionIds.map(pid => {
+      const selectFields = [
+        "crdfd_promotionid",
+        "crdfd_value",
+        "crdfd_vn",
+        "cr1bb_chietkhau2",
+        "crdfd_masanpham_multiple",
+        "cr1bb_manhomsp_multiple"
+      ];
+
+      const url = `${BASE_URL}${PROMOTION_TABLE}(${pid})?$select=${selectFields.join(",")}`;
+      return axios.get(url, { headers }).then(r => r.data).catch(() => null);
+    });
+
+    const promoResults = await Promise.all(promoPromises);
+    const promoById: Record<string, any> = {};
+
+    promoResults.forEach((promo: any) => {
+      if (promo && promo.crdfd_promotionid) {
+        promoById[promo.crdfd_promotionid] = promo;
+      }
+    });
+
+    return promotionOrders.map(order => {
+      const promo = promoById[order.promotionId];
+      if (!promo) return order;
+
+      return {
+        ...order,
+        value: parsePromotionValue(promo.crdfd_value),
+        vndOrPercent: promo.crdfd_vn,
+        chietKhau2: normalizeChietKhau2(promo.cr1bb_chietkhau2),
+        productCodes: promo.crdfd_masanpham_multiple,
+        productGroupCodes: promo.cr1bb_manhomsp_multiple,
+      };
+    });
+  } catch (error) {
+    console.warn('Error enriching promotion orders with details:', error);
+    return promotionOrders;
+  }
+};
+
+/**
+ * Build filters for available promotions query
+ */
+const buildPromotionFilters = (
+  customerCode?: string,
+  totalAmount?: string
+): string[] => {
+  const filters = [
+    "statecode eq 0", // Active
+    "crdfd_promotion_deactive eq 'Active'",
+    "crdfd_type eq 'Order'"
+  ];
+
+  // Time window filter
+  const nowIso = new Date().toISOString();
+  filters.push(`crdfd_start_date le ${nowIso}`);
+
+  // Customer code filter
+  if (customerCode && typeof customerCode === "string" && customerCode.trim()) {
+    const safeCode = escapeODataValue(customerCode.trim());
+    filters.push(
+      `(cr3b9_ma_khachhang_apdung eq '${safeCode}' or ` +
+      `contains(cr3b9_ma_khachhang_apdung,'${safeCode},') or ` +
+      `contains(cr3b9_ma_khachhang_apdung,',${safeCode},') or ` +
+      `contains(cr3b9_ma_khachhang_apdung,',${safeCode}'))`
+    );
+  }
+
+  // Total amount filter
+  if (totalAmount && typeof totalAmount === "string") {
+    const amount = parseFloat(totalAmount);
+    if (!isNaN(amount) && amount > 0) {
+      filters.push(
+        `(cr1bb_tongtienapdung eq null or cr1bb_tongtienapdung le ${amount})`
+      );
+    }
+  }
+
+  return filters;
+};
+
+/**
+ * Fetch available promotions from CRM
+ */
+const fetchAvailablePromotions = async (
+  filters: string[],
+  headers: any
+): Promise<AvailablePromotion[]> => {
+  const selectFields = [
+    "crdfd_promotionid",
+    "crdfd_name",
+    "crdfd_type",
+    "crdfd_value",
+    "crdfd_vn",
+    "cr1bb_chietkhau2",
+    "crdfd_masanpham_multiple",
+    "cr1bb_manhomsp_multiple",
+    "cr1bb_tongtienapdung",
+    "crdfd_start_date",
+    "crdfd_end_date"
+  ];
+
+  const query = `$select=${selectFields.join(",")}&$filter=${encodeURIComponent(
+    filters.join(" and ")
+  )}&$orderby=crdfd_value desc`;
+
+  const endpoint = `${BASE_URL}${PROMOTION_TABLE}?${query}`;
+  const response = await axios.get(endpoint, { headers });
+
+  console.log('[PromotionOrders] fetched count:', (response.data.value || []).length);
+
+  return (response.data.value || []).map((promo: any) => ({
+    id: promo.crdfd_promotionid,
+    name: promo.crdfd_name,
+    type: promo.crdfd_type,
+    value: parsePromotionValue(promo.crdfd_value),
+    vndOrPercent: promo.crdfd_vn,
+    chietKhau2: normalizeChietKhau2(promo.cr1bb_chietkhau2),
+    productCodes: promo.crdfd_masanpham_multiple,
+    productGroupCodes: promo.cr1bb_manhomsp_multiple,
+    totalAmountCondition: promo.cr1bb_tongtienapdung,
+    startDate: promo.crdfd_start_date,
+    endDate: promo.crdfd_end_date,
+  }));
+};
+
+/**
+ * Filter promotions based on product codes and groups
+ */
+const filterPromotionsByProducts = (
+  promotions: AvailablePromotion[],
+  productCodes?: any,
+  productGroups?: any
+): AvailablePromotion[] => {
+  if (!productCodes && !productGroups) return promotions;
+
+  const productCodeList = parseCodesToArray(productCodes);
+  const productGroupList = parseCodesToArray(productGroups);
+
+  console.log('[PromotionOrders] Filtering by products:', {
+    productCodeList,
+    productGroupList,
+    totalPromotionsBeforeFilter: promotions.length
+  });
+
+  const filtered = promotions.filter(promo => {
+    const matches = doesPromotionMatchProducts(promo, productCodeList, productGroupList);
+    if (matches) {
+      console.log('[PromotionOrders] Promotion matches:', {
+        promoId: promo.id,
+        promoName: promo.name,
+        hasProductMatch: productCodeList.some(code => promo.productCodes && promo.productCodes.includes(code)),
+        hasGroupMatch: productGroupList.some(code => promo.productGroupCodes && promo.productGroupCodes.includes(code))
+      });
+    }
+    return matches;
+  });
+
+  console.log('[PromotionOrders] Filtered promotions count:', filtered.length);
+
+  return filtered;
+};
+
+/**
+ * Apply chietKhau2 filter and get max value promotions
+ */
+const getMaxValuePromotions = (promotions: AvailablePromotion[]): AvailablePromotion[] => {
+  // Filter only chietKhau2 = true promotions
+  const chietKhau2Promotions = promotions.filter(p => p.chietKhau2);
+
+  console.log('[PromotionOrders] Processing max value promotions:', {
+    totalChietKhau2Promotions: chietKhau2Promotions.length,
+    promotions: chietKhau2Promotions.map(p => ({
+      id: p.id,
+      name: p.name,
+      value: p.value,
+      vndOrPercent: p.vndOrPercent
+    }))
+  });
+
+  // Handle Dynamics CRM option set values
+  // 191920000 = Percent, other values = VND
+  const percentPromotions = chietKhau2Promotions.filter(p => {
+    const vndOrPercentStr = String(p.vndOrPercent || '');
+    return vndOrPercentStr === "%" || vndOrPercentStr === "191920000";
+  });
+  const vndPromotions = chietKhau2Promotions.filter(p => {
+    const vndOrPercentStr = String(p.vndOrPercent || '');
+    return vndOrPercentStr === "VNĐ" ||
+           (vndOrPercentStr !== "%" && vndOrPercentStr !== "191920000");
+  });
+
+  let result: AvailablePromotion[] = [];
+
+  // For percent type: get max value only
+  if (percentPromotions.length > 0) {
+    const maxPercentValue = Math.max(...percentPromotions.map(p => p.value || 0));
+    result = percentPromotions.filter(p => p.value === maxPercentValue);
+    console.log('[PromotionOrders] Selected percent promotions:', {
+      maxValue: maxPercentValue,
+      selectedCount: result.length
+    });
+  }
+
+  // For VND type: include all
+  if (vndPromotions.length > 0) {
+    result = [...result, ...vndPromotions];
+    console.log('[PromotionOrders] Added VND promotions:', vndPromotions.length);
+  }
+
+  console.log('[PromotionOrders] Final max value promotions count:', result.length);
+  return result;
+};
+
+/**
+ * Handle API errors
+ */
+const handleApiError = (error: any, res: NextApiResponse) => {
+  console.error("Error fetching promotion orders:", error);
+
+  if (error.response) {
+    console.error("Error response status:", error.response.status);
+    console.error("Error response data:", JSON.stringify(error.response.data, null, 2));
+
+    return res.status(error.response.status || 500).json({
+      error: "Error fetching promotion orders",
+      details: error.response.data?.error?.message || error.response.data?.error || error.message,
+    });
+  }
+
+  res.status(500).json({
+    error: "Error fetching promotion orders",
+    details: error.message,
+  });
+};
+
+// ==================== MAIN HANDLER ====================
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+  // Validate request method
+  if (!validateRequestMethod(req, res)) return;
 
   try {
-    const { soId, customerCode, totalAmount, productCodes, productGroupCodes } = req.query;
+    // Step 1: Validate and format query parameters
+    const validatedParams = validateAndFormatQueryParams(req.query);
+    const { soId, customerCode, totalAmount, productCodes, productGroupCodes } = validatedParams;
 
-    const token = await getAccessToken();
-    if (!token) {
-      return res.status(401).json({ error: "Failed to obtain access token" });
-    }
+    // Step 2: Get access token
+    const token = await getValidatedToken(res);
+    if (!token) return;
 
     const headers = {
       Authorization: `Bearer ${token}`,
@@ -43,235 +529,35 @@ export default async function handler(
       Prefer: "odata.maxpagesize=200",
     };
 
-    // 1. Lấy danh sách promotion order đã áp dụng cho SO (nếu có soId)
-    let existingPromotionOrders: any[] = [];
-    if (soId && typeof soId === "string" && soId.trim()) {
-      const existingFilters = [
-        "statecode eq 0", // Active
-        `_crdfd_so_value eq ${soId}`,
-        "crdfd_type eq 'Order'",
-      ];
+    // Step 3: Fetch existing promotion orders for the sales order
+    const existingPromotionOrders = soId
+      ? await fetchExistingPromotionOrders(soId, headers)
+      : [];
 
-      const existingQuery = `$filter=${encodeURIComponent(
-        existingFilters.join(" and ")
-      )}&$select=crdfd_ordersxpromotionid,crdfd_name,_crdfd_promotion_value,crdfd_type`;
+    // Step 4: Build filters and fetch available promotions
+    const filters = buildPromotionFilters(customerCode, totalAmount);
+    let availablePromotions = await fetchAvailablePromotions(filters, headers);
 
-      const existingEndpoint = `${BASE_URL}${ORDERS_X_PROMOTION_TABLE}?${existingQuery}`;
-      
-      try {
-        const existingResponse = await axios.get(existingEndpoint, { headers });
-        existingPromotionOrders = (existingResponse.data.value || []).map((item: any) => ({
-          id: item.crdfd_ordersxpromotionid,
-          name: item.crdfd_name,
-          promotionId: item._crdfd_promotion_value,
-          type: item.crdfd_type,
-        }));
-      } catch (error) {
-        console.warn("Error fetching existing promotion orders:", error);
-      }
-      
-      // Enrich existingPromotionOrders with promotion details (value, vndOrPercent, chietKhau2, product codes/groups)
-      if (existingPromotionOrders.length > 0) {
-        try {
-          const promotionIds = Array.from(new Set(existingPromotionOrders.map((e: any) => e.promotionId).filter(Boolean)));
-          if (promotionIds.length > 0) {
-            // Fetch promotions in parallel
-            const promoFetches = promotionIds.map(pid => {
-              const url = `${BASE_URL}${PROMOTION_TABLE}(${pid})?$select=crdfd_promotionid,crdfd_value,crdfd_vn,cr1bb_chietkhau2,crdfd_masanpham_multiple,cr1bb_manhomsp_multiple`;
-              return axios.get(url, { headers }).then(r => r.data).catch(() => null);
-            });
-            const promoResults = await Promise.all(promoFetches);
-            const promoById: Record<string, any> = {};
-            promoResults.forEach((p: any) => {
-              if (p && p.crdfd_promotionid) {
-                promoById[p.crdfd_promotionid] = p;
-              }
-            });
+    // Step 5: Filter by product codes/groups if provided
+    availablePromotions = filterPromotionsByProducts(
+      availablePromotions,
+      productCodes,
+      productGroupCodes
+    );
 
-            existingPromotionOrders = existingPromotionOrders.map((ep: any) => {
-              const promo = promoById[ep.promotionId];
-              if (!promo) return ep;
-              const rawVal = promo.crdfd_value;
-              const parsedVal = typeof rawVal === 'number' ? rawVal : (rawVal ? Number(rawVal) : 0);
-              const valueNum = !isNaN(parsedVal) ? parsedVal : 0;
-              // Normalize Chiết khấu 2 to boolean accepting multiple representations
-              const ck = promo.cr1bb_chietkhau2;
-              const chietKhau2Bool = ck === true || ck === 1 || ck === '1' || ck === 191920001 || ck === '191920001';
-              return {
-                ...ep,
-                value: valueNum,
-                vndOrPercent: promo.crdfd_vn,
-                chietKhau2: !!chietKhau2Bool,
-                productCodes: promo.crdfd_masanpham_multiple,
-                productGroupCodes: promo.cr1bb_manhomsp_multiple,
-              };
-            });
-          }
-        } catch (err) {
-          console.warn('Error enriching existing promotion orders with promotion details', err);
-        }
-      }
-    }
+    // Step 6: Get max value promotions (apply chietKhau2 filter and max logic)
+    const promotionOrderMax = getMaxValuePromotions(availablePromotions);
 
-    // 2. Lấy danh sách Promotion loại "Order" có thể áp dụng
-    const filters: string[] = [
-      "statecode eq 0", // Active
-      "crdfd_promotion_deactive eq 'Active'",
-      // Query by type only; don't compare `cr1bb_chietkhau2` server-side (can be boolean or optionset)
-      "crdfd_type eq 'Order'",
-    ];
-
-    // Time window: start_date <= now
-    const nowIso = new Date().toISOString();
-    filters.push(`crdfd_start_date le ${nowIso}`);
-    // NOTE: do NOT filter by `cr1bb_chietkhau2` on the server because its type varies;
-    // we'll filter client-side after normalizing the field.
-    // No end_date filter as per PowerApps logic - it checks at usage time
-
-    // Filter by customer code if provided
-    if (customerCode && typeof customerCode === "string" && customerCode.trim()) {
-      const safeCode = escapeODataValue(customerCode.trim());
-      filters.push(
-        `(cr3b9_ma_khachhang_apdung eq '${safeCode}' or ` +
-        `contains(cr3b9_ma_khachhang_apdung,'${safeCode},') or ` +
-        `contains(cr3b9_ma_khachhang_apdung,',${safeCode},') or ` +
-        `contains(cr3b9_ma_khachhang_apdung,',${safeCode}'))`
-      );
-    }
-
-    // Filter by total amount if provided
-    if (totalAmount && typeof totalAmount === "string") {
-      const amount = parseFloat(totalAmount);
-      if (!isNaN(amount) && amount > 0) {
-        // Promotion applies if totalAmountCondition is null OR totalAmount >= condition
-        filters.push(
-          `(cr1bb_tongtienapdung eq null or cr1bb_tongtienapdung le ${amount})`
-        );
-      }
-    }
-
-    const columns = [
-      "crdfd_promotionid",
-      "crdfd_name",
-      "crdfd_type",
-      "crdfd_value",
-      "crdfd_vn",
-      "cr1bb_chietkhau2", // Chiết khấu 2 field
-      "crdfd_masanpham_multiple",
-      "cr1bb_manhomsp_multiple",
-      "cr1bb_tongtienapdung",
-      "crdfd_start_date",
-      "crdfd_end_date",
-    ].join(",");
-
-    const query = `$select=${columns}&$filter=${encodeURIComponent(
-      filters.join(" and ")
-    )}&$orderby=crdfd_value desc`; // Order by value descending to get max first
-
-    const endpoint = `${BASE_URL}${PROMOTION_TABLE}?${query}`;
-    const response = await axios.get(endpoint, { headers });
-
-    console.log('[PromotionOrders] fetched count:', (response.data.value || []).length);
-    // Debug sample of returned promotions (id + raw value)
-    try {
-      console.log('[PromotionOrders] sample:', (response.data.value || []).slice(0,10).map((p: any) => ({
-        id: p.crdfd_promotionid,
-        name: p.crdfd_name,
-        rawValue: p.crdfd_value,
-        rawVndOrPercent: p.crdfd_vn,
-        chietKhau2Flag: p.cr1bb_chietkhau2,
-      })));
-    } catch (err) {
-      // ignore logging errors
-    }
-
-    // Filter promotions based on product codes/group codes if provided
-    let availablePromotions = (response.data.value || []).map((promo: any) => {
-      const rawVal = promo.crdfd_value;
-      const parsedVal = typeof rawVal === 'number' ? rawVal : (rawVal ? Number(rawVal) : 0);
-      const valueNum = !isNaN(parsedVal) ? parsedVal : 0;
-      return {
-        id: promo.crdfd_promotionid,
-        name: promo.crdfd_name,
-        type: promo.crdfd_type,
-        value: valueNum,
-        vndOrPercent: promo.crdfd_vn, // "VNĐ" or "%"
-        // Normalize Chiết khấu 2 to boolean: accept true, 1, or option-set Yes
-        chietKhau2: (() => {
-          const ck = promo.cr1bb_chietkhau2;
-          return ck === true || ck === 1 || ck === '1' || ck === 191920001 || ck === '191920001';
-        })(),
-        productCodes: promo.crdfd_masanpham_multiple,
-        productGroupCodes: promo.cr1bb_manhomsp_multiple,
-        totalAmountCondition: promo.cr1bb_tongtienapdung,
-        startDate: promo.crdfd_start_date,
-        endDate: promo.crdfd_end_date,
-      };
-    });
-
-    // Server-side OData filter wasn't applied for `cr1bb_chietkhau2` to avoid type errors;
-    // now filter client-side by the normalized boolean value.
-    availablePromotions = availablePromotions.filter((p: any) => !!p.chietKhau2);
-
-    // Filter by product codes/group codes if provided
-    if (productCodes || productGroupCodes) {
-      const productCodeList = productCodes 
-        ? (typeof productCodes === "string" ? productCodes.split(",") : productCodes).map(c => c.trim()).filter(Boolean)
-        : [];
-      const productGroupCodeList = productGroupCodes
-        ? (typeof productGroupCodes === "string" ? productGroupCodes.split(",") : productGroupCodes).map(c => c.trim()).filter(Boolean)
-        : [];
-
-      availablePromotions = availablePromotions.filter((promo: any) => {
-        // Check if any product code matches
-        const hasProductMatch = productCodeList.some(code => 
-          promo.productCodes && promo.productCodes.includes(code)
-        );
-        
-        // Check if any product group code matches
-        const hasGroupMatch = productGroupCodeList.some(code =>
-          promo.productGroupCodes && promo.productGroupCodes.includes(code)
-        );
-
-        return hasProductMatch || hasGroupMatch;
-      });
-    }
-
-    // Get max value promotion (Promotion_Order_Max logic)
-    // For % type: get the one with max value
-    // For VNĐ type: include all
-    const percentPromotions = availablePromotions.filter((p: any) => p.vndOrPercent === "%");
-    const vndPromotions = availablePromotions.filter((p: any) => p.vndOrPercent === "VNĐ");
-    
-    let promotionOrderMax: any[] = [];
-    if (percentPromotions.length > 0) {
-      const maxPercentValue = Math.max(...percentPromotions.map((p: any) => p.value || 0));
-      promotionOrderMax = percentPromotions.filter((p: any) => p.value === maxPercentValue);
-    }
-    promotionOrderMax = [...promotionOrderMax, ...vndPromotions];
-
+    // Step 7: Return response
     res.status(200).json({
       existingPromotionOrders,
       hasExistingPromotionOrder: existingPromotionOrders.length > 0,
       availablePromotions: promotionOrderMax,
       allPromotions: availablePromotions,
     });
+
   } catch (error: any) {
-    console.error("Error fetching promotion orders:", error);
-
-    if (error.response) {
-      console.error("Error response status:", error.response.status);
-      console.error("Error response data:", JSON.stringify(error.response.data, null, 2));
-      return res.status(error.response.status || 500).json({
-        error: "Error fetching promotion orders",
-        details: error.response.data?.error?.message || error.response.data?.error || error.message,
-      });
-    }
-
-    res.status(500).json({
-      error: "Error fetching promotion orders",
-      details: error.message,
-    });
+    handleApiError(error, res);
   }
 }
 

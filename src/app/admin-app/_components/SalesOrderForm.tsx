@@ -760,17 +760,17 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             availablePromotions: promotionOrderResult.availablePromotions
           });
 
-          // LUÔN hiển thị popup nếu có promotion khả dụng (bất kể đã có promotion order hay chưa)
-          if (promotionOrderResult.availablePromotions && promotionOrderResult.availablePromotions.length > 0) {
-            console.log('[Promotion Order] ✅ Showing popup - có promotion khả dụng');
-            setSoId(savedSoId);
-            setPromotionOrderList(promotionOrderResult.availablePromotions);
-            setShowPromotionOrderPopup(true);
-          } else if (promotionOrderResult.allPromotions && promotionOrderResult.allPromotions.length > 0) {
-            // Fallback: nếu availablePromotions rỗng nhưng allPromotions có data, dùng allPromotions
-            console.log('[Promotion Order] ✅ Showing popup với allPromotions - fallback');
+          // LUÔN hiển thị popup với TOÀN BỘ promotions (ưu tiên allPromotions)
+          if (promotionOrderResult.allPromotions && promotionOrderResult.allPromotions.length > 0) {
+            console.log('[Promotion Order] ✅ Showing popup with allPromotions (show all available promotions)');
             setSoId(savedSoId);
             setPromotionOrderList(promotionOrderResult.allPromotions);
+            setShowPromotionOrderPopup(true);
+          } else if (promotionOrderResult.availablePromotions && promotionOrderResult.availablePromotions.length > 0) {
+            // Fallback: nếu allPromotions rỗng nhưng availablePromotions có data, dùng availablePromotions
+            console.log('[Promotion Order] ✅ Showing popup with availablePromotions (fallback)');
+            setSoId(savedSoId);
+            setPromotionOrderList(promotionOrderResult.availablePromotions);
             setShowPromotionOrderPopup(true);
           } else {
             console.log('[Promotion Order] ❌ Không có promotion khả dụng - không hiển thị popup');
@@ -1410,6 +1410,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     }
   };
 
+  const currentOrderTotal = totalAmount || orderSummary?.total || productList.reduce((s, p) => s + (p.totalAmount || ((p.discountedPrice ?? p.price) * (p.quantity || 0) + ((p.vat || 0) ? Math.round(((p.discountedPrice ?? p.price) * (p.quantity || 0) * (p.vat || 0)) / 100) : 0))), 0);
+
   return (
     <div className="admin-app-compact-layout">
       {/* Promotion Order Popup */}
@@ -1422,9 +1424,26 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             <div className="admin-app-popup-content">
               <div className="admin-app-field-compact">
                 <label className="admin-app-label-inline">Chọn Promotion Order (có thể chọn nhiều)</label>
+                <div style={{
+                  margin: '8px 0',
+                  display: 'inline-block',
+                  padding: '8px 12px',
+                  background: '#eff6ff',
+                  borderRadius: 8,
+                  fontSize: '15px',
+                  fontWeight: 700,
+                  color: '#0369a1',
+                  boxShadow: '0 1px 3px rgba(3,105,161,0.08)'
+                }}>
+                  Tổng tiền đơn: {currentOrderTotal ? `${currentOrderTotal.toLocaleString('vi-VN')} VNĐ` : '0 VNĐ'}
+                </div>
                 <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '4px', padding: '8px' }}>
                   {promotionOrderList.map((promo) => {
                     const isSelected = selectedPromotionOrders.some(p => p.id === promo.id);
+                    const condition = promo.totalAmountCondition ?? promo.totalAmountCondition === 0 ? promo.totalAmountCondition : null;
+                    const conditionNum = condition !== null ? Number(condition) : null;
+                    const meetsCondition = conditionNum === null || !isNaN(conditionNum) && currentOrderTotal >= conditionNum;
+
                     return (
                       <label
                         key={promo.id}
@@ -1434,8 +1453,11 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                           padding: '8px',
                           cursor: 'pointer',
                           borderRadius: '4px',
-                          marginBottom: '4px',
+                          marginBottom: '8px',
                           backgroundColor: isSelected ? '#f0f9ff' : 'transparent',
+                          borderLeft: meetsCondition ? '4px solid #10b981' : '4px solid transparent',
+                          opacity: meetsCondition ? 1 : 0.6,
+                          boxShadow: meetsCondition ? '0 1px 4px rgba(16,185,129,0.08)' : undefined
                         }}
                         onMouseEnter={(e) => {
                           if (!isSelected) e.currentTarget.style.backgroundColor = '#f8fafc';
@@ -1464,6 +1486,17 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                             </span>
                           )}
                         </span>
+                        <div style={{ marginLeft: '12px', textAlign: 'right' }}>
+                          {conditionNum !== null ? (
+                            <div style={{ fontSize: '12px', color: meetsCondition ? '#065f46' : '#b91c1c', fontWeight: 600 }}>
+                              {meetsCondition ? 'Đã đạt đk' : 'Chưa đạt đk'}
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                              Không yêu cầu
+                            </div>
+                          )}
+                        </div>
                       </label>
                     );
                   })}
