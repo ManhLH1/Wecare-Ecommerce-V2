@@ -6,6 +6,8 @@ import {
   FaWrench,
   FaCog,
   FaChevronRight,
+  FaBars,
+  FaChevronUp,
 } from "react-icons/fa";
 import CategoryMenuMobile from "./CategoryMenuMobile";
 
@@ -399,7 +401,7 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
 
   return (
     <div
-      className="bg-white rounded-b-lg overflow-hidden transition-all duration-200"
+      className="bg-white rounded-b-lg overflow-hidden transition-all duration-200 shadow-xl border border-gray-200"
       style={{
         scrollbarWidth: "none",
         msOverflowStyle: "none",
@@ -409,36 +411,56 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
       }}
       onMouseLeave={handleMouseLeavePanel}
     >
+      {/* Header Bar - Orange left, Teal right */}
+      <div className="flex items-center h-12 border-b border-gray-200">
+        {/* Left section - Orange background with "Danh mục sản phẩm" */}
+        <div className="flex items-center gap-2 bg-amber-500 text-white px-4 py-2.5 h-full flex-shrink-0">
+          <FaBars className="text-base" />
+          <span className="whitespace-nowrap font-medium text-sm">Danh mục sản phẩm</span>
+          <FaChevronUp className="text-xs" />
+        </div>
+        {/* Right section - Teal background with "Tất cả sản phẩm" */}
+        <button
+          onClick={() => onCategorySelect({
+            crdfd_productgroupid: "all",
+            crdfd_productname: "Tất cả sản phẩm",
+          })}
+          className="flex items-center justify-center bg-cyan-500 text-white px-4 py-2.5 h-full flex-1 hover:bg-cyan-600 transition-colors"
+        >
+          <span className="whitespace-nowrap font-medium text-sm">Tất cả sản phẩm</span>
+        </button>
+      </div>
+
       <div className="flex">
-        {/* Left Panel - Main Categories - Style giống sieuthihaiminh.vn */}
-        <div className="w-[280px] bg-gray-50 border-r border-gray-200">
+        {/* Left Panel - Main Categories - Style giống dropdown cũ */}
+        <div className="w-[280px] bg-white border-r border-gray-200">
           <div>
-            <ul className="mt-1 p-2">
+            <ul className="py-2">
               {sortedCategories.map((group, idx) => (
                 <li key={group.crdfd_productgroupid || idx} className={`${idx !== sortedCategories.length - 1 ? 'border-b border-gray-200' : ''}`}>
                   <button
-                    className={`flex items-center w-full px-3 py-2.5 text-sm transition-all duration-200 group ${selectedMainCategory?.crdfd_productgroupid ===
+                    className={`flex items-center w-full px-4 py-2.5 text-sm transition-all duration-200 group ${selectedMainCategory?.crdfd_productgroupid ===
                       group.crdfd_productgroupid
-                      ? "bg-amber-50 text-amber-700 border-l-4 border-amber-500"
+                      ? "bg-amber-500 text-white border-l-4 border-amber-600"
                       : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                       }`}
                     onClick={() => handleCategoryClick(group)}
                     onMouseEnter={() => handleCategoryHover(group)}
                   >
                     <span className={`flex items-center justify-center w-5 h-5 mr-2.5 transition-colors ${selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
-                      ? "text-amber-600"
+                      ? "text-white"
                       : "text-gray-500"
                       }`}>
                       {getIcon(group.crdfd_productname)}
                     </span>
                     <span className={`flex-1 text-left truncate ${selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
-                      ? "font-semibold"
+                      ? "font-semibold text-white"
                       : "font-normal"
                       }`}>
                       {group.crdfd_productname}
                     </span>
                     <FaChevronRight className={`w-3 h-3 ml-2 transition-transform duration-200 ${selectedMainCategory?.crdfd_productgroupid === group.crdfd_productgroupid
-                      ? 'text-amber-600 transform rotate-90'
+                      ? 'text-white'
                       : 'text-gray-400'
                       }`} />
                   </button>

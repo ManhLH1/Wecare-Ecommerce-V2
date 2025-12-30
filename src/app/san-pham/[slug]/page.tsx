@@ -10,6 +10,9 @@ import { useCart } from "@/components/CartManager";
 import { getItem } from "@/utils/SecureStorage";
 import { Products } from "@/model/interface/ProductCartData";
 import { CartContext } from "@/components/CartGlobalManager";
+import CategoryMenuSidebar from "@/components/CategoryMenuSidebar";
+import CategorySidebar from "@/components/CategorySidebar";
+import { fetchWithCache } from "@/utils/cache";
 
 const ProductGroupList = lazy(() => import("@/app/product-list/productgroup-list"));
 
@@ -83,9 +86,41 @@ const ProductContent = () => {
   const [breadcrumb, setBreadcrumb] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDesktop, setIsDesktop] = useState(false);
+  const [isCategorySidebarOpen, setIsCategorySidebarOpen] = useState(false);
+  
+  // State for CategoryMenu
+  const [categoryGroups, setCategoryGroups] = useState<any[]>([]);
+  const [categoryHierarchy, setCategoryHierarchy] = useState<any>(null);
+  const [loadingCategory, setLoadingCategory] = useState(true);
   
   const userId = getItem("id");
   
+  // Fetch category hierarchy for sidebar
+  useEffect(() => {
+    const fetchCategoryHierarchy = async () => {
+      setLoadingCategory(true);
+      try {
+        const hierarchyData = await fetchWithCache<any>(
+          "cache:getProductGroupHierarchy",
+          1000 * 60 * 60, // 1 hour cache
+          async () => {
+            const res = await axios.get("/api/getProductGroupHierarchy");
+            return res.data;
+          }
+        );
+        
+        if (hierarchyData && hierarchyData.byLevel) {
+          setCategoryGroups(hierarchyData.byLevel["1"] || []);
+          setCategoryHierarchy(hierarchyData);
+        }
+      } catch (e) {
+        console.error('Error fetching category hierarchy:', e);
+      } finally {
+        setLoadingCategory(false);
+      }
+    };
+    fetchCategoryHierarchy();
+  }, []);
   
   // Function to check if it's desktop view
   useEffect(() => {
@@ -252,6 +287,20 @@ const ProductContent = () => {
   
   const cartItemsCount = cartItems.length;
   
+  // Handle category select from sidebar
+  const handleCategorySelect = useCallback((category: any) => {
+    if (category && category.crdfd_productname) {
+      const categorySlug = category.crdfd_productname
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[đĐ]/g, 'd')
+        .replace(/[^a-z0-9\s]/g, '')
+        .replace(/\s+/g, '-');
+      router.push(`/san-pham/${categorySlug}`);
+    }
+  }, [router]);
+  
   // Check login status
   const check = getItem("temple");
   const Idlogin = getItem("id");
@@ -268,11 +317,32 @@ const ProductContent = () => {
           onCartClick={openCart}
         />
 
-        {/* Main Layout - No Sidebar */}
-        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-10 py-6" style={{ paddingTop: '90px' }}>
-          <div className="flex flex-col">
-            {/* Main Content - Full Width */}
-            <div className="w-full">
+        {/* Main Layout - With Sidebar */}
+        <div className="max-w-[1920px] mx-auto px-4 md:px-6 lg:px-10 py-6" style={{ paddingTop: '90px' }}>
+          <div className="flex flex-col lg:flex-row lg:items-start">
+            {/* Category Sidebar - Desktop Only - Sticky with Hover Overlay */}
+            <aside 
+              className="hidden lg:block flex-shrink-0 self-start z-40"
+              style={{ position: 'sticky', top: '115px', height: 'fit-content' }}
+            >
+              <CategoryMenuSidebar
+                categoryHierarchy={categoryHierarchy}
+                categoryGroups={categoryGroups}
+                loadingCategory={loadingCategory}
+                onCategorySelect={handleCategorySelect}
+              />
+            </aside>
+
+            {/* Category Sidebar - Mobile Drawer */}
+            <CategorySidebar
+              currentSlug={slug}
+              isMobile={true}
+              isOpen={isCategorySidebarOpen}
+              onClose={() => setIsCategorySidebarOpen(false)}
+            />
+            
+            {/* Main Content */}
+            <div className="flex-1 min-w-0">
               <main className="w-full">
         {chua_login ? (
           <section className="pb-4 sm:pt-100 bg-slate-100">
@@ -318,6 +388,17 @@ const ProductContent = () => {
           </div>
         </div>
       </div>
+
+      {/* Mobile Category Button - Floating Action Button */}
+      <button
+        onClick={() => setIsCategorySidebarOpen(true)}
+        className="lg:hidden fixed left-4 bottom-20 z-30 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white p-3.5 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 active:scale-95"
+        aria-label="Mở danh mục sản phẩm"
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+        </svg>
+      </button>
 
       <Toolbar />
       <Footer />

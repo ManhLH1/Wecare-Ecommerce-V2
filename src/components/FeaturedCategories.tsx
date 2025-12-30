@@ -44,30 +44,28 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
   // Show loading skeleton when loading
   if (loading) {
     return (
-      <section className="w-full py-3 bg-gradient-to-r from-cyan-600 to-cyan-700">
-        <div className="w-full px-4">
-          <div className="p-3">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <h3 className="text-xl font-bold text-white">DANH MỤC NỔI BẬT</h3>
-                <span className="inline-block w-14 h-1 bg-amber-300 rounded" />
-              </div>
-              <a href="/san-pham" className="text-sm text-amber-300 hover:text-white hover:underline">Xem tất cả</a>
+      <section className="w-full py-3 bg-gradient-to-r from-cyan-500 to-cyan-600">
+        <div className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 xl:px-16">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <h3 className="text-xl font-bold text-white">DANH MỤC NỔI BẬT</h3>
+              <span className="inline-block w-14 h-1 bg-amber-300 rounded" />
             </div>
-            <div className="grid gap-2 items-stretch" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-              {Array.from({ length: 8 }).map((_, index) => (
-                <div key={index} className="block text-center no-underline">
-                  <div className="bg-white rounded-sm border border-gray-200 h-full flex flex-col items-center min-h-[120px] animate-pulse">
-                    <div className="w-full p-2 flex items-center justify-center">
-                      <div className="mx-auto h-20 w-20 bg-gray-200 rounded"></div>
-                    </div>
-                    <div className="w-full mt-auto bg-gray-50 border-t px-2 py-2">
-                      <div className="text-xs bg-gray-200 rounded h-4 w-3/4 mx-auto"></div>
-                    </div>
+            <a href="/san-pham" className="text-sm text-amber-300 hover:text-white hover:underline">Xem tất cả</a>
+          </div>
+          <div className="grid gap-2 items-stretch" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+            {Array.from({ length: 8 }).map((_, index) => (
+              <div key={index} className="block text-center no-underline">
+                <div className="bg-white rounded-sm border border-gray-200 h-full flex flex-col items-center min-h-[120px] animate-pulse">
+                  <div className="w-full p-2 flex items-center justify-center">
+                    <div className="mx-auto h-20 w-20 bg-gray-200 rounded"></div>
+                  </div>
+                  <div className="w-full mt-auto bg-gray-50 border-t px-2 py-2">
+                    <div className="text-xs bg-gray-200 rounded h-4 w-3/4 mx-auto"></div>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -90,52 +88,48 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
   }
 
   return (
-    <section className="w-full py-3 bg-gradient-to-r from-cyan-600 to-cyan-700">
-      <div className="w-full px-4">
-        <div className="p-3">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <h3 className="text-xl font-bold text-white">DANH MỤC NỔI BẬT</h3>
-              <span className="inline-block w-14 h-1 bg-amber-300 rounded" />
-            </div>
-            <a href="/san-pham" className="text-sm text-amber-300 hover:text-white hover:underline">Xem tất cả</a>
+    <section className="w-full py-3 bg-gradient-to-r from-cyan-500 to-cyan-600">
+      <div className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 xl:px-16">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <h3 className="text-xl font-bold text-white">DANH MỤC NỔI BẬT</h3>
+            <span className="inline-block w-14 h-1 bg-amber-300 rounded" />
           </div>
-
-          {/*
-            Display categories in exactly 2 rows.
-            Compute number of columns = ceil(items / 2) and use CSS gridTemplateColumns
-          */}
-          {(() => {
-            const displayItems = validCategories.slice(0, 20);
-            const columns = Math.max(1, Math.ceil(displayItems.length / 2));
-            const gridStyle: React.CSSProperties = { gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` };
-            return (
-              <div className="grid gap-2 items-stretch" style={gridStyle}>
-                {displayItems.map(cat => (
-                  <Link key={cat.id || cat.productGroupId || cat.productGroupCode || String(Math.random())} href={cat.href || `/san-pham?group=${encodeURIComponent(cat.productGroupCode || '')}`} className="block text-center no-underline">
-                    <div className="bg-white rounded-sm border border-gray-200 hover:shadow-sm transition h-full flex flex-col items-center min-h-[120px]">
-                      <div className="w-full p-2 flex items-center justify-center">
-                        <img
-                          src={cat.image}
-                          alt={cat.name}
-                          className={`mx-auto h-20 w-20 object-contain ${cat.hasPlaceholderImage ? 'opacity-60' : ''}`}
-                        />
-                      </div>
-                      <div className="w-full mt-auto bg-gray-50 border-t px-2 py-2">
-                        <div className="text-xs text-gray-700 truncate no-underline">{cat.name}</div>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            );
-          })()}
+          <a href="/san-pham" className="text-sm text-amber-300 hover:text-white hover:underline">Xem tất cả</a>
         </div>
+
+        {/*
+          Display categories in exactly 2 rows.
+          Compute number of columns = ceil(items / 2) and use CSS gridTemplateColumns
+        */}
+        {(() => {
+          const displayItems = validCategories.slice(0, 20);
+          const columns = Math.max(1, Math.ceil(displayItems.length / 2));
+          const gridStyle: React.CSSProperties = { gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` };
+          return (
+            <div className="grid gap-2 items-stretch" style={gridStyle}>
+              {displayItems.map(cat => (
+                <Link key={cat.id || cat.productGroupId || cat.productGroupCode || String(Math.random())} href={cat.href || `/san-pham?group=${encodeURIComponent(cat.productGroupCode || '')}`} className="block text-center no-underline">
+                  <div className="bg-white rounded-sm border border-gray-200 hover:shadow-sm transition h-full flex flex-col items-center min-h-[120px]">
+                    <div className="w-full p-2 flex items-center justify-center">
+                      <img
+                        src={cat.image}
+                        alt={cat.name}
+                        className={`mx-auto h-20 w-20 object-contain ${cat.hasPlaceholderImage ? 'opacity-60' : ''}`}
+                      />
+                    </div>
+                    <div className="w-full mt-auto bg-gray-50 border-t px-2 py-2">
+                      <div className="text-xs text-gray-700 truncate no-underline">{cat.name}</div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          );
+        })()}
       </div>
     </section>
   );
 };
 
 export default FeaturedCategories;
-
-

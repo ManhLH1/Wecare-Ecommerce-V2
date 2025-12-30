@@ -60,6 +60,8 @@ import TopProductsList from "./product-list/_components/top-products/top-product
 import BusinessOpportunitySection from "@/components/BusinessOpportunitySection";
 import useCountUp from "@/hooks/useCountUp";
 import PromotionPopup from "@/components/PromotionPopup";
+import CategorySidebar from "@/components/CategorySidebar";
+import CategoryMenuSidebar from "@/components/CategoryMenuSidebar";
 
 // // Dynamic imports for better performance
 // const ProductGroupList = dynamic(() => import("./product-list/productgroup-list"), {
@@ -316,27 +318,27 @@ const HomeContent = () => {
     const fetchProductGroups = async () => {
       setLoadingCategory(true);
       try {
-        const data = await fetchWithCache<any>(
-          "cache:getTop20ProductGroupsByOrders",
-          1000 * 60 * 30, // 30 minutes cache
+        // Fetch full hierarchy for CategoryMenu sidebar
+        const hierarchyData = await fetchWithCache<any>(
+          "cache:getProductGroupHierarchy",
+          1000 * 60 * 60, // 1 hour cache
           async () => {
-            const res = await axios.get("/api/getTop20ProductGroupsByOrders");
+            const res = await axios.get("/api/getProductGroupHierarchy");
             return res.data;
           }
         );
-        if (data && Array.isArray(data)) {
-          // Use top 20 product groups by order count for featured categories
-          setCategoryGroups(data);
-          console.log(`[FeaturedCategories] loaded top product groups by orders:`, data.length, data.slice(0,3));
-          // Include all categories from API (including those with placeholder images)
-          const filtered = (data || []).filter((g:any)=> g && g.productGroupName);
-          console.log('[FeaturedCategories] all valid categories (including placeholders):', filtered.length, filtered.slice(0,3));
-          setCategoryHierarchy(data);
+
+        if (hierarchyData && hierarchyData.byLevel) {
+          // Set level 1 categories for the sidebar
+          setCategoryGroups(hierarchyData.byLevel["1"] || []);
+          setCategoryHierarchy(hierarchyData);
+          console.log(`[CategoryMenu] loaded hierarchy with levels:`, Object.keys(hierarchyData.byLevel || {}));
         } else {
           setCategoryGroups([]);
           setCategoryHierarchy(null);
         }
       } catch (e) {
+        console.error('[CategoryMenu] Error fetching hierarchy:', e);
         setCategoryGroups([]);
         setCategoryHierarchy(null);
       } finally {
@@ -1015,10 +1017,20 @@ const HomeContent = () => {
         />
 
         {/* Main Layout */}
-        <div className="w-full max-w-[1920px] mx-auto pt-[115px]">
-          <div className="flex flex-col lg:flex-row">
-            {/* Spacer for CategoryMenu dropdown on Desktop */}
-            <div className="hidden lg:block w-[280px] flex-shrink-0" />
+        <div className="w-full max-w-[1920px] mx-auto pt-[115px] px-4 md:px-6 lg:px-8 xl:px-16">
+          <div className="flex flex-col lg:flex-row lg:items-start gap-3">
+            {/* Category Sidebar - Desktop Only - Fixed position, always visible, no scroll behavior */}
+            <aside
+              className="hidden lg:block flex-shrink-0 self-start z-40 w-[280px]"
+              style={{ position: 'sticky', top: '115px', height: 'fit-content' }}
+            >
+              <CategoryMenuSidebar
+                categoryHierarchy={categoryHierarchy}
+                categoryGroups={categoryGroups}
+                loadingCategory={loadingCategory}
+                onCategorySelect={handleCategorySelect}
+              />
+            </aside>
             {/* Main Content */}
             <div className="flex-1 min-w-0">
               <JDStyleMainContent
@@ -1267,7 +1279,7 @@ const HomeContent = () => {
             </Reveal>
           </div>
         </section>
-      {/* Panels Section removed */}
+        {/* Panels Section removed */}
 
         {/* Divider */}
         {/* <div className="w-full h-[6px] bg-gray-100 rounded-full my-2"></div> */}
@@ -1379,6 +1391,24 @@ const HomeContent = () => {
         </Reveal>
         {/* </section> */}
       </main>
+
+      {/* Mobile Category Sidebar Drawer */}
+      <CategorySidebar
+        isMobile={true}
+        isOpen={isSidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
+
+      {/* Mobile Category FAB Button */}
+      <button
+        onClick={() => setSidebarOpen(true)}
+        className="lg:hidden fixed left-4 bottom-20 z-30 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white p-3.5 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 active:scale-95"
+        aria-label="Mở danh mục sản phẩm"
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+        </svg>
+      </button>
 
       <Footer />
       <Toolbar />

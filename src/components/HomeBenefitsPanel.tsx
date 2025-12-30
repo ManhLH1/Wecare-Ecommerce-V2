@@ -12,7 +12,7 @@ const items = [
 
 const HomeBenefitsPanel: React.FC = () => {
   return (
-    <section className="w-full mt-1 mb-0">
+    <section className="w-full mt-0 mb-0">
       <div className="grid grid-cols-2 lg:grid-cols-4">
         {items.map((it, idx) => (
           <Link key={idx} href={it.href} className="group block px-1 py-1">
