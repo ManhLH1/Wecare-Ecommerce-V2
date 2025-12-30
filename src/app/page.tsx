@@ -33,7 +33,6 @@ import ShortcutSection from "@/components/ShortcutSection";
 import HomeBenefitsPanel from "@/components/HomeBenefitsPanel";
 import FeaturedCategories from "@/components/FeaturedCategories";
 import HeroSection from "@/components/HeroSection";
-import IndustrialVacuumShowcaseV2 from "@/components/IndustrialVacuumShowcaseV2";
 import UnifiedHeaderHero from "@/components/UnifiedHeaderHero";
 import JDStyleHeader from "@/components/JDStyleHeader";
 import JDStyleMainContent from "@/components/JDStyleMainContent";
@@ -1121,8 +1120,6 @@ const HomeContent = () => {
             })}
           loading={loadingCategory}
         />
-        {/* Industrial vacuum showcase — new implementation */}
-        <IndustrialVacuumShowcaseV2 />
         {/* Shortcut Section - DESKTOP với thiết kế tròn (ẩn theo yêu cầu) */}
         <section className="hidden">
           <div className="flex flex-nowrap w-full gap-4 p-6 bg-transparent justify-center">

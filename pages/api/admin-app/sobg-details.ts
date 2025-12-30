@@ -140,9 +140,9 @@ export default async function handler(
     // Fetch current prices for all products to include unit price information
     const productCodes: string[] = [...new Set(
       (response.data.value || [])
-        .map((item: any) => String(productIdToCodeMap.get(item._crdfd_sanpham_value) || item.crdfd_masanpham))
+        .map((item: any) => productIdToCodeMap.get(item._crdfd_sanpham_value) || item.crdfd_masanpham)
         .filter((code: any): code is string => !!code && code.trim())
-    )] as string[];
+    )];
 
     // Fetch current prices for all product codes (batch fetch to avoid multiple API calls)
     const currentPricesMap = new Map<string, any>();

@@ -5,7 +5,6 @@ import { getAccessToken } from "../getAccessToken";
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
 const ORDERS_X_PROMOTION_TABLE = "crdfd_ordersxpromotions";
 const SOD_TABLE = "crdfd_saleorderdetailses";
-const SALE_ORDERS_TABLE = "crdfd_sale_orders";
 
 /**
  * API để áp dụng Promotion Order cho Sales Order
@@ -147,11 +146,6 @@ export default async function handler(
         );
         updatedSodCount++;
       }
-
-      // Sau khi cập nhật chiết khấu 2, tính lại tổng đơn hàng
-      if (updatedSodCount > 0) {
-        await recalculateOrderTotals(soId, headers);
-      }
     }
 
     res.status(200).json({
@@ -180,72 +174,8 @@ export default async function handler(
 }
 
 /**
- * Helper function to recalculate order totals after applying chiết khấu 2
- */
-async function recalculateOrderTotals(soId: string, headers: Record<string, string>) {
-  try {
-    // Lấy tất cả SOD của đơn hàng
-    const sodFilters = [
-      "statecode eq 0",
-      `_crdfd_madonhang_value eq ${soId}`,
-    ];
-
-    const sodQuery = `$filter=${encodeURIComponent(
-      sodFilters.join(" and ")
-    )}&$select=crdfd_saleorderdetailsid,crdfd_giack2,crdfd_soluong,crdfd_vat`;
-
-    const sodEndpoint = `${BASE_URL}${SOD_TABLE}?${sodQuery}`;
-    const sodResponse = await axios.get(sodEndpoint, { headers });
-    const sodList = sodResponse.data.value || [];
-
-    // Tính lại tổng
-    let totalSubtotal = 0;
-    let totalVatAmount = 0;
-    let totalAmount = 0;
-
-    for (const sod of sodList) {
-      const quantity = Number(sod.crdfd_soluong) || 0;
-      const unitPrice = Number(sod.crdfd_giack2) || 0; // Sử dụng giá sau chiết khấu 2
-      const vatPercent = Number(sod.crdfd_vat) || 0;
-
-      const lineSubtotal = quantity * unitPrice;
-      const lineVat = (lineSubtotal * vatPercent) / 100;
-      const lineTotal = lineSubtotal + lineVat;
-
-      totalSubtotal += lineSubtotal;
-      totalVatAmount += lineVat;
-      totalAmount += lineTotal;
-    }
-
-    // Làm tròn
-    const roundedSubtotal = Math.round(totalSubtotal);
-    const roundedVat = Math.round(totalVatAmount);
-    const roundedTotal = Math.round(totalAmount);
-
-    // Cập nhật Sale Order với tổng mới
-    const updatePayload = {
-      crdfd_tongtien: roundedTotal,
-      crdfd_tongtientruocthue: roundedSubtotal,
-      crdfd_tienthue: roundedVat,
-    };
-
-    const updateEndpoint = `${BASE_URL}${SALE_ORDERS_TABLE}(${soId})`;
-    await axios.patch(updateEndpoint, updatePayload, { headers });
-
-    console.log(`[Recalculate Order Totals] Updated SO ${soId}:`, {
-      subtotal: roundedSubtotal,
-      vat: roundedVat,
-      total: roundedTotal
-    });
-  } catch (error) {
-    console.error("Error recalculating order totals:", error);
-    // Don't throw error to avoid breaking the promotion application
-  }
-}
-
-/**
- * Helper function to update crdfd_chieckhau2 and crdfd_giack2 on a SOD record
- * Cập nhật crdfd_chieckhau2 và tính lại crdfd_giack2 dựa trên giá gốc
+ * Helper function to update crdfd_chieckhau2 on a SOD record
+ * Chỉ cập nhật crdfd_chieckhau2, không cập nhật giá
  */
 async function updateSodChietKhau2(
   sodId: string,
@@ -256,36 +186,13 @@ async function updateSodChietKhau2(
   const updatePayload: any = {};
 
   // Calculate chietkhau2 value based on VNĐ or %
-  let chietKhau2Value: number;
   if (vndOrPercent === "%") {
     // Convert percentage to decimal (e.g., 5% -> 0.05)
-    chietKhau2Value = (promotionValue || 0) / 100;
-    updatePayload.crdfd_chieckhau2 = chietKhau2Value;
+    updatePayload.crdfd_chieckhau2 = (promotionValue || 0) / 100;
   } else {
     // VNĐ value - store as is
-    chietKhau2Value = promotionValue || 0;
-    updatePayload.crdfd_chieckhau2 = chietKhau2Value;
+    updatePayload.crdfd_chieckhau2 = promotionValue || 0;
   }
-
-  // Tính crdfd_giack2 dựa trên crdfd_chieckhau2
-  // Cần lấy giá gốc (crdfd_giagoc) để tính giá sau chiết khấu 2
-  const getSodEndpoint = `${BASE_URL}${SOD_TABLE}(${sodId})?$select=crdfd_giagoc,crdfd_gia`;
-  const sodResponse = await axios.get(getSodEndpoint, { headers });
-  const sodData = sodResponse.data;
-
-  // Sử dụng crdfd_giagoc nếu có, nếu không thì dùng crdfd_gia
-  const basePrice = sodData.crdfd_giagoc || sodData.crdfd_gia || 0;
-
-  let giaCK2: number;
-  if (vndOrPercent === "%") {
-    // Chiết khấu theo %, tính giá sau chiết khấu
-    giaCK2 = basePrice * (1 - chietKhau2Value);
-  } else {
-    // Chiết khấu VNĐ, trừ trực tiếp
-    giaCK2 = Math.max(0, basePrice - chietKhau2Value);
-  }
-
-  updatePayload.crdfd_giack2 = giaCK2;
 
   const updateEndpoint = `${BASE_URL}${SOD_TABLE}(${sodId})`;
   await axios.patch(updateEndpoint, updatePayload, { headers });
