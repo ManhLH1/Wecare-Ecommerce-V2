@@ -1191,7 +1191,7 @@ export default function ProductEntryForm({
           const preferredRaw =
             (selectedPrice && (selectedPrice.unitName || selectedPrice.crdfd_onvichuan)) ||
             result?.unitName ||
-            result?.crdfd_onvichuan ||
+            (result as any)?.crdfd_onvichuan ||
             '';
           const prefNorm = normalizeText(preferredRaw || '');
 
