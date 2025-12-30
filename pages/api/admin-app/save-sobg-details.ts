@@ -315,8 +315,9 @@ export default async function handler(
 
                     // Data fields (Mapped from Metadata)
                     "crdfd_soluong": product.quantity,
-                    // Price mapping: store original/display price in crdfd_ongia and discounted unit price in crdfd_giagoc
-                    "crdfd_ongia": product.originalPrice ?? product.price,
+                    // Price mapping: lưu `crdfd_ongia` = đơn giá hiển thị (sau chiết khấu nếu có),
+                    // và `crdfd_giagoc` = giá gốc (original price) để tránh bị đảo ngược khi hiển thị sau khi lưu.
+                    "crdfd_ongia": product.discountedPrice ?? product.price,
                     // Map VAT percent -> OptionSet value for CRM (crdfd_gtgt)
                     "crdfd_ieuchinhgtgt": mapVatPercentToChoice(product.vat),
                     "crdfd_gtgt": mapVatPercentToChoice(product.vat),
@@ -334,10 +335,11 @@ export default async function handler(
                     "crdfd_chietkhau": product.discountPercent ? product.discountPercent / 100 : 0,
                     "crdfd_chietkhauvn": product.discountAmount ?? 0,
                     "crdfd_chietkhau2": product.discount2 ? product.discount2 / 100 : 0,
-                    "crdfd_giack1": product.originalPrice || product.price || 0, // Giá gốc (original price)
-                    "crdfd_giack2": product.discountedPrice || product.priceDiscount2 || 0,
-                    // Also set crdfd_giagoc to the discounted price for consistency
-                    "crdfd_giagoc": product.discountedPrice ?? product.price,
+                    // Keep legacy/auxiliary fields: giack1 = giá gốc, giack2 = giá sau chiết khấu (nếu schema uses these)
+                    "crdfd_giack1": product.originalPrice ?? product.price ?? 0,
+                    "crdfd_giack2": product.discountedPrice ?? product.price ?? 0,
+                    // Ensure crdfd_giagoc (giá gốc) is set to originalPrice
+                    "crdfd_giagoc": product.originalPrice ?? product.price,
                     "crdfd_phu_phi_hoa_don": product.surcharge || 0,
 
                     // MISSING FIELDS FROM POWER APPS REQUIREMENTS

@@ -137,6 +137,111 @@ export default async function handler(
       }
     }
 
+    // Fetch current prices for all products to include unit price information
+    const productCodes: string[] = [...new Set(
+      (response.data.value || [])
+        .map((item: any) => String(productIdToCodeMap.get(item._crdfd_sanpham_value) || item.crdfd_masanpham))
+        .filter((code: any): code is string => !!code && code.trim())
+    )] as string[];
+
+    // Fetch current prices for all product codes (batch fetch to avoid multiple API calls)
+    const currentPricesMap = new Map<string, any>();
+    if (productCodes.length > 0) {
+      try {
+        // Import the prices API logic inline to avoid circular imports
+        const QUOTE_DETAIL_TABLE = "crdfd_baogiachitiets";
+        const GROUP_KH_TABLE = "cr1bb_groupkhs";
+        const CUSTOMER_TABLE = "crdfd_customers";
+
+        // Helper function to get customer groups (copied from prices.ts)
+        const getCustomerGroupsForPrices = async (customerId: string): Promise<string[]> => {
+          try {
+            const groupFilter = `_cr1bb_khachhang_value eq ${customerId}`;
+            const groupQuery = `$select=cr1bb_tennhomkh&$filter=${encodeURIComponent(groupFilter)}`;
+            const groupEndpoint = `${BASE_URL}${GROUP_KH_TABLE}?${groupQuery}`;
+            const groupResponse = await axios.get(groupEndpoint, { headers });
+            return (groupResponse.data.value || [])
+              .map((item: any) => item.cr1bb_tennhomkh)
+              .filter((text: any): text is string => !!text && typeof text === "string");
+          } catch (error) {
+            console.error("Error fetching customer groups for prices:", error);
+            return [];
+          }
+        };
+
+        // Get customer groups if customerId is provided
+        let customerGroups: string[] = [];
+        if (customerId && typeof customerId === "string") {
+          customerGroups = await getCustomerGroupsForPrices(customerId);
+        }
+
+        // Fetch prices for each product code
+        for (const productCode of productCodes) {
+          try {
+            const safeCode = productCode.replace(/'/g, "''");
+            const filters = [
+              "statecode eq 0", // active
+              "crdfd_pricingdeactive eq 191920001", // Pricing Active
+              `crdfd_masanpham eq '${safeCode}'`,
+              "(crdfd_gia ne null or cr1bb_giakhongvat ne null)",
+            ];
+
+            // Filter by customer groups if available
+            if (customerGroups.length > 0) {
+              const groupFilters = customerGroups
+                .map((group) => {
+                  const safeGroup = String(group).replace(/'/g, "''");
+                  return `crdfd_nhomoituongtext eq '${safeGroup}'`;
+                })
+                .join(" or ");
+              filters.push(`(${groupFilters})`);
+            }
+
+            const filter = filters.join(" and ");
+            const columns = "crdfd_baogiachitietid,crdfd_masanpham,crdfd_gia,cr1bb_giakhongvat,crdfd_onvichuantext,crdfd_onvichuan,crdfd_nhomoituongtext,crdfd_giatheovc,crdfd_onvi";
+            const expand = "$expand=crdfd_onvi($select=crdfd_name,crdfd_onvichuyenoitransfome)";
+            const query = `$select=${columns}&$filter=${encodeURIComponent(filter)}&${expand}&$orderby=crdfd_giatheovc asc`;
+
+            const endpoint = `${BASE_URL}${QUOTE_DETAIL_TABLE}?${query}`;
+            const priceResponse = await axios.get(endpoint, { headers });
+            const allPrices = priceResponse.data.value || [];
+
+            const prices = allPrices.map((item: any) => {
+              const unitName =
+                item.crdfd_onvi?.crdfd_onvichuyenoitransfome ||
+                item.crdfd_onvi?.crdfd_name ||
+                item.crdfd_onvichuantext ||
+                item.crdfd_onvichuan ||
+                undefined;
+
+              return {
+                price: item.crdfd_gia ?? null,
+                priceNoVat: item.cr1bb_giakhongvat ?? null,
+                unitName: unitName,
+                priceGroupText: item.crdfd_nhomoituongtext || undefined,
+                crdfd_masanpham: item.crdfd_masanpham || productCode,
+                crdfd_onvichuan: item.crdfd_onvichuan || undefined,
+              };
+            });
+
+            if (prices.length > 0) {
+              currentPricesMap.set(productCode, {
+                prices: prices,
+                price: prices[0]?.price ?? null,
+                priceNoVat: prices[0]?.priceNoVat ?? null,
+                unitName: prices[0]?.unitName ?? undefined,
+                priceGroupText: prices[0]?.priceGroupText ?? undefined,
+              });
+            }
+          } catch (err) {
+            console.error(`Error fetching prices for product ${productCode}:`, err);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching current prices:", err);
+      }
+    }
+
     // Transform data to match SaleOrderDetail interface
     const details = (response.data.value || []).map((item: any) => {
       // Lấy productCode từ expanded product hoặc từ field trực tiếp hoặc từ map
@@ -165,6 +270,9 @@ export default async function handler(
       const subtotal = discountedPrice * quantity;
       const vatAmount = (subtotal * vat) / 100;
       const totalAmount = subtotal + vatAmount;
+
+      // Get current prices for this product
+      const currentPrices = currentPricesMap.get(productCode);
 
       return {
         id: item.crdfd_sodbaogiaid,
@@ -196,6 +304,8 @@ export default async function handler(
         promotionText: item.crdfd_promotiontext || "",
         invoiceSurcharge: item.crdfd_phu_phi_hoa_don || 0,
         createdOn: item.createdon || "",
+        // Include current prices information for unit price loading
+        currentPrices: currentPrices || null,
       };
     });
 
