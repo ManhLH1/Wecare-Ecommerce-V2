@@ -271,12 +271,12 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             invoiceSurcharge: detail.invoiceSurcharge || 0,
             // Map chiết khấu 2 (stored as decimal or percent)
             discount2: (() => {
-              const raw = (detail as any).crdfd_chietkhau2 ?? (detail as any).chietKhau2 ?? (detail as any).discount2 ?? 0;
+              const raw = (detail as any).crdfd_chieckhau2 ?? (detail as any).crdfd_chietkhau2 ?? (detail as any).chietKhau2 ?? (detail as any).discount2 ?? 0;
               const num = Number(raw) || 0;
               if (num > 0 && num <= 1) return Math.round(num * 100);
               return num;
             })(),
-            discount2Enabled: Boolean((detail as any).crdfd_chietkhau2 ?? (detail as any).chietKhau2 ?? (detail as any).discount2),
+            discount2Enabled: Boolean((detail as any).crdfd_chieckhau2 ?? (detail as any).crdfd_chietkhau2 ?? (detail as any).chietKhau2 ?? (detail as any).discount2),
             isSodCreated: true,
             isModified: false, // Mặc định chưa sửa
             originalQuantity: detail.quantity, // Lưu số lượng gốc

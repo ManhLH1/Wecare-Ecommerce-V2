@@ -69,18 +69,63 @@ export default async function handler(
       } catch (error) {
         console.warn("Error fetching existing promotion orders:", error);
       }
+      
+      // Enrich existingPromotionOrders with promotion details (value, vndOrPercent, chietKhau2, product codes/groups)
+      if (existingPromotionOrders.length > 0) {
+        try {
+          const promotionIds = Array.from(new Set(existingPromotionOrders.map((e: any) => e.promotionId).filter(Boolean)));
+          if (promotionIds.length > 0) {
+            // Fetch promotions in parallel
+            const promoFetches = promotionIds.map(pid => {
+              const url = `${BASE_URL}${PROMOTION_TABLE}(${pid})?$select=crdfd_promotionid,crdfd_value,crdfd_vn,cr1bb_chietkhau2,crdfd_masanpham_multiple,cr1bb_manhomsp_multiple`;
+              return axios.get(url, { headers }).then(r => r.data).catch(() => null);
+            });
+            const promoResults = await Promise.all(promoFetches);
+            const promoById: Record<string, any> = {};
+            promoResults.forEach((p: any) => {
+              if (p && p.crdfd_promotionid) {
+                promoById[p.crdfd_promotionid] = p;
+              }
+            });
+
+            existingPromotionOrders = existingPromotionOrders.map((ep: any) => {
+              const promo = promoById[ep.promotionId];
+              if (!promo) return ep;
+              const rawVal = promo.crdfd_value;
+              const parsedVal = typeof rawVal === 'number' ? rawVal : (rawVal ? Number(rawVal) : 0);
+              const valueNum = !isNaN(parsedVal) ? parsedVal : 0;
+              // Normalize Chiết khấu 2 to boolean accepting multiple representations
+              const ck = promo.cr1bb_chietkhau2;
+              const chietKhau2Bool = ck === true || ck === 1 || ck === '1' || ck === 191920001 || ck === '191920001';
+              return {
+                ...ep,
+                value: valueNum,
+                vndOrPercent: promo.crdfd_vn,
+                chietKhau2: !!chietKhau2Bool,
+                productCodes: promo.crdfd_masanpham_multiple,
+                productGroupCodes: promo.cr1bb_manhomsp_multiple,
+              };
+            });
+          }
+        } catch (err) {
+          console.warn('Error enriching existing promotion orders with promotion details', err);
+        }
+      }
     }
 
     // 2. Lấy danh sách Promotion loại "Order" có thể áp dụng
     const filters: string[] = [
       "statecode eq 0", // Active
       "crdfd_promotion_deactive eq 'Active'",
-      "crdfd_type eq 'Order'", // Chỉ lấy promotion loại Order
+      // Query by type only; don't compare `cr1bb_chietkhau2` server-side (can be boolean or optionset)
+      "crdfd_type eq 'Order'",
     ];
 
     // Time window: start_date <= now
     const nowIso = new Date().toISOString();
     filters.push(`crdfd_start_date le ${nowIso}`);
+    // NOTE: do NOT filter by `cr1bb_chietkhau2` on the server because its type varies;
+    // we'll filter client-side after normalizing the field.
     // No end_date filter as per PowerApps logic - it checks at usage time
 
     // Filter by customer code if provided
@@ -126,20 +171,47 @@ export default async function handler(
     const endpoint = `${BASE_URL}${PROMOTION_TABLE}?${query}`;
     const response = await axios.get(endpoint, { headers });
 
+    console.log('[PromotionOrders] fetched count:', (response.data.value || []).length);
+    // Debug sample of returned promotions (id + raw value)
+    try {
+      console.log('[PromotionOrders] sample:', (response.data.value || []).slice(0,10).map((p: any) => ({
+        id: p.crdfd_promotionid,
+        name: p.crdfd_name,
+        rawValue: p.crdfd_value,
+        rawVndOrPercent: p.crdfd_vn,
+        chietKhau2Flag: p.cr1bb_chietkhau2,
+      })));
+    } catch (err) {
+      // ignore logging errors
+    }
+
     // Filter promotions based on product codes/group codes if provided
-    let availablePromotions = (response.data.value || []).map((promo: any) => ({
-      id: promo.crdfd_promotionid,
-      name: promo.crdfd_name,
-      type: promo.crdfd_type,
-      value: promo.crdfd_value,
-      vndOrPercent: promo.crdfd_vn, // "VNĐ" or "%"
-      chietKhau2: promo.cr1bb_chietkhau2, // 191920000 = No, 191920001 = Yes
-      productCodes: promo.crdfd_masanpham_multiple,
-      productGroupCodes: promo.cr1bb_manhomsp_multiple,
-      totalAmountCondition: promo.cr1bb_tongtienapdung,
-      startDate: promo.crdfd_start_date,
-      endDate: promo.crdfd_end_date,
-    }));
+    let availablePromotions = (response.data.value || []).map((promo: any) => {
+      const rawVal = promo.crdfd_value;
+      const parsedVal = typeof rawVal === 'number' ? rawVal : (rawVal ? Number(rawVal) : 0);
+      const valueNum = !isNaN(parsedVal) ? parsedVal : 0;
+      return {
+        id: promo.crdfd_promotionid,
+        name: promo.crdfd_name,
+        type: promo.crdfd_type,
+        value: valueNum,
+        vndOrPercent: promo.crdfd_vn, // "VNĐ" or "%"
+        // Normalize Chiết khấu 2 to boolean: accept true, 1, or option-set Yes
+        chietKhau2: (() => {
+          const ck = promo.cr1bb_chietkhau2;
+          return ck === true || ck === 1 || ck === '1' || ck === 191920001 || ck === '191920001';
+        })(),
+        productCodes: promo.crdfd_masanpham_multiple,
+        productGroupCodes: promo.cr1bb_manhomsp_multiple,
+        totalAmountCondition: promo.cr1bb_tongtienapdung,
+        startDate: promo.crdfd_start_date,
+        endDate: promo.crdfd_end_date,
+      };
+    });
+
+    // Server-side OData filter wasn't applied for `cr1bb_chietkhau2` to avoid type errors;
+    // now filter client-side by the normalized boolean value.
+    availablePromotions = availablePromotions.filter((p: any) => !!p.chietKhau2);
 
     // Filter by product codes/group codes if provided
     if (productCodes || productGroupCodes) {

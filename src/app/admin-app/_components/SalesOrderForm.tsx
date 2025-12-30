@@ -247,12 +247,12 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             productName: detail.productName,
             // Map chiết khấu 2 from backend (stored as decimal like 0.05 or percent)
             discount2: (() => {
-              const raw = (detail as any).crdfd_chietkhau2 ?? (detail as any).chietKhau2 ?? (detail as any).discount2 ?? 0;
+              const raw = (detail as any).crdfd_chieckhau2 ?? (detail as any).crdfd_chietkhau2 ?? (detail as any).chietKhau2 ?? (detail as any).discount2 ?? 0;
               const num = Number(raw) || 0;
               if (num > 0 && num <= 1) return Math.round(num * 100);
               return num;
             })(),
-            discount2Enabled: Boolean((detail as any).crdfd_chietkhau2 ?? (detail as any).chietKhau2 ?? (detail as any).discount2),
+            discount2Enabled: Boolean((detail as any).crdfd_chieckhau2 ?? (detail as any).crdfd_chietkhau2 ?? (detail as any).chietKhau2 ?? (detail as any).discount2),
             unit: detail.unit,
             quantity: detail.quantity,
             price: detail.price,
