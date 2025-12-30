@@ -12,23 +12,19 @@ const items = [
 
 const HomeBenefitsPanel: React.FC = () => {
   return (
-    <section className="w-full max-w-[1920px] mx-auto mt-4 mb-6">
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 px-4 py-6 md:px-6 md:py-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 md:gap-7 items-stretch">
-            {items.map((it, idx) => (
-              <Link key={idx} href={it.href} className="group block">
-                <div className="rounded-xl overflow-hidden bg-gradient-to-br from-gray-50 to-white hover:shadow-lg transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-center min-h-[120px] md:min-h-[140px]">
-                  <img
-                    src={it.img}
-                    alt={it.alt}
-                    className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
+    <section className="w-full mt-1 mb-0">
+      <div className="grid grid-cols-2 lg:grid-cols-4">
+        {items.map((it, idx) => (
+          <Link key={idx} href={it.href} className="group block px-1 py-1">
+            <div className="overflow-hidden hover:shadow-md transition-all duration-300 transform hover:scale-[1.02]">
+              <img
+                src={it.img}
+                alt={it.alt}
+                className="w-full h-auto object-cover transform scale-[0.85] group-hover:scale-[0.9] transition-transform duration-300"
+              />
+            </div>
+          </Link>
+        ))}
       </div>
     </section>
   );
