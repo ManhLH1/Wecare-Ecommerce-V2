@@ -138,13 +138,11 @@ export default async function handler(
     }
 
     // Fetch current prices for all products to include unit price information
-    const productCodes: string[] = Array.from(
-      new Set<string>(
-        (response.data.value || [])
-          .map((item: any) => productIdToCodeMap.get(item._crdfd_sanpham_value) || item.crdfd_masanpham)
-          .filter((code: any): code is string => typeof code === "string" && code.trim() !== "")
-      )
-    );
+    const productCodes: string[] = [...new Set(
+      (response.data.value || [])
+        .map((item: any) => productIdToCodeMap.get(item._crdfd_sanpham_value) || item.crdfd_masanpham)
+        .filter((code: any): code is string => !!code && code.trim())
+    )];
 
     // Fetch current prices for all product codes (batch fetch to avoid multiple API calls)
     const currentPricesMap = new Map<string, any>();
