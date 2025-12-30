@@ -132,8 +132,11 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const orderSummary = useMemo(() => {
     return productList.reduce(
       (acc, item) => {
-        const lineSubtotal = (item.discountedPrice || item.price) * item.quantity;
-        const lineVat = (lineSubtotal * item.vat) / 100;
+        // Tính toán theo cùng tiêu chuẩn với backend:
+        // - Làm tròn VAT mỗi dòng bằng Math.round
+        // - subtotal là giá sau chiết khấu nhân số lượng (đã là số nguyên tiền)
+        const lineSubtotal = Math.round(((item.discountedPrice ?? item.price) * (item.quantity || 0)));
+        const lineVat = Math.round((lineSubtotal * (item.vat ?? 0)) / 100);
         acc.subtotal += lineSubtotal;
         acc.vat += lineVat;
         acc.total += lineSubtotal + lineVat;
@@ -402,9 +405,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       const existingProduct = productList[existingProductIndex];
       const newQuantity = existingProduct.quantity + quantity;
 
-      // Recalculate amounts with new total quantity
-      const newSubtotal = newQuantity * finalPrice;
-      const newVatAmount = (newSubtotal * vatPercent) / 100;
+      // Recalculate amounts with new total quantity (round VAT per line)
+      const newSubtotal = Math.round(newQuantity * finalPrice);
+      const newVatAmount = Math.round((newSubtotal * (vatPercent || 0)) / 100);
       const newTotalAmount = newSubtotal + newVatAmount;
 
       // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [người duyệt]", ngược lại lấy từ input
@@ -440,9 +443,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       setProductList(updatedList);
     } else {
       // Add new product
-      // Calculate amounts
-      const subtotalCalc = quantity * finalPrice;
-      const vatCalc = (subtotalCalc * vatPercent) / 100;
+      // Calculate amounts (round VAT per line)
+      const subtotalCalc = Math.round(quantity * finalPrice);
+      const vatCalc = Math.round((subtotalCalc * (vatPercent || 0)) / 100);
       const totalCalc = subtotalCalc + vatCalc;
 
       // Auto-increment STT

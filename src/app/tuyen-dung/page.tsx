@@ -542,7 +542,7 @@ const RecruitmentPage = () => {
 
     try {
       setIsSubmitting(true);
-      const yeucautuyendungid = positions.find(p => p.cr1bb_vitri.toString() === formData.position)?.crdfd_yeucautuyendungid || "";
+      const yeucautuyendungid = positions.find(p => String(p.cr1bb_vitri ?? '') === formData.position)?.crdfd_yeucautuyendungid || "";
 
       const isDuplicate = await checkDuplicateApplication(
         formData.crdfd_hovaten,
@@ -716,7 +716,7 @@ const RecruitmentPage = () => {
                           const selectedPositionId = e.target.value;
                           
                           const positionsWithSameTitle = positions.filter(
-                            p => p.cr1bb_vitri.toString() === selectedPositionId
+                            p => String(p.cr1bb_vitri ?? '') === selectedPositionId
                           );
                           
                           const locationOptions = positionsWithSameTitle
@@ -741,11 +741,11 @@ const RecruitmentPage = () => {
                       >
                         <option value="">Chọn vị trí</option>
                         {positions && positions.length > 0 ? (
-                          // Filter out duplicate position titles (cr1bb_vitri)
-                          [...new Map(positions.map(p => [p.cr1bb_vitri, p])).values()].map((position) => (
-                            <option 
-                              key={position.cr1bb_vitri} 
-                              value={position.cr1bb_vitri.toString()}
+                          // Filter out duplicate position titles (cr1bb_vitri) and null values
+                          [...new Map(positions.filter(p => p.cr1bb_vitri != null).map(p => [p.cr1bb_vitri, p])).values()].map((position, idx) => (
+                            <option
+                              key={position.cr1bb_vitri ?? `pos-${idx}`}
+                              value={String(position.cr1bb_vitri ?? '')}
                             >
                               {position.crdfd_vitritext}
                             </option>
@@ -883,7 +883,7 @@ const RecruitmentPage = () => {
                         onChange={(e) => {
                           const selectedLocation = e.target.value;
                           const selectedPosition = positions.find(
-                            p => p.cr1bb_vitri.toString() === formData.position && 
+                            p => String(p.cr1bb_vitri ?? '') === formData.position &&
                                 p.crdfd_iaiem?.crdfd_tinhthanhid === selectedLocation
                           );
                           
