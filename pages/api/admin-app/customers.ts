@@ -57,22 +57,11 @@ export default async function handler(
       crdfd_phone2: item.crdfd_phone2 || "",
       cr44a_makhachhang: item.cr44a_makhachhang || "",
       crdfd_nganhnghe: item.crdfd_nganhnghe ?? null,
-      crdfd_keyquanhuyen: item.crdfd_keyquanhuyen || "",
       crdfd_tinhthanh: item._crdfd_tinhthanh_value || null,
       crdfd_tinhthanh_name: item.crdfd_Tinhthanh?.crdfd_name || "",
       cr1bb_vungmien: item.crdfd_Tinhthanh?.new_vungmienfx || null,
       cr1bb_vungmien_text: item.crdfd_Tinhthanh?.new_vungmienfx || "",
     }));
-
-    // Log customers with district keys for debugging
-    const customersWithDistrictKeys = customers.filter((c: any) => c.crdfd_keyquanhuyen);
-    if (customersWithDistrictKeys.length > 0) {
-      console.log('🏙️ [API Customers] Customers with crdfd_keyquanhuyen:', customersWithDistrictKeys.map((c: any) => ({
-        customerId: c.crdfd_customerid,
-        customerName: c.crdfd_name,
-        crdfd_keyquanhuyen: c.crdfd_keyquanhuyen
-      })));
-    }
 
     // Cache the result
     setCachedResponse(cacheKey, customers);
