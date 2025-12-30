@@ -332,45 +332,18 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
     return () => window.removeEventListener("resize", updateViewport);
   }, []);
 
-  // Auto-open CategoryMenu when at top of page, auto-close when scrolled down
-  // This behavior ONLY applies on DESKTOP homepage. Mobile NEVER auto-opens.
+  // CategoryMenu: NO auto-open/close based on scroll
+  // Menu only opens when hovering over the "Danh mục sản phẩm" button
+  // This removes the scroll behavior completely
   useEffect(() => {
-    // CRITICAL: Mobile check must be FIRST and ALWAYS return early
+    // Mobile: Always ensure closed
     if (typeof window === "undefined") return;
-    
-    // Mobile: Always ensure closed, never auto-open - check immediately
+
     if (!isDesktop) {
       setShowCategoryMenu(false);
-      return;
     }
-
-    // Desktop only from here
-    if (!isHomePage) {
-      // On non-homepage desktop, don't auto-show based on scroll
-      setShowCategoryMenu(false);
-      return;
-    }
-
-    // Desktop homepage only: auto-open/close based on scroll
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      const topThreshold = 50; // Open when scrollY < 50px (at top of page)
-
-      if (currentScrollY < topThreshold) {
-        // At top of page - open CategoryMenu
-        setShowCategoryMenu(true);
-      } else {
-        // Scrolled down - close CategoryMenu
-        setShowCategoryMenu(false);
-      }
-    };
-
-    // Initial check on mount
-    handleScroll();
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [isDesktop, isHomePage]);
+    // Desktop: menu starts closed, opens only on hover
+  }, [isDesktop]);
 
   // Fetch category data
   useEffect(() => {
@@ -428,20 +401,20 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
-      
+
       // Check if click is inside category menu dropdown (desktop only)
       if (isDesktop && showCategoryMenu) {
         // Check if click is inside the button container
         const isInsideButton = categoryMenuRef.current?.contains(target);
         // Check if click is inside the dropdown menu (by checking for CategoryMenu component elements)
         const isInsideDropdown = (target as Element)?.closest('.category-menu-dropdown') !== null;
-        
+
         // Only close if clicking outside both button and dropdown
         if (!isInsideButton && !isInsideDropdown) {
           setShowCategoryMenu(false);
         }
       }
-      
+
       // Support menu click outside handling
       if (supportMenuRef.current && !supportMenuRef.current.contains(target)) {
         setShowSupportMenu(false);
@@ -792,51 +765,33 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
         <div className="w-full border-b" style={{ backgroundColor: '#3492ab' }}>
           <div className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 xl:px-16">
             <div className="flex items-center">
-              {/* Nút Danh mục sản phẩm - Desktop: hover, Mobile: click để mở full screen */}
+              {/* Danh mục sản phẩm - Desktop: static label (sidebar nằm bên dưới), Mobile: button to open menu */}
               <div
                 className="relative"
                 ref={categoryMenuRef}
-                onMouseEnter={() => !isHomePage && isDesktop && setShowCategoryMenu(true)}
-                onMouseLeave={() => !isHomePage && isDesktop && setShowCategoryMenu(false)}
               >
+                {/* Desktop: Static label - không cần click vì sidebar luôn hiển thị */}
+                <div className="hidden lg:flex items-center gap-2 bg-amber-500 text-white px-4 py-2.5 rounded-none font-medium text-sm h-[45px] leading-tight select-none">
+                  <FaBars className="text-base" />
+                  <span className="whitespace-nowrap">Danh mục sản phẩm</span>
+                </div>
+
+                {/* Mobile: Button to open category menu */}
                 <button
                   onClick={() => {
-                    // Mobile: mở full screen modal
-                    if (!isDesktop) {
-                      setShowCategoryMenu(true);
-                    }
-                    // Desktop: toggle dropdown (nếu không dùng hover)
+                    // Mobile only: open category menu
+                    setShowCategoryMenu(true);
                   }}
-                  className="flex items-center gap-2 bg-amber-500 text-white px-4 py-2.5 rounded-none font-medium text-sm shadow-sm h-[45px] leading-tight cursor-pointer select-none w-full text-left active:bg-amber-600 transition-colors touch-manipulation"
+                  className="lg:hidden flex items-center gap-2 bg-amber-500 text-white px-4 py-2.5 rounded-none font-medium text-sm shadow-sm h-[45px] leading-tight cursor-pointer select-none text-left active:bg-amber-600 hover:bg-amber-600 transition-colors touch-manipulation"
                 >
                   <FaBars className="text-base" />
                   <span className="whitespace-nowrap">Danh mục sản phẩm</span>
                   <FaChevronDown className={`text-xs transition-transform duration-200 ${showCategoryMenu ? 'rotate-180' : ''}`} />
                 </button>
-
-                {/* Desktop: Dropdown Menu - Style giống sieuthihaiminh.vn */}
-                {showCategoryMenu && isDesktop && (
-                  <div
-                    className="category-menu-dropdown absolute top-full left-0 mt-0 z-50 bg-white rounded-b-lg shadow-2xl border border-gray-200 overflow-hidden"
-                    style={{ height: '500px' }}
-                    onMouseEnter={() => !isHomePage && isDesktop && setShowCategoryMenu(true)}
-                    onMouseLeave={() => !isHomePage && isDesktop && setShowCategoryMenu(false)}
-                  >
-                    <CategoryMenu
-                      categoryHierarchy={categoryHierarchy}
-                      categoryGroups={categoryGroups}
-                      loadingCategory={loadingCategory}
-                      onCategorySelect={handleCategorySelect}
-                      isMobile={false}
-                      isOpen={true}
-                      onClose={() => setShowCategoryMenu(false)}
-                    />
-                  </div>
-                )}
               </div>
 
-              {/* Tab Menu Items - Nằm bên phải nút Danh mục sản phẩm */}
-              <div className="hidden lg:flex items-center ml-6 gap-1">
+              {/* Tab Menu Items - Desktop: nằm bên trái */}
+              <div className="hidden lg:flex items-center gap-1">
                 {getMenuItems().map((item, index) => (
                   <Link
                     key={index}
@@ -854,6 +809,29 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
           </div>
         </div>
       </header>
+
+      {/* Mobile Only: Category Menu Modal/Drawer (Desktop dùng sidebar cố định) */}
+      {!isDesktop && showCategoryMenu && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setShowCategoryMenu(false)}
+          />
+          {/* Category Menu */}
+          <div className="absolute left-0 top-0 bottom-0 w-[85%] max-w-[320px] bg-white shadow-xl overflow-y-auto">
+            <CategoryMenu
+              categoryHierarchy={categoryHierarchy}
+              categoryGroups={categoryGroups}
+              loadingCategory={loadingCategory}
+              onCategorySelect={handleCategorySelect}
+              isMobile={true}
+              isOpen={showCategoryMenu}
+              onClose={() => setShowCategoryMenu(false)}
+            />
+          </div>
+        </div>
+      )}
       {showImageModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-4">
