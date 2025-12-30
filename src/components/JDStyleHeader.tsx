@@ -332,12 +332,12 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
     return () => window.removeEventListener("resize", updateViewport);
   }, []);
 
-  // Auto-open CategoryMenu when at top of page, auto-close when scrolled down
+  // Auto-open CategoryMenu when hero banner is visible, auto-close when it scrolls away
   // This behavior ONLY applies on DESKTOP homepage. Mobile NEVER auto-opens.
   useEffect(() => {
     // CRITICAL: Mobile check must be FIRST and ALWAYS return early
     if (typeof window === "undefined") return;
-    
+
     // Mobile: Always ensure closed, never auto-open - check immediately
     if (!isDesktop) {
       setShowCategoryMenu(false);
@@ -351,25 +351,52 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
       return;
     }
 
-    // Desktop homepage only: auto-open/close based on scroll
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      const topThreshold = 50; // Open when scrollY < 50px (at top of page)
+    // Desktop homepage only: auto-open/close based on hero banner visibility
+    // Use Intersection Observer to detect when hero banner is visible
+    let observer: IntersectionObserver | null = null;
 
-      if (currentScrollY < topThreshold) {
-        // At top of page - open CategoryMenu
-        setShowCategoryMenu(true);
+    // Small delay to ensure DOM is ready
+    const timeoutId = setTimeout(() => {
+      // Find the hero banner container by ID
+      const heroContainer = document.getElementById('hero-banner');
+
+      if (heroContainer) {
+        observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              // Open menu when hero banner is intersecting (visible)
+              // Close menu when hero banner is not intersecting (scrolled away)
+              setShowCategoryMenu(entry.isIntersecting);
+            });
+          },
+          {
+            // Trigger when at least 30% of hero banner is visible
+            threshold: 0.3,
+            // Add some margin to trigger slightly before/after hero banner edge
+            rootMargin: '0px 0px -100px 0px'
+          }
+        );
+
+        observer.observe(heroContainer);
       } else {
-        // Scrolled down - close CategoryMenu
-        setShowCategoryMenu(false);
+        // Fallback: if can't find hero banner, open menu at top of page
+        const handleScroll = () => {
+          const currentScrollY = window.scrollY;
+          setShowCategoryMenu(currentScrollY < 100);
+        };
+        handleScroll();
+        window.addEventListener("scroll", handleScroll, { passive: true });
+
+        return () => window.removeEventListener("scroll", handleScroll);
+      }
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (observer) {
+        observer.disconnect();
       }
     };
-
-    // Initial check on mount
-    handleScroll();
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
   }, [isDesktop, isHomePage]);
 
   // Fetch category data
@@ -428,20 +455,20 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
-      
+
       // Check if click is inside category menu dropdown (desktop only)
       if (isDesktop && showCategoryMenu) {
         // Check if click is inside the button container
         const isInsideButton = categoryMenuRef.current?.contains(target);
         // Check if click is inside the dropdown menu (by checking for CategoryMenu component elements)
         const isInsideDropdown = (target as Element)?.closest('.category-menu-dropdown') !== null;
-        
+
         // Only close if clicking outside both button and dropdown
         if (!isInsideButton && !isInsideDropdown) {
           setShowCategoryMenu(false);
         }
       }
-      
+
       // Support menu click outside handling
       if (supportMenuRef.current && !supportMenuRef.current.contains(target)) {
         setShowSupportMenu(false);
@@ -590,7 +617,7 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
 
         {/* Main Header with Search */}
         <div className="w-full bg-white border-b border-gray-200">
-          <div className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 xl:px-16 py-2">
+          <div className="w-full max-w-[2560px] mx-auto px-4 md:px-6 lg:px-8 xl:px-16 py-2">
             <div className="flex items-center justify-between gap-2 sm:gap-3 md:gap-4 lg:gap-6">
               {/* Logo - Bên trái - Compact */}
               <Link
@@ -790,7 +817,7 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
 
         {/* Sub Header - Danh mục sản phẩm */}
         <div className="w-full border-b" style={{ backgroundColor: '#3492ab' }}>
-          <div className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 xl:px-16">
+          <div className="w-full max-w-[2560px] mx-auto px-4 md:px-6 lg:px-8 xl:px-16">
             <div className="flex items-center">
               {/* Nút Danh mục sản phẩm - Desktop: hover, Mobile: click để mở full screen */}
               <div

@@ -328,10 +328,10 @@ const HomeContent = () => {
         if (data && Array.isArray(data)) {
           // Use top 20 product groups by order count for featured categories
           setCategoryGroups(data);
-          console.log(`[FeaturedCategories] loaded top product groups by orders:`, data.length, data.slice(0,3));
+          console.log(`[FeaturedCategories] loaded top product groups by orders:`, data.length, data.slice(0, 3));
           // Include all categories from API (including those with placeholder images)
-          const filtered = (data || []).filter((g:any)=> g && g.productGroupName);
-          console.log('[FeaturedCategories] all valid categories (including placeholders):', filtered.length, filtered.slice(0,3));
+          const filtered = (data || []).filter((g: any) => g && g.productGroupName);
+          console.log('[FeaturedCategories] all valid categories (including placeholders):', filtered.length, filtered.slice(0, 3));
           setCategoryHierarchy(data);
         } else {
           setCategoryGroups([]);
@@ -1016,7 +1016,7 @@ const HomeContent = () => {
         />
 
         {/* Main Layout */}
-        <div className="w-full max-w-[1920px] mx-auto pt-[115px]">
+        <div className="w-full max-w-[2560px] mx-auto pt-[115px] px-4">
           <div className="flex flex-col lg:flex-row">
             {/* Spacer for CategoryMenu dropdown on Desktop */}
             <div className="hidden lg:block w-[280px] flex-shrink-0" />
@@ -1032,7 +1032,7 @@ const HomeContent = () => {
         </div>
       </div>
 
-      <main className="w-full max-w-[1920px] mx-auto pt-0">
+      <main className="w-full max-w-[2560px] mx-auto pt-0 px-4">
 
         {/* DESKTOP Feature Cards dưới Hero (ẩn theo yêu cầu) */}
         <section id="features-b2b" className="hidden">
@@ -1270,7 +1270,7 @@ const HomeContent = () => {
             </Reveal>
           </div>
         </section>
-      {/* Panels Section removed */}
+        {/* Panels Section removed */}
 
         {/* Divider */}
         {/* <div className="w-full h-[6px] bg-gray-100 rounded-full my-2"></div> */}

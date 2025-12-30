@@ -287,9 +287,9 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
         <div className="w-full overflow-x-auto scrollbar-hide -mx-1 px-1">
           <nav className="flex gap-2 items-center py-2 min-w-max">
             {getMenuItems().map((item, idx) => (
-              <Link 
-                key={idx} 
-                href={item.href} 
+              <Link
+                key={idx}
+                href={item.href}
                 className="no-underline group flex items-center gap-1.5 whitespace-nowrap bg-white border border-gray-200 rounded-full px-3 py-2 shadow-sm active:scale-95 transition-all duration-200 touch-manipulation"
               >
                 <span className="text-sm">{item.icon}</span>
@@ -301,7 +301,7 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
       </div>
 
       {/* Hero Section + Tin tức bên phải (Desktop: ngang, Mobile: dọc) */}
-      <div ref={heroContainerRef} className="flex flex-col lg:flex-row gap-2 mb-3 lg:pl-3 lg:items-stretch">
+      <div id="hero-banner" ref={heroContainerRef} className="flex flex-col lg:flex-row gap-2 mb-3 lg:pl-0 lg:items-stretch">
         {/* Hero Banner */}
         <div className="w-full lg:w-[70%] border border-gray-200 rounded-xl shadow-sm overflow-hidden">
           {/* Mobile: aspect ratio 16:9, Desktop: fixed height */}
@@ -333,8 +333,8 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
               <div className="bg-gradient-to-br from-cyan-600 to-cyan-700 p-4 md:p-6 text-white h-full flex flex-col justify-center">
                 <h2 className="text-xl md:text-2xl font-bold mb-2">Ưu đãi tốt nhất hôm nay</h2>
                 <p className="text-cyan-100 mb-4 text-sm md:text-base">Tổng hợp khuyến mãi, sản phẩm mới, xếp hạng cao</p>
-                <button 
-                  className="bg-white text-cyan-600 px-4 md:px-6 py-2 font-medium hover:bg-gray-50 active:scale-95 transition-all w-fit rounded-lg touch-manipulation" 
+                <button
+                  className="bg-white text-cyan-600 px-4 md:px-6 py-2 font-medium hover:bg-gray-50 active:scale-95 transition-all w-fit rounded-lg touch-manipulation"
                   onClick={() => window.location.href = '/promotion'}
                 >
                   Xem khuyến mãi
@@ -396,7 +396,7 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
               </Link>
             </div>
           </div>
-          
+
           {/* Mobile scroll indicator */}
           <div className="flex justify-center gap-1.5 mt-2 lg:hidden">
             <div className="w-6 h-1 bg-cyan-500 rounded-full"></div>

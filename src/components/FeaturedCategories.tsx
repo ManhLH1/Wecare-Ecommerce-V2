@@ -44,7 +44,7 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
   // Show loading skeleton when loading
   if (loading) {
     return (
-      <section className="w-full py-3 bg-gradient-to-r from-cyan-600 to-cyan-700">
+      <section className="w-full py-3 bg-gradient-to-r from-cyan-500 to-cyan-600">
         <div className="w-full px-4">
           <div className="p-3">
             <div className="flex items-center justify-between mb-3">
@@ -90,7 +90,7 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
   }
 
   return (
-    <section className="w-full py-3 bg-gradient-to-r from-cyan-600 to-cyan-700">
+    <section className="w-full py-3 bg-gradient-to-r from-cyan-500 to-cyan-600">
       <div className="w-full px-4">
         <div className="p-3">
           <div className="flex items-center justify-between mb-3">

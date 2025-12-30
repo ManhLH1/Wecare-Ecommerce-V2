@@ -12,10 +12,17 @@ const items = [
 
 const HomeBenefitsPanel: React.FC = () => {
   return (
-    <section className="w-full mt-1 mb-0">
-      <div className="grid grid-cols-2 lg:grid-cols-4">
+    <section className="w-full mt-1 mb-0 -mx-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-0.5">
         {items.map((it, idx) => (
-          <Link key={idx} href={it.href} className="group block px-1 py-1">
+          <Link
+            key={idx}
+            href={it.href}
+            className="group block"
+            style={{
+              transform: `translateX(${idx === 0 ? -8 : idx * 10 + 8}px)`
+            }}
+          >
             <div className="overflow-hidden hover:shadow-md transition-all duration-300 transform hover:scale-[1.02]">
               <img
                 src={it.img}
