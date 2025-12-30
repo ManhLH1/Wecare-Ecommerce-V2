@@ -633,28 +633,45 @@ export interface SaveSOBGDetailsResponse {
  * Thông tin district leadtime
  */
 export interface DistrictLeadtime {
-  keyAuto: string;
-  leadtime: number;
+  customerId?: string;
+  leadtimeKhuVuc: number;
+  leadtimeTheoCa: number;
   districtId: string | null;
   districtName: string | null;
+  customerDistrictId: string | null;
 }
 
 /**
- * Lấy district leadtime theo key
+ * Lấy district leadtime.
+ * Accepts either:
+ * - a customerId string
+ * - an object { customerId?, keyAuto?, name? }
+ *
+ * Server supports query params: customerId | keyAuto | name
  */
-export const getDistrictLeadtime = async (params: { keyAuto?: string; name?: string }): Promise<DistrictLeadtime> => {
+export const getDistrictLeadtime = async (params: string | { customerId?: string; keyAuto?: string; name?: string }): Promise<DistrictLeadtime> => {
   try {
-    const qs = params.keyAuto ? `keyAuto=${encodeURIComponent(params.keyAuto)}` : params.name ? `name=${encodeURIComponent(params.name)}` : '';
-    const response = await axios.get(`${BASE_URL}/districts?${qs}`);
+    let qs = '';
+    if (typeof params === 'string') {
+      qs = `customerId=${encodeURIComponent(params)}`;
+    } else {
+      if (params.customerId) qs = `customerId=${encodeURIComponent(params.customerId)}`;
+      else if (params.keyAuto) qs = `keyAuto=${encodeURIComponent(params.keyAuto)}`;
+      else if (params.name) qs = `name=${encodeURIComponent(params.name)}`;
+    }
+    const url = `${BASE_URL}/districts?${qs}`;
+    const response = await axios.get(url);
     return response.data;
   } catch (error: any) {
     console.error('Error fetching district leadtime:', error);
     // Return default value if API fails
     return {
-      keyAuto: params.keyAuto || params.name || '',
-      leadtime: 0,
+      customerId: typeof params === 'string' ? params : params.customerId,
+      leadtimeKhuVuc: 0,
+      leadtimeTheoCa: 0,
       districtId: null,
-      districtName: null
+      districtName: null,
+      customerDistrictId: null
     };
   }
 };
