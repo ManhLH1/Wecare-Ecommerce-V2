@@ -5,7 +5,7 @@ import ProductEntryForm from './ProductEntryForm';
 import ProductTable from './ProductTable';
 import Dropdown from './Dropdown';
 import { useCustomers, useSaleOrderBaoGia } from '../_hooks/useDropdownData';
-import { saveSOBGDetails, fetchSOBGDetails, SaleOrderDetail, fetchPromotionOrders, applyPromotionOrder, PromotionOrderItem } from '../_api/adminApi';
+import { saveSOBGDetails, fetchSOBGDetails, SaleOrderDetail, fetchPromotionOrders, applySOBGPromotionOrder, PromotionOrderItem } from '../_api/adminApi';
 import { showToast } from '../../../components/ToastManager';
 import { getItem } from '../../../utils/SecureStorage';
 import { getStoredUser } from '../_utils/implicitAuthService';
@@ -47,6 +47,7 @@ interface ProductItem {
   createdOn?: string;
   isModified?: boolean; // Flag để đánh dấu dòng đã sửa
   originalQuantity?: number; // Lưu số lượng gốc để so sánh
+  promotionId?: string; // Optional promotion lookup id
 }
 
 interface SalesOrderBaoGiaFormProps {
@@ -590,6 +591,28 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           discountPercent: item.discountPercent,
           discountAmount: item.discountAmount,
           promotionText: item.promotionText,
+          // Include promotionId if provided by frontend or if a selectedPromotionOrders matches this product
+          promotionId: item.promotionId ?? (() => {
+            try {
+              if (!selectedPromotionOrders || selectedPromotionOrders.length === 0) return undefined;
+              const prodCode = (item.productCode || '').toString().trim().toUpperCase();
+              const prodGroup = (item.productGroupCode || '').toString().trim().toUpperCase();
+              for (const promo of selectedPromotionOrders) {
+                const codesRaw = promo.productCodes || '';
+                const groupsRaw = promo.productGroupCodes || '';
+                const codes = Array.isArray(codesRaw) ? codesRaw : String(codesRaw).split(',').map((c: any) => String(c || '').trim().toUpperCase()).filter(Boolean);
+                const groups = Array.isArray(groupsRaw) ? groupsRaw : String(groupsRaw).split(',').map((c: any) => String(c || '').trim().toUpperCase()).filter(Boolean);
+                const matchProduct = codes.length === 0 || (prodCode && codes.some((c: string) => prodCode.includes(c)));
+                const matchGroup = groups.length === 0 || (prodGroup && groups.some((g: string) => prodGroup.includes(g)));
+                if ((codes.length === 0 && groups.length === 0) || matchProduct || matchGroup) {
+                  return promo.id;
+                }
+              }
+            } catch (e) {
+              return undefined;
+            }
+            return undefined;
+          })(),
           discount2: item.discount2 ?? 0,
           discount2Enabled: item.discount2Enabled ?? false,
           invoiceSurcharge: item.invoiceSurcharge,
@@ -597,6 +620,14 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       });
 
       const userInfo = getStoredUser();
+
+      // Debug: log products payload to ensure promotionId is present
+      try {
+        // eslint-disable-next-line no-console
+        console.log('[Save SOBG] Payload productsToSave:', JSON.stringify(productsToSave, null, 2));
+      } catch (e) {
+        // ignore
+      }
 
       const result = await saveSOBGDetails({
         sobgId: soId,
@@ -909,7 +940,35 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     }
   };
 
-  // Áp dụng Promotion Order
+  // Sync selected promotions to productList: assign promotionId/promotionText to matching products
+  useEffect(() => {
+    if (!selectedPromotionOrders) return;
+    setProductList(prevList => {
+      return prevList.map(prod => {
+        try {
+          const prodCode = (prod.productCode || '').toString().trim().toUpperCase();
+          const prodGroup = (prod.productGroupCode || '').toString().trim().toUpperCase();
+          for (const promo of selectedPromotionOrders) {
+            const codesRaw = promo.productCodes || '';
+            const groupsRaw = promo.productGroupCodes || '';
+            const codes = Array.isArray(codesRaw) ? codesRaw : String(codesRaw).split(',').map((c: any) => String(c || '').trim().toUpperCase()).filter(Boolean);
+            const groups = Array.isArray(groupsRaw) ? groupsRaw : String(groupsRaw).split(',').map((c: any) => String(c || '').trim().toUpperCase()).filter(Boolean);
+            const matchProduct = codes.length === 0 || (prodCode && codes.some((c: string) => prodCode.includes(c)));
+            const matchGroup = groups.length === 0 || (prodGroup && groups.some((g: string) => prodGroup.includes(g)));
+            if ((codes.length === 0 && groups.length === 0) || matchProduct || matchGroup) {
+              return { ...prod, promotionId: promo.id, promotionText: promo.name || prod.promotionText };
+            }
+          }
+        } catch (e) {
+          // ignore
+        }
+        // no matching promo selected -> clear promotionId/promotionText
+        return { ...prod, promotionId: undefined, promotionText: '' };
+      });
+    });
+  }, [selectedPromotionOrders]);
+
+  // Áp dụng Promotion Order cho SOBG
   const handleApplyPromotionOrder = async () => {
     if (selectedPromotionOrders.length === 0) {
       showToast.error('Vui lòng chọn ít nhất một Promotion Order');
@@ -927,8 +986,8 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
 
       // Apply promotions one by one (API expects single promotion per request)
       const applyResults = await Promise.all(selectedPromotionOrders.map(promo =>
-        applyPromotionOrder({
-          soId,
+        applySOBGPromotionOrder({
+          sobgId: soId, // soId trong SOBG context là sobgId
           promotionId: promo.id,
           promotionName: promo.name,
           promotionValue: promo.value,
@@ -937,7 +996,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           productCodes: promo.productCodes,
           productGroupCodes: promo.productGroupCodes,
         }).catch((err) => {
-          console.error('Error applying single promotion:', promo.id, err);
+          console.error('Error applying single SOBG promotion:', promo.id, err);
           return { success: false, message: err?.message || 'Unknown error' } as any;
         })
       ));

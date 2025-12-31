@@ -153,6 +153,7 @@ export default function ProductTable({
 
   const handleQuantityEditEnd = (product: ProductItem) => {
     const newQuantity = parseFloat(editingQuantityValue) || product.quantity;
+
     if (newQuantity > 0 && newQuantity !== product.quantity) {
       handleQuantityChange(product, newQuantity);
     }
@@ -360,11 +361,16 @@ export default function ProductTable({
                   <td className="admin-app-cell-right">
                     {isEditing ? (
                       <input
-                        type="number"
-                        min="0.01"
-                        step="0.01"
+                        type="text"
+                        inputMode="decimal"
                         value={editingQuantityValue}
-                        onChange={(e) => setEditingQuantityValue(e.target.value)}
+                        onChange={(e) => {
+                          const inputValue = e.target.value;
+                          // Allow empty string, numbers, and decimal points
+                          if (inputValue === '' || /^\d*\.?\d*$/.test(inputValue)) {
+                            setEditingQuantityValue(inputValue);
+                          }
+                        }}
                         onBlur={() => handleQuantityEditEnd(product)}
                         onKeyDown={(e) => handleQuantityKeyDown(e, product)}
                         className="admin-app-quantity-input"

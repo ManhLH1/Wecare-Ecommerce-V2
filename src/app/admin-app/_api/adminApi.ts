@@ -529,6 +529,39 @@ export const applyPromotionOrder = async (
   }
 };
 
+export interface ApplySOBGPromotionOrderRequest {
+  sobgId: string;
+  promotionId: string;
+  promotionName?: string;
+  promotionValue?: number;
+  vndOrPercent?: string;
+  chietKhau2?: boolean;
+  productCodes?: string;
+  productGroupCodes?: string;
+}
+
+export interface ApplySOBGPromotionOrderResponse {
+  success: boolean;
+  sobgOrdersXPromotionId?: string;
+  updatedSodCount?: number;
+  message?: string;
+}
+
+/**
+ * Áp dụng Promotion Order cho SOBG
+ */
+export const applySOBGPromotionOrder = async (
+  data: ApplySOBGPromotionOrderRequest
+): Promise<ApplySOBGPromotionOrderResponse> => {
+  try {
+    const response = await axios.post(`${BASE_URL}/apply-sobg-promotion-order`, data);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error applying SOBG promotion order:', error);
+    throw new Error(error.response?.data?.details || 'Failed to apply SOBG promotion order');
+  }
+};
+
 // ============ SOBG (Sales Order Báo Giá) APIs ============
 
 export interface SOBaoGia {

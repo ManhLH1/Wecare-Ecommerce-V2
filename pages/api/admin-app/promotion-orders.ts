@@ -5,6 +5,7 @@ import { getAccessToken } from "../getAccessToken";
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
 const PROMOTION_TABLE = "crdfd_promotions";
 const ORDERS_X_PROMOTION_TABLE = "crdfd_ordersxpromotions";
+const SOBG_X_PROMOTION_TABLE = "crdfd_sobaogiaxpromotions";
 
 const escapeODataValue = (value: string) => value.replace(/'/g, "''");
 
@@ -240,8 +241,42 @@ const fetchExistingPromotionOrders = async (
       promotionId: item._crdfd_promotion_value,
       type: item.crdfd_type,
     }));
-
-    return await enrichPromotionOrdersWithDetails(orders, headers);
+    // Also fetch SOBG x Promotion records (SO báo giá x Promotion) to support SOBG context
+    try {
+      const sobgFilters = [
+        "statecode eq 0",
+        `_crdfd_sobaogia_value eq ${soId}`,
+        "crdfd_type eq 'Order'"
+      ];
+      const sobgSelect = [
+        "crdfd_sobaogiaxpromotionid",
+        "crdfd_name",
+        "_crdfd_promotion_value",
+        "crdfd_type"
+      ];
+      const sobgQuery = `$filter=${encodeURIComponent(sobgFilters.join(" and "))}&$select=${sobgSelect.join(",")}`;
+      const sobgEndpoint = `${BASE_URL}${SOBG_X_PROMOTION_TABLE}?${sobgQuery}`;
+      const sobgResp = await axios.get(sobgEndpoint, { headers });
+      const sobgOrders = (sobgResp.data.value || []).map((item: any) => ({
+        id: item.crdfd_sobaogiaxpromotionid,
+        name: item.crdfd_name,
+        promotionId: item._crdfd_promotion_value,
+        type: item.crdfd_type,
+      }));
+      // Merge (dedupe by promotionId)
+      const combined = [...orders, ...sobgOrders];
+      const uniqByPromotionIdMap: Record<string, PromotionOrder> = {};
+      combined.forEach(o => {
+        if (o.promotionId) {
+          uniqByPromotionIdMap[String(o.promotionId)] = o;
+        }
+      });
+      const uniqueOrders = Object.values(uniqByPromotionIdMap);
+      return await enrichPromotionOrdersWithDetails(uniqueOrders, headers);
+    } catch (e) {
+      // if SOBG fetch fails, fallback to original orders
+      return await enrichPromotionOrdersWithDetails(orders, headers);
+    }
   } catch (error) {
     console.warn("Error fetching existing promotion orders:", error);
     return [];
