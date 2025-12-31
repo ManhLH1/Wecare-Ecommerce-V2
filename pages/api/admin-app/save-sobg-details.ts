@@ -354,6 +354,10 @@ export default async function handler(
                 if (product.productCode && product.unit) {
                     unitConvId = await lookupUnitConversionId(product.productCode, product.unit, headers) || undefined;
                 }
+                // If lookup failed but frontend provided unitId (unit conversion id), use it
+                if (!unitConvId && product.unitId) {
+                    unitConvId = String(product.unitId).trim() || undefined;
+                }
 
                 // Compute canonical subtotal/vat/total to match UI 'Tổng' (subtotal + VAT)
                 const computedSubtotal = product.subtotal ?? ((product.discountedPrice ?? product.price) * (product.quantity || 0));
