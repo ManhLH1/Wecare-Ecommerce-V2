@@ -767,6 +767,13 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       } catch (err: any) {
         console.error('[SOBG Promotion] ❌ Error checking promotion orders after save:', err);
       }
+        // Mark saved products as created when API returns savedDetails (even on full success)
+        if (result.savedDetails && result.savedDetails.length > 0) {
+          setProductList(prevList => {
+            const savedCodes = new Set(result.savedDetails.map((p: any) => p.productCode).filter(Boolean));
+            return prevList.map(item => item.productCode && savedCodes.has(item.productCode) ? { ...item, isSodCreated: true } : item);
+          });
+        }
       if (result.partialSuccess || (result.totalFailed && result.totalFailed > 0)) {
         if (result.savedDetails && result.savedDetails.length > 0) {
           setProductList(prevList => {

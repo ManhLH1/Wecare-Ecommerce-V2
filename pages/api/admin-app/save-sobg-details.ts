@@ -251,6 +251,7 @@ export default async function handler(
         // ============ STEP 2: SAVE DETAILS ============
         let totalSaved = 0;
         let failedProducts = [];
+        const savedDetails: any[] = [];
         // Fetch existing SOBG x Promotion records for this SOBG (if any)
         let sobgPromotions: Array<{
             promotionId?: string;
@@ -566,6 +567,12 @@ export default async function handler(
                 }
 
                 totalSaved++;
+                // collect info for frontend to mark items saved and avoid duplicate saves
+                savedDetails.push({
+                    productCode: product.productCode || null,
+                    productName: product.productName || null,
+                    id: createdRecordId || null
+                });
 
             } catch (err: any) {
                 console.error(`Failed to save product ${product.productName}:`, err?.response?.data || err.message);
@@ -583,11 +590,13 @@ export default async function handler(
                 totalSaved,
                 totalFailed: failedProducts.length,
                 failedProducts,
+                savedDetails,
+                totalRequested: products.length,
                 message: `Lưu ${totalSaved} sản phẩm thành công. ${failedProducts.length} thất bại.`
             });
         }
 
-        return res.status(200).json({ success: true, totalSaved, message: "OK" });
+        return res.status(200).json({ success: true, totalSaved, totalRequested: products.length, savedDetails, message: "OK" });
 
     } catch (error: any) {
         console.error("System Error SOBG:", error);
