@@ -154,7 +154,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
 
   // Payment terms OptionSet mapping (value -> label)
   const PAYMENT_TERMS_MAP: Record<string, string> = {
-    '0': 'N/A',
+    '0': 'Thanh toán sau khi nhận hàng',
     '14': 'Thanh toán 2 lần vào ngày 10 và 25',
     '30': 'Thanh toán vào ngày 5 hàng tháng',
     '283640000': 'Tiền mặt',
@@ -1459,6 +1459,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             customerCode={customerCode}
             customerName={customer}
             vatText={selectedVatText}
+            paymentTerms={selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan}
             soId={soId}
             quantity={quantity}
             setQuantity={setQuantity}

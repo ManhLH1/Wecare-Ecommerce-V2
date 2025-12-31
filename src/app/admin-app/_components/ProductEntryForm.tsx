@@ -24,6 +24,31 @@ const VAT_OPTION_MAP: Record<number, number> = {
   191920003: 10, // 10%
 };
 
+// Payment terms OptionSet mapping (value -> label) - keep in sync with server/frontend mappings
+const PAYMENT_TERMS_MAP_CLIENT: Record<string, string> = {
+  '0': 'Thanh toán sau khi nhận hàng',
+  '14': 'Thanh toán 2 lần vào ngày 10 và 25',
+  '30': 'Thanh toán vào ngày 5 hàng tháng',
+  '283640000': 'Tiền mặt',
+  '283640001': 'Công nợ 7 ngày',
+  '191920001': 'Công nợ 20 ngày',
+  '283640002': 'Công nợ 30 ngày',
+  '283640003': 'Công nợ 45 ngày',
+  '283640004': 'Công nợ 60 ngày',
+  '283640005': 'Thanh toán trước khi nhận hàng',
+  // note: some keys may differ in server, include common ones if needed
+};
+
+const getPaymentTermLabelClient = (value?: string | number | null) => {
+  if (value === null || value === undefined || value === '') return 'Không ràng buộc';
+  const key = String(value).trim();
+  if (PAYMENT_TERMS_MAP_CLIENT[key]) return PAYMENT_TERMS_MAP_CLIENT[key];
+  // try numeric extraction
+  const digits = key.replace(/\D/g, '');
+  if (digits && PAYMENT_TERMS_MAP_CLIENT[digits]) return PAYMENT_TERMS_MAP_CLIENT[digits];
+  return key;
+};
+
 // Product groups that bypass inventory checks and allow free ordering (PowerApps: item.'Mã nhóm SP' = ...)
 const INVENTORY_BYPASS_PRODUCT_GROUP_CODES = [
   'NSP-00027',
@@ -52,6 +77,7 @@ interface ProductEntryFormProps {
   customerIndustry?: number | null;
   customerName?: string;
   customerDistrictKey?: string;
+  paymentTerms?: string | number | null;
   soId?: string;
   orderType?: number | null; // Loại đơn hàng OptionSet value (optional)
   vatText?: string; // VAT text từ SO ("Có VAT" hoặc "Không VAT")
@@ -119,6 +145,7 @@ export default function ProductEntryForm({
   customerCode,
   customerName,
   customerDistrictKey,
+  paymentTerms,
   soId,
   orderType,
   vatText,
@@ -227,6 +254,7 @@ export default function ProductEntryForm({
   const [basePriceForDiscount, setBasePriceForDiscount] = useState<number>(0);
   const [promotionDiscountPercent, setPromotionDiscountPercent] = useState<number>(0);
   const [orderPromotionInfo, setOrderPromotionInfo] = useState<{ vndOrPercent?: string; value?: number; chietKhau2?: boolean } | null>(null);
+  const [promotionWarning, setPromotionWarning] = useState<string | null>(null);
   const [apiPrice, setApiPrice] = useState<number | null>(null); // Giá từ API để check warning
   const [shouldReloadPrice, setShouldReloadPrice] = useState<number>(0); // Counter to trigger reload
   const [isProcessingAdd, setIsProcessingAdd] = useState<boolean>(false); // Flag để ngăn bấm liên tục
@@ -1347,13 +1375,12 @@ export default function ProductEntryForm({
           }
         }
 
-        const data = await fetchProductPromotions(selectedProductCode, customerCode, region);
+        const data = await fetchProductPromotions(selectedProductCode, customerCode, region, String(paymentTerms || ''));
 
         // Filter promotions dựa trên saleInventoryOnly và loại đơn hàng
         // Nếu saleInventoryOnly = true → chỉ áp dụng cho đơn Không VAT
         const vatTextLower = (vatText || '').toLowerCase();
         const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
-
         const filteredPromotions = data.filter((promo) => {
           const saleInventoryOnly = promo.saleInventoryOnly;
           // Kiểm tra saleInventoryOnly: có thể là boolean true, string "true", hoặc số 1
@@ -1639,13 +1666,25 @@ export default function ProductEntryForm({
     const selected = promotions.find(
       (p) => normalizePromotionId(p.id) === normalizePromotionId(selectedPromotionId || normalizePromotionId(promotions[0]?.id))
     );
-    const promoPct = derivePromotionPercent(selected);
-    setPromotionDiscountPercent(promoPct);
-    setDiscountPercent(promoPct); // propagate to parent state
-    setPromotionText(selected?.name || '');
-
-
-    recomputeTotals(price, quantity, promoPct || discountPercent, vatPercent);
+    // If selected promotion is marked not applicable, do not apply its discount and show inline warning
+    if (selected && selected.applicable === false) {
+      setPromotionDiscountPercent(0);
+      setDiscountPercent(0);
+      setPromotionText(selected?.name || '');
+      // Build friendly labels for both promotion requirement and order payment term
+      const promoReqLabel = getPaymentTermLabelClient(selected?.paymentTermsNormalized || selected?.paymentTerms);
+      const orderTermLabel = getPaymentTermLabelClient(paymentTerms);
+      const friendlyMsg = `Cảnh báo: Điều khoản thanh toán không khớp: chương trình yêu cầu "${promoReqLabel}", đơn hàng là "${orderTermLabel}"`;
+      setPromotionWarning(friendlyMsg);
+      recomputeTotals(price, quantity, 0, vatPercent);
+    } else {
+      const promoPct = derivePromotionPercent(selected);
+      setPromotionDiscountPercent(promoPct);
+      setDiscountPercent(promoPct); // propagate to parent state
+      setPromotionText(selected?.name || '');
+      setPromotionWarning(null);
+      recomputeTotals(price, quantity, promoPct || discountPercent, vatPercent);
+    }
   }, [selectedPromotionId, promotions, approvePrice]);
 
   // Check Promotion Order applicability (order-level) for the selected promotion
@@ -1662,7 +1701,8 @@ export default function ProductEntryForm({
           customerCode,
           orderTotal ?? 0,
           selectedProductCode ? [selectedProductCode] : [],
-          selectedProductGroupCode ? [selectedProductGroupCode] : []
+          selectedProductGroupCode ? [selectedProductGroupCode] : [],
+          String(paymentTerms || '')
         );
         const available = (res && res.availablePromotions) ? res.availablePromotions : (res && res.allPromotions ? res.allPromotions : []);
         const matched = (available || []).find((p: any) => normalizePromotionId(p.id) === normalizePromotionId(selectedPromotion.id));
@@ -2521,7 +2561,7 @@ export default function ProductEntryForm({
                             : '';
                         return (
                           <option key={normalizePromotionId(promo.id)} value={normalizePromotionId(promo.id)}>
-                            {`${promo.name}${valueLabel}`}
+                            {`${promo.name}${promo.applicable === false ? ' (Không hợp lệ)' : ''}${valueLabel}`}
                           </option>
                         );
                       })}
@@ -2544,6 +2584,13 @@ export default function ProductEntryForm({
                     <span className="admin-app-badge-promotion">
                       Giảm: {promotionDiscountPercent || discountPercent || 0}%
                     </span>
+                  )}
+                  {promotionWarning && (
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{ borderLeft: '4px solid #dc2626', background: '#fff4f4', color: '#991b1b', padding: '8px 12px', borderRadius: 4 }}>
+                        <strong>Cảnh báo:</strong> {promotionWarning}
+                      </div>
+                    </div>
                   )}
                 </>
               ) : null}

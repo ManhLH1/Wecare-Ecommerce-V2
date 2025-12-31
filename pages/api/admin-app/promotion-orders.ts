@@ -9,6 +9,34 @@ const SOBG_X_PROMOTION_TABLE = "crdfd_sobaogiaxpromotions";
 
 const escapeODataValue = (value: string) => value.replace(/'/g, "''");
 
+// Payment terms mapping (key -> label) - keep in sync with promotions API
+const PAYMENT_TERMS_MAP: Record<string, string> = {
+  "0": "Thanh toán sau khi nhận hàng",
+  "14": "Thanh toán 2 lần vào ngày 10 và 25",
+  "30": "Thanh toán vào ngày 5 hàng tháng",
+  "283640000": "Tiền mặt",
+  "283640001": "Công nợ 7 ngày",
+  "191920001": "Công nợ 20 ngày",
+  "283640002": "Công nợ 30 ngày",
+  "283640003": "Công nợ 45 ngày",
+  "283640004": "Công nợ 60 ngày",
+  "283640005": "Thanh toán trước khi nhận hàng",
+};
+
+const normalizePaymentTerm = (input?: string | null) : string | null => {
+  if (!input && input !== "") return null;
+  const t = String(input || "").trim();
+  if (t === "") return null;
+  if (PAYMENT_TERMS_MAP[t]) return t;
+  const foundKey = Object.keys(PAYMENT_TERMS_MAP).find(
+    (k) => PAYMENT_TERMS_MAP[k].toLowerCase() === t.toLowerCase()
+  );
+  if (foundKey) return foundKey;
+  const digits = t.replace(/\D/g, "");
+  if (digits && PAYMENT_TERMS_MAP[digits]) return digits;
+  return t;
+};
+
 /**
  * API để lấy danh sách Promotion loại "Order" (áp dụng cho toàn đơn hàng)
  * và kiểm tra xem đã có promotion order nào được áp dụng cho SO chưa
@@ -591,10 +619,34 @@ export default async function handler(
       productGroupCodes
     );
 
-    // Step 6: Get max value promotions (apply chietKhau2 filter and max logic)
+    // Step 6: Annotate promotions with payment terms applicability (if provided in query)
+    const requestedPaymentTerms = req.query?.paymentTerms ? normalizePaymentTerm(String(req.query.paymentTerms)) : null;
+    availablePromotions = availablePromotions.map((p) => {
+      const promoNormalized = normalizePaymentTerm(String(p.ieukhoanthanhtoanapdung || ''));
+      let applicable = true;
+      let paymentTermsMismatch = false;
+      let warningMessage: string | undefined;
+      if (requestedPaymentTerms) {
+        if (!p.ieukhoanthanhtoanapdung || String(p.ieukhoanthanhtoanapdung).trim() === '') {
+          applicable = true;
+        } else if (promoNormalized === requestedPaymentTerms) {
+          applicable = true;
+        } else {
+          applicable = false;
+          paymentTermsMismatch = true;
+          // Use friendly labels when possible
+          const promoLabel = PAYMENT_TERMS_MAP[promoNormalized || String(p.ieukhoanthanhtoanapdung)] || String(p.ieukhoanthanhtoanapdung || '');
+          const orderLabel = PAYMENT_TERMS_MAP[requestedPaymentTerms] || String(req.query.paymentTerms || '');
+          warningMessage = `Điều khoản thanh toán không khớp: chương trình yêu cầu \"${promoLabel}\", đơn hàng là \"${orderLabel}\"`;
+        }
+      }
+      return { ...p, paymentTermsNormalized: promoNormalized, applicable, paymentTermsMismatch, warningMessage };
+    });
+
+    // Step 7: Get max value promotions (apply chietKhau2 filter and max logic)
     const promotionOrderMax = getMaxValuePromotions(availablePromotions);
 
-    // Step 7: Return response
+    // Step 8: Return response
     res.status(200).json({
       existingPromotionOrders,
       hasExistingPromotionOrder: existingPromotionOrders.length > 0,

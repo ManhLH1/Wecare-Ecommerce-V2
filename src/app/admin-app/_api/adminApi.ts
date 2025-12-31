@@ -103,6 +103,11 @@ export interface Promotion {
   quantityConditionLevel3?: string;
   cumulativeQuantity?: string;
   paymentTerms?: string;
+  // Added fields for server-side applicability annotation
+  paymentTermsNormalized?: string;
+  applicable?: boolean;
+  paymentTermsMismatch?: boolean;
+  warningMessage?: string;
   paymentTermsLevel2?: string;
   paymentTermsLevel3?: string;
   saleInventoryOnly?: any;
@@ -259,7 +264,8 @@ export const fetchProductPrice = async (
 export const fetchProductPromotions = async (
   productCode?: string,
   customerCode?: string,
-  region?: string
+  region?: string,
+  paymentTerms?: string
 ): Promise<Promotion[]> => {
   if (!productCode) return [];
   try {
@@ -269,6 +275,9 @@ export const fetchProductPromotions = async (
     }
     if (region) {
       params.region = region;
+    }
+    if (paymentTerms) {
+      params.paymentTerms = paymentTerms;
     }
     const response = await axios.get(`${BASE_URL}/promotions`, { params });
     return response.data;
@@ -477,13 +486,15 @@ export const fetchPromotionOrders = async (
   customerCode?: string,
   totalAmount?: number,
   productCodes?: string[],
-  productGroupCodes?: string[]
+  productGroupCodes?: string[],
+  paymentTerms?: string
 ): Promise<PromotionOrderResponse> => {
   try {
     const params: Record<string, string> = { soId };
     if (customerCode) params.customerCode = customerCode;
     if (productCodes && productCodes.length > 0) params.productCodes = productCodes.join(",");
     if (productGroupCodes && productGroupCodes.length > 0) params.productGroupCodes = productGroupCodes.join(",");
+    if (paymentTerms) params.paymentTerms = paymentTerms;
 
     const response = await axios.get(`${BASE_URL}/promotion-orders`, { params });
     return response.data;

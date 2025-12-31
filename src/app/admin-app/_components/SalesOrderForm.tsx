@@ -119,7 +119,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
 
   // Payment terms OptionSet mapping (value -> label)
   const PAYMENT_TERMS_MAP: Record<string, string> = {
-    '0': 'N/A',
+    '0': 'Thanh toán sau khi nhận hàng',
     '14': 'Thanh toán 2 lần vào ngày 10 và 25',
     '30': 'Thanh toán vào ngày 5 hàng tháng',
     '283640000': 'Tiền mặt',
@@ -1085,6 +1085,29 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       const results = [];
       for (const promo of selectedPromotionOrders) {
         try {
+          // Validate payment terms: nếu promotion chỉ định điều khoản thanh toán và không khớp
+          // với điều khoản trên đơn hàng hiện tại thì bỏ qua promotion này và show warning.
+          const orderPaymentRaw = selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan;
+          const promoPaymentRaw = (promo as any).paymentTerms;
+          if (promoPaymentRaw && String(promoPaymentRaw).trim() !== "") {
+            const promoTermsStr = String(promoPaymentRaw).trim();
+            const promoTokens = promoTermsStr
+              .split(/[,;|\/]+/)
+              .map((t: string) => t.trim())
+              .filter(Boolean);
+            const orderPaymentStr = orderPaymentRaw !== undefined && orderPaymentRaw !== null ? String(orderPaymentRaw).trim() : "";
+            const paymentMatch = promoTokens.length === 0
+              ? true
+              : (orderPaymentStr !== "" && promoTokens.includes(orderPaymentStr));
+
+            if (!paymentMatch) {
+              showToast.error(`Promotion "${promo.name}" không áp dụng: điều khoản thanh toán không khớp.`);
+              // Ghi lại kết quả thất bại để báo cáo sau
+              results.push({ success: false, message: 'Điều khoản thanh toán không khớp', promotionName: promo.name });
+              continue;
+            }
+          }
+
           // Chuẩn hóa vndOrPercent để đảm bảo khớp với API
           // API expects "VNĐ" (với Đ tiếng Việt) hoặc "%"
           // Ensure vndOrPercent is a string before calling trim()
@@ -1777,6 +1800,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             customerCode={customerCode}
             customerName={customer}
             vatText={selectedVatText}
+            paymentTerms={selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan}
             orderType={selectedSo?.crdfd_loai_don_hang}
             soId={soId}
             orderTotal={orderSummary.total}

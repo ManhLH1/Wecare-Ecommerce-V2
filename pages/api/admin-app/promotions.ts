@@ -8,6 +8,39 @@ const CUSTOMER_TABLE = "crdfd_customers";
 
 const escapeODataValue = (value: string) => value.replace(/'/g, "''");
 
+// Payment terms mapping (key -> label) - keep in sync with frontend PAYMENT_TERMS_MAP
+const PAYMENT_TERMS_MAP: Record<string, string> = {
+  // Note: OptionSet value "0" corresponds to "Thanh toán sau khi nhận hàng" in CRM
+  "0": "Thanh toán sau khi nhận hàng",
+  "14": "Thanh toán 2 lần vào ngày 10 và 25",
+  "30": "Thanh toán vào ngày 5 hàng tháng",
+  "283640000": "Tiền mặt",
+  "283640001": "Công nợ 7 ngày",
+  "191920001": "Công nợ 20 ngày",
+  "283640002": "Công nợ 30 ngày",
+  "283640003": "Công nợ 45 ngày",
+  "283640004": "Công nợ 60 ngày",
+  "283640005": "Thanh toán trước khi nhận hàng",
+};
+
+const normalizePaymentTerm = (input?: string | null) : string | null => {
+  if (!input && input !== "") return null;
+  const t = String(input || "").trim();
+  if (t === "") return null;
+  // If exact key exists
+  if (PAYMENT_TERMS_MAP[t]) return t;
+  // If input matches a label (case-insensitive), find the key
+  const foundKey = Object.keys(PAYMENT_TERMS_MAP).find(
+    (k) => PAYMENT_TERMS_MAP[k].toLowerCase() === t.toLowerCase()
+  );
+  if (foundKey) return foundKey;
+  // If input contains digits only, try that
+  const digits = t.replace(/\D/g, "");
+  if (digits && PAYMENT_TERMS_MAP[digits]) return digits;
+  // Fallback: return original normalized string
+  return t;
+};
+
 const resolveCustomerCodeFromPhone = async (phone: string, headers: Record<string, string>) => {
   const variants: string[] = [];
   const trimmed = phone.trim();
@@ -54,7 +87,7 @@ export default async function handler(
   }
 
   try {
-    const { productCode, customerCode, customerCodes, region } = req.query;
+    const { productCode, customerCode, customerCodes, region, paymentTerms } = req.query;
 
     // productCode can be comma-separated; require at least one
     if (!productCode || typeof productCode !== "string" || !productCode.trim()) {
@@ -272,6 +305,45 @@ export default async function handler(
     // Filter out promotions with type "Order"
     promotions = promotions.filter((promo: any) => promo.type !== "Order");
 
+    // Normalize and annotate promotions with applicability/payment-terms info.
+    const requestedNormalized = paymentTerms && typeof paymentTerms === "string" && paymentTerms.trim()
+      ? normalizePaymentTerm(paymentTerms)
+      : null;
+
+    promotions = promotions.map((promo: any) => {
+      const promoPaymentTerms = promo.paymentTerms;
+      const promoNormalized = normalizePaymentTerm(promoPaymentTerms);
+      let applicable = true;
+      let paymentTermsMismatch = false;
+      let warningMessage: string | undefined;
+
+      if (requestedNormalized) {
+        // If promotion has no payment terms restriction -> applicable
+        if (!promoPaymentTerms || promoPaymentTerms.trim() === "") {
+          applicable = true;
+        } else if (promoNormalized === requestedNormalized) {
+          // exact normalized match
+          applicable = true;
+        } else {
+          applicable = false;
+          paymentTermsMismatch = true;
+          warningMessage = `Điều khoản thanh toán không khớp: chương trình yêu cầu \"${promoPaymentTerms}\", đơn hàng là \"${paymentTerms}\"`;
+        }
+      } else {
+        // No payment term provided by client -> treat as applicable
+        applicable = true;
+      }
+
+      return {
+        ...promo,
+        paymentTermsNormalized: promoNormalized,
+        applicable,
+        paymentTermsMismatch,
+        warningMessage,
+      };
+    });
+
+    // Return annotated promotions array (backwards-compatible: still an array)
     res.status(200).json(promotions);
   } catch (error: any) {
     console.error("Error fetching promotions:", error);
