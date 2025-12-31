@@ -5,7 +5,7 @@ import ProductEntryForm from './ProductEntryForm';
 import ProductTable from './ProductTable';
 import Dropdown from './Dropdown';
 import { useCustomers, useSaleOrderBaoGia } from '../_hooks/useDropdownData';
-import { saveSOBGDetails, fetchSOBGDetails, SaleOrderDetail, fetchPromotionOrders, applySOBGPromotionOrder, PromotionOrderItem } from '../_api/adminApi';
+import { saveSOBGDetails, fetchSOBGDetails, SaleOrderDetail, fetchPromotionOrders, applySOBGPromotionOrder, PromotionOrderItem, SOBaoGia } from '../_api/adminApi';
 import { showToast } from '../../../components/ToastManager';
 import { getItem } from '../../../utils/SecureStorage';
 import { getStoredUser } from '../_utils/implicitAuthService';
@@ -152,9 +152,37 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     return '';
   }, []);
 
+  // Payment terms OptionSet mapping (value -> label)
+  const PAYMENT_TERMS_MAP: Record<string, string> = {
+    '0': 'N/A',
+    '14': 'Thanh toán 2 lần vào ngày 10 và 25',
+    '30': 'Thanh toán vào ngày 5 hàng tháng',
+    '283640000': 'Tiền mặt',
+    '283640001': 'Công nợ 7 ngày',
+    '191920001': 'Công nợ 20 ngày',
+    '283640002': 'Công nợ 30 ngày',
+    '283640003': 'Công nợ 45 ngày',
+    '283640004': 'Công nợ 60 ngày',
+    '283640005': 'Thanh toán trước khi nhận hàng',
+  };
+
+  const getPaymentTermLabel = (value?: string | number | null) => {
+    if (value === null || value === undefined || value === '') return null;
+    const key = String(value);
+    if (PAYMENT_TERMS_MAP[key]) return PAYMENT_TERMS_MAP[key];
+    return value;
+  };
+
   const selectedSo = soBaoGiaList.find((so) => so.id === soId);
   const selectedVatText = getVatLabelText(selectedSo);
   const isNonVatSelected = (selectedVatText || '').toLowerCase().includes('không');
+  // Debug logs for payment term fields
+  console.log('[SOBG] selectedSo payment fields:', {
+    id: selectedSo?.id,
+    crdfd_ieukhoanthanhtoan: selectedSo?.crdfd_ieukhoanthanhtoan,
+    crdfd_dieu_khoan_thanh_toan: selectedSo?.crdfd_dieu_khoan_thanh_toan,
+    dieuKhoanThanhToan: selectedSo?.dieuKhoanThanhToan,
+  });
 
   // Helper function to generate SO label from SOBG object (giống SO - không có VAT text trong label)
   const generateSoLabel = useCallback((so: any): string => {
@@ -269,6 +297,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             discountPercent: detail.discountPercent || 0,
             discountAmount: detail.discountAmount || 0,
             promotionText: detail.promotionText || '',
+            promotionId: (detail as any).promotionId || undefined,
             invoiceSurcharge: detail.invoiceSurcharge || 0,
             // Map chiết khấu 2 (stored as decimal or percent)
             discount2: (() => {
@@ -525,6 +554,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           isSodCreated: true,
           isModified: false,
           originalQuantity: detail.quantity,
+          promotionId: (detail as any).promotionId || undefined,
         };
       });
       mappedProducts.sort((a, b) => (b.stt || 0) - (a.stt || 0));
@@ -663,36 +693,80 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         showToast.success(result.message || 'Tạo đơn bán chi tiết thành công!');
       }
 
-      // Clear form fields after successful save (giữ lại SOBG và customer) - giống SO
-      // If all saved successfully (no partial), clear entire form (like SalesOrderForm behavior)
-      if (!result.partialSuccess && (!result.totalFailed || result.totalFailed === 0)) {
-        clearEverything();
-      } else {
-        // Partial success -> clear only product input fields (keep SOBG/customer)
-        setProduct('');
-        setProductCode('');
-        setProductGroupCode('');
-        setUnit('');
-        setUnitId('');
-        setQuantity(1);
-        setPrice('');
-        setSubtotal(0);
-        setVatPercent(0);
-        setVatAmount(0);
-        setTotalAmount(0);
-        setStockQuantity(0);
-        setApprovePrice(false);
-        setApproveSupPrice(false);
-        setUrgentOrder(false);
-        setDeliveryDate('');
-        // Keep note - không clear ghi chú
-        setApprover('');
-        setDiscountPercent(0);
-        setDiscountAmount(0);
-        setPromotionText('');
+      // After save: clear product input fields (keep customer and SOBG in UI until we decide)
+      setProduct('');
+      setProductCode('');
+      setProductGroupCode('');
+      setUnit('');
+      setUnitId('');
+      setQuantity(1);
+      setPrice('');
+      setSubtotal(0);
+      setVatPercent(0);
+      setVatAmount(0);
+      setTotalAmount(0);
+      setStockQuantity(0);
+      setApprovePrice(false);
+      setApproveSupPrice(false);
+      setUrgentOrder(false);
+      setDeliveryDate('');
+      // Keep note - không clear ghi chú
+      setApprover('');
+      setDiscountPercent(0);
+      setDiscountAmount(0);
+      setPromotionText('');
+
+      // Prepare saved identifiers and totals BEFORE any potential clearing so we can check promotions
+      const savedSoId = soId;
+      const savedCustomerCode = customerCode;
+      const savedProductCodes = productsToSave.map(p => p.productCode).filter(Boolean) as string[];
+      const savedProductGroupCodes = productsToSave.map(p => p.productGroupCode).filter(Boolean) as string[];
+      const savedTotalAmount = orderSummary.total;
+
+      // After save: check promotion orders and show popup similar to SalesOrderForm
+      try {
+
+        console.log('[SOBG Promotion] Checking promotion orders after save:', {
+          sobgId: savedSoId,
+          customerCode: savedCustomerCode,
+          totalAmount: savedTotalAmount,
+          productCodes: savedProductCodes,
+          productGroupCodes: savedProductGroupCodes
+        });
+
+        const promotionOrderResult = await fetchPromotionOrders(
+          savedSoId,
+          savedCustomerCode,
+          savedTotalAmount,
+          savedProductCodes,
+          savedProductGroupCodes
+        );
+
+        console.log('[SOBG Promotion] Result:', {
+          hasExistingPromotionOrder: promotionOrderResult.hasExistingPromotionOrder,
+          availablePromotionsCount: promotionOrderResult.availablePromotions?.length || 0,
+          allPromotionsCount: promotionOrderResult.allPromotions?.length || 0,
+          availablePromotions: promotionOrderResult.availablePromotions
+        });
+
+        if (promotionOrderResult.allPromotions && promotionOrderResult.allPromotions.length > 0) {
+          console.log('[SOBG Promotion] ✅ Showing popup with allPromotions (show all available promotions)');
+          setSoId(savedSoId);
+          setPromotionOrderList(promotionOrderResult.allPromotions);
+          setShowPromotionOrderPopup(true);
+        } else if (promotionOrderResult.availablePromotions && promotionOrderResult.availablePromotions.length > 0) {
+          console.log('[SOBG Promotion] ✅ Showing popup with availablePromotions (fallback)');
+          setSoId(savedSoId);
+          setPromotionOrderList(promotionOrderResult.availablePromotions);
+          setShowPromotionOrderPopup(true);
+        } else {
+          console.log('[SOBG Promotion] ❌ Không có promotion khả dụng - không hiển thị popup');
+          // No promotions -> clear all form data after successful save
+          // keep current behavior (do not force clearEverything)
+        }
+      } catch (err: any) {
+        console.error('[SOBG Promotion] ❌ Error checking promotion orders after save:', err);
       }
-      // Nếu tất cả sản phẩm đã lưu thành công (không partial) => đã clear form (clearEverything)
-      // Nếu partial success, chỉ cập nhật các sản phẩm đã được lưu theo response.savedDetails nếu có
       if (result.partialSuccess || (result.totalFailed && result.totalFailed > 0)) {
         if (result.savedDetails && result.savedDetails.length > 0) {
           setProductList(prevList => {
@@ -896,44 +970,83 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     if (!customerId || orderSummary.total <= 0) return;
 
     try {
-      console.log('[Auto-select Promotion SOBG] Checking promotions for total amount:', orderSummary.total);
+      const orderTotal = orderSummary.total;
+      console.log('[Auto-select Promotion SOBG] Checking promotions for total amount:', orderTotal);
 
       // Fetch available promotions for current order
       const promotionOrderResult = await fetchPromotionOrders(
         soId,
         customerCode || undefined,
-        orderSummary.total,
+        orderTotal,
         // Ensure arrays are typed as string[] (filter out undefined/null)
         productList.map(p => p.productCode).filter((c): c is string => typeof c === 'string' && c.trim() !== ''),
         productList.map(p => p.productGroupCode).filter((c): c is string => typeof c === 'string' && c.trim() !== '')
       );
 
-      if (promotionOrderResult.availablePromotions && promotionOrderResult.availablePromotions.length > 0) {
-        // Auto-select promotions where totalAmount >= totalAmountCondition
-        const autoSelectedPromotions = promotionOrderResult.availablePromotions.filter((promo: PromotionOrderItem) => {
-          const totalAmountCondition = promo.totalAmountCondition || 0;
-          return orderSummary.total >= totalAmountCondition;
+      const available = promotionOrderResult.availablePromotions || [];
+      if (available.length === 0) {
+        console.log('[Auto-select Promotion SOBG] No available promotions for current order');
+        return;
+      }
+
+      // Auto-select strategy: select highest value promotions that meet conditions
+      // - For percent-based promotions -> select those with the maximum percent value (that meet condition)
+      // - For VND-based promotions -> select those with the maximum VND value (that meet condition)
+      const percentPromos = available.filter(p => String(p.vndOrPercent || '').trim() === '%' || String(p.vndOrPercent) === '191920000');
+      const vndPromos = available.filter(p => !percentPromos.includes(p));
+
+      let selected: PromotionOrderItem[] = [];
+
+      // Process percent promotions: select max percent value that meets condition
+      if (percentPromos.length > 0) {
+        // First filter by condition, then find max value among those that meet condition
+        const percentValid = percentPromos.filter(p => {
+          const cond = Number((p as any).totalAmountCondition || 0);
+          return isNaN(cond) || cond === 0 || orderTotal >= cond;
         });
 
-        if (autoSelectedPromotions.length > 0) {
-          console.log('[Auto-select Promotion SOBG] Auto-selecting promotions based on total amount:', {
-            orderTotal: orderSummary.total,
-            autoSelectedCount: autoSelectedPromotions.length,
-            autoSelectedNames: autoSelectedPromotions.map(p => p.name)
-          });
-
-          setPromotionOrderList(promotionOrderResult.availablePromotions);
-          setSelectedPromotionOrders(autoSelectedPromotions);
-          setShowPromotionOrderPopup(true);
-        } else {
-          console.log('[Auto-select Promotion SOBG] No promotions auto-selected, but available promotions exist');
-          setPromotionOrderList(promotionOrderResult.availablePromotions);
-          setSelectedPromotionOrders([]);
-          setShowPromotionOrderPopup(true);
+        if (percentValid.length > 0) {
+          const maxPercent = Math.max(...percentValid.map(p => Number(p.value || 0)));
+          const bestPercent = percentValid.filter(p => Number(p.value || 0) === maxPercent);
+          selected.push(...bestPercent);
         }
-      } else {
-        console.log('[Auto-select Promotion SOBG] No available promotions for current order');
       }
+
+      // Process VND promotions: select max VND value that meets condition
+      if (vndPromos.length > 0) {
+        // First filter by condition, then find max value among those that meet condition
+        const vndValid = vndPromos.filter(p => {
+          const cond = Number((p as any).totalAmountCondition || 0);
+          return isNaN(cond) || cond === 0 || orderTotal >= cond;
+        });
+
+        if (vndValid.length > 0) {
+          const maxVnd = Math.max(...vndValid.map(p => Number(p.value || 0)));
+          const bestVnd = vndValid.filter(p => Number(p.value || 0) === maxVnd);
+          selected.push(...bestVnd);
+        }
+      }
+
+      // If nothing selected by rules, fallback: show all available promotions (user can choose)
+      if (selected.length === 0) {
+        console.log('[Auto-select Promotion SOBG] No auto-selected promotions by rules, showing all available promotions');
+        setPromotionOrderList(available);
+        setSelectedPromotionOrders([]);
+        setShowPromotionOrderPopup(true);
+        return;
+      }
+
+      // Deduplicate selected by id and set UI
+      const uniqueById: Record<string, PromotionOrderItem> = {};
+      for (const p of selected) {
+        if (p && p.id) uniqueById[p.id] = p;
+      }
+      const finalSelected = Object.values(uniqueById);
+
+      console.log('[Auto-select Promotion SOBG] Auto-selected promotions:', finalSelected.map(p => p.name));
+      setPromotionOrderList(available);
+      setSelectedPromotionOrders(finalSelected);
+      setShowPromotionOrderPopup(true);
     } catch (error: any) {
       console.error('[Auto-select Promotion SOBG] Error:', error);
       // Silently fail auto-selection - don't block user flow
@@ -1037,6 +1150,8 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     clearFormOnSoChange();
   };
 
+  const currentOrderTotal = totalAmount || orderSummary?.total || productList.reduce((s, p) => s + (p.totalAmount || ((p.discountedPrice ?? p.price) * (p.quantity || 0) + ((p.vat || 0) ? Math.round(((p.discountedPrice ?? p.price) * (p.quantity || 0) * (p.vat || 0)) / 100) : 0))), 0);
+
   return (
     <div className="admin-app-compact-layout">
       {/* Promotion Order Popup */}
@@ -1049,9 +1164,26 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             <div className="admin-app-popup-content">
               <div className="admin-app-field-compact">
                 <label className="admin-app-label-inline">Chọn Promotion Order (có thể chọn nhiều)</label>
+                <div style={{
+                  margin: '8px 0',
+                  display: 'inline-block',
+                  padding: '8px 12px',
+                  background: '#eff6ff',
+                  borderRadius: 8,
+                  fontSize: '15px',
+                  fontWeight: 700,
+                  color: '#0369a1',
+                  boxShadow: '0 1px 3px rgba(3,105,161,0.08)'
+                }}>
+                  Tổng tiền đơn: {currentOrderTotal ? `${currentOrderTotal.toLocaleString('vi-VN')} VNĐ` : '0 VNĐ'}
+                </div>
                 <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '4px', padding: '8px' }}>
                   {promotionOrderList.map((promo) => {
                     const isSelected = selectedPromotionOrders.some(p => p.id === promo.id);
+                    const condition = promo.totalAmountCondition ?? promo.totalAmountCondition === 0 ? promo.totalAmountCondition : null;
+                    const conditionNum = condition !== null ? Number(condition) : null;
+                    const meetsCondition = conditionNum === null || !isNaN(conditionNum) && currentOrderTotal >= conditionNum;
+
                     return (
                       <label
                         key={promo.id}
@@ -1059,21 +1191,25 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
                           display: 'flex',
                           alignItems: 'center',
                           padding: '8px',
-                          cursor: 'pointer',
+                          cursor: meetsCondition ? 'pointer' : 'not-allowed',
                           borderRadius: '4px',
-                          marginBottom: '4px',
+                          marginBottom: '8px',
                           backgroundColor: isSelected ? '#f0f9ff' : 'transparent',
+                          borderLeft: meetsCondition ? '4px solid #10b981' : '4px solid transparent',
+                          opacity: meetsCondition ? 1 : 0.6,
+                          boxShadow: meetsCondition ? '0 1px 4px rgba(16,185,129,0.08)' : undefined
                         }}
                         onMouseEnter={(e) => {
-                          if (!isSelected) e.currentTarget.style.backgroundColor = '#f8fafc';
+                          if (!isSelected && meetsCondition) e.currentTarget.style.backgroundColor = '#f8fafc';
                         }}
                         onMouseLeave={(e) => {
-                          if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                          if (!isSelected && meetsCondition) e.currentTarget.style.backgroundColor = 'transparent';
                         }}
                       >
                         <input
                           type="checkbox"
                           checked={isSelected}
+                          disabled={!meetsCondition}
                           onChange={(e) => {
                             if (e.target.checked) {
                               setSelectedPromotionOrders([...selectedPromotionOrders, promo]);
@@ -1081,7 +1217,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
                               setSelectedPromotionOrders(selectedPromotionOrders.filter(p => p.id !== promo.id));
                             }
                           }}
-                          style={{ marginRight: '8px', cursor: 'pointer' }}
+                          style={{ marginRight: '8px', cursor: meetsCondition ? 'pointer' : 'not-allowed' }}
                         />
                         <span style={{ fontSize: '13px', flex: 1 }}>
                           {promo.name} ({promo.vndOrPercent === '%' ? `${promo.value}%` : `${promo.value?.toLocaleString('vi-VN')} VNĐ`})
@@ -1091,6 +1227,17 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
                             </span>
                           )}
                         </span>
+                        <div style={{ marginLeft: '12px', textAlign: 'right' }}>
+                          {conditionNum !== null ? (
+                            <div style={{ fontSize: '12px', color: meetsCondition ? '#065f46' : '#b91c1c', fontWeight: 600 }}>
+                              {meetsCondition ? 'Đã đạt đk' : 'Chưa đạt đk'}
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                              Không yêu cầu
+                            </div>
+                          )}
+                        </div>
                       </label>
                     );
                   })}
@@ -1278,6 +1425,11 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
                   loading={soLoading}
                   disabled={!customerId}
                 />
+                {(selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan) && (
+                  <div className="admin-app-field-info" style={{ marginTop: '8px', fontSize: '13px', color: '#6b7280' }}>
+                    <strong>Điều khoản thanh toán:</strong> {getPaymentTermLabel(selectedSo.crdfd_ieukhoanthanhtoan || selectedSo.crdfd_dieu_khoan_thanh_toan)}
+                  </div>
+                )}
               </div>
 
               {/* Removed urgent checkbox from order-info (moved into ProductEntryForm) */}

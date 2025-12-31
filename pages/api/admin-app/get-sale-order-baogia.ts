@@ -118,6 +118,7 @@ export default async function handler(
       loaiHoaDon: item.crdfd_loaihoadon || null,
       xuatHoaDon: item.crdfd_xuat_hoa_don || false,
       dieuKhoanThanhToan: item.crdfd_ieukhoanthanhtoan || null,
+      crdfd_ieukhoanthanhtoan: item.crdfd_ieukhoanthanhtoan || "",
 
       // Map lookups (using expanded values for customer, others just ID)
       chinhanhKH: {

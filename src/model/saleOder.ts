@@ -7,6 +7,7 @@ export default interface SaleOrder {
   crdfd_tongtien: number;
   crdfd_tongtienkhongvatnew: string;
   crdfd_dieu_khoan_thanh_toan: string;
+  crdfd_ieukhoanthanhtoan?: string;
   crdfd_gtgtnew: number;
   crdfd_trangthaithanhtoan: string;
   crdfd_trangthaixuatkho: string;

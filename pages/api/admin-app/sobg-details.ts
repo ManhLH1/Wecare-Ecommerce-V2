@@ -87,6 +87,7 @@ export default async function handler(
       "crdfd_ghichu",             // Ghi chú
       "crdfd_phu_phi_hoa_don",   // Phụ phí hoá đơn (%)
       "crdfd_Promotion",          // Promotion
+      "_crdfd_promotion_value",   // Promotion lookup value (ID)
       "crdfd_promotiontext",      // Promotion text
       "_crdfd_sanpham_value",     // Product ID
       "crdfd_masanpham",          // Mã sản phẩm (productCode)
@@ -302,6 +303,7 @@ export default async function handler(
         discountPercent: item.crdfd_chietkhau || 0,
         discountAmount: item.crdfd_chietkhauvn || 0,
         promotionText: item.crdfd_promotiontext || "",
+        promotionId: item._crdfd_promotion_value || undefined,
         invoiceSurcharge: item.crdfd_phu_phi_hoa_don || 0,
         createdOn: item.createdon || "",
         // Include current prices information for unit price loading

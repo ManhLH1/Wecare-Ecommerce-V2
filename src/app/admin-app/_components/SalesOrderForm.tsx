@@ -117,6 +117,29 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const [promotionText, setPromotionText] = useState('');
   const [productList, setProductList] = useState<ProductItem[]>([]);
 
+  // Payment terms OptionSet mapping (value -> label)
+  const PAYMENT_TERMS_MAP: Record<string, string> = {
+    '0': 'N/A',
+    '14': 'Thanh toán 2 lần vào ngày 10 và 25',
+    '30': 'Thanh toán vào ngày 5 hàng tháng',
+    '283640000': 'Tiền mặt',
+    '283640001': 'Công nợ 7 ngày',
+    '191920001': 'Công nợ 20 ngày',
+    '283640002': 'Công nợ 30 ngày',
+    '283640003': 'Công nợ 45 ngày',
+    '283640004': 'Công nợ 60 ngày',
+    '283640005': 'Thanh toán trước khi nhận hàng',
+  };
+
+  const getPaymentTermLabel = (value?: string | number | null) => {
+    if (value === null || value === undefined || value === '') return null;
+    // If value is numeric string or number, try map lookup
+    const key = String(value);
+    if (PAYMENT_TERMS_MAP[key]) return PAYMENT_TERMS_MAP[key];
+    // Fallback: if it's already a human-readable string, return it
+    return value;
+  };
+
   // Promotion Order Popup state
   const [showPromotionOrderPopup, setShowPromotionOrderPopup] = useState(false);
   const [promotionOrderList, setPromotionOrderList] = useState<PromotionOrderItem[]>([]);
@@ -1721,6 +1744,11 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                 />
                 {soError && (
                   <div className="admin-app-error-inline">{soError}</div>
+                )}
+                {(selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan) && (
+                  <div className="admin-app-field-info" style={{ marginTop: '8px', fontSize: '13px', color: '#6b7280' }}>
+                    <strong>Điều khoản thanh toán:</strong> {getPaymentTermLabel(selectedSo.crdfd_ieukhoanthanhtoan || selectedSo.crdfd_dieu_khoan_thanh_toan)}
+                  </div>
                 )}
               </div>
 

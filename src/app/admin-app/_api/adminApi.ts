@@ -53,6 +53,8 @@ export interface SaleOrder {
   crdfd_vat?: number;
   cr1bb_loaihoaon?: number | null; // Loại hóa đơn OptionSet value
   crdfd_loai_don_hang?: number | null; // Loại đơn hàng OptionSet value
+  crdfd_dieu_khoan_thanh_toan?: string;
+    crdfd_ieukhoanthanhtoan?: string;
 }
 
 export interface Warehouse {
@@ -575,6 +577,9 @@ export interface SOBaoGia {
   trangThaiBaoGia?: number;
   loaiHoaDon?: number; // Loại hóa đơnOptionSet value
   xuatHoaDon?: boolean;
+  dieuKhoanThanhToan?: string; // Điều khoản thanh toán
+  crdfd_ieukhoanthanhtoan?: string; // Điều khoản thanh toán (raw field)
+  crdfd_dieu_khoan_thanh_toan?: string; // Điều khoản thanh toán (alternate raw field)
   khachHang?: {
     id: string | null;
     name: string;

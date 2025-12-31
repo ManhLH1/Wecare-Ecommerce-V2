@@ -74,7 +74,8 @@ export default async function handler(
       "crdfd_Promotion@odata.bind": `/crdfd_promotions(${promotionId})`,
       crdfd_type: "Order",
       crdfd_loai: loai,
-      crdfd_chieckhau2: chietKhau2ValueToStore,
+      // NOTE: crdfd_chieckhau2 is NOT a field on crdfd_sobaogiaxpromotions in CRM metadata.
+      // The SOD (crdfd_sodbaogias) records will receive crdfd_chieckhau2 when applying chiết khấu 2.
       statecode: 0, // Active
     };
 

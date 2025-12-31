@@ -56,7 +56,7 @@ export default async function handler(
     // Filter: Active data = Active (0 = false = Active)
     filter += ` and crdfd_activedata eq false`;
 
-    const columns = "crdfd_sale_orderid,crdfd_name,crdfd_so_code,crdfd_so_auto,cr1bb_vattext,cr1bb_vattext,cr1bb_loaihoaon";
+    const columns = "crdfd_sale_orderid,crdfd_name,crdfd_so_code,crdfd_so_auto,cr1bb_vattext,cr1bb_vattext,cr1bb_loaihoaon,crdfd_dieu_khoan_thanh_toan,crdfd_dieu_khoan_thanh_toan";
     // Sort by Created On (createdon) descending as per Power BI logic
     const query = `$select=${columns}&$filter=${encodeURIComponent(
       filter
@@ -79,7 +79,8 @@ export default async function handler(
         crdfd_so_code: item.crdfd_so_code || "",
         crdfd_so_auto: item.crdfd_so_auto || "",
         cr1bb_vattext: item.cr1bb_vattext || "",
-        cr1bb_loaihoaon: item.cr1bb_loaihoaon ?? null
+        cr1bb_loaihoaon: item.cr1bb_loaihoaon ?? null,
+        crdfd_dieu_khoan_thanh_toan: item.crdfd_dieu_khoan_thanh_toan || "",
       };
     });
 

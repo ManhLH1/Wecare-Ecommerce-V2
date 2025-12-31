@@ -253,9 +253,9 @@ export default async function handler(
     // If promotion has no region tag, it applies to all regions
     if (region && typeof region === "string" && region.trim()) {
       const regionLower = region.trim().toLowerCase();
-      const normalizedRegion = regionLower.includes("miền trung") ? "MIỀN TRUNG" : 
+      const normalizedRegion = regionLower.includes("miền trung") ? "MIỀN TRUNG" :
                                regionLower.includes("miền nam") ? "MIỀN NAM" : null;
-      
+
       if (normalizedRegion) {
         promotions = promotions.filter((promo: any) => {
           const promoName = (promo.name || "").toUpperCase();
@@ -268,6 +268,9 @@ export default async function handler(
         });
       }
     }
+
+    // Filter out promotions with type "Order"
+    promotions = promotions.filter((promo: any) => promo.type !== "Order");
 
     res.status(200).json(promotions);
   } catch (error: any) {

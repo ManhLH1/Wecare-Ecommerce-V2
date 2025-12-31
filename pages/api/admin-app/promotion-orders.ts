@@ -48,6 +48,7 @@ interface AvailablePromotion {
   productCodes?: string;
   productGroupCodes?: string;
   totalAmountCondition?: number;
+  ieukhoanthanhtoanapdung?: any;
   startDate?: string;
   endDate?: string;
 }
@@ -307,7 +308,11 @@ const enrichPromotionOrdersWithDetails = async (
         "crdfd_vn",
         "cr1bb_chietkhau2",
         "crdfd_masanpham_multiple",
-        "cr1bb_manhomsp_multiple"
+        "cr1bb_manhomsp_multiple",
+        "cr1bb_tongtienapdung",
+        "cr1bb_ieukhoanthanhtoanapdung",
+        "crdfd_start_date",
+        "crdfd_end_date"
       ];
 
       const url = `${BASE_URL}${PROMOTION_TABLE}(${pid})?$select=${selectFields.join(",")}`;
@@ -334,6 +339,10 @@ const enrichPromotionOrdersWithDetails = async (
         chietKhau2: normalizeChietKhau2(promo.cr1bb_chietkhau2),
         productCodes: promo.crdfd_masanpham_multiple,
         productGroupCodes: promo.cr1bb_manhomsp_multiple,
+        totalAmountCondition: promo.cr1bb_tongtienapdung,
+        ieukhoanthanhtoanapdung: promo.cr1bb_ieukhoanthanhtoanapdung,
+        startDate: promo.crdfd_start_date,
+        endDate: promo.crdfd_end_date,
       };
     });
   } catch (error) {
@@ -400,6 +409,7 @@ const fetchAvailablePromotions = async (
     "crdfd_masanpham_multiple",
     "cr1bb_manhomsp_multiple",
     "cr1bb_tongtienapdung",
+    "cr1bb_ieukhoanthanhtoanapdung",
     "crdfd_start_date",
     "crdfd_end_date"
   ];
@@ -423,6 +433,7 @@ const fetchAvailablePromotions = async (
     productCodes: promo.crdfd_masanpham_multiple,
     productGroupCodes: promo.cr1bb_manhomsp_multiple,
     totalAmountCondition: promo.cr1bb_tongtienapdung,
+    ieukhoanthanhtoanapdung: promo.cr1bb_ieukhoanthanhtoanapdung,
     startDate: promo.crdfd_start_date,
     endDate: promo.crdfd_end_date,
   }));
