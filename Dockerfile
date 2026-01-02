@@ -3,6 +3,8 @@ FROM node:20-alpine AS BUILD_IMAGE
 
 WORKDIR /app
 COPY package*.json ./
+# Copy .env file for build process if needed
+COPY .env* ./
 RUN npm ci
 COPY . .
 RUN npm run build
