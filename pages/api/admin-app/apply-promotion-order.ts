@@ -64,7 +64,18 @@ export default async function handler(
     // Tính Loại và Chiết khấu theo logic PowerApps:
     // Loại: If(VND_Percent='VNĐ/% (Promotion)'.VNĐ,"Tiền","Phần trăm")
     // Chiết khấu: If(VND_Percent='VNĐ/% (Promotion)'.VNĐ,ValuePromotion,ValuePromotion/100)
-    const loai = vndOrPercent === "VNĐ" ? "Tiền" : "Phần trăm";
+    // Hỗ trợ cả dạng text ("VNĐ" / "%") và OptionSet numeric ("191920001" / "191920000")
+    const OPTION_PERCENT = "191920000";
+    const OPTION_VND = "191920001";
+    const vndOrPercentNormalized = vndOrPercent !== undefined && vndOrPercent !== null
+      ? String(vndOrPercent).trim()
+      : "";
+    const isVnd =
+      vndOrPercentNormalized === "VNĐ" ||
+      vndOrPercentNormalized.toUpperCase() === "VND" ||
+      vndOrPercentNormalized === OPTION_VND;
+    const isPercent = vndOrPercentNormalized === "%" || vndOrPercentNormalized === OPTION_PERCENT;
+    const loai = isVnd ? "Tiền" : "Phần trăm";
     // Store raw promotion value as-is (e.g., 5 => store 5). Calculation uses vndOrPercent at runtime.
     const chietKhau2ValueToStore = promotionValue || 0;
     
@@ -226,6 +237,19 @@ export default async function handler(
       if (updatedSodCount > 0) {
         await recalculateOrderTotals(soId, headers);
       }
+      // Cập nhật trường crdfd_chieckhau2 trên Sale Order (header) để phản ánh promotionValue (raw)
+      // Một số môi trường/metadata có thể dùng tên trường khác (crdfd_chietkhau2) — ghi cả hai để an toàn.
+      try {
+        const soUpdatePayload: any = {
+          crdfd_chieckhau2: chietKhau2ValueToStore,
+          crdfd_chietkhau2: chietKhau2ValueToStore,
+        };
+        const soUpdateEndpoint = `${BASE_URL}${SALE_ORDERS_TABLE}(${soId})`;
+        const soPatchResp = await axios.patch(soUpdateEndpoint, soUpdatePayload, { headers });
+        console.log('[ApplyPromotion] Updated SO crdfd_chieckhau2/chieckhau2:', chietKhau2ValueToStore, 'status', soPatchResp.status);
+      } catch (err: any) {
+        console.warn('[ApplyPromotion] Failed to update SO crdfd_chieckhau2/chietkhau2:', err?.message || err);
+      }
     }
 
     res.status(200).json({
@@ -336,7 +360,8 @@ async function updateSodChietKhau2(
   // - If percent ('%'), convert promotionValue (e.g., 5) -> 0.05 for calculation
   // - If VNĐ, use promotionValue directly as amount to subtract
   let chietKhau2ForCalc: number;
-  if (vndOrPercent === "%") {
+  const vndOrPercentNorm = vndOrPercent !== undefined && vndOrPercent !== null ? String(vndOrPercent).trim() : "";
+  if (vndOrPercentNorm === "%" || vndOrPercentNorm === "191920000") {
     chietKhau2ForCalc = (promotionValue || 0) / 100;
   } else {
     chietKhau2ForCalc = promotionValue || 0;
@@ -352,7 +377,7 @@ async function updateSodChietKhau2(
   const basePrice = sodData.crdfd_giagoc || sodData.crdfd_gia || 0;
 
   let giaCK2: number;
-  if (vndOrPercent === "%") {
+  if (vndOrPercentNorm === "%" || vndOrPercentNorm === "191920000") {
     // Chiết khấu theo %, chietKhau2ForCalc is decimal (e.g., 0.05)
     giaCK2 = basePrice * (1 - chietKhau2ForCalc);
   } else {

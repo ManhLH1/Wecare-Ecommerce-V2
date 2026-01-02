@@ -498,8 +498,9 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     setIsAdding(false);
     showToast.success('Đã thêm sản phẩm vào danh sách!');
 
-    // Trigger promotion popup if this is the first product or total amount qualifies
-    if (customerId && orderSummary.total > 0 && !showPromotionOrderPopup) {
+    // Trigger promotion popup only after user has added at least one product
+    // and total amount qualifies (not just when customer is selected)
+    if (customerId && orderSummary.total > 0 && productList.length > 0 && !showPromotionOrderPopup) {
       setTimeout(() => autoSelectPromotions(), 500); // Small delay to allow UI update
     }
   };
@@ -749,20 +750,17 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           availablePromotions: promotionOrderResult.availablePromotions
         });
 
-        if (promotionOrderResult.allPromotions && promotionOrderResult.allPromotions.length > 0) {
-          console.log('[SOBG Promotion] ✅ Showing popup with allPromotions (show all available promotions)');
+        // Chỉ hiển thị popup nếu có promotion chiết khấu 2 (chietKhau2 = true)
+        const chietKhau2Promotions = promotionOrderResult.allPromotions?.filter(p => p.chietKhau2) || [];
+
+        if (chietKhau2Promotions.length > 0) {
+          console.log('[SOBG Promotion] ✅ Có chiết khấu 2 - hiển thị popup với', chietKhau2Promotions.length, 'promotion(s)');
           setSoId(savedSoId);
-          setPromotionOrderList(promotionOrderResult.allPromotions);
-          setShowPromotionOrderPopup(true);
-        } else if (promotionOrderResult.availablePromotions && promotionOrderResult.availablePromotions.length > 0) {
-          console.log('[SOBG Promotion] ✅ Showing popup with availablePromotions (fallback)');
-          setSoId(savedSoId);
-          setPromotionOrderList(promotionOrderResult.availablePromotions);
+          setPromotionOrderList(chietKhau2Promotions);
           setShowPromotionOrderPopup(true);
         } else {
-          console.log('[SOBG Promotion] ❌ Không có promotion khả dụng - không hiển thị popup');
-          // No promotions -> clear all form data after successful save
-          // keep current behavior (do not force clearEverything)
+          console.log('[SOBG Promotion] ❌ Không có chiết khấu 2 - không hiển thị popup');
+          // No chiet khau 2 promotions -> keep current behavior (do not force clearEverything)
         }
       } catch (err: any) {
         console.error('[SOBG Promotion] ❌ Error checking promotion orders after save:', err);

@@ -32,7 +32,11 @@ const PromotionPopup = () => {
           const imageUrl = response.data.data.value[randomIndex].cr1bb_img_url;
           if (imageUrl) {
             setBannerUrl(imageUrl);
-            setIsOpen(true); // Chỉ mở popup khi có ảnh
+            // Kiểm tra xem user đã đóng popup trong session này chưa
+            const hasClosedPopup = sessionStorage.getItem('promotion-popup-closed');
+            if (!hasClosedPopup) {
+              setIsOpen(true); // Chỉ mở popup khi có ảnh và chưa đóng trong session
+            }
           }
         } else {
           // Nếu không có dữ liệu thì không hiển thị popup
@@ -64,6 +68,8 @@ const PromotionPopup = () => {
 
   const handleClose = () => {
     setIsOpen(false);
+    // Lưu trạng thái đã đóng popup trong session
+    sessionStorage.setItem('promotion-popup-closed', 'true');
   };
 
   if (isLoading || !isOpen || !bannerUrl) {

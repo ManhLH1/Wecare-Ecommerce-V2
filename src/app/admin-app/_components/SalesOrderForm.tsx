@@ -312,7 +312,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   // Auto-select promotion orders based on total amount condition (cr1bb_tongtienapdung)
   useEffect(() => {
     const autoSelectPromotions = async () => {
-      if (!soId || !customerCode || totalAmount <= 0) {
+      if (!soId || !customerCode || totalAmount <= 0 || productList.length === 0) {
         return;
       }
 
@@ -754,11 +754,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       setDiscountAmount(0);
       setPromotionText('');
 
-      // Logic mới: Không tự động show popup promotion order sau khi save
-      // Đảm bảo popup hiển thị cho sale chọn promotion bổ sung chiết khấu 2
+      // Logic mới: Chỉ hiển thị popup promotion order sau khi save nếu có chiết khấu 2
       // Chỉ check khi có soId và customerCode (đã save thành công)
-      // Logic mới: Không tự động check promotion orders sau khi save
-      // if (savedSoId && savedCustomerCode) {
+      if (savedSoId && savedCustomerCode) {
         try {
           console.log('[Promotion Order] Checking promotion orders after save:', {
             soId: savedSoId,
@@ -783,30 +781,26 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             availablePromotions: promotionOrderResult.availablePromotions
           });
 
-          // LUÔN hiển thị popup với TOÀN BỘ promotions (ưu tiên allPromotions)
-          if (promotionOrderResult.allPromotions && promotionOrderResult.allPromotions.length > 0) {
-            console.log('[Promotion Order] ✅ Showing popup with allPromotions (show all available promotions)');
+          // Chỉ hiển thị popup nếu có promotion chiết khấu 2 (chietKhau2 = true)
+          const chietKhau2Promotions = promotionOrderResult.allPromotions?.filter(p => p.chietKhau2) || [];
+
+          if (chietKhau2Promotions.length > 0) {
+            console.log('[Promotion Order] ✅ Có chiết khấu 2 - hiển thị popup với', chietKhau2Promotions.length, 'promotion(s)');
             setSoId(savedSoId);
-            setPromotionOrderList(promotionOrderResult.allPromotions);
-            setShowPromotionOrderPopup(true);
-          } else if (promotionOrderResult.availablePromotions && promotionOrderResult.availablePromotions.length > 0) {
-            // Fallback: nếu allPromotions rỗng nhưng availablePromotions có data, dùng availablePromotions
-            console.log('[Promotion Order] ✅ Showing popup with availablePromotions (fallback)');
-            setSoId(savedSoId);
-            setPromotionOrderList(promotionOrderResult.availablePromotions);
+            setPromotionOrderList(chietKhau2Promotions);
             setShowPromotionOrderPopup(true);
           } else {
-            console.log('[Promotion Order] ❌ Không có promotion khả dụng - không hiển thị popup');
-            // No promotions -> clear all form data after successful save
+            console.log('[Promotion Order] ❌ Không có chiết khấu 2 - không hiển thị popup');
+            // No chiet khau 2 promotions -> clear all form data after successful save
             clearEverything();
           }
         } catch (error) {
           console.error('[Promotion Order] ❌ Error checking promotion orders:', error);
           // Nếu có lỗi khi fetch, vẫn không hiển thị popup
         }
-      // } else {
-      //   console.log('[Promotion Order] ❌ Không có soId hoặc customerCode - không hiển thị popup');
-      // }
+      } else {
+        console.log('[Promotion Order] ❌ Không có soId hoặc customerCode - không hiển thị popup');
+      }
 
       // Thay vào đó, promotions được save kèm luôn trong handleSaveWithPromotions
       console.log('[Promotion Order] Save completed with promotions, no auto-popup needed');
@@ -1110,17 +1104,35 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
 
           // Chuẩn hóa vndOrPercent để đảm bảo khớp với API
           // API expects "VNĐ" (với Đ tiếng Việt) hoặc "%"
-          // Ensure vndOrPercent is a string before calling trim()
+          // Support both textual values and OptionSet numeric codes:
+          //  - "191920000" -> "%"
+          //  - "191920001" -> "VNĐ"
+          const OPTION_PERCENT = '191920000';
+          const OPTION_VND = '191920001';
           const rawVndOrPercent = promo.vndOrPercent ?? '%';
           let normalizedVndOrPercent = typeof rawVndOrPercent === 'string'
             ? rawVndOrPercent.trim()
             : String(rawVndOrPercent).trim();
-          // Kiểm tra nếu là % (case-insensitive)
-          if (normalizedVndOrPercent.toLowerCase() === '%') {
+
+          // Normalize known numeric option set codes
+          if (normalizedVndOrPercent === OPTION_PERCENT) {
             normalizedVndOrPercent = '%';
-          } else {
-            // Nếu không phải %, coi như là VNĐ (có thể là "VNĐ", "VND", "vnd", etc.)
+          } else if (normalizedVndOrPercent === OPTION_VND) {
             normalizedVndOrPercent = 'VNĐ';
+          } else {
+            // Handle textual forms (case-insensitive). Treat '%' specially, everything else -> 'VNĐ'
+            if (normalizedVndOrPercent.toLowerCase() === '%') {
+              normalizedVndOrPercent = '%';
+            } else {
+              // Accept 'vnd' or 'vnđ' (with/without diacritics)
+              const up = normalizedVndOrPercent.toUpperCase();
+              if (up === 'VND' || up === 'VNĐ') {
+                normalizedVndOrPercent = 'VNĐ';
+              } else {
+                // Fallback: treat unknown as 'VNĐ' to avoid sending empty value
+                normalizedVndOrPercent = 'VNĐ';
+              }
+            }
           }
 
           console.log('[Promotion Order] Applying promotion:', {
