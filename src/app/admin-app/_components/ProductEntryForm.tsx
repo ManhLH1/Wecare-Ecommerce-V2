@@ -406,27 +406,50 @@ export default function ProductEntryForm({
     loadAccountingStock();
   }, [selectedProductCode, vatText]);
 
-  // Lấy tên đơn vị chuẩn từ sản phẩm
+  // Lấy tên đơn vị chuẩn từ unit conversion (theo PowerApps logic)
   const getBaseUnitName = () => {
+    console.log('[getBaseUnitName] Debug:', {
+      selectedProduct: selectedProduct ? {
+        crdfd_onvichuantext: selectedProduct.crdfd_onvichuantext
+      } : null,
+      selectedProductCode,
+      unitId,
+      productsCount: products.length,
+      unitsCount: units.length
+    });
+
+    // Ưu tiên lấy từ unit hiện tại (dp_Don_vi.Selected.'Đơn vị chuẩn') - theo dữ liệu từ API units
+    const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
+    if (currentUnit) {
+      const unitBaseUnit = (currentUnit as any)?.crdfd_onvichuan;
+      if (unitBaseUnit) {
+        console.log('[getBaseUnitName] Found in current unit crdfd_onvichuan:', unitBaseUnit, 'from unit:', currentUnit);
+        return unitBaseUnit;
+      }
+    }
+
+    // Fallback: Theo PowerApps: cb_san_pham.Selected.'Đơn vị chuẩn text'
     // Ưu tiên lấy từ selectedProduct
     if (selectedProduct?.crdfd_onvichuantext) {
+      console.log('[getBaseUnitName] Found in selectedProduct.crdfd_onvichuantext:', selectedProduct.crdfd_onvichuantext);
       return selectedProduct.crdfd_onvichuantext;
     }
 
     // Fallback: tìm từ products list
     const productFromList = products.find((p) => p.crdfd_masanpham === selectedProductCode);
     if (productFromList?.crdfd_onvichuantext) {
+      console.log('[getBaseUnitName] Found in products list:', productFromList.crdfd_onvichuantext);
       return productFromList.crdfd_onvichuantext;
     }
 
-    // Fallback: lấy từ unit hiện tại nếu có
-    const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
+    // Fallback: lấy từ unit hiện tại với tên trường khác
     if (currentUnit) {
-      return (currentUnit as any)?.crdfd_onvichuan ||
-        (currentUnit as any)?.crdfd_onvichuantext ||
-        'đơn vị chuẩn';
+      const unitBaseUnit = (currentUnit as any)?.crdfd_onvichuantext;
+      console.log('[getBaseUnitName] Found in current unit crdfd_onvichuantext:', unitBaseUnit, 'from unit:', currentUnit);
+      return unitBaseUnit || 'đơn vị chuẩn';
     }
 
+    console.log('[getBaseUnitName] No base unit found, returning default');
     return 'đơn vị chuẩn';
   };
 
@@ -437,26 +460,37 @@ export default function ProductEntryForm({
     if (!quantity || quantity <= 0) return '';
 
     try {
+      console.log('[SL theo kho] Debug:', {
+        quantity,
+        unitId,
+        unitsCount: units.length,
+        units: units.map(u => ({ id: u.crdfd_unitsid, name: u.crdfd_name, factor: u.crdfd_giatrichuyenoi, onvichuan: u.crdfd_onvichuan }))
+      });
+
       // Lấy giá trị chuyển đổi từ đơn vị đã chọn
       const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
-      const rawFactor =
-        (currentUnit as any)?.crdfd_giatrichuyenoi ??
-        (currentUnit as any)?.crdfd_giatrichuyendoi ??
-        (currentUnit as any)?.crdfd_conversionvalue ??
-        null;
+      console.log('[SL theo kho] Current unit found:', currentUnit);
 
-      // IfError: Nếu không có giá trị chuyển đổi hoặc lỗi, dùng 0
-      let conversionFactor = 0;
+      // Theo PowerApps: dp_Don_vi.Selected.'Giá trị chuyển đổi'
+      // Chỉ sử dụng crdfd_giatrichuyenoi (Giá trị chuyển đổi)
+      const rawFactor = (currentUnit as any)?.crdfd_giatrichuyenoi ?? null;
+      console.log('[SL theo kho] Raw factor:', rawFactor);
+
+      // IfError: Nếu không có giá trị chuyển đổi hoặc lỗi, dùng 1 (tỷ lệ 1:1)
+      let conversionFactor = 1;
       if (rawFactor !== null && rawFactor !== undefined) {
         const factorNum = Number(rawFactor);
-        conversionFactor = !isNaN(factorNum) && factorNum > 0 ? factorNum : 0;
+        conversionFactor = !isNaN(factorNum) && factorNum > 0 ? factorNum : 1;
       }
+
+      console.log('[SL theo kho] Conversion factor used:', conversionFactor);
 
       // Tính số lượng theo kho: quantity * conversionFactor
       const converted = quantity * conversionFactor;
+      console.log('[SL theo kho] Warehouse quantity calculated:', converted);
 
       // Format theo "#,##0.##" (tối đa 2 chữ số thập phân, có dấu phẩy phân cách hàng nghìn)
-      const formatted = converted.toLocaleString('en-US', {
+      const formatted = converted.toLocaleString('vi-VN', {
         minimumFractionDigits: 0,
         maximumFractionDigits: 2,
         useGrouping: true,
@@ -464,9 +498,14 @@ export default function ProductEntryForm({
 
       // Lấy đơn vị chuẩn từ sản phẩm (cb_san_pham.Selected.'Đơn vị chuẩn text')
       const baseUnitText = getBaseUnitName();
+      console.log('[SL theo kho] Base unit text:', baseUnitText);
 
-      return `SL theo kho: ${formatted} ${baseUnitText}`;
+      const result = `SL theo kho: ${formatted} ${baseUnitText}`;
+      console.log('[SL theo kho] Final result:', result);
+
+      return result;
     } catch (error) {
+      console.error('[SL theo kho] Error:', error);
       // Nếu có lỗi, trả về chuỗi rỗng
       return '';
     }
@@ -474,11 +513,8 @@ export default function ProductEntryForm({
 
   const getConversionFactor = () => {
     const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
-    const rawFactor =
-      (currentUnit as any)?.crdfd_giatrichuyenoi ??
-      (currentUnit as any)?.crdfd_giatrichuyendoi ??
-      (currentUnit as any)?.crdfd_conversionvalue ??
-      1;
+    // Chỉ sử dụng crdfd_giatrichuyenoi
+    const rawFactor = (currentUnit as any)?.crdfd_giatrichuyenoi ?? 1;
     const factorNum = Number(rawFactor);
     return !isNaN(factorNum) && factorNum > 0 ? factorNum : 1;
   };

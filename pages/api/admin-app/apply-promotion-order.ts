@@ -4,7 +4,7 @@ import { getAccessToken } from "../getAccessToken";
 
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
 const ORDERS_X_PROMOTION_TABLE = "crdfd_ordersxpromotions";
-const SOD_TABLE = "crdfd_saleorderdetailses";
+const SOD_TABLE = "crdfd_saleorderdetails";
 const SALE_ORDERS_TABLE = "crdfd_sale_orders";
 
 /**
@@ -60,25 +60,72 @@ export default async function handler(
       "OData-Version": "4.0",
     };
 
-    // 1. Tạo record Orders x Promotion
-    // Tính Loại và Chiết khấu theo logic PowerApps:
-    // Loại: If(VND_Percent='VNĐ/% (Promotion)'.VNĐ,"Tiền","Phần trăm")
-    // Chiết khấu: If(VND_Percent='VNĐ/% (Promotion)'.VNĐ,ValuePromotion,ValuePromotion/100)
-    // Hỗ trợ cả dạng text ("VNĐ" / "%") và OptionSet numeric ("191920001" / "191920000")
+    // 1. Prepare effective promotion values (enrich from CRM if necessary)
+    // Support both text and OptionSet numeric for vndOrPercent.
     const OPTION_PERCENT = "191920000";
     const OPTION_VND = "191920001";
     const vndOrPercentNormalized = vndOrPercent !== undefined && vndOrPercent !== null
       ? String(vndOrPercent).trim()
       : "";
-    const isVnd =
-      vndOrPercentNormalized === "VNĐ" ||
-      vndOrPercentNormalized.toUpperCase() === "VND" ||
-      vndOrPercentNormalized === OPTION_VND;
-    const isPercent = vndOrPercentNormalized === "%" || vndOrPercentNormalized === OPTION_PERCENT;
+
+    // Initialize effective values from request
+    let effectiveChietKhau2 = Boolean(chietKhau2);
+    let effectivePromotionValue = promotionValue;
+    let effectiveVndOrPercent = vndOrPercentNormalized;
+    let effectiveProductCodes = productCodes;
+    let effectiveProductGroupCodes = productGroupCodes;
+
+    // Try to fetch promotion record to get canonical values (if needed)
+    try {
+      const promoEndpoint = `${BASE_URL}crdfd_promotions(${promotionId})?$select=crdfd_value,crdfd_vn,cr1bb_chietkhau2,crdfd_masanpham_multiple,cr1bb_manhomsp_multiple`;
+      const promoResp = await axios.get(promoEndpoint, { headers });
+      const promoData = promoResp.data;
+      if (promoData) {
+        if (!effectiveChietKhau2) {
+          effectiveChietKhau2 = (promoData.cr1bb_chietkhau2 === 191920001) || Boolean(promoData.cr1bb_chietkhau2 === '191920001');
+        }
+        if (effectivePromotionValue === undefined || effectivePromotionValue === null) {
+          const rawVal = promoData.crdfd_value;
+          const parsed = typeof rawVal === 'number' ? rawVal : (rawVal ? Number(rawVal) : 0);
+          effectivePromotionValue = !isNaN(parsed) ? parsed : effectivePromotionValue;
+        }
+        if (!effectiveVndOrPercent) {
+          effectiveVndOrPercent = promoData.crdfd_vn;
+        }
+        if (!effectiveProductCodes && promoData.crdfd_masanpham_multiple) {
+          effectiveProductCodes = promoData.crdfd_masanpham_multiple;
+        }
+        if (!effectiveProductGroupCodes && promoData.cr1bb_manhomsp_multiple) {
+          effectiveProductGroupCodes = promoData.cr1bb_manhomsp_multiple;
+        }
+      }
+    } catch (err) {
+      console.warn('[ApplyPromotion] Could not fetch promotion details to enrich request (pre-create):', (err as any)?.message || err);
+    }
+
+    // Determine loai (Tiền / Phần trăm)
+    const isVnd = effectiveVndOrPercent === "VNĐ" || (typeof effectiveVndOrPercent === 'string' && effectiveVndOrPercent.toUpperCase() === "VND") || effectiveVndOrPercent === OPTION_VND;
     const loai = isVnd ? "Tiền" : "Phần trăm";
-    // Store raw promotion value as-is (e.g., 5 => store 5). Calculation uses vndOrPercent at runtime.
-    const chietKhau2ValueToStore = promotionValue || 0;
-    
+
+    // Normalize value to store on Orders x Promotion / SO header:
+    // - For percent types, store percentage number (e.g., 5)
+    //   (if effectivePromotionValue is 0.05, convert to 5)
+    // - For VNĐ types, store raw amount
+    const computeStoreValue = (vndOrPercentRaw: any, val: any) => {
+      const vRaw = vndOrPercentRaw !== undefined && vndOrPercentRaw !== null ? String(vndOrPercentRaw).trim() : "";
+      const percentCodes = [OPTION_PERCENT, "%"];
+      const isPercentType = percentCodes.includes(vRaw);
+      const num = typeof val === 'number' ? val : (val ? Number(val) : 0);
+      if (isNaN(num)) return 0;
+      if (isPercentType) {
+        // Store percent as decimal (e.g., 5 -> 0.05). If already decimal (0.05) keep it.
+        return num > 1 ? num / 100 : num;
+      }
+      return num;
+    };
+
+    const chietKhau2ValueToStore = computeStoreValue(effectiveVndOrPercent, effectivePromotionValue);
+
     const ordersXPromotionPayload: any = {
       crdfd_name: promotionName || "Promotion Order",
       "crdfd_SO@odata.bind": `/crdfd_sale_orders(${soId})`,
@@ -89,66 +136,52 @@ export default async function handler(
       statecode: 0, // Active
     };
 
-    const createOrderXPromotionEndpoint = `${BASE_URL}${ORDERS_X_PROMOTION_TABLE}`;
-    const createResponse = await axios.post(
-      createOrderXPromotionEndpoint,
-      ordersXPromotionPayload,
-      { headers }
-    );
-
-    // Get the created record ID from response headers
-    const createdOrderXPromotionId = createResponse.headers["odata-entityid"]
-      ?.match(/\(([^)]+)\)/)?.[1];
-
-    // If chietKhau2 flag not provided or false in request, try to fetch promotion record to determine real flag/value/product filters
-    let effectiveChietKhau2 = Boolean(chietKhau2);
-    let effectivePromotionValue = promotionValue;
-    let effectiveVndOrPercent = vndOrPercent;
-    let effectiveProductCodes = productCodes;
-    let effectiveProductGroupCodes = productGroupCodes;
-
-    if (!effectiveChietKhau2 || !effectiveProductCodes) {
-      try {
-        const promoEndpoint = `${BASE_URL}crdfd_promotions(${promotionId})?$select=crdfd_value,crdfd_vn,cr1bb_chietkhau2,crdfd_masanpham_multiple,cr1bb_manhomsp_multiple`;
-        const promoResp = await axios.get(promoEndpoint, { headers });
-        const promoData = promoResp.data;
-        if (promoData) {
-          // Determine flag (Dynamics stores OptionSet number for chietkhau2)
-          if (!effectiveChietKhau2) {
-            effectiveChietKhau2 = (promoData.cr1bb_chietkhau2 === 191920001) || Boolean(promoData.cr1bb_chietkhau2 === '191920001');
-          }
-          if (!effectivePromotionValue) {
-            const rawVal = promoData.crdfd_value;
-            const parsed = typeof rawVal === 'number' ? rawVal : (rawVal ? Number(rawVal) : 0);
-            effectivePromotionValue = !isNaN(parsed) ? parsed : effectivePromotionValue;
-          }
-          if (!effectiveVndOrPercent) {
-            effectiveVndOrPercent = promoData.crdfd_vn;
-          }
-          if (!effectiveProductCodes && promoData.crdfd_masanpham_multiple) {
-            effectiveProductCodes = promoData.crdfd_masanpham_multiple;
-          }
-          if (!effectiveProductGroupCodes && promoData.cr1bb_manhomsp_multiple) {
-            effectiveProductGroupCodes = promoData.cr1bb_manhomsp_multiple;
-          }
-        }
-      } catch (err) {
-        console.warn('[ApplyPromotion] Could not fetch promotion details to enrich request:', (err as any)?.message || err);
+    // Before creating Orders x Promotion, check if a record for the same SO + Promotion already exists
+    let createdOrderXPromotionId: string | undefined = undefined;
+    try {
+      const existingFilter = `_crdfd_so_value eq ${soId} and _crdfd_promotion_value eq ${promotionId} and crdfd_type eq 'Order' and statecode eq 0`;
+      const existingQuery = `$filter=${encodeURIComponent(existingFilter)}&$select=crdfd_ordersxpromotionid`;
+      const existingEndpoint = `${BASE_URL}${ORDERS_X_PROMOTION_TABLE}?${existingQuery}`;
+      const existingResp = await axios.get(existingEndpoint, { headers });
+      const existingItems = existingResp.data?.value || [];
+      if (existingItems.length > 0) {
+        createdOrderXPromotionId = existingItems[0].crdfd_ordersxpromotionid;
+        console.log('[ApplyPromotion] Found existing Orders x Promotion record, skipping create:', createdOrderXPromotionId);
       }
+    } catch (err) {
+      console.warn('[ApplyPromotion] Failed to check existing Orders x Promotion:', (err as any)?.message || err);
     }
+
+    if (!createdOrderXPromotionId) {
+      const createOrderXPromotionEndpoint = `${BASE_URL}${ORDERS_X_PROMOTION_TABLE}`;
+      const createResponse = await axios.post(
+        createOrderXPromotionEndpoint,
+        ordersXPromotionPayload,
+        { headers }
+      );
+      // Get the created record ID from response headers
+      createdOrderXPromotionId = createResponse.headers["odata-entityid"]
+        ?.match(/\(([^)]+)\)/)?.[1];
+      console.log('[ApplyPromotion] Created Orders x Promotion:', createdOrderXPromotionId);
+    }
+
+    
 
     // 2. Nếu là chiết khấu 2 (chietKhau2 = true), cập nhật crdfd_chieckhau2 và giá trên các SOD matching
     let updatedSodCount = 0;
-    if (effectiveChietKhau2) {
+    // Always attempt to update SOD records when applying a promotion order,
+    // even if effectiveChietKhau2 is false. This ensures re-applying promotions
+    // will update ck2 for all lines in the SO.
+    {
       // Lấy danh sách SOD của SO
       const sodFilters = [
         "statecode eq 0",
-        `_crdfd_madonhang_value eq ${soId}`,
+        `_crdfd_socode_value eq ${soId}`,
       ];
 
       const sodQuery = `$filter=${encodeURIComponent(
         sodFilters.join(" and ")
-      )}&$select=crdfd_saleorderdetailsid,crdfd_masanpham,crdfd_manhomsp`;
+      )}&$select=crdfd_saleorderdetailid,crdfd_masanpham,crdfd_manhomsp`;
 
       const sodEndpoint = `${BASE_URL}${SOD_TABLE}?${sodQuery}`;
       const sodResponse = await axios.get(sodEndpoint, { headers });
@@ -156,7 +189,7 @@ export default async function handler(
       console.log('[ApplyPromotion] fetched sodList length:', sodList.length);
       try {
         console.log('[ApplyPromotion] sod sample:', (sodList || []).slice(0,10).map((s:any)=>({
-          id: s.crdfd_saleorderdetailsid,
+          id: s.crdfd_saleorderdetailid,
           productCode: s.crdfd_masanpham,
           productGroup: s.crdfd_manhomsp
         })));
@@ -179,57 +212,59 @@ export default async function handler(
       const productGroupCodeListNorm = productGroupCodeList.map(s => s.toUpperCase());
 
       // Tính toán giá trị chiết khấu 2 (đã được tính ở trên)
-      // chietKhau2Value đã được tính: VNĐ thì là số tiền, % thì là decimal (0.05 = 5%)
-
-      // Chuẩn bị danh sách SOD cần cập nhật
-      const sodsToUpdate: any[] = [];
-      const debugMatchDetails: any[] = [];
-      for (let idx = 0; idx < sodList.length; idx++) {
-        const sod = sodList[idx];
-        const sodProductCodeRaw = sod.crdfd_masanpham || '';
-        const sodProductGroupCodeRaw = sod.crdfd_manhomsp || '';
-        const sodProductCode = String(sodProductCodeRaw).trim().toUpperCase();
-        const sodProductGroupCode = String(sodProductGroupCodeRaw).trim().toUpperCase();
-
-        // Check if SOD matches any product code or product group code (case-insensitive, contains)
-        const matchesProduct = productCodeListNorm.length === 0 || productCodeListNorm.some((code: string) => sodProductCode.includes(code));
-        const matchesGroup = productGroupCodeListNorm.length === 0 || productGroupCodeListNorm.some((code: string) => sodProductGroupCode.includes(code));
-
-        if (productCodeListNorm.length === 0 && productGroupCodeListNorm.length === 0) {
-          sodsToUpdate.push(sod);
-        } else if (matchesProduct || matchesGroup) {
-          sodsToUpdate.push(sod);
-        }
-
-        // Collect debug info for first 50 items
-        if (idx < 50) {
-          debugMatchDetails.push({
-            id: sod.crdfd_saleorderdetailsid,
-            sodProductCode: sodProductCodeRaw,
-            sodProductGroupCode: sodProductGroupCodeRaw,
-            matchesProduct,
-            matchesGroup
-          });
+      // chietKhau2ValueToStore: VNĐ => số tiền, % => decimal (0.05)
+      // Chuẩn hóa giá trị dùng để tính giá trên SOD (promotionValueForCalc):
+      // - Nếu là percent: đảm bảo là decimal (0.05)
+      // - Nếu là VNĐ: giữ nguyên số tiền
+      const percentCodesForCalc = [OPTION_PERCENT, "%"];
+      const effectiveVndOrPercentStr = effectiveVndOrPercent !== undefined && effectiveVndOrPercent !== null ? String(effectiveVndOrPercent).trim() : "";
+      const isPercentTypeForCalc = percentCodesForCalc.includes(effectiveVndOrPercentStr);
+      let promotionValueForCalc = 0;
+      {
+        const rawNum = typeof effectivePromotionValue === 'number' ? effectivePromotionValue : (effectivePromotionValue ? Number(effectivePromotionValue) : 0);
+        if (isNaN(rawNum)) {
+          promotionValueForCalc = 0;
+        } else if (isPercentTypeForCalc) {
+          promotionValueForCalc = rawNum > 1 ? rawNum / 100 : rawNum;
+        } else {
+          promotionValueForCalc = rawNum;
         }
       }
-      console.log('[ApplyPromotion] sodsToUpdate length:', sodsToUpdate.length, 'debugMatches:', debugMatchDetails.slice(0,20));
+
+      // Force update: prepare list of all SODs to update (ignore productCodes filter)
+      const sodsToUpdate: any[] = sodList.slice(); // clone full list
+      // Track updated SOD ids to avoid double-updating in retry/final pass
+      const updatedSodIds = new Set<string>();
+      console.log('[ApplyPromotion] Force update mode: sodsToUpdate length:', sodsToUpdate.length);
 
       // Cập nhật từng SOD với crdfd_chieckhau2
       console.log('[ApplyPromotion] sodsToUpdate count:', sodsToUpdate.length);
       for (const sod of sodsToUpdate) {
         try {
-          const sodId = sod.crdfd_saleorderdetailsid;
+          const sodId = sod.crdfd_saleorderdetailid;
+          if (updatedSodIds.has(sodId)) {
+            continue; // skip already-updated
+          }
           console.log('[ApplyPromotion] Updating SOD:', sodId, { productCode: sod.crdfd_masanpham, productGroup: sod.crdfd_manhomsp });
+          // Log payload that will be used to patch this SOD for debugging
+          console.log('[ApplyPromotion] patching SOD payload:', {
+            sodId,
+            crdfd_chieckhau2: effectivePromotionValue,
+            vndOrPercent: effectiveVndOrPercent
+          });
           const updated = await updateSodChietKhau2(
             sodId,
-            promotionValue,
-            vndOrPercent,
+            promotionValueForCalc,
+            effectiveVndOrPercent,
             headers
           );
-          console.log('[ApplyPromotion] updateSodChietKhau2 result for', sodId, updated ? 'ok' : 'no-response');
-          updatedSodCount++;
+          console.log('[ApplyPromotion] updateSodChietKhau2 result for', sodId, updated ? 'ok' : 'no-response', updated);
+          if (updated && (updated.success || updated.status === 204 || updated.status === 200)) {
+            updatedSodCount++;
+            updatedSodIds.add(sodId);
+          }
         } catch (err: any) {
-          console.error('[ApplyPromotion] Error updating single SOD:', sod?.crdfd_saleorderdetailsid, err?.message || err);
+          console.error('[ApplyPromotion] Error updating single SOD:', sod?.crdfd_saleorderdetailid, err?.message || err);
         }
       }
 
@@ -237,16 +272,118 @@ export default async function handler(
       if (updatedSodCount > 0) {
         await recalculateOrderTotals(soId, headers);
       }
+      // Nếu không cập nhật được SOD nào (ví dụ SOD mới vừa được lưu & chưa hiện trong query),
+      // thử re-fetch 1 lần sau delay ngắn để bắt SOD mới.
+      if (updatedSodCount === 0) {
+        try {
+          console.log('[ApplyPromotion] No SOD updated, retrying fetch after 500ms to catch newly saved SODs...');
+          await new Promise(resolve => setTimeout(resolve, 500));
+          const sodRespRetry = await axios.get(sodEndpoint, { headers });
+          const sodListRetry = sodRespRetry.data.value || [];
+          console.log('[ApplyPromotion] retry fetched sodList length:', sodListRetry.length);
+          // Rebuild sodsToUpdate from retry list
+          const sodsToUpdateRetry: any[] = [];
+          for (const sod of sodListRetry) {
+            const sodProductCodeRaw = sod.crdfd_masanpham || '';
+            const sodProductGroupCodeRaw = sod.crdfd_manhomsp || '';
+            const sodProductCode = String(sodProductCodeRaw).trim().toUpperCase();
+            const sodProductGroupCode = String(sodProductGroupCodeRaw).trim().toUpperCase();
+            const matchesProduct = productCodeListNorm.length === 0 || productCodeListNorm.some((code: string) => sodProductCode.includes(code));
+            const matchesGroup = productGroupCodeListNorm.length === 0 || productGroupCodeListNorm.some((code: string) => sodProductGroupCode.includes(code));
+            if (productCodeListNorm.length === 0 && productGroupCodeListNorm.length === 0) {
+              sodsToUpdateRetry.push(sod);
+            } else if (matchesProduct || matchesGroup) {
+              sodsToUpdateRetry.push(sod);
+            }
+          }
+          console.log('[ApplyPromotion] retry sodsToUpdate count:', sodsToUpdateRetry.length);
+          for (const sod of sodsToUpdateRetry) {
+            try {
+              const sodId = sod.crdfd_saleorderdetailid;
+              if (updatedSodIds.has(sodId)) {
+                continue; // skip already-updated
+              }
+              console.log('[ApplyPromotion] (retry) Updating SOD:', sodId);
+              const updated = await updateSodChietKhau2(
+                sodId,
+                promotionValueForCalc,
+                effectiveVndOrPercent,
+                headers
+              );
+              console.log('[ApplyPromotion] (retry) updateSodChietKhau2 result for', sodId, updated ? 'ok' : 'no-response', updated);
+              if (updated && (updated.success || updated.status === 204 || updated.status === 200)) {
+                updatedSodCount++;
+                updatedSodIds.add(sodId);
+              }
+            } catch (err: any) {
+              console.error('[ApplyPromotion] (retry) Error updating single SOD:', sod?.crdfd_saleorderdetailid, err?.message || err);
+            }
+          }
+          if (updatedSodCount > 0) {
+            await recalculateOrderTotals(soId, headers);
+          }
+        } catch (err: any) {
+          console.warn('[ApplyPromotion] Retry fetch/update SOD failed:', err?.message || err);
+        }
+      }
+
+      // Final pass: ensure ALL SOD records inside this SO are updated (catch any newly saved SODs)
+      try {
+        const sodFiltersFinal = [
+          "statecode eq 0",
+          `_crdfd_socode_value eq ${soId}`,
+        ];
+        const sodQueryFinal = `$filter=${encodeURIComponent(
+          sodFiltersFinal.join(" and ")
+        )}&$select=crdfd_saleorderdetailid,crdfd_masanpham,crdfd_manhomsp`;
+        const sodEndpointFinal = `${BASE_URL}${SOD_TABLE}?${sodQueryFinal}`;
+        const sodRespFinal = await axios.get(sodEndpointFinal, { headers });
+        const sodListFinal = sodRespFinal.data.value || [];
+        console.log('[ApplyPromotion] Final pass fetched sodList length:', sodListFinal.length);
+
+        let finalUpdated = 0;
+        for (const sod of sodListFinal) {
+          try {
+            const sodId = sod.crdfd_saleorderdetailid;
+            if (updatedSodIds.has(sodId)) {
+              continue; // skip already-updated
+            }
+            console.log('[ApplyPromotion] (final pass) Updating SOD:', sodId);
+            // Use promotionValueForCalc (decimal for percent) for calculation and effectiveVndOrPercent for type
+            const updated = await updateSodChietKhau2(
+              sodId,
+              promotionValueForCalc,
+              effectiveVndOrPercent,
+              headers
+            );
+            console.log('[ApplyPromotion] (final pass) updateSodChietKhau2 result for', sodId, updated ? 'ok' : 'no-response', updated);
+            if (updated && (updated.success || updated.status === 204 || updated.status === 200)) {
+              finalUpdated++;
+            }
+          } catch (err: any) {
+            console.error('[ApplyPromotion] (final pass) Error updating single SOD:', sod?.crdfd_saleorderdetailid, err?.message || err);
+          }
+        }
+
+        if (finalUpdated > 0) {
+          updatedSodCount += finalUpdated;
+          await recalculateOrderTotals(soId, headers);
+        }
+
+      } catch (err: any) {
+        console.warn('[ApplyPromotion] Final pass failed to update all SODs:', err?.message || err);
+      }
       // Cập nhật trường crdfd_chieckhau2 trên Sale Order (header) để phản ánh promotionValue (raw)
       // Một số môi trường/metadata có thể dùng tên trường khác (crdfd_chietkhau2) — ghi cả hai để an toàn.
       try {
         const soUpdatePayload: any = {
           crdfd_chieckhau2: chietKhau2ValueToStore,
-          crdfd_chietkhau2: chietKhau2ValueToStore,
         };
         const soUpdateEndpoint = `${BASE_URL}${SALE_ORDERS_TABLE}(${soId})`;
+        // Log payload that will be used to patch the SO for debugging
+        console.log('[ApplyPromotion] patching SO payload:', { soId, soUpdatePayload });
         const soPatchResp = await axios.patch(soUpdateEndpoint, soUpdatePayload, { headers });
-        console.log('[ApplyPromotion] Updated SO crdfd_chieckhau2/chieckhau2:', chietKhau2ValueToStore, 'status', soPatchResp.status);
+        console.log('[ApplyPromotion] Updated SO crdfd_chieckhau2/chieckhau2:', chietKhau2ValueToStore, 'status', soPatchResp.status, soPatchResp.data || null);
       } catch (err: any) {
         console.warn('[ApplyPromotion] Failed to update SO crdfd_chieckhau2/chietkhau2:', err?.message || err);
       }
@@ -290,7 +427,7 @@ async function recalculateOrderTotals(soId: string, headers: Record<string, stri
 
     const sodQuery = `$filter=${encodeURIComponent(
       sodFilters.join(" and ")
-    )}&$select=crdfd_saleorderdetailsid,crdfd_giack2,crdfd_soluong,crdfd_vat`;
+    )}&$select=crdfd_saleorderdetailid,crdfd_giack2,crdfd_soluong,crdfd_vat`;
 
     const sodEndpoint = `${BASE_URL}${SOD_TABLE}?${sodQuery}`;
     const sodResponse = await axios.get(sodEndpoint, { headers });
@@ -353,7 +490,7 @@ async function updateSodChietKhau2(
 ) {
   const updatePayload: any = {};
 
-  // Store raw promotion value into crdfd_chieckhau2 (as requested).
+  // Store raw promotion value into crdfd_chieckhau2 (decimal for percent)
   updatePayload.crdfd_chieckhau2 = promotionValue || 0;
 
   // Calculate discount for price computation using vndOrPercent:
@@ -361,37 +498,45 @@ async function updateSodChietKhau2(
   // - If VNĐ, use promotionValue directly as amount to subtract
   let chietKhau2ForCalc: number;
   const vndOrPercentNorm = vndOrPercent !== undefined && vndOrPercent !== null ? String(vndOrPercent).trim() : "";
+  // promotionValue for percent types is stored as decimal (e.g., 0.05). Do not divide again.
   if (vndOrPercentNorm === "%" || vndOrPercentNorm === "191920000") {
-    chietKhau2ForCalc = (promotionValue || 0) / 100;
+    chietKhau2ForCalc = (promotionValue || 0);
   } else {
     chietKhau2ForCalc = promotionValue || 0;
   }
 
-  // Tính crdfd_giack2 dựa trên giá gốc và chietKhau2ForCalc
-  // Cần lấy giá gốc (crdfd_giagoc) để tính giá sau chiết khấu 2
+  // Try to compute crdfd_giack2 from base price. If base price missing, still write the chietkhau2 fields
   const getSodEndpoint = `${BASE_URL}${SOD_TABLE}(${sodId})?$select=crdfd_giagoc,crdfd_gia`;
-  const sodResponse = await axios.get(getSodEndpoint, { headers });
-  const sodData = sodResponse.data;
-
-  // Sử dụng crdfd_giagoc nếu có, nếu không thì dùng crdfd_gia
-  const basePrice = sodData.crdfd_giagoc || sodData.crdfd_gia || 0;
-
-  let giaCK2: number;
-  if (vndOrPercentNorm === "%" || vndOrPercentNorm === "191920000") {
-    // Chiết khấu theo %, chietKhau2ForCalc is decimal (e.g., 0.05)
-    giaCK2 = basePrice * (1 - chietKhau2ForCalc);
-  } else {
-    // Chiết khấu VNĐ, trừ trực tiếp (chietKhau2ForCalc is absolute amount)
-    giaCK2 = Math.max(0, basePrice - chietKhau2ForCalc);
+  let sodData: any = null;
+  try {
+    const sodResponse = await axios.get(getSodEndpoint, { headers });
+    sodData = sodResponse.data;
+  } catch (err: any) {
+    console.warn('[ApplyPromotion][updateSodChietKhau2] failed to fetch SOD for price, will still write chietkhau2:', sodId, err?.message || err);
   }
 
-  updatePayload.crdfd_giack2 = giaCK2;
+  // Sử dụng crdfd_giagoc nếu có, nếu không thì dùng crdfd_gia
+  const basePrice = sodData ? (sodData.crdfd_giagoc || sodData.crdfd_gia || 0) : 0;
+
+  if (basePrice && basePrice > 0) {
+    let giaCK2: number;
+    if (vndOrPercentNorm === "%" || vndOrPercentNorm === "191920000") {
+      // Chiết khấu theo %, chietKhau2ForCalc is decimal (e.g., 0.05)
+      giaCK2 = basePrice * (1 - chietKhau2ForCalc);
+    } else {
+      // Chiết khấu VNĐ, trừ trực tiếp (chietKhau2ForCalc is absolute amount)
+      giaCK2 = Math.max(0, basePrice - chietKhau2ForCalc);
+    }
+    updatePayload.crdfd_giack2 = giaCK2;
+  } else {
+    console.log('[ApplyPromotion][updateSodChietKhau2] basePrice missing or zero for SOD, skipping giack2 update, writing only chietkhau2 fields:', sodId, { basePrice, vndOrPercentNorm, promotionValue });
+  }
 
   const updateEndpoint = `${BASE_URL}${SOD_TABLE}(${sodId})`;
   try {
     const resp = await axios.patch(updateEndpoint, updatePayload, { headers });
-    console.log('[ApplyPromotion][updateSodChietKhau2] patched SOD', sodId, 'status', resp.status);
-    return { success: true, status: resp.status };
+    console.log('[ApplyPromotion][updateSodChietKhau2] patched SOD', sodId, 'status', resp.status, 'data', resp.data || null);
+    return { success: true, status: resp.status, data: resp.data || null };
   } catch (err: any) {
     console.error('[ApplyPromotion][updateSodChietKhau2] failed patch SOD', sodId, err?.response?.data || err?.message || err);
     return { success: false, error: err?.response?.data || err?.message || String(err) };
