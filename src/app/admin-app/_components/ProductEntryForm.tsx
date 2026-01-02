@@ -2457,7 +2457,7 @@ export default function ProductEntryForm({
                   className="admin-app-input admin-app-input-compact admin-app-input-readonly admin-app-input-small"
                   value={vatPercent}
                   readOnly
-                  style={{ width: '50px' }}
+                  style={{ width: '70px' }}
                 />
               </div>
             </div>
