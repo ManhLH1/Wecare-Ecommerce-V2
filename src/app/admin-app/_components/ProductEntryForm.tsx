@@ -218,6 +218,7 @@ export default function ProductEntryForm({
   };
   const [productId, setProductId] = useState('');
   const [unitId, setUnitId] = useState('');
+  const [unitChangeTrigger, setUnitChangeTrigger] = useState(0);
   const [availableUnitsFromPrices, setAvailableUnitsFromPrices] = useState<any[]>([]);
   const [pricesFromApi, setPricesFromApi] = useState<any[]>([]);
   const [selectedPriceFromApi, setSelectedPriceFromApi] = useState<any | null>(null);
@@ -447,29 +448,15 @@ export default function ProductEntryForm({
     if (!quantity || quantity <= 0) return '';
 
     try {
-      console.log('[SL theo kho] Debug:', {
-        quantity,
-        unitId,
-        unitsCount: units.length,
-        units: units.map(u => ({ id: u.crdfd_unitsid, name: u.crdfd_name, factor: u.crdfd_giatrichuyenoi, onvichuan: u.crdfd_onvichuan }))
-      });
-
       // Lấy giá trị chuyển đổi ưu tiên từ API price (nếu API trả về crdfd_giatrichuyenoi)
       const apiFactorRaw =
         (selectedPriceFromApi as any)?.crdfd_giatrichuyenoi ??
         (selectedPriceFromApi as any)?.crdfd_onvi?.crdfd_giatrichuyenoi ??
         null;
 
-      if (apiFactorRaw !== null) {
-        console.log('[SL theo kho] Using API factor:', apiFactorRaw);
-      }
-
       // Lấy giá trị chuyển đổi từ đơn vị đã chọn (fallback)
       const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
       const unitFactorRaw = (currentUnit as any)?.crdfd_giatrichuyenoi ?? null;
-      if (unitFactorRaw !== null) {
-        console.log('[SL theo kho] Using unit factor from units list:', unitFactorRaw);
-      }
 
       // Nếu cả hai đều không có, fallback về 1
       let conversionFactor = 1;
@@ -479,11 +466,8 @@ export default function ProductEntryForm({
         conversionFactor = !isNaN(factorNum) && factorNum > 0 ? factorNum : 1;
       }
 
-      console.log('[SL theo kho] Conversion factor used:', conversionFactor);
-
       // Tính số lượng theo kho: quantity * conversionFactor
       const converted = quantity * conversionFactor;
-      console.log('[SL theo kho] Warehouse quantity calculated:', converted);
 
       // Format theo "#,##0.##" (tối đa 2 chữ số thập phân, có dấu phẩy phân cách hàng nghìn)
       const formatted = converted.toLocaleString('vi-VN', {
@@ -494,10 +478,8 @@ export default function ProductEntryForm({
 
       // Lấy đơn vị chuẩn từ sản phẩm (cb_san_pham.Selected.'Đơn vị chuẩn text')
       const baseUnitText = getBaseUnitName();
-      console.log('[SL theo kho] Base unit text:', baseUnitText);
 
       const result = `SL theo kho: ${formatted} ${baseUnitText}`;
-      console.log('[SL theo kho] Final result:', result);
 
       return result;
     } catch (error) {
@@ -505,7 +487,7 @@ export default function ProductEntryForm({
       // Nếu có lỗi, trả về chuỗi rỗng
       return '';
     }
-  }, [quantity, units, unitId, selectedProduct, selectedProductCode, products]);
+  }, [quantity, units, unitId, selectedProduct, selectedProductCode, products, selectedPriceFromApi, unitChangeTrigger]);
 
   const getConversionFactor = () => {
     const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
@@ -2318,6 +2300,7 @@ export default function ProductEntryForm({
               onChange={(value, option) => {
                 setUnitId(value);
                 setUnit(option?.label || '');
+                setUnitChangeTrigger(prev => prev + 1); // Force warehouse quantity recalculation
                 userSelectedUnitRef.current = true; // Đánh dấu người dùng đã chọn đơn vị
                 // NOTE: Do NOT trigger a full price reload here. The component already
                 // stores `pricesFromApi` and maps `selectedPriceFromApi` in a separate
