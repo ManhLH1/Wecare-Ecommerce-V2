@@ -3,8 +3,6 @@ FROM node:20-alpine AS BUILD_IMAGE
 
 WORKDIR /app
 COPY package*.json ./
-# Copy .env file for build process if needed
-COPY .env* ./
 RUN npm ci
 COPY . .
 RUN npm run build
@@ -12,7 +10,6 @@ RUN npm run build
 # Production Stage
 FROM node:20-alpine AS PRODUCTION_STAGE
 WORKDIR /app
-COPY --from=BUILD_IMAGE /app/.env ./
 COPY --from=BUILD_IMAGE /app/next.config.mjs ./
 COPY --from=BUILD_IMAGE /app/package*.json ./
 COPY --from=BUILD_IMAGE /app/.next ./.next

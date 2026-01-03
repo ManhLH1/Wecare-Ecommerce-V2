@@ -1101,7 +1101,8 @@ export default function ProductEntryForm({
       }
 
       // Build a simple dedupe key to avoid consecutive identical fetches
-      const fetchKey = `${selectedProductCode}::${customerCode || ''}::${vatPercent || 0}::${vatText || ''}::${shouldReloadPrice || 0}`;
+      // Include unitId so changing unit forces a fresh fetch
+      const fetchKey = `${selectedProductCode}::${customerCode || ''}::${vatPercent || 0}::${vatText || ''}::${shouldReloadPrice || 0}::${unitId || ''}`;
       if (lastPriceFetchKeyRef.current === fetchKey) {
         // Skip duplicate fetch
         // console.debug('[Price] Skipping duplicate fetch for', fetchKey);
@@ -1140,11 +1141,14 @@ export default function ProductEntryForm({
         // API trả về TẤT CẢ giá cho tất cả đơn vị
         const allPrices = (result as any)?.prices || [];
 
-        // Lấy đơn vị hiện tại để lọc giá
-        const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
-        const currentUnitName = currentUnit?.crdfd_name || unit;
+        // Lấy đơn vị hiện tại để lọc giá.
+        // Nếu unit được tạo từ API prices (synthetic unit), ưu tiên dùng `availableUnitsFromPrices`.
+        const fromPricesUnit = availableUnitsFromPrices.find((u) => u.crdfd_unitsid === unitId);
+        const currentUnit = fromPricesUnit || units.find((u) => u.crdfd_unitsid === unitId);
+        const currentUnitName = fromPricesUnit?.crdfd_name || currentUnit?.crdfd_name || unit;
         // Lấy đơn vị chuẩn (crdfd_onvichuan) từ unit đã chọn để map chính xác
-        const currentUnitOnvichuan = (currentUnit as any)?.crdfd_onvichuan || undefined;
+        const currentUnitOnvichuan =
+          (fromPricesUnit as any)?.crdfd_onvichuan || (currentUnit as any)?.crdfd_onvichuan || undefined;
 
         // Tìm giá theo đơn vị đã chọn (nếu có)
         // Ưu tiên map theo unitName từ API (đã được lấy từ crdfd_onvi lookup)
@@ -1345,7 +1349,7 @@ export default function ProductEntryForm({
     };
 
     loadPrice();
-  }, [selectedProductCode, product, customerCode, vatPercent, vatText, shouldReloadPrice]);
+  }, [selectedProductCode, product, customerCode, vatPercent, vatText, shouldReloadPrice, unitId]);
 
   // Update selectedPriceFromApi when user changes selected unit or when API prices change
   useEffect(() => {

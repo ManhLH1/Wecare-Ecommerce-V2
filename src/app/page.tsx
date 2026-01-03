@@ -1109,8 +1109,8 @@ const HomeContent = () => {
             })}
           loading={loadingCategory}
         />
-        {/* Industrial vacuum showcase — new implementation */}
-        <IndustrialVacuumShowcaseV2 />
+        {/* Industrial vacuum showcase — new implementation - TEMPORARILY HIDDEN */}
+        {/* <IndustrialVacuumShowcaseV2 /> */}
         {/* Shortcut Section - DESKTOP với thiết kế tròn (ẩn theo yêu cầu) */}
         <section className="hidden">
           <div className="flex flex-nowrap w-full gap-4 p-6 bg-transparent justify-center">
