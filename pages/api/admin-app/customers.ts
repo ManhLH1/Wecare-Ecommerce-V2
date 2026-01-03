@@ -66,13 +66,6 @@ export default async function handler(
 
     // Log customers with district keys for debugging
     const customersWithDistrictKeys = customers.filter((c: any) => c.crdfd_keyquanhuyen);
-    if (customersWithDistrictKeys.length > 0) {
-      console.log('🏙️ [API Customers] Customers with crdfd_keyquanhuyen:', customersWithDistrictKeys.map((c: any) => ({
-        customerId: c.crdfd_customerid,
-        customerName: c.crdfd_name,
-        crdfd_keyquanhuyen: c.crdfd_keyquanhuyen
-      })));
-    }
 
     // Cache the result
     setCachedResponse(cacheKey, customers);

@@ -177,12 +177,6 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   const selectedVatText = getVatLabelText(selectedSo);
   const isNonVatSelected = (selectedVatText || '').toLowerCase().includes('không');
   // Debug logs for payment term fields
-  console.log('[SOBG] selectedSo payment fields:', {
-    id: selectedSo?.id,
-    crdfd_ieukhoanthanhtoan: selectedSo?.crdfd_ieukhoanthanhtoan,
-    crdfd_dieu_khoan_thanh_toan: selectedSo?.crdfd_dieu_khoan_thanh_toan,
-    dieuKhoanThanhToan: selectedSo?.dieuKhoanThanhToan,
-  });
 
   // Helper function to generate SO label from SOBG object (giống SO - không có VAT text trong label)
   const generateSoLabel = useCallback((so: any): string => {
@@ -263,7 +257,6 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
 
       setIsLoadingDetails(true);
       try {
-        console.log('Loading SOBG details:', { soId, customerId });
         const details = await fetchSOBGDetails(soId, customerId);
         // Map SaleOrderDetail to ProductItem
         const mappedProducts: ProductItem[] = details.map((detail: SaleOrderDetail) => {
@@ -653,12 +646,6 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       const userInfo = getStoredUser();
 
       // Debug: log products payload to ensure promotionId is present
-      try {
-        // eslint-disable-next-line no-console
-        console.log('[Save SOBG] Payload productsToSave:', JSON.stringify(productsToSave, null, 2));
-      } catch (e) {
-        // ignore
-      }
 
       const result = await saveSOBGDetails({
         sobgId: soId,
@@ -727,14 +714,6 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       // After save: check promotion orders and show popup similar to SalesOrderForm
       try {
 
-        console.log('[SOBG Promotion] Checking promotion orders after save:', {
-          sobgId: savedSoId,
-          customerCode: savedCustomerCode,
-          totalAmount: savedTotalAmount,
-          productCodes: savedProductCodes,
-          productGroupCodes: savedProductGroupCodes
-        });
-
         const promotionOrderResult = await fetchPromotionOrders(
           savedSoId,
           savedCustomerCode,
@@ -743,23 +722,14 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           savedProductGroupCodes
         );
 
-        console.log('[SOBG Promotion] Result:', {
-          hasExistingPromotionOrder: promotionOrderResult.hasExistingPromotionOrder,
-          availablePromotionsCount: promotionOrderResult.availablePromotions?.length || 0,
-          allPromotionsCount: promotionOrderResult.allPromotions?.length || 0,
-          availablePromotions: promotionOrderResult.availablePromotions
-        });
-
         // Chỉ hiển thị popup nếu có promotion chiết khấu 2 (chietKhau2 = true)
         const chietKhau2Promotions = promotionOrderResult.allPromotions?.filter(p => p.chietKhau2) || [];
 
         if (chietKhau2Promotions.length > 0) {
-          console.log('[SOBG Promotion] ✅ Có chiết khấu 2 - hiển thị popup với', chietKhau2Promotions.length, 'promotion(s)');
           setSoId(savedSoId);
           setPromotionOrderList(chietKhau2Promotions);
           setShowPromotionOrderPopup(true);
         } else {
-          console.log('[SOBG Promotion] ❌ Không có chiết khấu 2 - không hiển thị popup');
           // No chiet khau 2 promotions -> keep current behavior (do not force clearEverything)
         }
       } catch (err: any) {
@@ -976,7 +946,6 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
 
     try {
       const orderTotal = orderSummary.total;
-      console.log('[Auto-select Promotion SOBG] Checking promotions for total amount:', orderTotal);
 
       // Fetch available promotions for current order
       const promotionOrderResult = await fetchPromotionOrders(
@@ -990,7 +959,6 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
 
       const available = promotionOrderResult.availablePromotions || [];
       if (available.length === 0) {
-        console.log('[Auto-select Promotion SOBG] No available promotions for current order');
         return;
       }
 
@@ -1034,7 +1002,6 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
 
       // If nothing selected by rules, fallback: show all available promotions (user can choose)
       if (selected.length === 0) {
-        console.log('[Auto-select Promotion SOBG] No auto-selected promotions by rules, showing all available promotions');
         setPromotionOrderList(available);
         setSelectedPromotionOrders([]);
         setShowPromotionOrderPopup(true);
@@ -1048,7 +1015,6 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       }
       const finalSelected = Object.values(uniqueById);
 
-      console.log('[Auto-select Promotion SOBG] Auto-selected promotions:', finalSelected.map(p => p.name));
       setPromotionOrderList(available);
       setSelectedPromotionOrders(finalSelected);
       setShowPromotionOrderPopup(true);
@@ -1100,8 +1066,6 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
 
     setIsApplyingPromotion(true);
     try {
-      console.log('[Apply Promotion SOBG] Applying promotions:', selectedPromotionOrders.map(p => p.name));
-
       // Apply promotions one by one (API expects single promotion per request)
       const applyResults = await Promise.all(selectedPromotionOrders.map(promo =>
         applySOBGPromotionOrder({

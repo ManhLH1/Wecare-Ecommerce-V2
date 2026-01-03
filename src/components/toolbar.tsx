@@ -90,8 +90,7 @@ const Toolbar = () => {
       { href: "/promotion", label: "Khuyến mãi", icon: FaTag, isActive: isActivepromotion },
       { href: "/post", label: "Tin tức", icon: FaNewspaper, isActive: isActiveNews },
     ];
-    console.log("Toolbar - Default menu items:", defaultItems); // Debug log
-    return defaultItems;
+    return defaultItems;  
   };
   const menuItems = getMenuItems();
 

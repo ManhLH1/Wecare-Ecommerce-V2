@@ -277,9 +277,6 @@ const ResultsGrid: React.FC<{
   isLoading: boolean;
   hasSearched: boolean;
 }> = ({ groupedProducts, isLoading, hasSearched }) => {
-  console.log('ResultsGrid props:', { groupedProducts, isLoading, hasSearched });
-  console.log('GroupedProducts keys:', Object.keys(groupedProducts));
-  console.log('GroupedProducts entries:', Object.entries(groupedProducts));
   
   if (isLoading) {
     return (
@@ -299,11 +296,8 @@ const ResultsGrid: React.FC<{
   }
 
   const groups = Object.entries(groupedProducts);
-  console.log('Groups length:', groups.length);
-  console.log('Groups data:', groups);
 
   if (hasSearched && groups.length === 0) {
-    console.log('Showing no results message');
     return (
       <div className="text-center py-16 px-6 bg-white rounded-lg border border-gray-200">
         <h3 className="text-xl font-semibold text-gray-700">Không tìm thấy sản phẩm</h3>
@@ -315,16 +309,13 @@ const ResultsGrid: React.FC<{
   }
   
   if (!hasSearched) {
-    console.log('Not searched yet, returning null');
     return null;
   }
 
-  console.log('Rendering results with', groups.length, 'groups');
   
   return (
     <div className="space-y-8">
       {groups.map(([groupName, groupData]) => {
-        console.log(`Rendering group: ${groupName} with ${groupData.count} products`);
         return (
           <section key={groupName}>
             <h2 className="text-2xl font-bold text-blue-600 mb-6 border-b-2 border-gray-200 pb-2">
@@ -507,17 +498,12 @@ export default function TimKiemBangHinhAnh() {
       // Gọi API tìm kiếm sản phẩm mới
       const response = await fetch(`/api/searchProductsByKeywords?${searchParams}`);
       
-      console.log('Executing search with params:', searchParams.toString());
-      
       if (response.ok) {
         const data = await response.json();
-        console.log('Search response:', data);
         
         if (data.data && Object.keys(data.data).length > 0) {
           setProductResults(data.data);
           setPagination(data.pagination);
-          console.log(`Successfully set ${Object.keys(data.data).length} product groups`);
-          
           // Save to search history
           const resultCount = Object.values(data.data).reduce((total: number, group: any) => total + (group.count || 0), 0);
           saveSearchHistory(currentSearchTerm, undefined, undefined, resultCount);
@@ -696,16 +682,6 @@ export default function TimKiemBangHinhAnh() {
         saveSearchHistory(result.keywords.productName, result.keywords, base64, 0);
         
         // Redirect đến trang san-pham với slug ngay lập tức
-        console.log('=== IMAGE SEARCH DEBUG ===');
-        console.log('AI Keywords received:', result.keywords);
-        console.log('Product Name (full):', result.keywords.productName);
-        console.log('Synonyms (available but not used in search):', result.keywords.synonyms);
-        console.log('Final Search Keywords (will be split by API):', searchKeywords);
-        console.log('Generated slug:', slug);
-        console.log('Redirect URL:', `/san-pham/${slug}?search=${encodeURIComponent(searchKeywords)}`);
-        console.log('========================');
-        
-        // Use window.location.replace to ensure immediate redirect
         window.location.replace(`/san-pham/${slug}?search=${encodeURIComponent(searchKeywords)}`);
         
         // Không cần set state nữa vì đã redirect
@@ -766,8 +742,6 @@ export default function TimKiemBangHinhAnh() {
       // Add customer ID if available (you can get this from your auth context)
       // searchParams.append('customerId', 'your-customer-id');
 
-      console.log('Sending AI keywords to API:', keywords);
-
       // Call the new API
       const response = await fetch(`/api/searchProductsByKeywords?${searchParams}`);
       
@@ -776,11 +750,6 @@ export default function TimKiemBangHinhAnh() {
       }
 
       const result = await response.json();
-      
-      console.log('Search result:', result);
-      console.log('Result data:', result.data);
-      console.log('Result data keys:', result.data ? Object.keys(result.data) : 'No data');
-      console.log('Result data values:', result.data ? Object.values(result.data) : 'No data');
       
       if (result.data && Object.keys(result.data).length > 0) {
         setProductResults(result.data);
@@ -791,26 +760,7 @@ export default function TimKiemBangHinhAnh() {
         const resultCount = Object.values(result.data).reduce((total: number, group: any) => total + (group.count || 0), 0);
         saveSearchHistory(keywords.productName, keywords, undefined, resultCount);
         
-        console.log(`Successfully set ${Object.keys(result.data).length} product groups with ${resultCount} total products`);
-        
-        // Show debug info if available
-        if (result.debug) {
-          console.log('Search debug info:', result.debug);
-          console.log(`Search strategy: ${result.debug.searchStrategy}`);
-          console.log(`Product name: "${result.debug.productName}" (NOT used in search)`);
-          console.log(`Synonyms: [${result.debug.synonyms?.join(', ')}] (ONLY these are used)`);
-          console.log(`ProductName used: ${result.debug.productNameUsed}, Synonyms used: ${result.debug.synonymsUsed}`);
-          console.log(`Total synonyms: ${result.debug.totalSynonyms}`);
-          console.log(`Used keywords: [${result.debug.aiKeywords?.join(', ')}]`);
-        }
       } else {
-        console.log('No data in search result or empty data object');
-        console.log('Result structure:', {
-          hasData: !!result.data,
-          dataType: typeof result.data,
-          dataKeys: result.data ? Object.keys(result.data) : null,
-          dataLength: result.data ? Object.keys(result.data).length : 0
-        });
         setProductResults({});
         setPagination(null);
         setHasSearched(true);

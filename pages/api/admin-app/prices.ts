@@ -117,7 +117,7 @@ export default async function handler(
   }
 
   try {
-    const { productCode, customerCode, customerId, region } = req.query;
+    const { productCode, customerCode, customerId, region, quantity } = req.query;
     if (!productCode || typeof productCode !== "string" || !productCode.trim()) {
       return res.status(400).json({ error: "productCode is required" });
     }
@@ -128,6 +128,7 @@ export default async function handler(
       customerCode,
       customerId,
       region,
+      quantity,
     });
     const cachedResponse = getCachedResponse(cacheKey, true); // Use short cache (1 min)
     if (cachedResponse !== undefined) {
@@ -201,16 +202,16 @@ export default async function handler(
     }
 
     const filter = filters.join(" and ");
-    // Expand lookup crdfd_onvi để lấy tên đơn vị
+    // Expand lookup crdfd_onvi để lấy tên đơn vị và giá trị chuyển đổi
     // crdfd_onvi có thể là lookup đến crdfd_unitses hoặc crdfd_unitconversions
-    // Cần expand để lấy cả crdfd_name (từ units) và crdfd_onvichuyenoitransfome (từ unit conversions)
+    // Cần expand để lấy cả crdfd_name (từ units), crdfd_onvichuyenoitransfome và crdfd_giatrichuyenoi (từ unit conversions)
     const columns =
       "crdfd_baogiachitietid,crdfd_masanpham,crdfd_gia,cr1bb_giakhongvat,crdfd_onvichuantext,crdfd_onvichuan,crdfd_nhomoituongtext,crdfd_giatheovc,crdfd_onvi";
     // Order by crdfd_giatheovc asc to get cheapest price first (per unit)
     // BỎ $top=1 để lấy TẤT CẢ các dòng báo giá (theo các đơn vị khác nhau)
     // Expand lookup để lấy tên đơn vị - thử cả units và unit conversions
-    // crdfd_onvi có thể là lookup đến crdfd_unitses (crdfd_name) hoặc crdfd_unitconversions (crdfd_onvichuyenoitransfome)
-    const expand = "$expand=crdfd_onvi($select=crdfd_name,crdfd_onvichuyenoitransfome)";
+    // crdfd_onvi có thể là lookup đến crdfd_unitses (crdfd_name) hoặc crdfd_unitconversions (crdfd_onvichuyenoitransfome, crdfd_giatrichuyenoi)
+    const expand = "$expand=crdfd_onvi($select=crdfd_name,crdfd_onvichuyenoitransfome,crdfd_giatrichuyenoi)";
     const query = `$select=${columns}&$filter=${encodeURIComponent(
       filter
     )}&${expand}&$orderby=crdfd_giatheovc asc`;
@@ -222,6 +223,7 @@ export default async function handler(
       productCode,
       customerGroups: customerGroups.join(","),
       region,
+      quantity,
     });
     
     const response = await deduplicateRequest(dedupKey, () =>
@@ -232,19 +234,26 @@ export default async function handler(
     
     // Trả về mảng tất cả các giá (mỗi giá theo 1 đơn vị)
     // Bao gồm crdfd_masanpham và crdfd_onvichuan trong mỗi item
-    // Lấy tên đơn vị từ expanded lookup hoặc từ field text
+    // Lấy tên đơn vị và giá trị chuyển đổi từ expanded lookup hoặc từ field text
     const prices = allPrices.map((item: any) => {
       // Ưu tiên lấy từ expanded lookup:
       // - crdfd_onvi.crdfd_onvichuyenoitransfome (từ unit conversions) - chính xác nhất
       // - crdfd_onvi.crdfd_name (từ units)
       // Nếu không có, lấy từ crdfd_onvichuantext hoặc crdfd_onvichuan
-      const unitName = 
+      const unitName =
         item.crdfd_onvi?.crdfd_onvichuyenoitransfome ||  // Từ unit conversions (ưu tiên)
         item.crdfd_onvi?.crdfd_name ||                   // Từ units
-        item.crdfd_onvichuantext || 
-        item.crdfd_onvichuan || 
+        item.crdfd_onvichuantext ||
+        item.crdfd_onvichuan ||
         undefined;
-      
+
+      // Lấy giá trị chuyển đổi từ expanded lookup (từ unit conversions)
+      const giatrichuyenoi = item.crdfd_onvi?.crdfd_giatrichuyenoi ?? 0;
+
+      // Tính SL theo kho: Số lượng x crdfd_giatrichuyenoi
+      const parsedQuantity = quantity && typeof quantity === "string" ? parseFloat(quantity) : 1;
+      const slTheoKho = parsedQuantity * giatrichuyenoi;
+
       return {
         price: item.crdfd_gia ?? null,
         priceNoVat: item.cr1bb_giakhongvat ?? null,
@@ -252,19 +261,28 @@ export default async function handler(
         priceGroupText: item.crdfd_nhomoituongtext || undefined,
         crdfd_masanpham: item.crdfd_masanpham || productCode, // Thêm mã sản phẩm
         crdfd_onvichuan: item.crdfd_onvichuan || undefined, // Thêm đơn vị chuẩn để map
+        crdfd_giatrichuyenoi: giatrichuyenoi, // Giá trị chuyển đổi từ lookup hoặc field
+        slTheoKho: slTheoKho, // SL theo kho = Số lượng x crdfd_giatrichuyenoi
       };
     });
 
     // Backward compatibility: Trả về cả object đầu tiên (để code cũ vẫn hoạt động)
     // VÀ mảng prices để code mới có thể xử lý nhiều đơn vị
     const first = allPrices[0];
-    const firstUnitName = 
+    const firstUnitName =
       first?.crdfd_onvi?.crdfd_onvichuyenoitransfome ||  // Từ unit conversions (ưu tiên)
       first?.crdfd_onvi?.crdfd_name ||                   // Từ units
-      first?.crdfd_onvichuantext || 
-      first?.crdfd_onvichuan || 
+      first?.crdfd_onvichuantext ||
+      first?.crdfd_onvichuan ||
       undefined;
-    
+
+    // Lấy giá trị chuyển đổi từ expanded lookup cho item đầu tiên
+    const firstGiatrichuyenoi = first?.crdfd_onvi?.crdfd_giatrichuyenoi ?? 0;
+
+    // Tính SL theo kho cho item đầu tiên
+    const parsedQuantity = quantity && typeof quantity === "string" ? parseFloat(quantity) : 1;
+    const firstSlTheoKho = parsedQuantity * firstGiatrichuyenoi;
+
     const result = {
       // Object đầu tiên (backward compatibility)
       price: first?.crdfd_gia ?? null,
@@ -273,6 +291,8 @@ export default async function handler(
       priceGroupText: first?.crdfd_nhomoituongtext || undefined,
       crdfd_masanpham: first?.crdfd_masanpham || productCode,
       crdfd_onvichuan: first?.crdfd_onvichuan || undefined,
+      crdfd_giatrichuyenoi: firstGiatrichuyenoi, // Giá trị chuyển đổi từ lookup hoặc field
+      slTheoKho: firstSlTheoKho, // SL theo kho = Số lượng x crdfd_giatrichuyenoi
       // Mảng tất cả các giá (theo các đơn vị khác nhau)
       prices: prices,
     };

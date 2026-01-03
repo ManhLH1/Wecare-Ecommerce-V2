@@ -346,7 +346,6 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
 
   // Handle category click
   const handleCategoryClick = (category: any) => {
-    // console.log('Clicking category:', category.crdfd_productname, category.crdfd_productgroupid);
     setSelectedMainCategory(category);
     setShowRightPanel(true);
 

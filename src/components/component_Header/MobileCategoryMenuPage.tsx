@@ -19,11 +19,6 @@ const MobileCategoryMenuPage: React.FC<MobileCategoryMenuPageProps> = ({
   showCloseButton = false,
 }) => {
   // Debug info
-  console.log('MobileCategoryMenuPage Debug:', {
-    categoryHierarchy: !!categoryHierarchy,
-    categoryGroups: categoryGroups?.length || 0,
-    loadingCategory
-  });
 
   const renderCategoryItem = (item: any, level: number = 0) => {
     const hasChildren = categoryHierarchy?.byLevel?.[level + 1]?.some(

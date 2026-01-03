@@ -143,14 +143,6 @@ export default async function handler(
       const sodEndpoint = `${BASE_URL}${SOBG_DETAIL_TABLE}?${sodQuery}`;
       const sodResponse = await axios.get(sodEndpoint, { headers });
       const sodList = sodResponse.data.value || [];
-      console.log('[ApplySOBGPromotion] fetched sodList length:', sodList.length);
-      try {
-        console.log('[ApplySOBGPromotion] sod sample:', (sodList || []).slice(0,10).map((s:any)=>({
-          id: s.crdfd_sodbaogiaid,
-          productCode: s.crdfd_masanpham,
-          productGroup: s.crdfd_manhomsanpham
-        })));
-      } catch(e) { /* ignore */ }
 
       // Filter SOD báo giá matching productCodes or productGroupCodes
       // Normalize effective product codes/groups into arrays (trim, remove empties)
@@ -162,8 +154,6 @@ export default async function handler(
         ? (Array.isArray(effectiveProductGroupCodes) ? effectiveProductGroupCodes : String(effectiveProductGroupCodes).split(","))
         : [];
       const productGroupCodeList = productGroupCodeListRaw.map((c: any) => String(c || '').trim()).filter((c: string) => c !== '');
-
-      console.log('[ApplySOBGPromotion] effectiveProductCodes count:', productCodeList.length, 'effectiveProductGroupCodes count:', productGroupCodeList.length);
       // Normalize for case-insensitive matching
       const productCodeListNorm = productCodeList.map(s => s.toUpperCase());
       const productGroupCodeListNorm = productGroupCodeList.map(s => s.toUpperCase());
@@ -202,14 +192,10 @@ export default async function handler(
           });
         }
       }
-      console.log('[ApplySOBGPromotion] sodsToUpdate length:', sodsToUpdate.length, 'debugMatches:', debugMatchDetails.slice(0,20));
-
       // Cập nhật từng SOD báo giá với crdfd_chieckhau2
-      console.log('[ApplySOBGPromotion] sodsToUpdate count:', sodsToUpdate.length);
       for (const sod of sodsToUpdate) {
         try {
           const sodId = sod.crdfd_sodbaogiaid;
-          console.log('[ApplySOBGPromotion] Updating SOD báo giá:', sodId, { productCode: sod.crdfd_masanpham, productGroup: sod.crdfd_manhomsanpham });
           const updated = await updateSodBaoGiaChietKhau2(
             sodId,
             promotionId, // bind promotion lookup on SOD báo giá
@@ -217,7 +203,6 @@ export default async function handler(
             vndOrPercent,
             headers
           );
-          console.log('[ApplySOBGPromotion][updateSodBaoGiaChietKhau2] result for', sodId, updated ? 'ok' : 'no-response');
           updatedSodCount++;
         } catch (err: any) {
           console.error('[ApplySOBGPromotion] Error updating single SOD báo giá:', sod?.crdfd_sodbaogiaid, err?.message || err);
@@ -306,12 +291,6 @@ async function recalculateSOBGTotals(sobgId: string, headers: Record<string, str
 
     const updateEndpoint = `${BASE_URL}${SOBG_HEADER_TABLE}(${sobgId})`;
     await axios.patch(updateEndpoint, updatePayload, { headers });
-
-    console.log(`[Recalculate SOBG Totals] Updated SOBG ${sobgId}:`, {
-      subtotal: roundedSubtotal,
-      vat: roundedVat,
-      total: roundedTotal
-    });
   } catch (error) {
     console.error("Error recalculating SOBG totals:", error);
     // Don't throw error to avoid breaking the promotion application
@@ -374,7 +353,6 @@ async function updateSodBaoGiaChietKhau2(
   const updateEndpoint = `${BASE_URL}${SOBG_DETAIL_TABLE}(${sodId})`;
   try {
     const resp = await axios.patch(updateEndpoint, updatePayload, { headers });
-    console.log('[ApplySOBGPromotion][updateSodBaoGiaChietKhau2] patched SOD báo giá', sodId, 'status', resp.status);
     return { success: true, status: resp.status };
   } catch (err: any) {
     console.error('[ApplySOBGPromotion][updateSodBaoGiaChietKhau2] failed patch SOD báo giá', sodId, err?.response?.data || err?.message || err);

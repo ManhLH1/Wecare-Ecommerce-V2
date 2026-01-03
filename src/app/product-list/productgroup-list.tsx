@@ -191,11 +191,6 @@ const ModifiedProductTable: React.FC<ModifiedProductTableProps> = ({
 
   useEffect(() => {
     // Debug logging
-    console.log('=== MODIFIED PRODUCT TABLE DEBUG ===');
-    console.log('products received:', products);
-    console.log('products length:', products?.length || 0);
-    console.log('====================================');
-    
     if (products && products.length > 0) {
       // Console log để kiểm tra dữ liệu products được truyền vào component
       // Tạo mảng để chứa các sản phẩm đã được xử lý
@@ -437,24 +432,16 @@ const useProductsData = (
       }
 
       if (searchTerm) {
-        console.log('=== PRODUCT GROUP LIST DEBUG ===');
-        console.log('Search Term:', searchTerm);
-        console.log('API URL:', apiUrl);
-        console.log('Params before adding searchTerm:', params.toString());
-        
-        // Check if we have AI keywords for this search
+           // Check if we have AI keywords for this search
         const aiKeywordsForAPI = localStorage.getItem('imageSearch:aiKeywordsForAPI');
         if (aiKeywordsForAPI) {
-          console.log('Found AI keywords for API:', aiKeywordsForAPI);
           params.append("keywords", aiKeywordsForAPI);
           // Clear the AI keywords after using them
           localStorage.removeItem('imageSearch:aiKeywordsForAPI');
         } else {
           params.append("searchTerm", searchTerm);
-        }
-        
-        console.log('Params after adding search params:', params.toString());
-        console.log('================================');
+        }       
+     
       }
 
       if (groupName) {

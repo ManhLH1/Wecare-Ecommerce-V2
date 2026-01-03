@@ -65,11 +65,9 @@ async function lookupSystemUserId(
         if (username) {
             const safeUsername = username.trim().replace(/'/g, "''");
             filter = `domainname eq '${safeUsername}'`;
-            console.log('[Save SOBG] 🔍 Searching systemuser by domainname:', safeUsername);
         } else if (email) {
             const safeEmail = email.trim().replace(/'/g, "''");
             filter = `internalemailaddress eq '${safeEmail}'`;
-            console.log('[Save SOBG] 🔍 Searching systemuser by email:', safeEmail);
         }
 
         if (!filter) return null;
@@ -100,7 +98,6 @@ async function lookupEmployeeByEmail(
 
     try {
         const safeEmail = email.trim().replace(/'/g, "''");
-        console.log('[Save SOBG] 🔍 Searching employee by email (cr1bb_emailcal):', safeEmail);
 
         const filter = `cr1bb_emailcal eq '${safeEmail}' and statecode eq 0`;
         const query = `$select=crdfd_employeeid,crdfd_name,cr1bb_emailcal&$filter=${encodeURIComponent(filter)}&$top=1`;
@@ -110,11 +107,6 @@ async function lookupEmployeeByEmail(
         const results = response.data.value || [];
 
         if (results.length > 0) {
-            console.log('[Save SOBG] ✅ Found employee:', {
-                employeeId: results[0].crdfd_employeeid,
-                employeeName: results[0].crdfd_name,
-                email: results[0].cr1bb_emailcal
-            });
             return results[0].crdfd_employeeid;
         } else {
             console.warn('[Save SOBG] ⚠️ No employee found with email:', safeEmail);
@@ -151,11 +143,9 @@ async function findPromotionForProduct(
         const filterClause = `${baseFilter} and (${orClauses.join(" or ")})`;
         const query = `$select=${select}&$filter=${encodeURIComponent(filterClause)}&$top=1`;
         const endpoint = `${BASE_URL}${PROMOTION_TABLE}?${query}`;
-        console.log('[Save SOBG] Promotion inference query:', endpoint);
         const resp = await axios.get(endpoint, { headers });
         const rows = resp.data.value || [];
         if (rows.length > 0) {
-            console.log('[Save SOBG] Promotion inference result:', rows[0]);
             return { id: rows[0].crdfd_promotionid, name: rows[0].crdfd_name };
         }
     } catch (err) {
@@ -193,20 +183,12 @@ export default async function handler(
         const headers = { Authorization: `Bearer ${token}` };
 
         // Log userInfo received from frontend
-        console.log('[Save SOBG] 📥 Received userInfo:', JSON.stringify(userInfo, null, 2));
 
         // Lookup systemuser ID from userInfo email for owner/createdby
         // Note: ownerid in Dynamics 365 can only reference systemuser or team, not custom employee entities
         let ownerSystemUserId: string | null = null;
         if (userInfo && userInfo.email) {
-            console.log('[Save SOBG] 🔍 Looking up systemuser with email:', userInfo.email);
-            ownerSystemUserId = await lookupSystemUserId(headers, undefined, userInfo.email);
-            if (ownerSystemUserId) {
-                console.log('[Save SOBG] ✅ Found systemuser for owner:', {
-                    systemUserId: ownerSystemUserId,
-                    email: userInfo.email
-                });
-            } else {
+            ownerSystemUserId = await lookupSystemUserId(headers, undefined, userInfo.email); else {
                 console.warn('[Save SOBG] ⚠️ Could not find systemuser with email:', userInfo.email);
             }
         } else {
@@ -274,8 +256,7 @@ export default async function handler(
                 vndOrPercent: r.crdfd_vn,
                 value: r.crdfd_value,
                 name: r.crdfd_name
-            }));
-            console.log('[Save SOBG] Found SOBG promotions:', sobgPromotions.length);
+            }            ));
         } catch (err: any) {
             console.warn('[Save SOBG] Could not fetch SOBG promotions:', (err as any)?.message || err);
         }
@@ -462,13 +443,11 @@ export default async function handler(
                         }
                         if (matched && matched.promotionId) {
                             entity[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${String(matched.promotionId).replace(/^{|}$/g,'').trim()})`;
-                            console.log('[Save SOBG] Bound promotion from SOBG promotions for product:', product.productCode, matched.promotionId, matched.name);
                         } else {
                             // Fallback: look up by promotionText/productCode directly in promotions table
                             const inferred = await findPromotionForProduct(product.productCode, product.promotionText || product.promotionText, headers);
                             if (inferred && inferred.id) {
                                 entity[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${String(inferred.id).replace(/^{|}$/g,'').trim()})`;
-                                console.log('[Save SOBG] Inferred promotion for product:', product.productCode, inferred.id, inferred.name);
                             }
                         }
                     } catch (e) {
@@ -476,14 +455,11 @@ export default async function handler(
                     }
                 }
 
-                console.log('[Save SOBG] 💾 Creating entity...');
-
                 // Use impersonation to set the correct createdby user
                 // MSCRMCallerID header tells Dynamics 365 to create the record as if this user did it
                 const createHeaders: any = { ...headers };
                 if (ownerSystemUserId) {
                     createHeaders['MSCRMCallerID'] = ownerSystemUserId;
-                    console.log('[Save SOBG] 🎭 Impersonating systemuser for creation:', ownerSystemUserId);
                 }
 
                 const createResponse = await axios.post(`${BASE_URL}${SODBAOGIA_TABLE}`, entity, { headers: createHeaders });
@@ -497,16 +473,11 @@ export default async function handler(
                     const match = createdRecordUrl.match(/\(([a-f0-9-]+)\)/i);
                     if (match) {
                         createdRecordId = match[1];
-                        console.log('[Save SOBG] ✅ Created record:', createdRecordId);
                     }
                 }
 
                 // PATCH to set owner and createdby if we have ownerSystemUserId and createdRecordId
                 if (ownerSystemUserId && createdRecordId) {
-                    console.log('[Save SOBG] 🔧 Patching ownerid and createdby:', {
-                        recordId: createdRecordId,
-                        ownerSystemUserId
-                    });
 
                     try {
                         // Set ownerid to systemuser
@@ -515,7 +486,6 @@ export default async function handler(
                             { "ownerid@odata.bind": `/systemusers(${ownerSystemUserId})` },
                             { headers }
                         );
-                        console.log('[Save SOBG] ✅ Set ownerid successfully');
                     } catch (ownerError: any) {
                         console.warn('[Save SOBG] ⚠️ Could not set ownerid:', ownerError.message);
                         console.warn('[Save SOBG] Error details:', ownerError.response?.data);
@@ -540,7 +510,6 @@ export default async function handler(
                                 { [`${fieldName}@odata.bind`]: `/systemusers(${ownerSystemUserId})` },
                                 { headers }
                             );
-                            console.log('[Save SOBG] ✅ Set createdby successfully using field:', fieldName);
                             createdBySuccess = true;
                             break;
                         } catch (err: any) {
@@ -560,7 +529,6 @@ export default async function handler(
                             { "crdfd_Promotion@odata.bind": entity['crdfd_Promotion@odata.bind'] },
                             { headers }
                         );
-                        console.log('[Save SOBG] ✅ Patched promotion lookup on created SOD báo giá:', createdRecordId);
                     } catch (promoPatchErr: any) {
                         console.warn('[Save SOBG] ⚠️ Could not patch promotion lookup on SOD báo giá:', createdRecordId, promoPatchErr?.message || promoPatchErr);
                     }

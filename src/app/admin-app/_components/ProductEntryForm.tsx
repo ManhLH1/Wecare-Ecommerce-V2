@@ -193,7 +193,6 @@ export default function ProductEntryForm({
   disableInventoryReserve = false,
   orderTotal,
 }: ProductEntryFormProps) {
-  console.log('🚀 [ProductEntryForm] Component rendered, customerDistrictKey:', customerDistrictKey);
 
   // Disable form if customer or SO is not selected
   // Check for both null/undefined and empty string
@@ -220,6 +219,8 @@ export default function ProductEntryForm({
   const [productId, setProductId] = useState('');
   const [unitId, setUnitId] = useState('');
   const [availableUnitsFromPrices, setAvailableUnitsFromPrices] = useState<any[]>([]);
+  const [pricesFromApi, setPricesFromApi] = useState<any[]>([]);
+  const [selectedPriceFromApi, setSelectedPriceFromApi] = useState<any | null>(null);
   const [warehouseId, setWarehouseId] = useState('');
   const [selectedProductCode, setSelectedProductCode] = useState<string | undefined>();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -408,22 +409,12 @@ export default function ProductEntryForm({
 
   // Lấy tên đơn vị chuẩn từ unit conversion (theo PowerApps logic)
   const getBaseUnitName = () => {
-    console.log('[getBaseUnitName] Debug:', {
-      selectedProduct: selectedProduct ? {
-        crdfd_onvichuantext: selectedProduct.crdfd_onvichuantext
-      } : null,
-      selectedProductCode,
-      unitId,
-      productsCount: products.length,
-      unitsCount: units.length
-    });
 
     // Ưu tiên lấy từ unit hiện tại (dp_Don_vi.Selected.'Đơn vị chuẩn') - theo dữ liệu từ API units
     const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
     if (currentUnit) {
       const unitBaseUnit = (currentUnit as any)?.crdfd_onvichuan;
       if (unitBaseUnit) {
-        console.log('[getBaseUnitName] Found in current unit crdfd_onvichuan:', unitBaseUnit, 'from unit:', currentUnit);
         return unitBaseUnit;
       }
     }
@@ -431,25 +422,21 @@ export default function ProductEntryForm({
     // Fallback: Theo PowerApps: cb_san_pham.Selected.'Đơn vị chuẩn text'
     // Ưu tiên lấy từ selectedProduct
     if (selectedProduct?.crdfd_onvichuantext) {
-      console.log('[getBaseUnitName] Found in selectedProduct.crdfd_onvichuantext:', selectedProduct.crdfd_onvichuantext);
       return selectedProduct.crdfd_onvichuantext;
     }
 
     // Fallback: tìm từ products list
     const productFromList = products.find((p) => p.crdfd_masanpham === selectedProductCode);
     if (productFromList?.crdfd_onvichuantext) {
-      console.log('[getBaseUnitName] Found in products list:', productFromList.crdfd_onvichuantext);
       return productFromList.crdfd_onvichuantext;
     }
 
     // Fallback: lấy từ unit hiện tại với tên trường khác
     if (currentUnit) {
       const unitBaseUnit = (currentUnit as any)?.crdfd_onvichuantext;
-      console.log('[getBaseUnitName] Found in current unit crdfd_onvichuantext:', unitBaseUnit, 'from unit:', currentUnit);
       return unitBaseUnit || 'đơn vị chuẩn';
     }
 
-    console.log('[getBaseUnitName] No base unit found, returning default');
     return 'đơn vị chuẩn';
   };
 
@@ -467,19 +454,28 @@ export default function ProductEntryForm({
         units: units.map(u => ({ id: u.crdfd_unitsid, name: u.crdfd_name, factor: u.crdfd_giatrichuyenoi, onvichuan: u.crdfd_onvichuan }))
       });
 
-      // Lấy giá trị chuyển đổi từ đơn vị đã chọn
+      // Lấy giá trị chuyển đổi ưu tiên từ API price (nếu API trả về crdfd_giatrichuyenoi)
+      const apiFactorRaw =
+        (selectedPriceFromApi as any)?.crdfd_giatrichuyenoi ??
+        (selectedPriceFromApi as any)?.crdfd_onvi?.crdfd_giatrichuyenoi ??
+        null;
+
+      if (apiFactorRaw !== null) {
+        console.log('[SL theo kho] Using API factor:', apiFactorRaw);
+      }
+
+      // Lấy giá trị chuyển đổi từ đơn vị đã chọn (fallback)
       const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
-      console.log('[SL theo kho] Current unit found:', currentUnit);
+      const unitFactorRaw = (currentUnit as any)?.crdfd_giatrichuyenoi ?? null;
+      if (unitFactorRaw !== null) {
+        console.log('[SL theo kho] Using unit factor from units list:', unitFactorRaw);
+      }
 
-      // Theo PowerApps: dp_Don_vi.Selected.'Giá trị chuyển đổi'
-      // Chỉ sử dụng crdfd_giatrichuyenoi (Giá trị chuyển đổi)
-      const rawFactor = (currentUnit as any)?.crdfd_giatrichuyenoi ?? null;
-      console.log('[SL theo kho] Raw factor:', rawFactor);
-
-      // IfError: Nếu không có giá trị chuyển đổi hoặc lỗi, dùng 1 (tỷ lệ 1:1)
+      // Nếu cả hai đều không có, fallback về 1
       let conversionFactor = 1;
-      if (rawFactor !== null && rawFactor !== undefined) {
-        const factorNum = Number(rawFactor);
+      const chosenRaw = apiFactorRaw ?? unitFactorRaw;
+      if (chosenRaw !== null && chosenRaw !== undefined) {
+        const factorNum = Number(chosenRaw);
         conversionFactor = !isNaN(factorNum) && factorNum > 0 ? factorNum : 1;
       }
 
@@ -565,13 +561,6 @@ export default function ProductEntryForm({
   }, [selectedProductGroupCode]);
 
   const syncInventoryState = (theoretical: number, reserved: number, available: number | undefined, isVatOrder: boolean) => {
-    console.log('📊 [Inventory] Updating inventory state:', {
-      theoretical,
-      reserved,
-      available,
-      isVatOrder,
-      finalAvailable: available !== undefined ? available : (theoretical - reserved)
-    });
 
     setInventoryTheoretical(theoretical);
     setReservedQuantity(reserved);
@@ -627,11 +616,6 @@ export default function ProductEntryForm({
     }
 
     try {
-      console.log('⏳ [Inventory] Starting to load inventory for:', {
-        selectedProductCode,
-        warehouse,
-        isVatOrder
-      });
       setInventoryLoading(true);
       const latest = await fetchInventory(selectedProductCode, warehouse, isVatOrder);
       if (!latest) {
@@ -998,14 +982,6 @@ export default function ProductEntryForm({
       setInventoryColor('red');
     } finally {
       // Use state variables (safe outside try) instead of local try-scoped variables
-      console.log('✅ [Inventory] Loading completed for:', {
-        selectedProductCode,
-        warehouse,
-        finalTheoretical: inventoryTheoretical,
-        finalReserved: reservedQuantity,
-        finalAvailable: availableToSell,
-        isVatOrder
-      });
       setInventoryLoading(false);
     }
   };
@@ -1215,6 +1191,8 @@ export default function ProductEntryForm({
           });
         }
         setAvailableUnitsFromPrices(unitsFromPrices);
+        // Save API prices and selected price for other UI (SL theo kho) to consume
+        setPricesFromApi(allPrices);
         if (allPrices.length > 0 && currentUnitName) {
           // Bước 1: Tìm theo unitName từ API (đã được lấy từ crdfd_onvi lookup) - chính xác nhất
           selectedPrice = allPrices.find((p: any) => {
@@ -1240,6 +1218,7 @@ export default function ProductEntryForm({
         if (!selectedPrice && allPrices.length > 0) {
           selectedPrice = allPrices[0];
         }
+        setSelectedPriceFromApi(selectedPrice || null);
 
         // Fallback về format cũ nếu API chưa có prices array
         const priceWithVat = selectedPrice?.price ?? result?.price ?? null;
@@ -1342,7 +1321,6 @@ export default function ProductEntryForm({
         // QUAN TRỌNG: Kiểm tra xem sản phẩm có còn là sản phẩm hiện tại không
         // Nếu user đã chọn sản phẩm khác trong khi đang load giá, không set giá này vào
         if (currentProductCode !== selectedProductCode) {
-          console.log(`[Price Load] Ignoring price for ${currentProductCode} - product changed to ${selectedProductCode}`);
           return; // Không set giá nếu sản phẩm đã thay đổi
         }
 
@@ -1387,6 +1365,38 @@ export default function ProductEntryForm({
     loadPrice();
   }, [selectedProductCode, product, customerCode, vatPercent, vatText, shouldReloadPrice]);
 
+  // Update selectedPriceFromApi when user changes selected unit or when API prices change
+  useEffect(() => {
+    if (!unitId) {
+      setSelectedPriceFromApi(null);
+      return;
+    }
+
+    // Try to get unit name from availableUnitsFromPrices (units created from API prices)
+    const fromPricesUnit = availableUnitsFromPrices.find((u) => u.crdfd_unitsid === unitId);
+    let selectedUnitRawName = fromPricesUnit?.crdfd_name;
+
+    // Fallback to CRM units list
+    if (!selectedUnitRawName) {
+      const fromUnits = units.find((u) => u.crdfd_unitsid === unitId);
+      selectedUnitRawName = fromUnits?.crdfd_name || fromUnits?.crdfd_onvichuantext || fromUnits?.crdfd_onvichuan;
+    }
+
+    if (!selectedUnitRawName) {
+      setSelectedPriceFromApi(null);
+      return;
+    }
+
+    const prefNorm = normalizeText(selectedUnitRawName);
+    const matched = (pricesFromApi || []).find((p: any) => {
+      const n1 = normalizeText(p.unitName || '');
+      const n2 = normalizeText(p.crdfd_onvichuan || '');
+      return n1 === prefNorm || n2 === prefNorm;
+    });
+
+    setSelectedPriceFromApi(matched || null);
+  }, [unitId, pricesFromApi, availableUnitsFromPrices, units]);
+ 
   // Fetch promotions based on product code and customer code
   useEffect(() => {
     const loadPromotions = async () => {
@@ -1846,31 +1856,6 @@ export default function ProductEntryForm({
         (currentUnit as any)?.crdfd_conversionvalue ??
         1;
 
-      console.log('🚛 [ProductEntryForm] Calculating delivery date for product:', {
-        productCode: selectedProductCode,
-        productName: selectedProduct?.crdfd_name,
-        customerName,
-        customerIndustry,
-        varNganhNghe,
-        districtLeadtime,
-        quantity,
-        conversionFactor,
-        inventoryTheoretical,
-        productLeadTime,
-        promotion: promoRecord ? {
-          leadtime: promoRecord.cr1bb_leadtimepromotion,
-          phanloai: promoRecord.cr1bb_phanloaichuongtrinh
-        } : null
-      });
-
-      console.log('🔄 [ProductEntryForm] Computing delivery date with params:', {
-        districtLeadtime: districtLeadtime,
-        quantity: quantity || 0,
-        conversionFactor: Number(conversionFactor) || 1,
-        inventoryTheoretical: inventoryTheoretical ?? 0,
-        productLeadTime: productLeadTime || 0,
-        varNganhNghe: varNganhNghe ?? undefined
-      });
 
       const computed = computeDeliveryDate({
         promotion: promoRecord,
@@ -1883,10 +1868,6 @@ export default function ProductEntryForm({
       });
 
       const formattedDate = formatDate(computed);
-      console.log('📅 [ProductEntryForm] Delivery date calculated:', {
-        computed: computed.toLocaleString('vi-VN'),
-        formatted: formattedDate
-      });
 
       setDeliveryDate(formattedDate);
     } catch (e) {
@@ -1898,13 +1879,6 @@ export default function ProductEntryForm({
       t.setDate(today.getDate() + daysToAdd);
       const fallbackDate = formatDate(t);
 
-      console.log('🔄 [ProductEntryForm] Using FALLBACK delivery date:', {
-        quantity,
-        stockQuantity,
-        daysToAdd,
-        fallbackDate
-      });
-
       setDeliveryDate(fallbackDate);
     }
   }, [selectedPromotionId, promotions, selectedPromotion, customerIndustry, customerName, quantity, unitId, units, inventoryTheoretical, selectedProduct, stockQuantity, districtLeadtime, inventoryLoading]);
@@ -1912,16 +1886,8 @@ export default function ProductEntryForm({
 
   // Fetch district leadtime when customer district key changes
   useEffect(() => {
-    console.log('🔄 [District Leadtime] customerDistrictKey changed:', {
-      customerDistrictKey,
-      customerName,
-      customerId,
-      hasKey: !!customerDistrictKey && customerDistrictKey.trim() !== ''
-    });
 
     const fetchDistrictLeadtime = async () => {
-    console.log('🏙️ [District Leadtime] Fetching for key (or fallback name):', customerDistrictKey);
-
     try {
       let result;
       // Prefer fetching by customerId when available (more reliable)
@@ -1944,7 +1910,6 @@ export default function ProductEntryForm({
           const bracketMatch = customerNameStr.match(/\\(([^)]+)\\)/);
           if (bracketMatch && bracketMatch[1]) {
             districtNameFromCustomer = bracketMatch[1].trim();
-            console.log('📍 [District Leadtime] Found district in brackets:', districtNameFromCustomer);
           } else {
             // Try pattern: split by '-' and take last meaningful part
             const parts = customerNameStr.split('-').map(p => p.trim()).filter(p => p.length > 0);
@@ -1953,38 +1918,19 @@ export default function ProductEntryForm({
               // Check if last part looks like a district name (contains quận/huyện/thị xã)
               if (lastPart.match(/(quận|huyện|thị xã|thành phố|tp\.?|q\.?)/i)) {
                 districtNameFromCustomer = lastPart;
-                console.log('📍 [District Leadtime] Found district by split:', districtNameFromCustomer);
               }
             }
           }
         }
 
         if (!districtNameFromCustomer) {
-          console.log('⚠️ [District Leadtime] No district data available:', {
-            customerId,
-            customerName,
-            customerDistrictKey: 'NOT_SET',
-            crdfd_keyquanhuyen: 'NOT_SET',
-            action: 'Using default leadtime 2 days (48 hours)'
-          });
           setDistrictLeadtime(2); // Default 2 days = 48 hours
           return;
         }
 
-        console.log('🏙️ [District Leadtime] Falling back to lookup by name:', districtNameFromCustomer);
         result = await getDistrictLeadtime({ name: districtNameFromCustomer } as any);
       }
 
-      console.log('🏙️ [District Leadtime] Final result:', {
-        customerId,
-        customerName,
-        customerDistrictKey,
-        districtId: result.districtId,
-        districtName: result.districtName,
-        cr1bb_leadtimekhuvuc: result.leadtimeKhuVuc,
-        cr1bb_leadtimetheoca: result.leadtimeTheoCa,
-        usingLeadtime: result.leadtimeTheoCa
-      });
       setDistrictLeadtime(result.leadtimeTheoCa);
     } catch (error) {
       console.error('❌ [District Leadtime] Error fetching:', error);
@@ -2289,12 +2235,6 @@ export default function ProductEntryForm({
               })}
               value={productId}
               onChange={(value, option) => {
-                console.log('📦 [Product Selection] User selected product:', {
-                  productId: value,
-                  productName: option?.label,
-                  productCode: option?.crdfd_masanpham
-                });
-
                 setProductId(value);
                 setProduct(option?.label || '');
                 const selectedProductData = products.find((p) => p.crdfd_productsid === value);
@@ -2379,8 +2319,10 @@ export default function ProductEntryForm({
                 setUnitId(value);
                 setUnit(option?.label || '');
                 userSelectedUnitRef.current = true; // Đánh dấu người dùng đã chọn đơn vị
-                // Trigger price reload for the newly selected unit
-                setShouldReloadPrice((s) => (s || 0) + 1);
+                // NOTE: Do NOT trigger a full price reload here. The component already
+                // stores `pricesFromApi` and maps `selectedPriceFromApi` in a separate
+                // effect when `unitId` or `pricesFromApi` changes. Removing the forced
+                // reload avoids redundant API calls when only the unit selection changes.
               }}
               placeholder={isFormDisabled ? "Chọn KH và SO trước" : "Chọn đơn vị"}
               loading={unitsLoading}

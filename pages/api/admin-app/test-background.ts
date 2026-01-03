@@ -38,8 +38,6 @@ export default async function handler(
           success ? undefined : 'Simulated test error',
           'test_user'
         );
-
-        console.log(`[Test] Background job ${jobId} ${success ? 'completed' : 'failed'}`);
       }, 2000);
 
       res.status(200).json({

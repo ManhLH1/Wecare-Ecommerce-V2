@@ -56,7 +56,6 @@ export const decodeBase64Unicode = (str: string): string => {
 };
 
 const DYNAMICS_RESOURCE = 'https://wecare-ii.crm5.dynamics.com/';
-console.log('🔒 window.location.origin', window.location.origin);
 const CLIENT_ID = '6fba5a54-1729-4c41-b444-8992ae22c909' // ID của admin app
  // Dataverse REST Builder Client ID
 const REDIRECT_URI = window.location.origin; // Use current domain as redirect URI

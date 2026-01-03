@@ -205,9 +205,7 @@ const UnifiedHeaderHero: React.FC<UnifiedHeaderHeroProps> = ({
         if (data && data.byLevel && data.byLevel["1"]) {
           setCategoryHierarchy(data);
           setCategoryGroups(data.byLevel["1"]);
-          console.log('Category data loaded (cached or fresh):', data.byLevel["1"].length, 'items');
         } else {
-          console.log('No category data found in response');
           setCategoryHierarchy(null);
           setCategoryGroups([]);
         }

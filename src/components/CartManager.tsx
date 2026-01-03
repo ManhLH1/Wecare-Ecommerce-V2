@@ -151,9 +151,6 @@ const cartReducer = (state: CartItem[], action: CartAction): CartItem[] => {
   switch (action.type) {
     case "ADD_TO_CART": {
       const { product, quantity } = action.payload;
-      console.log("🔍 CartReducer ADD_TO_CART - Product:", product);
-      console.log("🔍 CartReducer ADD_TO_CART - Product ID:", product.crdfd_productsid);
-      console.log("🔍 CartReducer ADD_TO_CART - Current state length:", state.length);
       const existingItem = state.find(
         (item) => item.crdfd_productsid === product.crdfd_productsid
       );

@@ -146,7 +146,6 @@ export default async function handler(
       const existingItems = existingResp.data?.value || [];
       if (existingItems.length > 0) {
         createdOrderXPromotionId = existingItems[0].crdfd_ordersxpromotionid;
-        console.log('[ApplyPromotion] Found existing Orders x Promotion record, skipping create:', createdOrderXPromotionId);
       }
     } catch (err) {
       console.warn('[ApplyPromotion] Failed to check existing Orders x Promotion:', (err as any)?.message || err);
@@ -162,7 +161,6 @@ export default async function handler(
       // Get the created record ID from response headers
       createdOrderXPromotionId = createResponse.headers["odata-entityid"]
         ?.match(/\(([^)]+)\)/)?.[1];
-      console.log('[ApplyPromotion] Created Orders x Promotion:', createdOrderXPromotionId);
     }
 
     
@@ -186,14 +184,6 @@ export default async function handler(
       const sodEndpoint = `${BASE_URL}${SOD_TABLE}?${sodQuery}`;
       const sodResponse = await axios.get(sodEndpoint, { headers });
       const sodList = sodResponse.data.value || [];
-      console.log('[ApplyPromotion] fetched sodList length:', sodList.length);
-      try {
-        console.log('[ApplyPromotion] sod sample:', (sodList || []).slice(0,10).map((s:any)=>({
-          id: s.crdfd_saleorderdetailid,
-          productCode: s.crdfd_masanpham,
-          productGroup: s.crdfd_manhomsp
-        })));
-      } catch(e) { /* ignore */ }
 
       // Filter SOD matching productCodes or productGroupCodes
       // Normalize effective product codes/groups into arrays (trim, remove empties)
@@ -205,8 +195,6 @@ export default async function handler(
         ? (Array.isArray(effectiveProductGroupCodes) ? effectiveProductGroupCodes : String(effectiveProductGroupCodes).split(","))
         : [];
       const productGroupCodeList = productGroupCodeListRaw.map((c: any) => String(c || '').trim()).filter((c: string) => c !== '');
-
-      console.log('[ApplyPromotion] effectiveProductCodes count:', productCodeList.length, 'effectiveProductGroupCodes count:', productGroupCodeList.length);
       // Normalize for case-insensitive matching
       const productCodeListNorm = productCodeList.map(s => s.toUpperCase());
       const productGroupCodeListNorm = productGroupCodeList.map(s => s.toUpperCase());
@@ -235,30 +223,18 @@ export default async function handler(
       const sodsToUpdate: any[] = sodList.slice(); // clone full list
       // Track updated SOD ids to avoid double-updating in retry/final pass
       const updatedSodIds = new Set<string>();
-      console.log('[ApplyPromotion] Force update mode: sodsToUpdate length:', sodsToUpdate.length);
-
-      // Cập nhật từng SOD với crdfd_chieckhau2
-      console.log('[ApplyPromotion] sodsToUpdate count:', sodsToUpdate.length);
       for (const sod of sodsToUpdate) {
         try {
           const sodId = sod.crdfd_saleorderdetailid;
           if (updatedSodIds.has(sodId)) {
             continue; // skip already-updated
           }
-          console.log('[ApplyPromotion] Updating SOD:', sodId, { productCode: sod.crdfd_masanpham, productGroup: sod.crdfd_manhomsp });
-          // Log payload that will be used to patch this SOD for debugging
-          console.log('[ApplyPromotion] patching SOD payload:', {
-            sodId,
-            crdfd_chieckhau2: effectivePromotionValue,
-            vndOrPercent: effectiveVndOrPercent
-          });
           const updated = await updateSodChietKhau2(
             sodId,
             promotionValueForCalc,
             effectiveVndOrPercent,
             headers
           );
-          console.log('[ApplyPromotion] updateSodChietKhau2 result for', sodId, updated ? 'ok' : 'no-response', updated);
           if (updated && (updated.success || updated.status === 204 || updated.status === 200)) {
             updatedSodCount++;
             updatedSodIds.add(sodId);
@@ -276,11 +252,9 @@ export default async function handler(
       // thử re-fetch 1 lần sau delay ngắn để bắt SOD mới.
       if (updatedSodCount === 0) {
         try {
-          console.log('[ApplyPromotion] No SOD updated, retrying fetch after 500ms to catch newly saved SODs...');
           await new Promise(resolve => setTimeout(resolve, 500));
           const sodRespRetry = await axios.get(sodEndpoint, { headers });
           const sodListRetry = sodRespRetry.data.value || [];
-          console.log('[ApplyPromotion] retry fetched sodList length:', sodListRetry.length);
           // Rebuild sodsToUpdate from retry list
           const sodsToUpdateRetry: any[] = [];
           for (const sod of sodListRetry) {
@@ -296,21 +270,18 @@ export default async function handler(
               sodsToUpdateRetry.push(sod);
             }
           }
-          console.log('[ApplyPromotion] retry sodsToUpdate count:', sodsToUpdateRetry.length);
           for (const sod of sodsToUpdateRetry) {
             try {
               const sodId = sod.crdfd_saleorderdetailid;
               if (updatedSodIds.has(sodId)) {
                 continue; // skip already-updated
               }
-              console.log('[ApplyPromotion] (retry) Updating SOD:', sodId);
               const updated = await updateSodChietKhau2(
                 sodId,
                 promotionValueForCalc,
                 effectiveVndOrPercent,
                 headers
               );
-              console.log('[ApplyPromotion] (retry) updateSodChietKhau2 result for', sodId, updated ? 'ok' : 'no-response', updated);
               if (updated && (updated.success || updated.status === 204 || updated.status === 200)) {
                 updatedSodCount++;
                 updatedSodIds.add(sodId);
@@ -339,7 +310,6 @@ export default async function handler(
         const sodEndpointFinal = `${BASE_URL}${SOD_TABLE}?${sodQueryFinal}`;
         const sodRespFinal = await axios.get(sodEndpointFinal, { headers });
         const sodListFinal = sodRespFinal.data.value || [];
-        console.log('[ApplyPromotion] Final pass fetched sodList length:', sodListFinal.length);
 
         let finalUpdated = 0;
         for (const sod of sodListFinal) {
@@ -348,7 +318,6 @@ export default async function handler(
             if (updatedSodIds.has(sodId)) {
               continue; // skip already-updated
             }
-            console.log('[ApplyPromotion] (final pass) Updating SOD:', sodId);
             // Use promotionValueForCalc (decimal for percent) for calculation and effectiveVndOrPercent for type
             const updated = await updateSodChietKhau2(
               sodId,
@@ -356,7 +325,6 @@ export default async function handler(
               effectiveVndOrPercent,
               headers
             );
-            console.log('[ApplyPromotion] (final pass) updateSodChietKhau2 result for', sodId, updated ? 'ok' : 'no-response', updated);
             if (updated && (updated.success || updated.status === 204 || updated.status === 200)) {
               finalUpdated++;
             }
@@ -380,10 +348,7 @@ export default async function handler(
           crdfd_chieckhau2: chietKhau2ValueToStore,
         };
         const soUpdateEndpoint = `${BASE_URL}${SALE_ORDERS_TABLE}(${soId})`;
-        // Log payload that will be used to patch the SO for debugging
-        console.log('[ApplyPromotion] patching SO payload:', { soId, soUpdatePayload });
         const soPatchResp = await axios.patch(soUpdateEndpoint, soUpdatePayload, { headers });
-        console.log('[ApplyPromotion] Updated SO crdfd_chieckhau2/chieckhau2:', chietKhau2ValueToStore, 'status', soPatchResp.status, soPatchResp.data || null);
       } catch (err: any) {
         console.warn('[ApplyPromotion] Failed to update SO crdfd_chieckhau2/chietkhau2:', err?.message || err);
       }
@@ -466,12 +431,6 @@ async function recalculateOrderTotals(soId: string, headers: Record<string, stri
 
     const updateEndpoint = `${BASE_URL}${SALE_ORDERS_TABLE}(${soId})`;
     await axios.patch(updateEndpoint, updatePayload, { headers });
-
-    console.log(`[Recalculate Order Totals] Updated SO ${soId}:`, {
-      subtotal: roundedSubtotal,
-      vat: roundedVat,
-      total: roundedTotal
-    });
   } catch (error) {
     console.error("Error recalculating order totals:", error);
     // Don't throw error to avoid breaking the promotion application
@@ -529,13 +488,11 @@ async function updateSodChietKhau2(
     }
     updatePayload.crdfd_giack2 = giaCK2;
   } else {
-    console.log('[ApplyPromotion][updateSodChietKhau2] basePrice missing or zero for SOD, skipping giack2 update, writing only chietkhau2 fields:', sodId, { basePrice, vndOrPercentNorm, promotionValue });
   }
 
   const updateEndpoint = `${BASE_URL}${SOD_TABLE}(${sodId})`;
   try {
     const resp = await axios.patch(updateEndpoint, updatePayload, { headers });
-    console.log('[ApplyPromotion][updateSodChietKhau2] patched SOD', sodId, 'status', resp.status, 'data', resp.data || null);
     return { success: true, status: resp.status, data: resp.data || null };
   } catch (err: any) {
     console.error('[ApplyPromotion][updateSodChietKhau2] failed patch SOD', sodId, err?.response?.data || err?.message || err);

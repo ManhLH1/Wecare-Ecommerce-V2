@@ -143,13 +143,6 @@ const validateAndFormatQueryParams = (query: any) => {
   } = query;
 
   // Log incoming request for debugging
-  console.log('[PromotionOrders] Incoming request:', {
-    soId: soId || 'not provided',
-    customerCode: customerCode || 'not provided',
-    totalAmount: totalAmount || 'not provided',
-    productCodes: productCodes || 'not provided',
-    productGroupCodes: productGroupCodes || 'not provided'
-  });
 
   const validatedParams = {
     soId: validateSoId(soId),
@@ -160,7 +153,6 @@ const validateAndFormatQueryParams = (query: any) => {
   };
 
   // Log validated parameters
-  console.log('[PromotionOrders] Validated parameters:', validatedParams);
 
   return validatedParams;
 };
@@ -449,8 +441,6 @@ const fetchAvailablePromotions = async (
   const endpoint = `${BASE_URL}${PROMOTION_TABLE}?${query}`;
   const response = await axios.get(endpoint, { headers });
 
-  console.log('[PromotionOrders] fetched count:', (response.data.value || []).length);
-
   return (response.data.value || []).map((promo: any) => ({
     id: promo.crdfd_promotionid,
     name: promo.crdfd_name,
@@ -480,26 +470,11 @@ const filterPromotionsByProducts = (
   const productCodeList = parseCodesToArray(productCodes);
   const productGroupList = parseCodesToArray(productGroups);
 
-  console.log('[PromotionOrders] Filtering by products:', {
-    productCodeList,
-    productGroupList,
-    totalPromotionsBeforeFilter: promotions.length
-  });
 
   const filtered = promotions.filter(promo => {
     const matches = doesPromotionMatchProducts(promo, productCodeList, productGroupList);
-    if (matches) {
-      console.log('[PromotionOrders] Promotion matches:', {
-        promoId: promo.id,
-        promoName: promo.name,
-        hasProductMatch: productCodeList.some(code => promo.productCodes && promo.productCodes.includes(code)),
-        hasGroupMatch: productGroupList.some(code => promo.productGroupCodes && promo.productGroupCodes.includes(code))
-      });
-    }
     return matches;
   });
-
-  console.log('[PromotionOrders] Filtered promotions count:', filtered.length);
 
   return filtered;
 };
@@ -510,16 +485,6 @@ const filterPromotionsByProducts = (
 const getMaxValuePromotions = (promotions: AvailablePromotion[]): AvailablePromotion[] => {
   // Filter only chietKhau2 = true promotions
   const chietKhau2Promotions = promotions.filter(p => p.chietKhau2);
-
-  console.log('[PromotionOrders] Processing max value promotions:', {
-    totalChietKhau2Promotions: chietKhau2Promotions.length,
-    promotions: chietKhau2Promotions.map(p => ({
-      id: p.id,
-      name: p.name,
-      value: p.value,
-      vndOrPercent: p.vndOrPercent
-    }))
-  });
 
   // Handle Dynamics CRM option set values
   // 191920000 = Percent, other values = VND
@@ -539,19 +504,12 @@ const getMaxValuePromotions = (promotions: AvailablePromotion[]): AvailablePromo
   if (percentPromotions.length > 0) {
     const maxPercentValue = Math.max(...percentPromotions.map(p => p.value || 0));
     result = percentPromotions.filter(p => p.value === maxPercentValue);
-    console.log('[PromotionOrders] Selected percent promotions:', {
-      maxValue: maxPercentValue,
-      selectedCount: result.length
-    });
   }
 
   // For VND type: include all
   if (vndPromotions.length > 0) {
     result = [...result, ...vndPromotions];
-    console.log('[PromotionOrders] Added VND promotions:', vndPromotions.length);
   }
-
-  console.log('[PromotionOrders] Final max value promotions count:', result.length);
   return result;
 };
 

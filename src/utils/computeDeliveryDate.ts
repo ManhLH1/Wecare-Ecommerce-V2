@@ -51,20 +51,7 @@ export function computeDeliveryDate(params: {
     const effectiveNow = now;
     const effectiveToday = today ?? new Date(new Date().setHours(0, 0, 0, 0));
 
-    console.log('🎯 [Delivery Date Calculation] Starting calculation with params:', {
-        promotion: promotion ? {
-            leadtime: promotion.cr1bb_leadtimepromotion,
-            phanloai: promotion.cr1bb_phanloaichuongtrinh
-        } : null,
-        varNganhNghe,
-        var_leadtime_quanhuyen,
-        var_input_soluong,
-        var_selected_donvi_conversion,
-        var_selected_SP_tonkho,
-        var_selected_SP_leadtime,
-        effectiveNow: effectiveNow.toLocaleString('vi-VN'),
-        effectiveToday: effectiveToday.toLocaleDateString('vi-VN')
-    });
+
 
     // Helper: parse promotion lead time to number if present and non-blank
     const promoLeadRaw = promotion?.cr1bb_leadtimepromotion;
@@ -73,7 +60,6 @@ export function computeDeliveryDate(params: {
         : undefined;
     const promoPhanLoai = promotion?.cr1bb_phanloaichuongtrinh;
 
-    console.log('📋 [Delivery Date] Parsed promotion data:', { promoLead, promoPhanLoai });
 
     // 1) Promotion lead time (mirror Canvas logic)
     // If promotion selected AND promotion.cr1bb_leadtimepromotion is not blank
@@ -89,25 +75,13 @@ export function computeDeliveryDate(params: {
         )
     ) {
         const result = addHours(effectiveNow, promoLead * 12);
-        console.log('✅ [Delivery Date] Applied PROMOTION LEAD TIME:', {
-            promoLead,
-            hours: promoLead * 12,
-            from: effectiveNow.toLocaleString('vi-VN'),
-            to: result.toLocaleString('vi-VN')
-        });
+        
         return result;
     }
 
     // 2) If customer is Shop -> use district leadtime * 12 hours
     if (varNganhNghe === 'Shop') {
         const result = addHours(effectiveNow, var_leadtime_quanhuyen * 12);
-        console.log('🏪 [Delivery Date] Applied SHOP DISTRICT LEAD TIME:', {
-            varNganhNghe,
-            districtLeadtime: var_leadtime_quanhuyen,
-            hours: var_leadtime_quanhuyen * 12,
-            from: effectiveNow.toLocaleString('vi-VN'),
-            to: result.toLocaleString('vi-VN')
-        });
         return result;
     }
 
@@ -116,31 +90,16 @@ export function computeDeliveryDate(params: {
     const theoreticalStock = var_selected_SP_tonkho ?? 0;
     const isOutOfStock = requestedQty > theoreticalStock;
 
-    console.log('📦 [Delivery Date] Inventory check:', {
-        requestedQty,
-        theoreticalStock,
-        isOutOfStock,
-        productLeadtime: var_selected_SP_leadtime
-    });
+
 
     if (isOutOfStock) {
         const result = addDays(effectiveToday, var_selected_SP_leadtime);
-        console.log('⚠️ [Delivery Date] Applied OUT OF STOCK - PRODUCT LEAD TIME:', {
-            requestedQty,
-            theoreticalStock,
-            productLeadtime: var_selected_SP_leadtime,
-            from: effectiveToday.toLocaleDateString('vi-VN'),
-            to: result.toLocaleDateString('vi-VN')
-        });
         return result;
     }
 
     // 4) Default: Today + 1 day
     const result = addDays(effectiveToday, 1);
-    console.log('📅 [Delivery Date] Applied DEFAULT (+1 day):', {
-        from: effectiveToday.toLocaleDateString('vi-VN'),
-        to: result.toLocaleDateString('vi-VN')
-    });
+  
     return result;
 }
 
