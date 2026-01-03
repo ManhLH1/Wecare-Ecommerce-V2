@@ -188,7 +188,8 @@ export default async function handler(
         // Note: ownerid in Dynamics 365 can only reference systemuser or team, not custom employee entities
         let ownerSystemUserId: string | null = null;
         if (userInfo && userInfo.email) {
-            ownerSystemUserId = await lookupSystemUserId(headers, undefined, userInfo.email); else {
+            ownerSystemUserId = await lookupSystemUserId(headers, undefined, userInfo.email);
+            if (!ownerSystemUserId) {
                 console.warn('[Save SOBG] ⚠️ Could not find systemuser with email:', userInfo.email);
             }
         } else {
