@@ -1699,11 +1699,11 @@ export default function ProductEntryForm({
       (p) => normalizePromotionId(p.id) === normalizePromotionId(selectedPromotionId || normalizePromotionId(promotions[0]?.id))
     );
     // If selected promotion requires a minimum order total, enforce it.
-    // Use effectiveTotal = current orderTotal + this line's subtotal so that editing quantity
-    // immediately reflects whether the promotion becomes applicable (before adding to order).
+    // Use effectiveTotal = current orderTotal + this line's totalAmount (includes VAT)
+    // so editing quantity or VAT updates applicability immediately.
     if (selected) {
       const minTotal = Number(selected.totalAmountCondition || 0) || 0;
-      const effectiveTotal = Number(orderTotal || 0) + Number(subtotal || 0);
+      const effectiveTotal = Number(orderTotal || 0) + Number(totalAmount || 0);
       if (minTotal > 0 && effectiveTotal < minTotal) {
         setPromotionDiscountPercent(0);
         setDiscountPercent(0);
