@@ -277,6 +277,10 @@ export default function ProductTable({
     });
   }, [products]);
 
+  const totalOrderAmount = useMemo(() => {
+    return products.reduce((sum, p) => sum + (Number(p.totalAmount) || 0), 0);
+  }, [products]);
+
   const formatDate = (dateStr: string): string => {
     if (!dateStr || dateStr.trim() === '') return '-';
     try {
@@ -314,7 +318,12 @@ export default function ProductTable({
       <div className="admin-app-table-compact-header">
         <h3 className="admin-app-table-title">Danh sách sản phẩm</h3>
         {products.length > 0 && (
-          <span className="admin-app-table-count">{products.length} sản phẩm</span>
+          <>
+            <span className="admin-app-table-count">{products.length} sản phẩm</span>
+            <span className="admin-app-table-total" style={{ marginLeft: 12, fontWeight: 600 }}>
+              {totalOrderAmount.toLocaleString('vi-VN')} đ
+            </span>
+          </>
         )}
       </div>
       

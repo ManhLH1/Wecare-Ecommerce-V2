@@ -1698,6 +1698,22 @@ export default function ProductEntryForm({
     const selected = promotions.find(
       (p) => normalizePromotionId(p.id) === normalizePromotionId(selectedPromotionId || normalizePromotionId(promotions[0]?.id))
     );
+    // If selected promotion requires a minimum order total, enforce it.
+    // Use effectiveTotal = current orderTotal + this line's subtotal so that editing quantity
+    // immediately reflects whether the promotion becomes applicable (before adding to order).
+    if (selected) {
+      const minTotal = Number(selected.totalAmountCondition || 0) || 0;
+      const effectiveTotal = Number(orderTotal || 0) + Number(subtotal || 0);
+      if (minTotal > 0 && effectiveTotal < minTotal) {
+        setPromotionDiscountPercent(0);
+        setDiscountPercent(0);
+        setPromotionText(selected?.name || '');
+        setPromotionWarning(`Chương trình yêu cầu tổng đơn tối thiểu ${minTotal.toLocaleString('vi-VN')} đ`);
+        recomputeTotals(price, quantity, 0, vatPercent);
+        return;
+      }
+    }
+
     // If selected promotion is marked not applicable, do not apply its discount and show inline warning
     if (selected && selected.applicable === false) {
       setPromotionDiscountPercent(0);
@@ -1717,7 +1733,7 @@ export default function ProductEntryForm({
       setPromotionWarning(null);
       recomputeTotals(price, quantity, promoPct || discountPercent, vatPercent);
     }
-  }, [selectedPromotionId, promotions, approvePrice]);
+  }, [selectedPromotionId, promotions, approvePrice, orderTotal, price, quantity, vatPercent]);
 
   // Check Promotion Order applicability (order-level) for the selected promotion
   useEffect(() => {
