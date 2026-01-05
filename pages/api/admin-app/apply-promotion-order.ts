@@ -76,10 +76,11 @@ export default async function handler(
     let effectiveProductGroupCodes = productGroupCodes;
 
     // Try to fetch promotion record to get canonical values (if needed)
+    let promoData: any = null;
     try {
       const promoEndpoint = `${BASE_URL}crdfd_promotions(${promotionId})?$select=crdfd_value,crdfd_vn,cr1bb_chietkhau2,crdfd_masanpham_multiple,cr1bb_manhomsp_multiple`;
       const promoResp = await axios.get(promoEndpoint, { headers });
-      const promoData = promoResp.data;
+      promoData = promoResp.data;
       if (promoData) {
         if (!effectiveChietKhau2) {
           effectiveChietKhau2 = (promoData.cr1bb_chietkhau2 === 191920001) || Boolean(promoData.cr1bb_chietkhau2 === '191920001');
@@ -101,6 +102,30 @@ export default async function handler(
       }
     } catch (err) {
       console.warn('[ApplyPromotion] Could not fetch promotion details to enrich request (pre-create):', (err as any)?.message || err);
+    }
+
+    // Special-case promotions: force apply as line-level discount (pre-VAT) for known promotion names
+    const FORCE_PRE_VAT_PROMOTIONS = [
+      "[ALL] GIẢM GIÁ ĐẶC BIỆT _ V1",
+      "[ALL] VOUCHER ĐẶT HÀNG TRÊN ZALO OA (New customer)",
+      "[ALL] VOUCHER SINH NHẬT - 50.000Đ"
+    ].map(s => s.toLowerCase());
+
+    try {
+      const promoNameNorm = String(promotionName || "").toLowerCase();
+      if (FORCE_PRE_VAT_PROMOTIONS.some(p => promoNameNorm.includes(p))) {
+        effectiveChietKhau2 = true;
+        // Ensure we use promotion's stored type/value if available; treat as percent if promoData indicates percent
+        if (effectiveVndOrPercent === "" && promoData?.crdfd_vn) {
+          effectiveVndOrPercent = promoData.crdfd_vn;
+        }
+        if ((effectivePromotionValue === undefined || effectivePromotionValue === null) && promoData?.crdfd_value) {
+          effectivePromotionValue = promoData.crdfd_value;
+        }
+        console.log(`[ApplyPromotion] Forcing pre-VAT line discount for promotion "${promotionName}"`);
+      }
+    } catch (e) {
+      // ignore
     }
 
     // Determine loai (Tiền / Phần trăm)
@@ -464,8 +489,9 @@ async function updateSodChietKhau2(
     chietKhau2ForCalc = promotionValue || 0;
   }
 
-  // Try to compute crdfd_giack2 from base price. If base price missing, still write the chietkhau2 fields
-  const getSodEndpoint = `${BASE_URL}${SOD_TABLE}(${sodId})?$select=crdfd_giagoc,crdfd_gia`;
+  // Try to compute crdfd_giack2 from base price BEFORE VAT.
+  // Fetch giagoc (preferred) and gia (fallback) and VAT info to compute price-without-VAT when needed.
+  const getSodEndpoint = `${BASE_URL}${SOD_TABLE}(${sodId})?$select=crdfd_giagoc,crdfd_gia,crdfd_vat,crdfd_ieuchinhgtgt`;
   let sodData: any = null;
   try {
     const sodResponse = await axios.get(getSodEndpoint, { headers });
@@ -474,20 +500,48 @@ async function updateSodChietKhau2(
     console.warn('[ApplyPromotion][updateSodChietKhau2] failed to fetch SOD for price, will still write chietkhau2:', sodId, err?.message || err);
   }
 
-  // Sử dụng crdfd_giagoc nếu có, nếu không thì dùng crdfd_gia
-  const basePrice = sodData ? (sodData.crdfd_giagoc || sodData.crdfd_gia || 0) : 0;
+  // Determine VAT percent (prefer crdfd_vat, otherwise map from crdfd_ieuchinhgtgt)
+  let vatPercent = 0;
+  if (sodData) {
+    if (sodData.crdfd_vat !== undefined && sodData.crdfd_vat !== null) {
+      vatPercent = Number(sodData.crdfd_vat) || 0;
+    } else if (sodData.crdfd_ieuchinhgtgt !== undefined && sodData.crdfd_ieuchinhgtgt !== null) {
+      const IEUCHINHGTGT_TO_VAT_MAP: Record<number, number> = {
+        191920000: 0,
+        191920001: 5,
+        191920002: 8,
+        191920003: 10,
+      };
+      vatPercent = IEUCHINHGTGT_TO_VAT_MAP[Number(sodData.crdfd_ieuchinhgtgt)] ?? 0;
+    }
+  }
 
-  if (basePrice && basePrice > 0) {
+  // Base price before VAT: prefer crdfd_giagoc; otherwise derive from crdfd_gia by removing VAT
+  let basePriceBeforeVat = 0;
+  if (sodData) {
+    if (sodData.crdfd_giagoc && Number(sodData.crdfd_giagoc) > 0) {
+      basePriceBeforeVat = Number(sodData.crdfd_giagoc);
+    } else if (sodData.crdfd_gia && Number(sodData.crdfd_gia) > 0) {
+      const priceWithVat = Number(sodData.crdfd_gia);
+      if (vatPercent > 0) {
+        basePriceBeforeVat = priceWithVat / (1 + vatPercent / 100);
+      } else {
+        basePriceBeforeVat = priceWithVat;
+      }
+    }
+  }
+
+  if (basePriceBeforeVat && basePriceBeforeVat > 0) {
     let giaCK2: number;
     if (vndOrPercentNorm === "%" || vndOrPercentNorm === "191920000") {
-      // Chiết khấu theo %, chietKhau2ForCalc is decimal (e.g., 0.05)
-      giaCK2 = basePrice * (1 - chietKhau2ForCalc);
+      // Percent - chietKhau2ForCalc is decimal (e.g., 0.05)
+      giaCK2 = basePriceBeforeVat * (1 - chietKhau2ForCalc);
     } else {
-      // Chiết khấu VNĐ, trừ trực tiếp (chietKhau2ForCalc is absolute amount)
-      giaCK2 = Math.max(0, basePrice - chietKhau2ForCalc);
+      // VNĐ - subtract absolute amount from base before VAT
+      giaCK2 = Math.max(0, basePriceBeforeVat - chietKhau2ForCalc);
     }
+    // Store price after discount as crdfd_giack2 (unit price before VAT)
     updatePayload.crdfd_giack2 = giaCK2;
-  } else {
   }
 
   const updateEndpoint = `${BASE_URL}${SOD_TABLE}(${sodId})`;

@@ -97,11 +97,12 @@ export default async function handler(
     let effectiveProductCodes = productCodes;
     let effectiveProductGroupCodes = productGroupCodes;
 
+    let promoData: any = null;
     if (!effectiveChietKhau2 || !effectiveProductCodes) {
       try {
         const promoEndpoint = `${BASE_URL}crdfd_promotions(${promotionId})?$select=crdfd_value,crdfd_vn,cr1bb_chietkhau2,crdfd_masanpham_multiple,cr1bb_manhomsp_multiple`;
         const promoResp = await axios.get(promoEndpoint, { headers });
-        const promoData = promoResp.data;
+        promoData = promoResp.data;
         if (promoData) {
           // Determine flag (Dynamics stores OptionSet number for chietkhau2)
           if (!effectiveChietKhau2) {
@@ -125,6 +126,29 @@ export default async function handler(
       } catch (err) {
         console.warn('[ApplySOBGPromotion] Could not fetch promotion details to enrich request:', (err as any)?.message || err);
       }
+    }
+
+    // Special-case promotions that should always reduce price BEFORE VAT on SOBG
+    const FORCE_PRE_VAT_PROMOTIONS_SOBG = [
+      "[ALL] GIẢM GIÁ ĐẶC BIỆT _ V1",
+      "[ALL] VOUCHER ĐẶT HÀNG TRÊN ZALO OA (New customer)",
+      "[ALL] VOUCHER SINH NHẬT - 50.000Đ"
+    ].map(s => s.toLowerCase());
+
+    try {
+      const promoNameNorm = String(promotionName || "").toLowerCase();
+      if (FORCE_PRE_VAT_PROMOTIONS_SOBG.some(p => promoNameNorm.includes(p))) {
+        effectiveChietKhau2 = true;
+        if (!effectiveVndOrPercent && promoData?.crdfd_vn) {
+          effectiveVndOrPercent = promoData.crdfd_vn;
+        }
+        if ((effectivePromotionValue === undefined || effectivePromotionValue === null) && promoData?.crdfd_value) {
+          effectivePromotionValue = promoData.crdfd_value;
+        }
+        console.log(`[ApplySOBGPromotion] Forcing pre-VAT line discount for promotion "${promotionName}"`);
+      }
+    } catch (e) {
+      // ignore
     }
 
     // 2. Nếu là chiết khấu 2 (chietKhau2 = true), cập nhật crdfd_chieckhau2 và giá trên các SOD báo giá matching
@@ -336,19 +360,46 @@ async function updateSodBaoGiaChietKhau2(
   const sodResponse = await axios.get(getSodEndpoint, { headers });
   const sodData = sodResponse.data;
 
-  // Sử dụng crdfd_giagoc nếu có, nếu không thì dùng crdfd_ongia
-  const basePrice = sodData.crdfd_giagoc || sodData.crdfd_ongia || 0;
-
-  let giaCK2: number;
-  if (vndOrPercent === "%") {
-    // Chiết khấu theo %, chietKhau2ForCalc is decimal (e.g., 0.05)
-    giaCK2 = basePrice * (1 - chietKhau2ForCalc);
-  } else {
-    // Chiết khấu VNĐ, trừ trực tiếp (chietKhau2ForCalc is absolute amount)
-    giaCK2 = Math.max(0, basePrice - chietKhau2ForCalc);
+  // Determine VAT percent and base price BEFORE VAT
+  let vatPercent = 0;
+  if (sodData) {
+    if (sodData.crdfd_ieuchinhgtgt !== undefined && sodData.crdfd_ieuchinhgtgt !== null) {
+      const IEUCHINHGTGT_TO_VAT_MAP: Record<number, number> = {
+        191920000: 0,
+        191920001: 5,
+        191920002: 8,
+        191920003: 10,
+      };
+      vatPercent = IEUCHINHGTGT_TO_VAT_MAP[Number(sodData.crdfd_ieuchinhgtgt)] ?? 0;
+    }
   }
 
-  updatePayload.crdfd_giack2 = giaCK2;
+  // Base price before VAT: prefer crdfd_giagoc; otherwise derive from crdfd_ongia by removing VAT
+  let basePriceBeforeVat = 0;
+  if (sodData) {
+    if (sodData.crdfd_giagoc && Number(sodData.crdfd_giagoc) > 0) {
+      basePriceBeforeVat = Number(sodData.crdfd_giagoc);
+    } else if (sodData.crdfd_ongia && Number(sodData.crdfd_ongia) > 0) {
+      const priceWithVat = Number(sodData.crdfd_ongia);
+      if (vatPercent > 0) {
+        basePriceBeforeVat = priceWithVat / (1 + vatPercent / 100);
+      } else {
+        basePriceBeforeVat = priceWithVat;
+      }
+    }
+  }
+
+  let giaCK2: number = 0;
+  if (basePriceBeforeVat && basePriceBeforeVat > 0) {
+    if (vndOrPercent === "%") {
+      // Percent - chietKhau2ForCalc is decimal (e.g., 0.05)
+      giaCK2 = basePriceBeforeVat * (1 - chietKhau2ForCalc);
+    } else {
+      // VNĐ - subtract absolute amount from base before VAT
+      giaCK2 = Math.max(0, basePriceBeforeVat - chietKhau2ForCalc);
+    }
+    updatePayload.crdfd_giack2 = giaCK2;
+  }
 
   const updateEndpoint = `${BASE_URL}${SOBG_DETAIL_TABLE}(${sodId})`;
   try {
