@@ -154,38 +154,6 @@ async function findPromotionForProduct(
     return null;
 }
 
-// Helper: check if a promotion record exists and is currently active/valid.
-// We consider a promotion active if `statecode eq 0` and (if date fields present)
-// current date is between `crdfd_validfrom` and `crdfd_validto` (if provided).
-async function isPromotionActive(promotionId: string | undefined, headers: any): Promise<boolean> {
-    if (!promotionId) return false;
-    try {
-        const normalizedId = String(promotionId).replace(/^{|}$/g, '').trim();
-        if (!normalizedId) return false;
-        const select = "crdfd_promotionid,statecode,crdfd_validfrom,crdfd_validto,crdfd_name";
-        const endpoint = `${BASE_URL}${PROMOTION_TABLE}(${normalizedId})?$select=${select}`;
-        const resp = await axios.get(endpoint, { headers });
-        const p = resp.data;
-        if (!p) return false;
-        // statecode: 0 => active
-        if (p.statecode !== undefined && p.statecode !== 0) return false;
-        const now = new Date();
-        if (p.crdfd_validfrom) {
-            const from = new Date(p.crdfd_validfrom);
-            if (!isNaN(from.getTime()) && now < from) return false;
-        }
-        if (p.crdfd_validto) {
-            const to = new Date(p.crdfd_validto);
-            if (!isNaN(to.getTime()) && now > to) return false;
-        }
-        return true;
-    } catch (err: any) {
-        console.warn('[Save SOBG] Could not validate promotion active status:', promotionId, (err && err.message) || err);
-        // Fail-safe: treat unknown as inactive to avoid binding invalid promotion
-        return false;
-    }
-}
-
 export default async function handler(
     req: NextApiRequest,
     res: NextApiResponse
@@ -452,16 +420,7 @@ export default async function handler(
                 if (promoCandidate) {
                     const normalizedPromoId = String(promoCandidate).replace(/^{|}$/g, '').trim();
                     if (normalizedPromoId) {
-                        try {
-                            const ok = await isPromotionActive(normalizedPromoId, headers);
-                            if (ok) {
-                                entity[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${normalizedPromoId})`;
-                            } else {
-                                console.warn('[Save SOBG] Promotion provided is not active/valid, skipping bind:', normalizedPromoId);
-                            }
-                        } catch (err: any) {
-                            console.warn('[Save SOBG] Error validating promotion provided:', normalizedPromoId, err?.message || err);
-                        }
+                        entity[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${normalizedPromoId})`;
                     }
                 } else {
                     // Priority A: try to match against SOBG promotions previously selected/applied (crdfd_sobaogiaxpromotions)
@@ -484,32 +443,12 @@ export default async function handler(
                             }
                         }
                         if (matched && matched.promotionId) {
-                            const normalizedMatched = String(matched.promotionId).replace(/^{|}$/g,'').trim();
-                            try {
-                                const ok = await isPromotionActive(normalizedMatched, headers);
-                                if (ok) {
-                                    entity[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${normalizedMatched})`;
-                                } else {
-                                    console.warn('[Save SOBG] Matched SOBG-promotion is not active, skipping bind:', normalizedMatched);
-                                }
-                            } catch (err: any) {
-                                console.warn('[Save SOBG] Error validating matched SOBG promotion:', normalizedMatched, err?.message || err);
-                            }
+                            entity[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${String(matched.promotionId).replace(/^{|}$/g,'').trim()})`;
                         } else {
                             // Fallback: look up by promotionText/productCode directly in promotions table
                             const inferred = await findPromotionForProduct(product.productCode, product.promotionText || product.promotionText, headers);
                             if (inferred && inferred.id) {
-                                const normalizedInferred = String(inferred.id).replace(/^{|}$/g,'').trim();
-                                try {
-                                    const ok = await isPromotionActive(normalizedInferred, headers);
-                                    if (ok) {
-                                        entity[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${normalizedInferred})`;
-                                    } else {
-                                        console.warn('[Save SOBG] Inferred promotion is not active, skipping bind:', normalizedInferred);
-                                    }
-                                } catch (err: any) {
-                                    console.warn('[Save SOBG] Error validating inferred promotion:', normalizedInferred, err?.message || err);
-                                }
+                                entity[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${String(inferred.id).replace(/^{|}$/g,'').trim()})`;
                             }
                         }
                     } catch (e) {
