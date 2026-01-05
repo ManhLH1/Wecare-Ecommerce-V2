@@ -115,6 +115,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   const discountRates = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '20'];
   const [discountAmount, setDiscountAmount] = useState(0);
   const [promotionText, setPromotionText] = useState('');
+  const [promotionId, setPromotionId] = useState('');
   const [productList, setProductList] = useState<ProductItem[]>([]);
 
   // Promotion Order Popup state
@@ -1461,6 +1462,8 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             discountAmount={discountAmount}
             setDiscountAmount={setDiscountAmount}
             promotionText={promotionText}
+            promotionId={promotionId}
+            setPromotionId={setPromotionId}
             setPromotionText={setPromotionText}
             onAdd={handleAddProduct}
             onSave={handleSave} // Sử dụng handleSave của SOBG

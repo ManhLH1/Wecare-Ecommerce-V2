@@ -1104,21 +1104,19 @@ const HomeContent = () => {
           Prevents children from refetching repeatedly when parent re-renders.
         */}
         {(() => {
-          const featuredCategories = React.useMemo(() => {
-            return (categoryGroups || [])
-              .filter((g: any) => !!g)
-              .map((g: any) => {
-                const name = g.productGroupName || `Danh mục ${g.productGroupCode || ""}`;
-                const image = g.imageUrl;
-                return {
-                  id: g.productGroupId || g.productGroupCode || String(name),
-                  name,
-                  code: g.productGroupCode,
-                  image,
-                  href: `/san-pham?product_group_Id=${encodeURIComponent(g.productGroupId || "")}`,
-                };
-              });
-          }, [categoryGroups]);
+          const featuredCategories = (categoryGroups || [])
+            .filter((g: any) => !!g)
+            .map((g: any) => {
+              const name = g.productGroupName || `Danh mục ${g.productGroupCode || ""}`;
+              const image = g.imageUrl;
+              return {
+                id: g.productGroupId || g.productGroupCode || String(name),
+                name,
+                code: g.productGroupCode,
+                image,
+                href: `/san-pham?product_group_Id=${encodeURIComponent(g.productGroupId || "")}`,
+              };
+            });
 
           return (
             <FeaturedCategories
@@ -1131,21 +1129,19 @@ const HomeContent = () => {
 
         {/* Products for top 5 featured categories */}
         {(() => {
-          const featuredCategoriesProducts = React.useMemo(() => {
-            return (categoryGroups || [])
-              .filter((g: any) => !!g)
-              .map((g: any) => {
-                const name = g.productGroupName || `Danh mục ${g.productGroupCode || ""}`;
-                const image = g.imageUrl;
-                return {
-                  id: g.productGroupId || g.productGroupCode || String(name),
-                  name,
-                  code: g.productGroupCode,
-                  image,
-                  href: `/san-pham?product_group_Id=${encodeURIComponent(g.productGroupId || "")}`,
-                };
-              });
-          }, [categoryGroups]);
+          const featuredCategoriesProducts = (categoryGroups || [])
+            .filter((g: any) => !!g)
+            .map((g: any) => {
+              const name = g.productGroupName || `Danh mục ${g.productGroupCode || ""}`;
+              const image = g.imageUrl;
+              return {
+                id: g.productGroupId || g.productGroupCode || String(name),
+                name,
+                code: g.productGroupCode,
+                image,
+                href: `/san-pham?product_group_Id=${encodeURIComponent(g.productGroupId || "")}`,
+              };
+            });
 
           return (
             <FeaturedCategoriesProducts
