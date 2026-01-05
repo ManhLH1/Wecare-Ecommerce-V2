@@ -194,6 +194,49 @@ async function findPromotionForProduct(
     return null;
 }
 
+// Helper: validate that a promotion record is active and within start/end date window
+async function isPromotionValid(promotionId: string, headers: any): Promise<boolean> {
+    if (!promotionId) return false;
+    try {
+        const select = ["crdfd_promotionid", "crdfd_start_date", "crdfd_end_date", "crdfd_promotion_deactive", "statecode"];
+        const endpoint = `${BASE_URL}${PROMOTION_TABLE}(${promotionId})?$select=${select.join(",")}`;
+        const resp = await axios.get(endpoint, { headers });
+        const promo = resp.data;
+        if (!promo || !promo.crdfd_promotionid) return false;
+
+        // Active statecode = 0
+        if (promo.statecode !== undefined && Number(promo.statecode) !== 0) return false;
+
+        // Promotion deactive flag (some systems use crdfd_promotion_deactive = 'Active'/'Inactive')
+        if (promo.crdfd_promotion_deactive && String(promo.crdfd_promotion_deactive).toLowerCase() !== "active") {
+            return false;
+        }
+
+        const now = new Date();
+        if (promo.crdfd_start_date) {
+            const start = new Date(promo.crdfd_start_date);
+            if (isNaN(start.getTime())) {
+                // ignore unparsable
+            } else if (now < start) {
+                return false;
+            }
+        }
+        if (promo.crdfd_end_date) {
+            const end = new Date(promo.crdfd_end_date);
+            if (isNaN(end.getTime())) {
+                // ignore unparsable
+            } else if (now > end) {
+                return false;
+            }
+        }
+
+        return true;
+    } catch (err: any) {
+        console.warn('[Save SOBG] Could not validate promotion:', (err as any)?.message || err);
+        return false;
+    }
+}
+
 export default async function handler(
     req: NextApiRequest,
     res: NextApiResponse
@@ -455,10 +498,17 @@ export default async function handler(
                 if (product.approveSupPrice && product.approveSupPriceId) {
                     entity[`cr1bb_duyetgiasup@odata.bind`] = `/crdfd_duyetgias(${product.approveSupPriceId})`;
                 }
-                // Promotion lookup: ưu tiên lấy từ chương trình chiết khấu đã áp dụng cho SOBG (sobgPromotions)
+                // Promotion lookup: allow frontend to provide promotionId, otherwise try SOBG promotions, text, or inference
                 let promotionId: string | null = null;
 
+                // Step 0: If frontend provided a promotionId, prefer it (frontend overrides server inference)
+                if (product.promotionId) {
+                    promotionId = String(product.promotionId).replace(/^{|}$/g, '').trim();
+                    console.log(`[Save SOBG] Using promotionId from frontend for product ${product.productCode}: ${promotionId}`);
+                }
+
                 // Step 1: Try to match against SOBG promotions previously selected/applied (crdfd_sobaogiaxpromotions)
+                // (skipped if frontend already provided promotionId)
                 try {
                     const prodCode = (product.productCode || '').toString().trim().toUpperCase();
                     const prodGroup = (product.productGroupCode || '').toString().trim().toUpperCase();
@@ -485,7 +535,7 @@ export default async function handler(
                     console.warn('[Save SOBG] Error matching SOBG promotions:', (e as any)?.message || e);
                 }
 
-                // Step 2: Nếu không tìm thấy trong SOBG promotions, thử lookup từ promotionText của product
+                // Step 2: Nếu không tìm thấy trong SOBG promotions (và frontend không override), thử lookup từ promotionText của product
                 if (!promotionId && product.promotionText) {
                     try {
                         promotionId = await lookupPromotionIdByText(product.promotionText, headers);
@@ -510,15 +560,23 @@ export default async function handler(
                     }
                 }
 
-                // Step 4: Nếu frontend có gửi promotionId trực tiếp, ưu tiên dùng nó (dù frontend hiện không gửi)
-                if (!promotionId && product.promotionId) {
-                    promotionId = String(product.promotionId).replace(/^{|}$/g, '').trim();
-                    console.log(`[Save SOBG] Used promotionId ${promotionId} from frontend for product ${product.productCode}`);
-                }
+                // Step 4: (legacy) If frontend provided promotionId earlier we already used it; nothing to do here.
 
-                // Set promotion lookup nếu tìm thấy promotionId
+                // Validate promotion is active and within date window before binding
                 if (promotionId) {
-                    entity[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${promotionId})`;
+                    try {
+                        const ok = await isPromotionValid(promotionId, headers);
+                        if (ok) {
+                            entity[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${promotionId})`;
+                        } else {
+                            console.log(`[Save SOBG] Promotion ${promotionId} is not valid/active - skipping binding for product ${product.productCode}`);
+                            promotionId = null;
+                        }
+                    } catch (e) {
+                        console.warn('[Save SOBG] Error validating promotion before binding:', (e as any)?.message || e);
+                        // If validation fails due to error, avoid binding to prevent saving expired/invalid promotion
+                        promotionId = null;
+                    }
                 }
 
                 // Use impersonation to set the correct createdby user
