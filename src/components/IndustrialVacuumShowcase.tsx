@@ -152,6 +152,48 @@ export default function IndustrialVacuumShowcase() {
     };
   }, []);
 
+  // autoplay scroll for showcase: auto-advance, pause on hover/focus
+  useEffect(() => {
+    let intervalId: number | null = null;
+    const isPaused = { value: false };
+
+    const start = () => {
+      if (intervalId) return;
+      intervalId = window.setInterval(() => {
+        if (!isPaused.value) scrollBy(1);
+      }, 3500);
+    };
+    const stop = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    const el = scrollerRef.current;
+    if (el) {
+      const onEnter = () => (isPaused.value = true);
+      const onLeave = () => (isPaused.value = false);
+      const onFocus = () => (isPaused.value = true);
+      const onBlur = () => (isPaused.value = false);
+      el.addEventListener("mouseenter", onEnter);
+      el.addEventListener("mouseleave", onLeave);
+      el.addEventListener("focusin", onFocus);
+      el.addEventListener("focusout", onBlur);
+      start();
+      return () => {
+        stop();
+        el.removeEventListener("mouseenter", onEnter);
+        el.removeEventListener("mouseleave", onLeave);
+        el.removeEventListener("focusin", onFocus);
+        el.removeEventListener("focusout", onBlur);
+      };
+    }
+
+    start();
+    return () => stop();
+  }, [scrollerRef]);
+
   return (
     <section className="max-w-7xl mx-auto p-4 bg-white my-4">
       <div className="flex items-center justify-between mb-3">

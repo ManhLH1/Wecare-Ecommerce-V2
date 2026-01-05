@@ -23,7 +23,7 @@ interface FeaturedCategoriesProps {
 }
 
 const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loading = false }) => {
-  console.log('[FeaturedCategories] Received categories:', categories?.length || 0, categories?.slice(0, 3));
+  // debug: received categories (removed verbose logging)
 
   // More flexible filtering: accept any category with a name
   // If no image, we'll assign a placeholder
@@ -39,7 +39,7 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
     name: cat.productGroupName || cat.name || `Danh mục ${cat.productGroupCode || cat.code || ''}`
   }));
 
-  console.log('[FeaturedCategories] Valid categories after filtering:', validCategories.length, validCategories.slice(0, 3));
+  // debug: valid categories computed (logging removed)
 
   // Show loading skeleton when loading
   if (loading) {

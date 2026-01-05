@@ -20,6 +20,7 @@ import dynamic from "next/dynamic";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import hero1 from "@/assets/img/1.png";
 import hero2 from "@/assets/img/2.png";
 import hero3 from "@/assets/img/3.png";
@@ -32,6 +33,7 @@ import CategorySection from "@/components/CategorySection";
 import ShortcutSection from "@/components/ShortcutSection";
 import HomeBenefitsPanel from "@/components/HomeBenefitsPanel";
 import FeaturedCategories from "@/components/FeaturedCategories";
+import FeaturedCategoriesProducts from "@/components/FeaturedCategoriesProducts";
 import HeroSection from "@/components/HeroSection";
 import IndustrialVacuumShowcaseV2 from "@/components/IndustrialVacuumShowcaseV2";
 import UnifiedHeaderHero from "@/components/UnifiedHeaderHero";
@@ -219,6 +221,7 @@ const HomeContent = () => {
   const { cartItems, addToCart, updateQuantity, removeItem, clearCart } =
     useCart();
   const { openCart } = useContext(CartContext); // Add this to use global cart
+  const router = useRouter();
 
   // Debug section - remove after testing
   const debugAddTestProduct = () => {
@@ -328,10 +331,9 @@ const HomeContent = () => {
         if (data && Array.isArray(data)) {
           // Use top 20 product groups by order count for featured categories
           setCategoryGroups(data);
-          console.log(`[FeaturedCategories] loaded top product groups by orders:`, data.length, data.slice(0, 3));
+          // debug logs removed to reduce console noise
           // Include all categories from API (including those with placeholder images)
           const filtered = (data || []).filter((g: any) => g && g.productGroupName);
-          console.log('[FeaturedCategories] all valid categories (including placeholders):', filtered.length, filtered.slice(0, 3));
           setCategoryHierarchy(data);
         } else {
           setCategoryGroups([]);
@@ -515,7 +517,13 @@ const HomeContent = () => {
       .replace(/[^a-z0-9\s]/g, "")
       .replace(/\s+/g, "-");
     const newUrl = `/san-pham/${productNameSlug}`;
-    window.location.href = newUrl;
+    // Use client-side navigation to avoid full page reload
+    try {
+      router.push(newUrl);
+    } catch (e) {
+      // Fallback to full navigation if router not available
+      window.location.href = newUrl;
+    }
   };
 
   // const toggleCart = () => setIsCartOpen((prev) => !prev);
@@ -1091,24 +1099,61 @@ const HomeContent = () => {
         {/* Home Benefits Panel - banners similar to sample */}
         <HomeBenefitsPanel />
         {/* Featured categories (mapped from categoryGroups) */}
-        <FeaturedCategories
-          categories={(categoryGroups || [])
-            .filter((g: any) => !!g)
-            .map((g: any) => {
-              // API mới đã trả về trực tiếp productGroupName và imageUrl
-              const name = g.productGroupName || `Danh mục ${g.productGroupCode || ''}`;
-              const image = g.imageUrl;
+        {/*
+          Memoize mapped categories to provide stable references to child components.
+          Prevents children from refetching repeatedly when parent re-renders.
+        */}
+        {(() => {
+          const featuredCategories = React.useMemo(() => {
+            return (categoryGroups || [])
+              .filter((g: any) => !!g)
+              .map((g: any) => {
+                const name = g.productGroupName || `Danh mục ${g.productGroupCode || ""}`;
+                const image = g.imageUrl;
+                return {
+                  id: g.productGroupId || g.productGroupCode || String(name),
+                  name,
+                  code: g.productGroupCode,
+                  image,
+                  href: `/san-pham?product_group_Id=${encodeURIComponent(g.productGroupId || "")}`,
+                };
+              });
+          }, [categoryGroups]);
 
-              return {
-                id: g.productGroupId || g.productGroupCode || String(name),
-                name,
-                code: g.productGroupCode,
-                image,
-                href: `/san-pham?group=${encodeURIComponent(g.productGroupCode || '')}`,
-              };
-            })}
-          loading={loadingCategory}
-        />
+          return (
+            <FeaturedCategories
+              categories={featuredCategories}
+              loading={loadingCategory}
+            />
+          );
+        })()}
+        {/* Floor Scrubber Showcase - show immediately under Featured Categories */}
+
+        {/* Products for top 5 featured categories */}
+        {(() => {
+          const featuredCategoriesProducts = React.useMemo(() => {
+            return (categoryGroups || [])
+              .filter((g: any) => !!g)
+              .map((g: any) => {
+                const name = g.productGroupName || `Danh mục ${g.productGroupCode || ""}`;
+                const image = g.imageUrl;
+                return {
+                  id: g.productGroupId || g.productGroupCode || String(name),
+                  name,
+                  code: g.productGroupCode,
+                  image,
+                  href: `/san-pham?product_group_Id=${encodeURIComponent(g.productGroupId || "")}`,
+                };
+              });
+          }, [categoryGroups]);
+
+          return (
+            <FeaturedCategoriesProducts
+              categories={featuredCategoriesProducts}
+              loading={loadingCategory}
+            />
+          );
+        })()}
         {/* Industrial vacuum showcase — new implementation - TEMPORARILY HIDDEN */}
         {/* <IndustrialVacuumShowcaseV2 /> */}
         {/* Shortcut Section - DESKTOP với thiết kế tròn (ẩn theo yêu cầu) */}
@@ -1257,19 +1302,7 @@ const HomeContent = () => {
         {/* Divider */}
         {/* <div className="w-full h-[6px] bg-gray-100 rounded-full my-2"></div> */}
 
-        {/* Business Opportunity Section */}
-        <section className="relative">
-          {/* Nền full-width tinh tế, khác vùng dưới nhưng không quá nổi */}
-          <div aria-hidden className="pointer-events-none absolute inset-0 left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-slate-50" />
-          {/* Viền mảnh, trung tính */}
-          <div aria-hidden className="pointer-events-none absolute -top-px left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] h-px w-screen bg-slate-200/70" />
-          <div aria-hidden className="pointer-events-none absolute -bottom-px left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] h-px w-screen bg-slate-200/70" />
-          <div className="relative">
-            <Reveal as="div" direction="up">
-              <BusinessOpportunitySection />
-            </Reveal>
-          </div>
-        </section>
+        {/* BusinessOpportunitySection temporarily removed */}
         {/* Panels Section removed */}
 
         {/* Divider */}
@@ -1311,7 +1344,7 @@ const HomeContent = () => {
               >
                 <ProductsList
                   products={products.slice(0, 10)}
-                  onAddToCart={handleAddToCart}
+                  onAddToCart={handleAddToCart as any}
                   loading={productsLoading}
                   error={productsError}
                 />
@@ -1356,7 +1389,7 @@ const HomeContent = () => {
               >
                 <ProductsList
                   products={products.slice(0, 10)}
-                  onAddToCart={handleAddToCart}
+                  onAddToCart={handleAddToCart as any}
                   loading={productsLoading}
                   error={productsError}
                 />
@@ -1377,9 +1410,7 @@ const HomeContent = () => {
           </Reveal>
         </section> */}
         {/* </section> */}
-        <Reveal as="div" direction="up">
-          <NewsSection />
-        </Reveal>
+        {/* NewsSection temporarily removed */}
         {/* </section> */}
       </main>
 
