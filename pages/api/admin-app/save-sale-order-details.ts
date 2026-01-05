@@ -633,6 +633,7 @@ async function lookupTyleChuyenDoi(
   return null;
 }
 
+
 // Helper function to update inventory after saving SOD (Bước 3: Chốt đơn - Hard Locking)
 // This function uses atomic operation: re-check inventory right before update to prevent negative stock
 // Sử dụng hệ thống giữ hàng: CurrentInventory và ReservedQuantity
@@ -832,7 +833,9 @@ interface SaleOrderDetailInput {
   approver?: string;
   discountPercent?: number;
   discountAmount?: number;
+  discount2?: number; // Chiết khấu 2 (%)
   promotionText?: string;
+  promotionId?: string;
   invoiceSurcharge?: number; // Phụ phí hoá đơn (%)
 }
 
@@ -1141,6 +1144,14 @@ export default async function handler(
           cr1bb_donhanggap: product.urgentOrder ?? false,
           crdfd_promotiontext: product.promotionText || "",
         };
+
+        // Set promotionId từ frontend (đã được validate và lookup từ phía client)
+        if (product.promotionId) {
+          const promotionIdClean = String(product.promotionId).replace(/^{|}$/g, '').trim();
+          // Set promotion lookup using navigation binding (lookup) to promotions entity
+          payload[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${promotionIdClean})`;
+          console.log(`[Save SOD] ✅ Set promotion lookup for product ${product.productCode}: crdfd_Promotion@odata.bind = /crdfd_promotions(${promotionIdClean})`);
+        }
 
         // Add note (ghi chú) if available
         if (product.note) {

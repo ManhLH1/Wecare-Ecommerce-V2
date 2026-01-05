@@ -43,6 +43,7 @@ interface ProductItem {
   discount2?: number;
   discount2Enabled?: boolean;
   promotionText?: string;
+  promotionId?: string;
   invoiceSurcharge?: number; // Phụ phí hoá đơn
   stockQuantity?: number;
   createdOn?: string;
@@ -114,6 +115,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const discountRates = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '20'];
   const [discountAmount, setDiscountAmount] = useState(0);
   const [promotionText, setPromotionText] = useState('');
+  const [promotionId, setPromotionId] = useState('');
   const [productList, setProductList] = useState<ProductItem[]>([]);
 
   // Payment terms OptionSet mapping (value -> label)
@@ -358,7 +360,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     autoSelectPromotions();
   }, [soId, customerCode, totalAmount, productList]);
 
-  const handleAddProduct = async () => {
+  const handleAddProduct = async (overrides?: { promotionId?: string }) => {
     // Validation: product, unit, quantity, price (bắt buộc phải có giá > 0)
     const priceNum = parseFloat(price || '0') || 0;
     const hasValidPrice = priceNum > 0;
@@ -464,7 +466,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       const vatCalc = Math.round((subtotalCalc * (vatPercent || 0)) / 100);
       const totalCalc = subtotalCalc + vatCalc;
 
-      // Auto-increment STT
+    // Auto-increment STT
       const maxStt = productList.length > 0 ? Math.max(...productList.map((p) => p.stt || 0)) : 0;
       const newStt = maxStt + 1;
 
@@ -473,6 +475,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         ? `Duyệt giá bởi ${approver}`
         : note;
 
+      const promoIdToUse = overrides?.promotionId ?? promotionId;
       const newProduct: ProductItem = {
         id: `${Date.now()}-${newStt}`,
         stt: newStt,
@@ -499,11 +502,13 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         approvePrice: approvePrice,
         approveSupPrice: approveSupPrice,
         promotionText: promotionText,
+        promotionId: promoIdToUse,
         invoiceSurcharge: invoiceSurchargeRate,
         createdOn: new Date().toISOString(),
         isSodCreated: false,
       };
 
+      console.debug('[SalesOrderForm] Adding product with promotionId:', promoIdToUse);
       setProductList([...productList, newProduct]);
     }
 
@@ -527,6 +532,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setDiscountPercent(0);
     setDiscountAmount(0);
     setPromotionText('');
+    setPromotionId('');
     // Keep warehouse, customer, SO, deliveryDate as they are reused
 
     setIsAdding(false);
@@ -613,6 +619,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             discount2: item.discount2 ?? 0,
             discount2Enabled: item.discount2Enabled ?? false,
           promotionText: item.promotionText,
+          promotionId: item.promotionId,
           invoiceSurcharge: item.invoiceSurcharge,
         };
       });
@@ -746,7 +753,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       setDiscountPercent(0);
       setDiscountAmount(0);
       setPromotionText('');
-
+      setPromotionId('');
       // Logic mới: Chỉ hiển thị popup promotion order sau khi save nếu có chiết khấu 2
       // Chỉ check khi có soId và customerCode (đã save thành công)
       if (savedSoId && savedCustomerCode) {
@@ -807,6 +814,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setDiscountPercent(0);
     setDiscountAmount(0);
     setPromotionText('');
+    setPromotionId('');
     // Keep note, customer, SO (đang được set mới), deliveryDate as they are reused
   };
 
@@ -838,6 +846,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setDiscountPercent(0);
     setDiscountAmount(0);
     setPromotionText('');
+    setPromotionId('');
     setProductList([]);
     setNote('');
   };
@@ -892,6 +901,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setDiscountPercent(0);
     setDiscountAmount(0);
     setPromotionText('');
+    setPromotionId('');
     setProductList([]);
   };
 
@@ -946,6 +956,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             discountPercent: item.discountPercent,
             discountAmount: item.discountAmount,
             promotionText: item.promotionText,
+            promotionId: item.promotionId,
             invoiceSurcharge: item.invoiceSurcharge,
             stockQuantity: item.stockQuantity,
           };
@@ -1389,6 +1400,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           discountPercent: product.discountPercent,
           discountAmount: product.discountAmount,
           promotionText: product.promotionText,
+          promotionId: product.promotionId,
           invoiceSurcharge: product.invoiceSurcharge,
         }],
       });
@@ -1647,6 +1659,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                     setDiscountPercent(0);
                     setDiscountAmount(0);
                     setPromotionText('');
+                    setPromotionId('');
                     // Keep note - không clear ghi chú khi đổi khách hàng
                   }}
                   placeholder="Chọn khách hàng"
@@ -1787,7 +1800,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             discountAmount={discountAmount}
             setDiscountAmount={setDiscountAmount}
             promotionText={promotionText}
+            promotionId={promotionId}
             setPromotionText={setPromotionText}
+            setPromotionId={setPromotionId}
             onAdd={handleAddProduct}
             onSave={handleSave}
             onRefresh={handleRefresh}

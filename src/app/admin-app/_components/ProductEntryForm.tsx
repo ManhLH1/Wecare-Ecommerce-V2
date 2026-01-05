@@ -116,8 +116,10 @@ interface ProductEntryFormProps {
   discountAmount: number;
   setDiscountAmount: (value: number) => void;
   promotionText: string;
+  promotionId: string;
+  setPromotionId: (value: string) => void;
   setPromotionText: (value: string) => void;
-  onAdd: () => void;
+  onAdd: (overrides?: { promotionId?: string }) => void;
   onSave: () => void;
   onRefresh: () => void;
   onInventoryReserved?: () => void; // Callback khi inventory được reserve để trigger reload
@@ -184,6 +186,8 @@ export default function ProductEntryForm({
   discountAmount,
   setDiscountAmount,
   promotionText,
+  promotionId,
+  setPromotionId,
   setPromotionText,
   onAdd,
   onSave,
@@ -1448,14 +1452,30 @@ export default function ProductEntryForm({
   // Ensure a promotion is always selected when data is available
   useEffect(() => {
     if (promotions.length === 0) return;
-    setSelectedPromotionId((prev) => {
-      const prevNorm = normalizePromotionId(prev);
-      const exists = prevNorm !== '' && promotions.some((promo) => normalizePromotionId(promo.id) === prevNorm);
-      if (exists) return prevNorm;
+    const prevNorm = normalizePromotionId(selectedPromotionId);
+    const exists = prevNorm !== '' && promotions.some((promo) => normalizePromotionId(promo.id) === prevNorm);
+    if (!exists) {
       const firstId = normalizePromotionId(promotions[0]?.id);
-      return firstId;
-    });
+      if (firstId) {
+        setSelectedPromotionId(firstId);
+        try { if (setPromotionId) setPromotionId(firstId); } catch (err) { /* ignore */ }
+      }
+    }
   }, [promotions]);
+
+  // Sync external prop `promotionId` into local selectedPromotionId and notify parent when promotions auto-select
+  useEffect(() => {
+    if (promotionId && normalizePromotionId(promotionId) !== normalizePromotionId(selectedPromotionId)) {
+      setSelectedPromotionId(normalizePromotionId(promotionId));
+    } else if (!promotionId && promotions.length > 0 && selectedPromotionId === '') {
+      // If parent didn't provide promotionId but we auto-selected the first promotion, inform parent
+      const firstId = normalizePromotionId(promotions[0]?.id);
+      if (firstId && setPromotionId) {
+        setPromotionId(firstId);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [promotionId, promotions]);
 
   const effectivePromotionId = normalizePromotionId(
     selectedPromotionId || normalizePromotionId(promotions[0]?.id)
@@ -1592,7 +1612,19 @@ export default function ProductEntryForm({
         }
       }
 
-      onAdd();
+      // Ensure parent has current promotionId before adding product
+      try {
+        const currentPromoId = normalizePromotionId(selectedPromotionId || normalizePromotionId(promotions[0]?.id));
+        if (currentPromoId) {
+          console.debug('[ProductEntryForm] syncing promotionId to parent before add:', currentPromoId);
+          if (setPromotionId) setPromotionId(currentPromoId);
+        } else {
+          console.debug('[ProductEntryForm] no promotionId to sync before add');
+        }
+      } catch (err) { /* ignore */ }
+
+      console.debug('[ProductEntryForm] calling onAdd with promotionId:', normalizePromotionId(selectedPromotionId || normalizePromotionId(promotions[0]?.id)));
+      onAdd({ promotionId: normalizePromotionId(selectedPromotionId || normalizePromotionId(promotions[0]?.id)) });
 
       // After add, if product is still selected (selectedProductCode not reset), reload price
       // Use setTimeout to ensure form reset completes first
@@ -2504,7 +2536,12 @@ export default function ProductEntryForm({
                     <select
                       className="admin-app-input admin-app-input-compact"
                       value={effectivePromotionId}
-                      onChange={(e) => setSelectedPromotionId(normalizePromotionId(e.target.value))}
+                      onChange={(e) => {
+                        const val = normalizePromotionId(e.target.value);
+                        setSelectedPromotionId(val);
+                        // Propagate selection to parent if setter provided
+                        try { if (setPromotionId) setPromotionId(val); } catch (err) { /* ignore */ }
+                      }}
                       disabled={isFormDisabled}
                       title={selectedPromotion?.name || undefined}
                     >

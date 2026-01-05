@@ -119,6 +119,30 @@ async function lookupEmployeeByEmail(
     return null;
 }
 
+// Helper: lookup promotion ID by exact promotion text
+async function lookupPromotionIdByText(
+    promotionText: string,
+    headers: any
+): Promise<string | null> {
+    if (!promotionText) return null;
+    try {
+        const safeText = String(promotionText).trim().replace(/'/g, "''");
+        const filter = `statecode eq 0 and crdfd_name eq '${safeText}'`;
+        const query = `$select=crdfd_promotionid,crdfd_name&$filter=${encodeURIComponent(filter)}&$top=1`;
+        const endpoint = `${BASE_URL}${PROMOTION_TABLE}?${query}`;
+        const resp = await axios.get(endpoint, { headers });
+        const rows = resp.data.value || [];
+        if (rows.length > 0) {
+            console.log(`[Save SOBG] Found promotion by text "${promotionText}": ${rows[0].crdfd_promotionid}`);
+            return rows[0].crdfd_promotionid;
+        }
+        console.log(`[Save SOBG] No promotion found with exact text "${promotionText}"`);
+    } catch (err) {
+        console.warn('[Save SOBG] Could not lookup promotion by text:', (err as any)?.message || err);
+    }
+    return null;
+}
+
 // Helper: try to find a promotion by product code or promotion text
 async function findPromotionForProduct(
     productCode: string | undefined,
@@ -127,6 +151,22 @@ async function findPromotionForProduct(
 ): Promise<{ id: string; name?: string } | null> {
     try {
         const baseFilter = "statecode eq 0";
+
+        // First try: exact match by promotion name (if promotionText provided)
+        if (promotionText) {
+            const safeText = String(promotionText).trim().replace(/'/g, "''");
+            const exactFilter = `${baseFilter} and crdfd_name eq '${safeText}'`;
+            const exactQuery = `$select=crdfd_promotionid,crdfd_name,crdfd_masanpham_multiple&$filter=${encodeURIComponent(exactFilter)}&$top=1`;
+            const exactEndpoint = `${BASE_URL}${PROMOTION_TABLE}?${exactQuery}`;
+            const exactResp = await axios.get(exactEndpoint, { headers });
+            const exactRows = exactResp.data.value || [];
+            if (exactRows.length > 0) {
+                console.log(`[Save SOBG] Found exact promotion match: ${exactRows[0].crdfd_name} (${exactRows[0].crdfd_promotionid})`);
+                return { id: exactRows[0].crdfd_promotionid, name: exactRows[0].crdfd_name };
+            }
+        }
+
+        // Second try: broader search including product code matching
         const orClauses: string[] = [];
         if (productCode) {
             const safeCode = String(productCode).replace(/'/g, "''");
@@ -134,7 +174,6 @@ async function findPromotionForProduct(
         }
         if (promotionText) {
             const safeText = String(promotionText).replace(/'/g, "''");
-            orClauses.push(`crdfd_name eq '${safeText}'`);
             orClauses.push(`contains(crdfd_name,'${safeText}')`);
         }
         if (orClauses.length === 0) return null;
@@ -146,6 +185,7 @@ async function findPromotionForProduct(
         const resp = await axios.get(endpoint, { headers });
         const rows = resp.data.value || [];
         if (rows.length > 0) {
+            console.log(`[Save SOBG] Found contains promotion match: ${rows[0].crdfd_name} (${rows[0].crdfd_promotionid})`);
             return { id: rows[0].crdfd_promotionid, name: rows[0].crdfd_name };
         }
     } catch (err) {
@@ -415,45 +455,70 @@ export default async function handler(
                 if (product.approveSupPrice && product.approveSupPriceId) {
                     entity[`cr1bb_duyetgiasup@odata.bind`] = `/crdfd_duyetgias(${product.approveSupPriceId})`;
                 }
-                // Promotion lookup: prefer product.promotionId or product.promotion from frontend
-                const promoCandidate = product.promotionId ?? product.promotion;
-                if (promoCandidate) {
-                    const normalizedPromoId = String(promoCandidate).replace(/^{|}$/g, '').trim();
-                    if (normalizedPromoId) {
-                        entity[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${normalizedPromoId})`;
-                    }
-                } else {
-                    // Priority A: try to match against SOBG promotions previously selected/applied (crdfd_sobaogiaxpromotions)
-                    try {
-                        const prodCode = (product.productCode || '').toString().trim().toUpperCase();
-                        const prodGroup = (product.productGroupCode || '').toString().trim().toUpperCase();
-                        let matched = null as any;
-                        for (const sp of (sobgPromotions || [])) {
-                            const codesRaw = sp.productCodes || '';
-                            const groupsRaw = sp.productGroupCodes || '';
-                            const codes = Array.isArray(codesRaw) ? codesRaw : String(codesRaw).split(',').map((c: any) => String(c || '').trim().toUpperCase()).filter(Boolean);
-                            const groups = Array.isArray(groupsRaw) ? groupsRaw : String(groupsRaw).split(',').map((c: any) => String(c || '').trim().toUpperCase()).filter(Boolean);
-                            const matchProduct = codes.length === 0 || (prodCode && codes.some((c: string) => prodCode.includes(c)));
-                            const matchGroup = groups.length === 0 || (prodGroup && groups.some((g: string) => prodGroup.includes(g)));
-                            if ((codes.length === 0 && groups.length === 0) || matchProduct || matchGroup) {
-                                if (sp.promotionId) {
-                                    matched = sp;
-                                    break;
-                                }
+                // Promotion lookup: ưu tiên lấy từ chương trình chiết khấu đã áp dụng cho SOBG (sobgPromotions)
+                let promotionId: string | null = null;
+
+                // Step 1: Try to match against SOBG promotions previously selected/applied (crdfd_sobaogiaxpromotions)
+                try {
+                    const prodCode = (product.productCode || '').toString().trim().toUpperCase();
+                    const prodGroup = (product.productGroupCode || '').toString().trim().toUpperCase();
+                    let matched = null as any;
+                    for (const sp of (sobgPromotions || [])) {
+                        const codesRaw = sp.productCodes || '';
+                        const groupsRaw = sp.productGroupCodes || '';
+                        const codes = Array.isArray(codesRaw) ? codesRaw : String(codesRaw).split(',').map((c: any) => String(c || '').trim().toUpperCase()).filter(Boolean);
+                        const groups = Array.isArray(groupsRaw) ? groupsRaw : String(groupsRaw).split(',').map((c: any) => String(c || '').trim().toUpperCase()).filter(Boolean);
+                        const matchProduct = codes.length === 0 || (prodCode && codes.some((c: string) => prodCode.includes(c)));
+                        const matchGroup = groups.length === 0 || (prodGroup && groups.some((g: string) => prodGroup.includes(g)));
+                        if ((codes.length === 0 && groups.length === 0) || matchProduct || matchGroup) {
+                            if (sp.promotionId) {
+                                matched = sp;
+                                break;
                             }
                         }
-                        if (matched && matched.promotionId) {
-                            entity[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${String(matched.promotionId).replace(/^{|}$/g,'').trim()})`;
-                        } else {
-                            // Fallback: look up by promotionText/productCode directly in promotions table
-                            const inferred = await findPromotionForProduct(product.productCode, product.promotionText || product.promotionText, headers);
-                            if (inferred && inferred.id) {
-                                entity[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${String(inferred.id).replace(/^{|}$/g,'').trim()})`;
-                            }
+                    }
+                    if (matched && matched.promotionId) {
+                        promotionId = String(matched.promotionId).replace(/^{|}$/g, '').trim();
+                        console.log(`[Save SOBG] Matched promotionId ${promotionId} from SOBG promotions for product ${product.productCode} (group: ${product.productGroupCode})`);
+                    }
+                } catch (e) {
+                    console.warn('[Save SOBG] Error matching SOBG promotions:', (e as any)?.message || e);
+                }
+
+                // Step 2: Nếu không tìm thấy trong SOBG promotions, thử lookup từ promotionText của product
+                if (!promotionId && product.promotionText) {
+                    try {
+                        promotionId = await lookupPromotionIdByText(product.promotionText, headers);
+                        if (promotionId) {
+                            console.log(`[Save SOBG] Looked up promotionId ${promotionId} from promotionText "${product.promotionText}" for product ${product.productCode}`);
                         }
                     } catch (e) {
-                        // ignore inference errors
+                        console.warn('[Save SOBG] Error looking up promotion by text:', (e as any)?.message || e);
                     }
+                }
+
+                // Step 3: Fallback - lookup by productCode và promotionText trong promotions table
+                if (!promotionId) {
+                    try {
+                        const inferred = await findPromotionForProduct(product.productCode, product.promotionText, headers);
+                        if (inferred && inferred.id) {
+                            promotionId = String(inferred.id).replace(/^{|}$/g, '').trim();
+                            console.log(`[Save SOBG] Inferred promotionId ${promotionId} from productCode/promotionText for product ${product.productCode}`);
+                        }
+                    } catch (e) {
+                        console.warn('[Save SOBG] Error inferring promotion:', (e as any)?.message || e);
+                    }
+                }
+
+                // Step 4: Nếu frontend có gửi promotionId trực tiếp, ưu tiên dùng nó (dù frontend hiện không gửi)
+                if (!promotionId && product.promotionId) {
+                    promotionId = String(product.promotionId).replace(/^{|}$/g, '').trim();
+                    console.log(`[Save SOBG] Used promotionId ${promotionId} from frontend for product ${product.productCode}`);
+                }
+
+                // Set promotion lookup nếu tìm thấy promotionId
+                if (promotionId) {
+                    entity[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${promotionId})`;
                 }
 
                 // Use impersonation to set the correct createdby user

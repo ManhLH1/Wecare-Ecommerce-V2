@@ -139,6 +139,7 @@ export interface SaleOrderDetail {
   discountPercent?: number; // Chiết khấu %
   discountAmount?: number; // Chiết khấu VNĐ
   promotionText?: string; // Promotion text
+  promotionId?: string; // Promotion ID
   invoiceSurcharge?: number; // Phụ phí hoá đơn
 }
 
@@ -375,6 +376,7 @@ export interface SaveSaleOrderDetailsRequest {
     discountPercent?: number;
     discountAmount?: number;
     promotionText?: string;
+    promotionId?: string;
     invoiceSurcharge?: number;
   }>;
 }
@@ -655,6 +657,7 @@ export interface SaveSOBGDetailsRequest {
     discountPercent?: number;
     discountAmount?: number;
     promotionText?: string;
+    promotionId?: string;
     invoiceSurcharge?: number;
   }>;
 }
