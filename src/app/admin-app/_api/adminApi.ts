@@ -478,6 +478,8 @@ export interface PromotionOrderResponse {
   hasExistingPromotionOrder: boolean;
   availablePromotions: PromotionOrderItem[];
   allPromotions: PromotionOrderItem[];
+  // Optional: server may return a curated list of special promotions
+  specialPromotions?: PromotionOrderItem[];
 }
 
 /**
