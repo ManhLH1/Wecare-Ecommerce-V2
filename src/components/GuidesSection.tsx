@@ -55,6 +55,41 @@
    const featured = posts.length > 0 ? posts[0] : null;
    const list = posts.slice(1, 6); // show up to 5 list items
 
+  const resolveImageUrl = (val: any) => {
+    try {
+      if (!val) return "/placeholder-image.jpg";
+      if (typeof val === "string") {
+        const s = val.trim();
+        // If contains src attribute, extract it
+        const srcMatch = s.match(/src=(?:'|")([^'"]+)(?:'|")/i);
+        if (srcMatch && srcMatch[1]) return srcMatch[1];
+        // If contains a direct http(s) url inside string
+        const httpMatch = s.match(/https?:\/\/[^\s'"]+/i);
+        if (httpMatch) return httpMatch[0];
+        // Protocol-relative
+        if (s.startsWith("//")) return window.location.protocol + s;
+        // Absolute path on same origin
+        if (s.startsWith("/")) return window.location.origin + s;
+        // Plain URL without protocol?
+        if (s.startsWith("http") || s.includes("://")) return s;
+        // otherwise, return as-is (may be data url)
+        return s;
+      }
+      // If it's an object with url property
+      if (typeof val === "object") {
+        if (val.url) return val.url;
+        if (val.src) return val.src;
+        // try stringify and extract http
+        const str = JSON.stringify(val);
+        const httpMatch = str.match(/https?:\/\/[^\s'"]+/i);
+        if (httpMatch) return httpMatch[0];
+      }
+    } catch (e) {
+      // fallthrough
+    }
+    return "/placeholder-image.jpg";
+  };
+
   return (
     <section className="w-full bg-white py-4 mt-6">
       <div className="relative px-4 md:px-12">
@@ -92,7 +127,7 @@
               <article className="md:col-span-3 rounded overflow-hidden border border-gray-100">
                 <Link href={`/post`} className="block no-underline">
                   <div className="w-full h-44 md:h-48 bg-gray-200 bg-center bg-cover" style={{
-                    backgroundImage: featured?.cr1bb_img_url ? `url(${featured.cr1bb_img_url})` : `url('/placeholder-image.jpg')`
+                    backgroundImage: `url(${resolveImageUrl(featured?.cr1bb_img_url)})`
                   }} />
                   <div className="p-3">
                     <h4 className="text-base font-semibold text-gray-900 line-clamp-2">{featured?.cr1bb_title}</h4>
@@ -107,7 +142,16 @@
                 {list.map((post, idx) => (
                   <article key={idx} className="flex items-start gap-3">
                     <Link href={`/post`} className="w-16 h-12 flex-shrink-0 overflow-hidden rounded">
-                      <img loading="lazy" src={post.cr1bb_img_url || "/placeholder-image.jpg"} alt={post.cr1bb_title || "thumb"} className="w-full h-full object-cover" />
+                      <img
+                        loading="lazy"
+                        src={resolveImageUrl(post.cr1bb_img_url)}
+                        alt={post.cr1bb_title || "thumb"}
+                        className="w-full h-full object-cover"
+                        onError={(e: any) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = "/placeholder-image.jpg";
+                        }}
+                      />
                     </Link>
                     <div className="flex-1">
                       <Link href={`/post`} className="no-underline text-gray-900 hover:text-amber-600">

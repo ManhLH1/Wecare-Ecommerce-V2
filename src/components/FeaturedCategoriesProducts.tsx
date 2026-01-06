@@ -236,7 +236,7 @@ const FeaturedCategoriesProducts: React.FC<{
             <h3 className="text-lg font-semibold">
               <Link
                 href={category.href || "/san-pham"}
-                className="text-cyan-600 no-underline hover:text-cyan-700 text-2xl"
+                className="text-cyan-600 no-underline hover:text-cyan-700 text-2xl uppercase"
                 style={{ textDecoration: "none" }}
               >
                 {category.name}
@@ -259,7 +259,7 @@ const FeaturedCategoriesProducts: React.FC<{
               ))}
             </div>
           ) : products && products.length > 0 ? (
-            <div className="bg-cyan-50 rounded-md p-4 -mx-3">
+            <div className="bg-white rounded-md p-3 shadow-sm border border-gray-200">
               <Slider {...sliderSettings}>
               {products.map((p: any, idx: number) => {
                 const title = p.crdfd_tensanphamtext || p.crdfd_name || p.name || "";
@@ -311,8 +311,8 @@ const FeaturedCategoriesProducts: React.FC<{
                 return (
                   <div key={key} className="px-3">
                     <div
-                      className="relative rounded-lg bg-white p-3 flex flex-col justify-between text-center hover:shadow-xl transition-transform transform-gpu hover:-translate-y-1"
-                      style={{ height: 360 }}
+                      className="relative rounded-lg bg-white p-2 flex flex-col justify-between text-center shadow-sm hover:shadow-md transition-transform transition-colors transform-gpu hover:-translate-y-1 border border-gray-200 hover:border-gray-300"
+                      style={{ height: 320 }}
                     >
                       {/* Discount ribbon */}
                       {discountPerc ? (
@@ -334,13 +334,13 @@ const FeaturedCategoriesProducts: React.FC<{
 
                       {/* Compare control removed for cleaner layout */}
 
-            <div className="flex-1 flex flex-col items-center justify-start pt-2">
-                        <div className="w-full max-w-[220px] p-4 bg-white rounded-md flex items-center justify-center border border-gray-100 shadow-sm h-[180px]">
+            <div className="flex-1 flex flex-col items-center justify-start pt-1">
+                        <div className="w-full max-w-[220px] p-2 flex items-center justify-center h-[160px]">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={imageSrc || ""}
                             alt={title || category.name}
-                            className="object-contain max-w-full max-h-[160px]"
+                            className="object-contain max-w-full max-h-[140px] block"
                             onError={(e: any) => {
                               e.currentTarget.onerror = null;
                               e.currentTarget.src =
@@ -350,8 +350,8 @@ const FeaturedCategoriesProducts: React.FC<{
                         </div>
                       </div>
 
-                      <div className="mt-3">
-                        <h3 className="text-sm font-semibold text-gray-800 leading-snug mb-2 line-clamp-3">
+                      <div className="mt-2">
+                        <h3 className="text-base md:text-lg font-semibold text-gray-800 leading-snug mb-2 line-clamp-3">
                           <Link href={p.href || category.href || "/san-pham"} className="text-gray-800 no-underline" style={{ textDecoration: "none" }}>
                             {title}
                           </Link>

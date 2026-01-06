@@ -712,11 +712,6 @@ const searchProductsByKeywords = async (req: NextApiRequest, res: NextApiRespons
       });
     }
 
-    console.log(`=== SEARCH DEBUG ===`);
-    console.log(`Search term: "${params.searchTerm}"`);
-    console.log(`Synonyms: [${synonyms.join(', ')}]`);
-    console.log(`Final search keywords: [${searchKeywords.join(', ')}]`);
-
     const token = await getAccessToken();
     
     // Product columns

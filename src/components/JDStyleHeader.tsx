@@ -1044,17 +1044,6 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
                           .replace(/\s+/g, "-");
 
                       const slug = toSlug(searchKeywords);
-
-                      // Debug logging
-                      console.log('=== HEADER IMAGE SEARCH DEBUG ===');
-                      console.log('AI Keywords:', aiKeywords);
-                      console.log('Product Name (full):', aiKeywords.productName);
-                      console.log('Synonyms (available but not used in search):', aiKeywords.synonyms);
-                      console.log('Final Search Keywords (will be split by API):', searchKeywords);
-                      console.log('Generated slug:', slug);
-                      console.log('Redirect URL:', `/san-pham/${slug}?search=${encodeURIComponent(searchKeywords)}`);
-                      console.log('==================================');
-
                       // Redirect đến trang san-pham với slug
                       window.location.href = `/san-pham/${slug}?search=${encodeURIComponent(searchKeywords)}`;
                     }

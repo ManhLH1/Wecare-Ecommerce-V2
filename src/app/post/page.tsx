@@ -87,6 +87,33 @@ export default function Home() {
     return posts.slice(startIndex, endIndex);
   }, [posts, currentPage]);
 
+// Resolve various image value formats to a usable URL (string)
+const resolveImageUrl = (val: any) => {
+  try {
+    if (!val) return "/placeholder-image.jpg";
+    if (typeof val === "string") {
+      const s = val.trim();
+      const srcMatch = s.match(/src=(?:'|")([^'"]+)(?:'|")/i);
+      if (srcMatch && srcMatch[1]) return srcMatch[1];
+      const httpMatch = s.match(/https?:\/\/[^\s'"]+/i);
+      if (httpMatch) return httpMatch[0];
+      if (s.startsWith("//")) return window.location.protocol + s;
+      if (s.startsWith("/")) return window.location.origin + s;
+      return s;
+    }
+    if (typeof val === "object") {
+      if (val.url) return val.url;
+      if (val.src) return val.src;
+      const str = JSON.stringify(val);
+      const httpMatch = str.match(/https?:\/\/[^\s'"]+/i);
+      if (httpMatch) return httpMatch[0];
+    }
+  } catch (e) {
+    // fallback
+  }
+  return "/placeholder-image.jpg";
+};
+
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col overflow-x-hidden">
       {/* JD Style Layout */}
@@ -153,11 +180,14 @@ export default function Home() {
                         {/* Hình ảnh */}
                         <div className="relative w-full h-48 overflow-hidden bg-gray-100">
                           {post.cr1bb_img_url ? (
-                            <Image
-                              src={post.cr1bb_img_url}
+                            <img
+                              src={resolveImageUrl(post.cr1bb_img_url)}
                               alt={post.cr1bb_title || "Post image"}
-                              fill
-                              className="object-cover hover:scale-105 transition-transform duration-300"
+                              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                              onError={(e: any) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = "/placeholder-image.jpg";
+                              }}
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">

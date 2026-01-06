@@ -166,14 +166,6 @@ const findProductsByFullname = (products: any[], searchInput: string | string[],
   // Handle both string and array inputs
   const searchKeywords = Array.isArray(searchInput) ? searchInput : [searchInput];
   
-  console.log('=== FIND PRODUCTS BY FULLNAME DEBUG ===');
-  console.log('searchInput type:', typeof searchInput);
-  console.log('searchInput:', searchInput);
-  console.log('searchKeywords:', searchKeywords);
-  console.log('searchKeywords.length:', searchKeywords.length);
-  console.log('isSidebarSearch:', isSidebarSearch);
-  console.log('========================================');
-  
   // Enhanced Vietnamese diacritics normalization
   const normalizeVietnamese = (text: string): string => {
     return text.toLowerCase()
@@ -192,11 +184,6 @@ const findProductsByFullname = (products: any[], searchInput: string | string[],
   // Normalize all search keywords
   const normalizedKeywords = searchKeywords.map(keyword => normalizeVietnamese(keyword));
   
-  console.log('=== KEYWORDS PROCESSING ===');
-  console.log('Original keywords:', searchKeywords);
-  console.log('Normalized keywords:', normalizedKeywords);
-  console.log('============================');
-  
   // Create variations for each keyword
   const getAllVariations = (text: string) => [
     text,
@@ -209,10 +196,6 @@ const findProductsByFullname = (products: any[], searchInput: string | string[],
   const allSearchWords = normalizedKeywords.flatMap(keyword => 
     keyword.split(/\s+/).filter(word => word.length > 1)
   );
-  
-  console.log('=== SEARCH WORDS ===');
-  console.log('All search words:', allSearchWords);
-  console.log('====================');
   
   let matchedProducts = 0;
   let totalMatches = 0;
@@ -332,11 +315,6 @@ const findProductsByFullname = (products: any[], searchInput: string | string[],
       return false;
     }
   });
-  
-  console.log(`=== MATCHING RESULTS ===`);
-  console.log(`Total products matched: ${result.length}`);
-  console.log(`Total keyword matches: ${totalMatches}`);
-  console.log(`========================`);
   
   return result;
 };
@@ -1066,12 +1044,7 @@ const getProductsOnly = async (req: NextApiRequest, res: NextApiResponse) => {
 
     // Get the products and apply any client-side filtering if needed
     let products = productsResponse.data.value;
-    
-    console.log('=== CRM API RESPONSE DEBUG ===');
-    console.log('Total products from CRM:', products ? products.length : 0);
-    console.log('First few product names:', products ? products.slice(0, 3).map((p: any) => p.crdfd_fullname || p.crdfd_name) : []); 
-    console.log('==============================');
-    
+      
     // Only parse nested JSON if we need full product details
     let parsedProducts;
     if (!params.isSidebarSearch || params.productGroupId) {
@@ -1080,16 +1053,6 @@ const getProductsOnly = async (req: NextApiRequest, res: NextApiResponse) => {
       parsedProducts = products;
     }
     
-    // Log all search parameters
-    console.log('=== SEARCH PARAMETERS DEBUG ===');
-    console.log('searchTerm:', params.searchTerm);
-    console.log('keywords:', params.keywords);
-    console.log('fullnameSearch:', params.fullnameSearch);
-    console.log('productGroupId:', params.productGroupId);
-    console.log('page:', params.page);
-    console.log('pageSize:', params.pageSize);
-    console.log('================================');
-
     // Parse keywords from AI if provided
     let aiKeywords: string[] = [];
     let synonyms: string[] = [];
@@ -1110,9 +1073,6 @@ const getProductsOnly = async (req: NextApiRequest, res: NextApiResponse) => {
           aiKeywords = [...synonyms]; // Only use synonyms for search
         }
         
-        console.log(`=== AI KEYWORDS DEBUG ===`);
-        console.log(`Parsed AI keywords - Product: "${productName}" (not used), Synonyms: [${synonyms.join(', ')}] (used for search)`);
-        console.log(`==========================`);
       } catch (error) {
         console.error('Error parsing keywords:', error);
       }
@@ -1121,20 +1081,11 @@ const getProductsOnly = async (req: NextApiRequest, res: NextApiResponse) => {
     // Use ONLY synonyms for search, fallback to searchTerm if no synonyms
     const searchKeywords = synonyms.length > 0 ? synonyms : [params.searchTerm].filter(Boolean);
     
-    console.log('=== FINAL SEARCH KEYWORDS ===');
-    console.log('searchKeywords:', searchKeywords);
-    console.log('searchKeywords.length:', searchKeywords.length);
-    console.log('==============================');
 
     // Apply additional client-side filtering only for fullname parameter searches
     // since searchTerm filtering is already done at the server level
     if (params.fullnameSearch || params.searchTerm || searchKeywords.length > 0) {
       const searchText = params.fullnameSearch || params.searchTerm || (searchKeywords.length > 0 ? searchKeywords.join(' ') : '');
-      console.log('=== CLIENT-SIDE SEARCH DEBUG ===');
-      console.log('Search text:', searchText);
-      console.log('AI Keywords used:', searchKeywords.length > 0 ? searchKeywords : 'None');
-      console.log('Products before client-side filtering:', parsedProducts ? parsedProducts.length : 0);
-      console.log('Using AI keywords for search:', searchKeywords.length > 0);
       try {
         // Use AI keywords if available, otherwise use regular search
         if (searchKeywords.length > 0) {
@@ -1142,8 +1093,6 @@ const getProductsOnly = async (req: NextApiRequest, res: NextApiResponse) => {
         } else {
           products = findProductsByFullname(parsedProducts, searchText, params.isSidebarSearch);
         }
-        console.log('Products after client-side filtering:', products ? products.length : 0);
-        console.log('Final search method:', searchKeywords.length > 0 ? 'AI Keywords' : 'Regular searchTerm');
         
         // Sort products by relevance score for better results
         if (products && products.length > 0) {
@@ -1163,7 +1112,6 @@ const getProductsOnly = async (req: NextApiRequest, res: NextApiResponse) => {
         console.error('Error in product search:', error);
         products = parsedProducts;
       }
-      console.log('================================');
     } else {
       products = parsedProducts;
     }

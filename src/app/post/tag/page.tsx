@@ -152,6 +152,33 @@ export default function Home() {
     return url;
   };
 
+  // Normalize image values to usable src strings
+  const resolveImageUrl = (val: any) => {
+    try {
+      if (!val) return "/placeholder-image.jpg";
+      if (typeof val === "string") {
+        const s = val.trim();
+        const srcMatch = s.match(/src=(?:'|")([^'"]+)(?:'|")/i);
+        if (srcMatch && srcMatch[1]) return srcMatch[1];
+        const httpMatch = s.match(/https?:\/\/[^\s'"]+/i);
+        if (httpMatch) return httpMatch[0];
+        if (s.startsWith("//")) return window.location.protocol + s;
+        if (s.startsWith("/")) return window.location.origin + s;
+        return s;
+      }
+      if (typeof val === "object") {
+        if (val.url) return val.url;
+        if (val.src) return val.src;
+        const str = JSON.stringify(val);
+        const httpMatch = str.match(/https?:\/\/[^\s'"]+/i);
+        if (httpMatch) return httpMatch[0];
+      }
+    } catch (e) {
+      // ignore
+    }
+    return "/placeholder-image.jpg";
+  };
+
   const loadPDFDocument = async (url: string) => {
     try {
       setIsLoading(true);
@@ -649,12 +676,15 @@ export default function Home() {
                                         </p>
                                       </div>
                                     ) : (
-                                      <Image
-                                        src={post.cr1bb_img_url}
+                                      <img
+                                        src={resolveImageUrl(post.cr1bb_img_url)}
                                         alt={post.cr1bb_title || "Post image"}
-                                        fill
-                                        className="object-contain hover:scale-105 transition-transform duration-500"
-                                        onError={handleImageError}
+                                        className="w-full h-full object-contain hover:scale-105 transition-transform duration-500"
+                                        onError={(e: any) => {
+                                          e.currentTarget.onerror = null;
+                                          e.currentTarget.src = "/placeholder-image.jpg";
+                                          setImageError(true);
+                                        }}
                                       />
                                     )}
                                   </div>
