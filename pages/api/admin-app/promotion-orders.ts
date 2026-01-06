@@ -62,6 +62,7 @@ interface PromotionOrder {
   value?: number;
   vndOrPercent?: string;
   chietKhau2?: boolean;
+  productCodes?: string;
   productGroupCodes?: string;
 }
 
@@ -72,6 +73,7 @@ interface AvailablePromotion {
   value: number;
   vndOrPercent: string;
   chietKhau2: boolean;
+  productCodes?: string;
   productGroupCodes?: string;
   totalAmountCondition?: number;
   ieukhoanthanhtoanapdung?: any;
@@ -213,15 +215,18 @@ const validateProductGroupCodes = (productGroupCodes: any): any => {
 };
 
 /**
- * Check if promotion matches product groups (productCodes filtering removed for performance)
+ * Check if promotion matches product codes or groups
  */
 const doesPromotionMatchProducts = (promo: AvailablePromotion, productCodes: string[], productGroups: string[]): boolean => {
-  // Only check product group match (productCodes check removed for performance)
+  const hasProductMatch = productCodes.some(code =>
+    promo.productCodes && promo.productCodes.includes(code)
+  );
+
   const hasGroupMatch = productGroups.some(code =>
     promo.productGroupCodes && promo.productGroupCodes.includes(code)
   );
 
-  return hasGroupMatch;
+  return hasProductMatch || hasGroupMatch;
 };
 
 // ==================== MAIN BUSINESS LOGIC ====================
@@ -322,6 +327,7 @@ const enrichPromotionOrdersWithDetails = async (
         "crdfd_value",
         "crdfd_vn",
         "cr1bb_chietkhau2",
+        "crdfd_masanpham_multiple",
         "cr1bb_manhomsp_multiple",
         "cr1bb_tongtienapdung",
         "cr1bb_ieukhoanthanhtoanapdung",
@@ -351,6 +357,7 @@ const enrichPromotionOrdersWithDetails = async (
         value: parsePromotionValue(promo.crdfd_value),
         vndOrPercent: promo.crdfd_vn,
         chietKhau2: normalizeChietKhau2(promo.cr1bb_chietkhau2),
+        productCodes: promo.crdfd_masanpham_multiple,
         productGroupCodes: promo.cr1bb_manhomsp_multiple,
         totalAmountCondition: promo.cr1bb_tongtienapdung,
         ieukhoanthanhtoanapdung: promo.cr1bb_ieukhoanthanhtoanapdung,
@@ -373,41 +380,24 @@ const buildPromotionFilters = (
 ): string[] => {
   const filters = [
     "statecode eq 0", // Active
-    "crdfd_promotion_deactive eq 'Active'"
+    "crdfd_promotion_deactive eq 'Active'",
+    "crdfd_type eq 'Order'"
   ];
 
   // Time window filter
   const nowIso = new Date().toISOString();
   filters.push(`crdfd_start_date le ${nowIso}`);
 
-  // Special direct discount promotions that should be included regardless of customer code
-  const DIRECT_DISCOUNT_PROMOTIONS = [
-    "[ALL] GIẢM GIÁ ĐẶC BIỆT _ V1",
-    "[ALL] VOUCHER ĐẶT HÀNG TRÊN ZALO OA (New customer)",
-    "[ALL] VOUCHER SINH NHẬT - 50.000Đ"
-  ];
-
-  // Build complex filter for regular promotions + special direct discount promotions
-  let regularPromotionFilter = "(crdfd_type eq 'Order'";
-
-  // Add customer code filter for regular Order type promotions
+  // Customer code filter
   if (customerCode && typeof customerCode === "string" && customerCode.trim()) {
     const safeCode = escapeODataValue(customerCode.trim());
-    regularPromotionFilter += ` and (cr3b9_ma_khachhang_apdung eq '${safeCode}' or `;
-    regularPromotionFilter += `contains(cr3b9_ma_khachhang_apdung,'${safeCode},') or `;
-    regularPromotionFilter += `contains(cr3b9_ma_khachhang_apdung,',${safeCode},') or `;
-    regularPromotionFilter += `contains(cr3b9_ma_khachhang_apdung,',${safeCode}'))`;
+    filters.push(
+      `(cr3b9_ma_khachhang_apdung eq '${safeCode}' or ` +
+      `contains(cr3b9_ma_khachhang_apdung,'${safeCode},') or ` +
+      `contains(cr3b9_ma_khachhang_apdung,',${safeCode},') or ` +
+      `contains(cr3b9_ma_khachhang_apdung,',${safeCode}'))`
+    );
   }
-
-  regularPromotionFilter += ")";
-
-  // Special direct discount promotions (always included, regardless of customer code)
-  const specialPromotionFilters = DIRECT_DISCOUNT_PROMOTIONS.map(name =>
-    `(crdfd_name eq '${escapeODataValue(name)}' and crdfd_type eq 'Order')`
-  ).join(" or ");
-
-  // Combine regular and special promotion filters
-  filters.push(`(${regularPromotionFilter} or ${specialPromotionFilters})`);
 
   // Total amount filter
   if (totalAmount && typeof totalAmount === "string") {
@@ -436,6 +426,7 @@ const fetchAvailablePromotions = async (
     "crdfd_value",
     "crdfd_vn",
     "cr1bb_chietkhau2",
+    "crdfd_masanpham_multiple",
     "cr1bb_manhomsp_multiple",
     "cr1bb_tongtienapdung",
     "cr1bb_ieukhoanthanhtoanapdung",
@@ -457,6 +448,7 @@ const fetchAvailablePromotions = async (
     value: parsePromotionValue(promo.crdfd_value),
     vndOrPercent: promo.crdfd_vn,
     chietKhau2: normalizeChietKhau2(promo.cr1bb_chietkhau2),
+    productCodes: promo.crdfd_masanpham_multiple,
     productGroupCodes: promo.cr1bb_manhomsp_multiple,
     totalAmountCondition: promo.cr1bb_tongtienapdung,
     ieukhoanthanhtoanapdung: promo.cr1bb_ieukhoanthanhtoanapdung,
@@ -478,22 +470,8 @@ const filterPromotionsByProducts = (
   const productCodeList = parseCodesToArray(productCodes);
   const productGroupList = parseCodesToArray(productGroups);
 
-  // Special direct discount promotions that should always pass product filter
-  const DIRECT_DISCOUNT_PROMOTIONS = [
-    "[ALL] GIẢM GIÁ ĐẶC BIỆT _ V1",
-    "[ALL] VOUCHER ĐẶT HÀNG TRÊN ZALO OA (New customer)",
-    "[ALL] VOUCHER SINH NHẬT - 50.000Đ"
-  ].map(s => s.toLowerCase());
 
   const filtered = promotions.filter(promo => {
-    // Always include special direct discount promotions
-    if (promo.name && DIRECT_DISCOUNT_PROMOTIONS.some(specialName =>
-      promo.name.toLowerCase().includes(specialName)
-    )) {
-      return true;
-    }
-
-    // For regular promotions, check product match
     const matches = doesPromotionMatchProducts(promo, productCodeList, productGroupList);
     return matches;
   });
@@ -502,35 +480,19 @@ const filterPromotionsByProducts = (
 };
 
 /**
- * Apply chietKhau2 filter and get max value promotions, including special direct discount promotions
+ * Apply chietKhau2 filter and get max value promotions
  */
 const getMaxValuePromotions = (promotions: AvailablePromotion[]): AvailablePromotion[] => {
-  // Special direct discount promotions that should always be included
-  const DIRECT_DISCOUNT_PROMOTIONS = [
-    "[ALL] GIẢM GIÁ ĐẶC BIỆT _ V1",
-    "[ALL] VOUCHER ĐẶT HÀNG TRÊN ZALO OA (New customer)",
-    "[ALL] VOUCHER SINH NHẬT - 50.000Đ"
-  ].map(s => s.toLowerCase());
+  // Filter only chietKhau2 = true promotions
+  const chietKhau2Promotions = promotions.filter(p => p.chietKhau2);
 
-  // Separate direct discount promotions from regular promotions
-  const directDiscountPromotions = promotions.filter(p =>
-    p.name && DIRECT_DISCOUNT_PROMOTIONS.some(specialName =>
-      p.name.toLowerCase().includes(specialName)
-    )
-  );
-
-  // Filter remaining promotions that have chietKhau2 = true (regular line-level promotions)
-  const regularPromotions = promotions.filter(p =>
-    p.chietKhau2 && !directDiscountPromotions.some(ddp => ddp.id === p.id)
-  );
-
-  // Handle Dynamics CRM option set values for regular promotions
+  // Handle Dynamics CRM option set values
   // 191920000 = Percent, other values = VND
-  const percentPromotions = regularPromotions.filter(p => {
+  const percentPromotions = chietKhau2Promotions.filter(p => {
     const vndOrPercentStr = String(p.vndOrPercent || '');
     return vndOrPercentStr === "%" || vndOrPercentStr === "191920000";
   });
-  const vndPromotions = regularPromotions.filter(p => {
+  const vndPromotions = chietKhau2Promotions.filter(p => {
     const vndOrPercentStr = String(p.vndOrPercent || '');
     return vndOrPercentStr === "VNĐ" ||
            (vndOrPercentStr !== "%" && vndOrPercentStr !== "191920000");
@@ -548,12 +510,6 @@ const getMaxValuePromotions = (promotions: AvailablePromotion[]): AvailablePromo
   if (vndPromotions.length > 0) {
     result = [...result, ...vndPromotions];
   }
-
-  // Always include direct discount promotions (they are handled differently now)
-  if (directDiscountPromotions.length > 0) {
-    result = [...result, ...directDiscountPromotions];
-  }
-
   return result;
 };
 
