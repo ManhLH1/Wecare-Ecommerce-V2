@@ -218,11 +218,40 @@ const FeaturedCategoriesProducts: React.FC<{
 
   if (loading) {
     return (
-      <section className="py-6">
-        <div className="px-4">
-          <div className="text-gray-600">Đang tải nhóm sản phẩm...</div>
-        </div>
-      </section>
+      <div className="relative px-2 md:px-6 my-3 my-lg-5">
+        {Array.from({ length: 3 }).map((_, groupIndex) => (
+          <section key={`loading-group-${groupIndex}`} className="mb-6">
+            {/* Category header skeleton */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="h-8 bg-gray-200 rounded animate-pulse w-48"></div>
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div>
+            </div>
+
+            {/* Products grid skeleton */}
+            <div className="bg-white rounded-md p-3 shadow-sm border border-gray-200">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+                {Array.from({ length: 6 }).map((_, productIndex) => (
+                  <div key={`loading-product-${groupIndex}-${productIndex}`} className="animate-pulse">
+                    <div className="bg-gray-100 rounded p-2 text-center h-[300px] flex flex-col justify-between">
+                      {/* Product image placeholder */}
+                      <div className="h-[140px] bg-gray-200 rounded mb-2"></div>
+
+                      {/* Product name placeholder */}
+                      <div className="h-3 bg-gray-200 rounded mx-auto w-3/4 mb-2"></div>
+
+                      {/* Product price placeholder */}
+                      <div className="h-4 bg-gray-200 rounded mx-auto w-1/2 mb-1"></div>
+
+                      {/* Product original price placeholder */}
+                      <div className="h-3 bg-gray-300 rounded mx-auto w-1/3"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        ))}
+      </div>
     );
   }
 
@@ -251,8 +280,8 @@ const FeaturedCategoriesProducts: React.FC<{
             // Simple skeleton placeholders while this group's products are being fetched
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
               {Array.from({ length: 4 }).map((_, idx) => (
-                <div key={`${category.id}-ph-${idx}`} className="animate-pulse bg-white rounded p-2 text-center h-[360px] flex flex-col justify-between">
-                  <div className="h-[180px] bg-gray-100 rounded mb-2" />
+                <div key={`${category.id}-ph-${idx}`} className="animate-pulse bg-white rounded p-2 text-center h-[300px] flex flex-col justify-between">
+                  <div className="h-[140px] bg-gray-100 rounded mb-2" />
                   <div className="h-4 bg-gray-200 rounded mx-auto w-3/4 mb-2" />
                   <div className="h-4 bg-gray-200 rounded mx-auto w-1/2" />
                 </div>
@@ -312,7 +341,7 @@ const FeaturedCategoriesProducts: React.FC<{
                   <div key={key} className="px-3">
                     <div
                       className="relative rounded-lg bg-white p-2 flex flex-col justify-between text-center shadow-sm hover:shadow-md transition-transform transition-colors transform-gpu hover:-translate-y-1 border border-gray-200 hover:border-gray-300"
-                      style={{ height: 320 }}
+                      style={{ height: 300 }}
                     >
                       {/* Discount ribbon */}
                       {discountPerc ? (
@@ -335,12 +364,12 @@ const FeaturedCategoriesProducts: React.FC<{
                       {/* Compare control removed for cleaner layout */}
 
             <div className="flex-1 flex flex-col items-center justify-start pt-1">
-                        <div className="w-full max-w-[220px] p-2 flex items-center justify-center h-[160px]">
+                        <div className="w-full max-w-[220px] p-2 flex items-center justify-center h-[140px]">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={imageSrc || ""}
                             alt={title || category.name}
-                            className="object-contain max-w-full max-h-[140px] block"
+                            className="object-contain max-w-full max-h-[120px] block"
                             onError={(e: any) => {
                               e.currentTarget.onerror = null;
                               e.currentTarget.src =
@@ -350,8 +379,8 @@ const FeaturedCategoriesProducts: React.FC<{
                         </div>
                       </div>
 
-                      <div className="mt-2">
-                        <h3 className="text-base md:text-lg font-semibold text-gray-800 leading-snug mb-2 line-clamp-3">
+                      <div className="mt-2 flex flex-col items-center" style={{ minHeight: 72 }}>
+                        <h3 className="text-base md:text-lg font-semibold text-gray-800 leading-snug mb-2 line-clamp-3 min-h-[54px] flex items-center justify-center text-center">
                           <Link href={p.href || category.href || "/san-pham"} className="text-gray-800 no-underline" style={{ textDecoration: "none" }}>
                             {title}
                           </Link>
