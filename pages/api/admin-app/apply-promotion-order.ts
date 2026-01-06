@@ -189,34 +189,7 @@ export default async function handler(
         ?.match(/\(([^)]+)\)/)?.[1];
     }
 
-    // 2. Handle special direct discount promotions (apply to SO total instead of line items)
-    if (isDirectDiscountPromotion) {
-      try {
-        // Get current SO crdfd_tongtienkhongvatnew value
-        const soEndpoint = `${BASE_URL}${SALE_ORDERS_TABLE}(${soId})?$select=crdfd_tongtienkhongvatnew`;
-        const soResponse = await axios.get(soEndpoint, { headers });
-        const currentTongTienKhongVatNew = Number(soResponse.data.crdfd_tongtienkhongvatnew) || 0;
-
-        // For special direct discount promotions, use the promotion value directly to subtract from current total
-        const rawValue = typeof effectivePromotionValue === 'number' ? effectivePromotionValue : (effectivePromotionValue ? Number(effectivePromotionValue) : 0);
-        const discountAmount = rawValue; // Always use raw value directly for special promotions
-
-        // Apply discount directly to crdfd_tongtienkhongvatnew
-        const newTongTienKhongVatNew = Math.max(0, currentTongTienKhongVatNew - discountAmount);
-
-        const updateSoPayload = {
-          crdfd_tongtienkhongvatnew: Math.round(newTongTienKhongVatNew),
-          crdfd_chietkhauvn: discountAmount // Store the discount amount
-        };
-
-        const updateSoEndpoint = `${BASE_URL}${SALE_ORDERS_TABLE}(${soId})`;
-        await axios.patch(updateSoEndpoint, updateSoPayload, { headers });
-
-        console.log(`[ApplyPromotion] Applied direct discount of ${discountAmount} to SO crdfd_tongtienkhongvatnew (${currentTongTienKhongVatNew} -> ${newTongTienKhongVatNew}) and crdfd_chietkhauvn`);
-      } catch (error: any) {
-        console.error('[ApplyPromotion] Error applying direct discount to SO:', error?.message || error);
-      }
-    }
+    // 2. Special direct discount promotions - no header updates needed
 
     // 3. Nếu là chiết khấu 2 (chietKhau2 = true) và không phải direct discount promotion, cập nhật crdfd_chieckhau2 và giá trên các SOD matching
     let updatedSodCount = 0;
@@ -405,20 +378,9 @@ export default async function handler(
       }
     } // End of if (!isDirectDiscountPromotion)
 
-    // For direct discount promotions, also update SO header with promotion value
-    if (isDirectDiscountPromotion) {
-      try {
-        const soUpdatePayload: any = {
-          crdfd_chieckhau2: chietKhau2ValueToStore,
-        };
-        const soUpdateEndpoint = `${BASE_URL}${SALE_ORDERS_TABLE}(${soId})`;
-        await axios.patch(soUpdateEndpoint, soUpdatePayload, { headers });
-      } catch (err: any) {
-        console.warn('[ApplyPromotion] Failed to update SO crdfd_chieckhau2 for direct discount:', err?.message || err);
-      }
-    }
+    // No additional header updates needed for direct discount promotions
 
-    const promotionType = isDirectDiscountPromotion ? "giảm trực tiếp vào tổng tiền" : (effectiveChietKhau2 ? `cập nhật chiết khấu 2 cho ${updatedSodCount} sản phẩm` : "");
+    const promotionType = isDirectDiscountPromotion ? "" : (effectiveChietKhau2 ? `cập nhật chiết khấu 2 cho ${updatedSodCount} sản phẩm` : "");
     res.status(200).json({
       success: true,
       ordersXPromotionId: createdOrderXPromotionId,
