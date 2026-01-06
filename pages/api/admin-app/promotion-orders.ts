@@ -79,6 +79,11 @@ interface AvailablePromotion {
   ieukhoanthanhtoanapdung?: any;
   startDate?: string;
   endDate?: string;
+  // Annotations added by API processing
+  paymentTermsNormalized?: string | null;
+  applicable?: boolean;
+  paymentTermsMismatch?: boolean;
+  warningMessage?: string;
 }
 
 // ==================== HELPER FUNCTIONS ====================
@@ -569,6 +574,13 @@ export default async function handler(
     // Step 4: Build filters and fetch available promotions
     const filters = buildPromotionFilters(customerCode, totalAmount);
     let availablePromotions = await fetchAvailablePromotions(filters, headers);
+    // Preserve full fetched list (before product filtering) so we can surface
+    // "special" promotions regardless of product code constraints.
+    const allFetchedPromotions = availablePromotions.slice();
+
+    // Debug logging
+    console.log(`Available promotions before filtering: ${availablePromotions.length}`);
+    availablePromotions.forEach(p => console.log(`- ${p.name} (ID: ${p.id})`));
 
     // Step 5: Filter by product codes/groups if provided
     availablePromotions = filterPromotionsByProducts(
@@ -577,39 +589,71 @@ export default async function handler(
       productGroupCodes
     );
 
+    // Debug logging
+    console.log(`After product filtering: ${availablePromotions.length}`);
+    availablePromotions.forEach(p => console.log(`- ${p.name} (ID: ${p.id})`));
+
     // Step 6: Annotate promotions with payment terms applicability (if provided in query)
     const requestedPaymentTerms = req.query?.paymentTerms ? normalizePaymentTerm(String(req.query.paymentTerms)) : null;
-    availablePromotions = availablePromotions.map((p) => {
-      const promoNormalized = normalizePaymentTerm(String(p.ieukhoanthanhtoanapdung || ''));
-      let applicable = true;
-      let paymentTermsMismatch = false;
-      let warningMessage: string | undefined;
-      if (requestedPaymentTerms) {
-        if (!p.ieukhoanthanhtoanapdung || String(p.ieukhoanthanhtoanapdung).trim() === '') {
-          applicable = true;
-        } else if (promoNormalized === requestedPaymentTerms) {
-          applicable = true;
-        } else {
-          applicable = false;
-          paymentTermsMismatch = true;
-          // Use friendly labels when possible
-          const promoLabel = PAYMENT_TERMS_MAP[promoNormalized || String(p.ieukhoanthanhtoanapdung)] || String(p.ieukhoanthanhtoanapdung || '');
-          const orderLabel = PAYMENT_TERMS_MAP[requestedPaymentTerms] || String(req.query.paymentTerms || '');
-          warningMessage = `Điều khoản thanh toán không khớp: chương trình yêu cầu \"${promoLabel}\", đơn hàng là \"${orderLabel}\"`;
+
+    const annotateWithPaymentTerms = (promotions: AvailablePromotion[]) => {
+      return promotions.map((p) => {
+        const promoNormalized = normalizePaymentTerm(String(p.ieukhoanthanhtoanapdung || ''));
+        let applicable = true;
+        let paymentTermsMismatch = false;
+        let warningMessage: string | undefined;
+        if (requestedPaymentTerms) {
+          if (!p.ieukhoanthanhtoanapdung || String(p.ieukhoanthanhtoanapdung).trim() === '') {
+            applicable = true;
+          } else if (promoNormalized === requestedPaymentTerms) {
+            applicable = true;
+          } else {
+            applicable = false;
+            paymentTermsMismatch = true;
+            // Use friendly labels when possible
+            const promoLabel = PAYMENT_TERMS_MAP[promoNormalized || String(p.ieukhoanthanhtoanapdung)] || String(p.ieukhoanthanhtoanapdung || '');
+            const orderLabel = PAYMENT_TERMS_MAP[requestedPaymentTerms] || String(req.query.paymentTerms || '');
+            warningMessage = `Điều khoản thanh toán không khớp: chương trình yêu cầu \"${promoLabel}\", đơn hàng là \"${orderLabel}\"`;
+          }
         }
-      }
-      return { ...p, paymentTermsNormalized: promoNormalized, applicable, paymentTermsMismatch, warningMessage };
-    });
+        return { ...p, paymentTermsNormalized: promoNormalized, applicable, paymentTermsMismatch, warningMessage };
+      });
+    };
+
+    // Annotate both the product-filtered promotions and the full fetched list
+    availablePromotions = annotateWithPaymentTerms(availablePromotions);
+    const allFetchedPromotionsAnnotated = annotateWithPaymentTerms(allFetchedPromotions);
+
+    // Debug logging
+    console.log(`After payment terms filtering: ${availablePromotions.length}`);
+    availablePromotions.forEach(p => console.log(`- ${p.name} (ID: ${p.id}, applicable: ${p.applicable})`));
 
     // Step 7: Get max value promotions (apply chietKhau2 filter and max logic)
     const promotionOrderMax = getMaxValuePromotions(availablePromotions);
 
-    // Step 8: Return response
+    // Step 7b: Extract "special" promotions that should be shown regardless of product codes.
+    // These promotions are identified by name and must be surfaced even when existingPromotionOrders exist.
+    const SPECIAL_PROMOTION_NAMES = [
+      "[ALL] GIẢM GIÁ ĐẶC BIỆT _ V1",
+      "[ALL] VOUCHER ĐẶT HÀNG TRÊN ZALO OA (New customer)",
+      "[ALL] VOUCHER SINH NHẬT - 50.000Đ"
+    ];
+
+    const specialPromotions = allFetchedPromotionsAnnotated.filter(p =>
+      SPECIAL_PROMOTION_NAMES.includes(String(p.name || '').trim())
+    );
+
+    // Debug logging
+    console.log(`Final available promotions (max value): ${promotionOrderMax.length}`);
+    promotionOrderMax.forEach(p => console.log(`- ${p.name} (ID: ${p.id})`));
+
+    // Step 8: Return response (include `specialPromotions` for UI to show regardless of product filtering)
     res.status(200).json({
       existingPromotionOrders,
       hasExistingPromotionOrder: existingPromotionOrders.length > 0,
       availablePromotions: promotionOrderMax,
       allPromotions: availablePromotions,
+      specialPromotions,
     });
 
   } catch (error: any) {

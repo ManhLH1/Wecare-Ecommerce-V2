@@ -144,8 +144,14 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   // Promotion Order Popup state
   const [showPromotionOrderPopup, setShowPromotionOrderPopup] = useState(false);
   const [promotionOrderList, setPromotionOrderList] = useState<PromotionOrderItem[]>([]);
+  const [specialPromotionList, setSpecialPromotionList] = useState<PromotionOrderItem[]>([]);
   const [selectedPromotionOrders, setSelectedPromotionOrders] = useState<PromotionOrderItem[]>([]); // Multi-select
   const [isApplyingPromotion, setIsApplyingPromotion] = useState(false);
+  const SPECIAL_PROMOTION_KEYWORDS = [
+    '[ALL] GIẢM GIÁ ĐẶC BIỆT',
+    '[ALL] VOUCHER ĐẶT HÀNG TRÊN ZALO OA',
+    '[ALL] VOUCHER SINH NHẬT'
+  ];
 
   // Kiểm tra có sản phẩm chưa lưu để enable nút Save
   // Sản phẩm mới = isSodCreated không phải true (có thể là false, undefined, null)
@@ -327,6 +333,17 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           productList.map(p => p.productCode).filter((c): c is string => typeof c === 'string' && c.trim() !== ''),
           productList.map(p => p.productGroupCode).filter((c): c is string => typeof c === 'string' && c.trim() !== '')
         );
+
+        // Collect special promotions (from allPromotions) so we can always surface them
+        try {
+          const allPromos = promotionOrderResult.allPromotions || [];
+          const special = (allPromos || []).filter((p: PromotionOrderItem) =>
+            SPECIAL_PROMOTION_KEYWORDS.some(k => !!p.name && p.name.includes(k))
+          );
+          if (special.length > 0) setSpecialPromotionList(special);
+        } catch (e) {
+          // ignore
+        }
 
         if (promotionOrderResult.availablePromotions && promotionOrderResult.availablePromotions.length > 0) {
           // Auto-select promotions where totalAmount >= totalAmountCondition
@@ -768,6 +785,17 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
 
           // Chỉ hiển thị popup nếu có promotion chiết khấu 2 (chietKhau2 = true)
           const chietKhau2Promotions = promotionOrderResult.allPromotions?.filter(p => p.chietKhau2) || [];
+          // Also surface special promotions. Prefer explicit `specialPromotions` returned by API,
+          // otherwise fallback to scanning `allPromotions`.
+          let special: PromotionOrderItem[] = [];
+          if (Array.isArray(promotionOrderResult.specialPromotions) && promotionOrderResult.specialPromotions.length > 0) {
+            special = promotionOrderResult.specialPromotions;
+          } else {
+            special = (promotionOrderResult.allPromotions || []).filter((p: PromotionOrderItem) =>
+              SPECIAL_PROMOTION_KEYWORDS.some(k => !!p.name && p.name.includes(k))
+            );
+          }
+          if (special.length > 0) setSpecialPromotionList(special);
 
           if (chietKhau2Promotions.length > 0) {
             setSoId(savedSoId);
@@ -1147,6 +1175,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         setShowPromotionOrderPopup(false);
         setSelectedPromotionOrders([]);
         setPromotionOrderList([]);
+        setSpecialPromotionList([]);
         // Clear entire form after successfully applying promotions
         clearEverything();
       } else {
@@ -1170,6 +1199,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setShowPromotionOrderPopup(false);
     setSelectedPromotionOrders([]);
     setPromotionOrderList([]);
+    setSpecialPromotionList([]);
     // Clear entire form when closing promotion popup
     clearEverything();
   };
@@ -1517,6 +1547,35 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                       </label>
                     );
                   })}
+
+                  {/* Special promotions area (moved below regular promotions) */}
+                  {specialPromotionList && specialPromotionList.length > 0 && (
+                    <div style={{ marginTop: 8, padding: 8, borderRadius: 6, background: '#fff7ed', border: '1px dashed #f59e0b' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 6 }}>Khuyến mãi đặc biệt</div>
+                      {specialPromotionList.map((promo) => {
+                        const isSelected = selectedPromotionOrders.some(p => p.id === promo.id);
+                        return (
+                          <label key={promo.id} style={{ display: 'flex', alignItems: 'center', padding: '6px 0' }}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedPromotionOrders([...selectedPromotionOrders, promo]);
+                                } else {
+                                  setSelectedPromotionOrders(selectedPromotionOrders.filter(p => p.id !== promo.id));
+                                }
+                              }}
+                              style={{ marginRight: '8px', cursor: 'pointer' }}
+                            />
+                            <span style={{ fontSize: 13 }}>
+                              {promo.name} ({promo.vndOrPercent === '%' ? `${promo.value}%` : `${promo.value?.toLocaleString('vi-VN')} VNĐ`})
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

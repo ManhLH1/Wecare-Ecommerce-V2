@@ -121,8 +121,14 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   // Promotion Order Popup state
   const [showPromotionOrderPopup, setShowPromotionOrderPopup] = useState(false);
   const [promotionOrderList, setPromotionOrderList] = useState<PromotionOrderItem[]>([]);
+  const [specialPromotionList, setSpecialPromotionList] = useState<PromotionOrderItem[]>([]);
   const [selectedPromotionOrders, setSelectedPromotionOrders] = useState<PromotionOrderItem[]>([]);
   const [isApplyingPromotion, setIsApplyingPromotion] = useState(false);
+  const SPECIAL_PROMOTION_KEYWORDS = [
+    '[ALL] GIẢM GIÁ ĐẶC BIỆT',
+    '[ALL] VOUCHER ĐẶT HÀNG TRÊN ZALO OA',
+    '[ALL] VOUCHER SINH NHẬT'
+  ];
 
   // Kiểm tra có sản phẩm chưa lưu để enable nút Save
   const hasUnsavedProducts = productList.some(p => p.isSodCreated !== true);
@@ -959,6 +965,22 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       );
 
       const available = promotionOrderResult.availablePromotions || [];
+      // Surface special promotions from allPromotions so they can always be shown
+      try {
+        // Prefer API-provided `specialPromotions` if available; otherwise scan allPromotions.
+        let special: PromotionOrderItem[] = [];
+        if (Array.isArray(promotionOrderResult.specialPromotions) && promotionOrderResult.specialPromotions.length > 0) {
+          special = promotionOrderResult.specialPromotions;
+        } else {
+          const allPromos = promotionOrderResult.allPromotions || [];
+          special = (allPromos || []).filter((p: PromotionOrderItem) =>
+            SPECIAL_PROMOTION_KEYWORDS.some(k => !!p.name && p.name.includes(k))
+          );
+        }
+        if (special.length > 0) setSpecialPromotionList(special);
+      } catch (e) {
+        // ignore
+      }
       if (available.length === 0) {
         return;
       }
@@ -1211,6 +1233,35 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
                       </label>
                     );
                   })}
+
+                  {/* Special promotions area (moved below regular promotions) */}
+                  {specialPromotionList && specialPromotionList.length > 0 && (
+                    <div style={{ marginTop: 8, padding: 8, borderRadius: 6, background: '#fff7ed', border: '1px dashed #f59e0b' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 6 }}>Khuyến mãi đặc biệt</div>
+                      {specialPromotionList.map((promo) => {
+                        const isSelected = selectedPromotionOrders.some(p => p.id === promo.id);
+                        return (
+                          <label key={promo.id} style={{ display: 'flex', alignItems: 'center', padding: '6px 0' }}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedPromotionOrders([...selectedPromotionOrders, promo]);
+                                } else {
+                                  setSelectedPromotionOrders(selectedPromotionOrders.filter(p => p.id !== promo.id));
+                                }
+                              }}
+                              style={{ marginRight: '8px', cursor: 'pointer' }}
+                            />
+                            <span style={{ fontSize: 13 }}>
+                              {promo.name} ({promo.vndOrPercent === '%' ? `${promo.value}%` : `${promo.value?.toLocaleString('vi-VN')} VNĐ`})
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
