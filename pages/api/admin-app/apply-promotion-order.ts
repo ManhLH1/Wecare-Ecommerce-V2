@@ -104,26 +104,25 @@ export default async function handler(
       console.warn('[ApplyPromotion] Could not fetch promotion details to enrich request (pre-create):', (err as any)?.message || err);
     }
 
-    // Special-case promotions: apply discount directly to SO crdfd_tongtienkhongvatnew instead of line items
-    const DIRECT_DISCOUNT_PROMOTIONS = [
+    // Special-case promotions: force apply as line-level discount (pre-VAT) for known promotion names
+    const FORCE_PRE_VAT_PROMOTIONS = [
       "[ALL] GIẢM GIÁ ĐẶC BIỆT _ V1",
       "[ALL] VOUCHER ĐẶT HÀNG TRÊN ZALO OA (New customer)",
       "[ALL] VOUCHER SINH NHẬT - 50.000Đ"
     ].map(s => s.toLowerCase());
 
-    let isDirectDiscountPromotion = false;
     try {
       const promoNameNorm = String(promotionName || "").toLowerCase();
-      if (DIRECT_DISCOUNT_PROMOTIONS.some(p => promoNameNorm.includes(p))) {
-        isDirectDiscountPromotion = true;
-        // Ensure we use promotion's stored type/value if available
+      if (FORCE_PRE_VAT_PROMOTIONS.some(p => promoNameNorm.includes(p))) {
+        effectiveChietKhau2 = true;
+        // Ensure we use promotion's stored type/value if available; treat as percent if promoData indicates percent
         if (effectiveVndOrPercent === "" && promoData?.crdfd_vn) {
           effectiveVndOrPercent = promoData.crdfd_vn;
         }
         if ((effectivePromotionValue === undefined || effectivePromotionValue === null) && promoData?.crdfd_value) {
           effectivePromotionValue = promoData.crdfd_value;
         }
-        console.log(`[ApplyPromotion] Applying direct discount to SO total for promotion "${promotionName}"`);
+        console.log(`[ApplyPromotion] Forcing pre-VAT line discount for promotion "${promotionName}"`);
       }
     } catch (e) {
       // ignore
@@ -193,8 +192,10 @@ export default async function handler(
 
     // 3. Nếu là chiết khấu 2 (chietKhau2 = true) và không phải direct discount promotion, cập nhật crdfd_chieckhau2 và giá trên các SOD matching
     let updatedSodCount = 0;
-    // Only apply line-level discounts for non-direct discount promotions
-    if (!isDirectDiscountPromotion) {
+    // Always attempt to update SOD records when applying a promotion order,
+    // even if effectiveChietKhau2 is false. This ensures re-applying promotions
+    // will update ck2 for all lines in the SO.
+    {
       // Lấy danh sách SOD của SO
       const sodFilters = [
         "statecode eq 0",
@@ -376,16 +377,13 @@ export default async function handler(
       } catch (err: any) {
         console.warn('[ApplyPromotion] Failed to update SO crdfd_chieckhau2/chietkhau2:', err?.message || err);
       }
-    } // End of if (!isDirectDiscountPromotion)
+    }
 
-    // No additional header updates needed for direct discount promotions
-
-    const promotionType = isDirectDiscountPromotion ? "" : (effectiveChietKhau2 ? `cập nhật chiết khấu 2 cho ${updatedSodCount} sản phẩm` : "");
     res.status(200).json({
       success: true,
       ordersXPromotionId: createdOrderXPromotionId,
       updatedSodCount,
-      message: `Đã áp dụng promotion "${promotionName}" cho đơn hàng${promotionType ? ` và ${promotionType}` : ""}`,
+      message: `Đã áp dụng promotion "${promotionName}" cho đơn hàng${chietKhau2 ? ` và cập nhật chiết khấu 2 cho ${updatedSodCount} sản phẩm` : ""}`,
     });
   } catch (error: any) {
     console.error("Error applying promotion order:", error);

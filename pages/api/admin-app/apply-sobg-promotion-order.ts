@@ -128,25 +128,24 @@ export default async function handler(
       }
     }
 
-    // Special-case promotions: apply discount directly to SOBG crdfd_tongtienkhongvat instead of line items
-    const DIRECT_DISCOUNT_PROMOTIONS_SOBG = [
+    // Special-case promotions that should always reduce price BEFORE VAT on SOBG
+    const FORCE_PRE_VAT_PROMOTIONS_SOBG = [
       "[ALL] GIẢM GIÁ ĐẶC BIỆT _ V1",
       "[ALL] VOUCHER ĐẶT HÀNG TRÊN ZALO OA (New customer)",
       "[ALL] VOUCHER SINH NHẬT - 50.000Đ"
     ].map(s => s.toLowerCase());
 
-    let isDirectDiscountPromotion = false;
     try {
       const promoNameNorm = String(promotionName || "").toLowerCase();
-      if (DIRECT_DISCOUNT_PROMOTIONS_SOBG.some(p => promoNameNorm.includes(p))) {
-        isDirectDiscountPromotion = true;
+      if (FORCE_PRE_VAT_PROMOTIONS_SOBG.some(p => promoNameNorm.includes(p))) {
+        effectiveChietKhau2 = true;
         if (!effectiveVndOrPercent && promoData?.crdfd_vn) {
           effectiveVndOrPercent = promoData.crdfd_vn;
         }
         if ((effectivePromotionValue === undefined || effectivePromotionValue === null) && promoData?.crdfd_value) {
           effectivePromotionValue = promoData.crdfd_value;
         }
-        console.log(`[ApplySOBGPromotion] Applying direct discount to SOBG total for promotion "${promotionName}"`);
+        console.log(`[ApplySOBGPromotion] Forcing pre-VAT line discount for promotion "${promotionName}"`);
       }
     } catch (e) {
       // ignore
@@ -156,7 +155,7 @@ export default async function handler(
 
     // 3. Nếu là chiết khấu 2 (chietKhau2 = true) và không phải direct discount promotion, cập nhật crdfd_chieckhau2 và giá trên các SOD báo giá matching
     let updatedSodCount = 0;
-    if (effectiveChietKhau2 && !isDirectDiscountPromotion) {
+    if (effectiveChietKhau2) {
       // Lấy danh sách SOD báo giá của SOBG
       const sodFilters = [
         "statecode eq 0",
@@ -242,12 +241,11 @@ export default async function handler(
       }
     }
 
-    const promotionType = isDirectDiscountPromotion ? "" : (effectiveChietKhau2 ? `cập nhật chiết khấu 2 cho ${updatedSodCount} sản phẩm` : "");
     res.status(200).json({
       success: true,
       sobgOrdersXPromotionId: createdOrderXPromotionId,
       updatedSodCount,
-      message: `Đã áp dụng promotion "${promotionName}" cho SO báo giá${promotionType ? ` và ${promotionType}` : ""}`,
+      message: `Đã áp dụng promotion "${promotionName}" cho SO báo giá${chietKhau2 ? ` và cập nhật chiết khấu 2 cho ${updatedSodCount} sản phẩm` : ""}`,
     });
   } catch (error: any) {
     console.error("Error applying SOBG promotion order:", error);
