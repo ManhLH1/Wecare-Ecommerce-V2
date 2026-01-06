@@ -36,7 +36,8 @@ const sliderSettings = {
   dots: false,
   infinite: true,
   speed: 500,
-  slidesToShow: 4,
+  // Increase slides on wide screens since cards are now portrait
+  slidesToShow: 5,
   slidesToScroll: 1,
   autoplay: true,
   autoplaySpeed: 3500,
@@ -45,9 +46,9 @@ const sliderSettings = {
   prevArrow: <PrevArrow />,
   nextArrow: <NextArrow />,
   responsive: [
-    { breakpoint: 1600, settings: { slidesToShow: 5 } },
-    { breakpoint: 1400, settings: { slidesToShow: 4 } },
-    { breakpoint: 1100, settings: { slidesToShow: 3 } },
+    { breakpoint: 1800, settings: { slidesToShow: 6 } },
+    { breakpoint: 1400, settings: { slidesToShow: 5 } },
+    { breakpoint: 1100, settings: { slidesToShow: 4 } },
     { breakpoint: 800, settings: { slidesToShow: 2 } },
     { breakpoint: 480, settings: { slidesToShow: 1 } },
   ],
@@ -228,12 +229,16 @@ const FeaturedCategoriesProducts: React.FC<{
   if (!groupsWithProducts || groupsWithProducts.length === 0) return null;
 
   return (
-    <div className="container my-3 my-lg-5 fw-6 g-2 g-lg-0 px-4">
+    <div className="relative px-2 md:px-6 my-3 my-lg-5">
       {groupsWithProducts.map(({ category, products, loading: groupLoading }) => (
         <section key={category.id} className="mb-6">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-semibold">
-              <Link href={category.href || "/san-pham"} className="text-blue-600 no-underline hover:no-underline" style={{ textDecoration: "none" }}>
+              <Link
+                href={category.href || "/san-pham"}
+                className="text-cyan-600 no-underline hover:text-cyan-700 text-2xl"
+                style={{ textDecoration: "none" }}
+              >
                 {category.name}
               </Link>
             </h3>
@@ -246,15 +251,15 @@ const FeaturedCategoriesProducts: React.FC<{
             // Simple skeleton placeholders while this group's products are being fetched
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
               {Array.from({ length: 4 }).map((_, idx) => (
-                <div key={`${category.id}-ph-${idx}`} className="animate-pulse bg-white rounded p-2 text-center h-full border">
-                  <div className="h-36 bg-gray-100 rounded mb-2" />
+                <div key={`${category.id}-ph-${idx}`} className="animate-pulse bg-white rounded p-2 text-center h-[360px] flex flex-col justify-between">
+                  <div className="h-[180px] bg-gray-100 rounded mb-2" />
                   <div className="h-4 bg-gray-200 rounded mx-auto w-3/4 mb-2" />
                   <div className="h-4 bg-gray-200 rounded mx-auto w-1/2" />
                 </div>
               ))}
             </div>
           ) : products && products.length > 0 ? (
-            <div className="bg-white rounded-lg p-6 shadow-sm">
+            <div className="bg-cyan-50 rounded-md p-4 -mx-3">
               <Slider {...sliderSettings}>
               {products.map((p: any, idx: number) => {
                 const title = p.crdfd_tensanphamtext || p.crdfd_name || p.name || "";
@@ -306,8 +311,8 @@ const FeaturedCategoriesProducts: React.FC<{
                 return (
                   <div key={key} className="px-3">
                     <div
-                      className="relative rounded-lg bg-white p-3 flex flex-col text-center hover:shadow-xl transition-transform transform-gpu hover:-translate-y-1"
-                      style={{ minHeight: 280, border: '1px solid #eef2f4' }}
+                      className="relative rounded-lg bg-white p-3 flex flex-col justify-between text-center hover:shadow-xl transition-transform transform-gpu hover:-translate-y-1"
+                      style={{ height: 360 }}
                     >
                       {/* Discount ribbon */}
                       {discountPerc ? (
@@ -329,24 +334,24 @@ const FeaturedCategoriesProducts: React.FC<{
 
                       {/* Compare control removed for cleaner layout */}
 
-                      <div className="flex-1 flex flex-col items-center justify-start pt-2">
-                        <div className="w-full max-w-[220px] p-4 bg-white rounded-md flex items-center justify-center border border-gray-100 shadow-sm">
+            <div className="flex-1 flex flex-col items-center justify-start pt-2">
+                        <div className="w-full max-w-[220px] p-4 bg-white rounded-md flex items-center justify-center border border-gray-100 shadow-sm h-[180px]">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={imageSrc || ""}
                             alt={title || category.name}
-                            className="object-contain max-w-full max-h-[120px]"
+                            className="object-contain max-w-full max-h-[160px]"
                             onError={(e: any) => {
                               e.currentTarget.onerror = null;
                               e.currentTarget.src =
-                                "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='200'><rect width='100%' height='100%' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='14'>No image</text></svg>";
+                                "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='400'><rect width='100%' height='100%' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='14'>No image</text></svg>";
                             }}
                           />
                         </div>
                       </div>
 
-                      <div className="mt-4">
-                        <h3 className="text-sm font-semibold text-gray-800 leading-snug mb-2 line-clamp-2">
+                      <div className="mt-3">
+                        <h3 className="text-sm font-semibold text-gray-800 leading-snug mb-2 line-clamp-3">
                           <Link href={p.href || category.href || "/san-pham"} className="text-gray-800 no-underline" style={{ textDecoration: "none" }}>
                             {title}
                           </Link>

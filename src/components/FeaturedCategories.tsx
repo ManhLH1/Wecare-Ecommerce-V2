@@ -45,7 +45,7 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
   if (loading) {
     return (
       <section className="w-full py-3 bg-gradient-to-r from-cyan-500 to-cyan-600">
-        <div className="w-full px-4">
+        <div className="relative px-[5px] md:px-[50px]">
           <div className="p-3">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
@@ -91,7 +91,7 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
 
   return (
     <section className="w-full py-3 bg-gradient-to-r from-cyan-500 to-cyan-600">
-      <div className="w-full px-4">
+      <div className="relative px-[5px] md:px-[50px]">
         <div className="p-3">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">

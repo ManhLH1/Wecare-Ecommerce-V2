@@ -33,12 +33,25 @@ import CategorySection from "@/components/CategorySection";
 import ShortcutSection from "@/components/ShortcutSection";
 import HomeBenefitsPanel from "@/components/HomeBenefitsPanel";
 import FeaturedCategories from "@/components/FeaturedCategories";
-import FeaturedCategoriesProducts from "@/components/FeaturedCategoriesProducts";
 import HeroSection from "@/components/HeroSection";
 import IndustrialVacuumShowcaseV2 from "@/components/IndustrialVacuumShowcaseV2";
 import UnifiedHeaderHero from "@/components/UnifiedHeaderHero";
 import JDStyleHeader from "@/components/JDStyleHeader";
 import JDStyleMainContent from "@/components/JDStyleMainContent";
+import BrandStrip from "@/components/BrandStrip";
+import GuidesSection from "@/components/GuidesSection";
+
+// Lazy load heavy components for better performance
+const FeaturedCategoriesProducts = dynamic(() => import("@/components/FeaturedCategoriesProducts"), {
+  loading: () => (
+    <div className="py-6">
+      <div className="px-4">
+        <div className="text-gray-600">Đang tải sản phẩm theo danh mục...</div>
+      </div>
+    </div>
+  ),
+  ssr: false
+});
 import axios from "axios";
 import { fetchWithCache } from "@/utils/cache";
 import { toast } from "react-toastify";
@@ -63,6 +76,7 @@ import TopProductsList from "./product-list/_components/top-products/top-product
 import BusinessOpportunitySection from "@/components/BusinessOpportunitySection";
 import useCountUp from "@/hooks/useCountUp";
 import PromotionPopup from "@/components/PromotionPopup";
+import { usePerformanceMonitor } from "@/hooks/usePerformanceMonitor";
 
 // // Dynamic imports for better performance
 // const ProductGroupList = dynamic(() => import("./product-list/productgroup-list"), {
@@ -222,6 +236,7 @@ const HomeContent = () => {
     useCart();
   const { openCart } = useContext(CartContext); // Add this to use global cart
   const router = useRouter();
+  const { startMetric, endMetric } = usePerformanceMonitor('HomePage');
 
   // Debug section - remove after testing
   const debugAddTestProduct = () => {
@@ -292,109 +307,115 @@ const HomeContent = () => {
   const animatedProductGroups = useCountUp(countProductGroups);
   const animatedCustomer = useCountUp(countCustomer);
 
-  // --- Fetch employee data khi userType là sale ---
+  // --- Combined data fetching effect for better performance ---
   useEffect(() => {
-    const fetchEmployeeData = async () => {
+    const fetchAllData = async () => {
+      startMetric('total-data-load');
       const userType = getItem("type");
       const userEmail = getItem("email");
 
-      if (userType === "sale" && userEmail) {
-        setLoadingEmployee(true);
-        try {
-          const response = await axios.get(
-            `/api/getEmployeData?user=${userEmail}`
-          );
-          setEmployeeData(response.data);
-        } catch (error) {
-          console.error("Lỗi khi lấy dữ liệu nhân viên:", error);
-        } finally {
-          setLoadingEmployee(false);
-        }
-      }
-    };
-
-    fetchEmployeeData();
-  }, []);
-
-  useEffect(() => {
-    const fetchProductGroups = async () => {
+      // Set all loading states to true initially
+      setLoadingEmployee(userType === "sale" && !!getItem("email"));
       setLoadingCategory(true);
-      try {
-        const data = await fetchWithCache<any>(
+      setLoadingCount(true);
+      setLoadingCountPG(true);
+      setLoadingCustomer(true);
+
+      // Prepare all API calls
+      startMetric('api-calls-preparation');
+      const apiCalls = [
+        // Employee data (only for sale users)
+        userType === "sale" && userEmail
+          ? axios.get(`/api/getEmployeData?user=${userEmail}`)
+              .then(res => res.data)
+              .catch(error => {
+                console.error("Lỗi khi lấy dữ liệu nhân viên:", error);
+                return null;
+              })
+          : Promise.resolve(null),
+
+        // Product groups with caching
+        fetchWithCache<any>(
           "cache:getTop20ProductGroupsByOrders",
           1000 * 60 * 30, // 30 minutes cache
           async () => {
             const res = await axios.get("/api/getTop20ProductGroupsByOrders");
             return res.data;
           }
-        );
-        if (data && Array.isArray(data)) {
-          // Use top 20 product groups by order count for featured categories
-          setCategoryGroups(data);
-          // debug logs removed to reduce console noise
-          // Include all categories from API (including those with placeholder images)
-          const filtered = (data || []).filter((g: any) => g && g.productGroupName);
-          setCategoryHierarchy(data);
-        } else {
-          setCategoryGroups([]);
-          setCategoryHierarchy(null);
-        }
-      } catch (e) {
+        ).catch(e => {
+          console.error("Error fetching product groups:", e);
+          return [];
+        }),
+
+        // Count products
+        axios.get("/api/countProducts")
+          .then(res => Math.floor(res.data.count / 1000) * 1000)
+          .catch(error => {
+            console.error("Error fetching count products:", error);
+            return 0;
+          }),
+
+        // Count product groups
+        axios.get("/api/countProductGroups")
+          .then(res => Math.floor(res.data.count / 100) * 100)
+          .catch(error => {
+            console.error("Error fetching count productgroups:", error);
+            return 0;
+          }),
+
+        // Count customers
+        axios.get("/api/countCustomer")
+          .then(res => Math.floor(res.data.count / 1000) * 1000)
+          .catch(error => {
+            console.error("Error fetching count customers:", error);
+            return 0;
+          }),
+      ];
+      endMetric('api-calls-preparation');
+
+      // Execute all calls in parallel
+      startMetric('parallel-api-execution');
+      const [
+        employeeDataResult,
+        categoryData,
+        productsCount,
+        productGroupsCount,
+        customersCount
+      ] = await Promise.all(apiCalls);
+      endMetric('parallel-api-execution');
+
+      // Update state with results
+      startMetric('state-updates');
+      if (employeeDataResult) {
+        setEmployeeData(employeeDataResult);
+      }
+
+      // Set category data
+      if (categoryData && Array.isArray(categoryData)) {
+        setCategoryGroups(categoryData);
+        setCategoryHierarchy(categoryData);
+      } else {
         setCategoryGroups([]);
         setCategoryHierarchy(null);
-      } finally {
-        setLoadingCategory(false);
       }
-    };
-    fetchProductGroups();
-  }, []);
 
-  useEffect(() => {
-    const fetchCountProducts = async () => {
-      setLoadingCount(true);
-      try {
-        const response = await axios.get("/api/countProducts");
-        setCountProducts(Math.floor(response.data.count / 1000) * 1000);
-      } catch (error) {
-        console.error("Error fetching count products:", error);
-        setCountProducts(0);
-      } finally {
-        setLoadingCount(false);
-      }
-    };
-    fetchCountProducts();
-  }, []);
+      // Set count data
+      setCountProducts(productsCount as number);
+      setCountProductGroups(productGroupsCount as number);
+      setCountCustomer(customersCount as number);
 
-  useEffect(() => {
-    const fetchCountProductGroups = async () => {
-      setLoadingCountPG(true);
-      try {
-        const response = await axios.get("/api/countProductGroups");
-        setCountProductGroups(Math.floor(response.data.count / 100) * 100);
-      } catch (error) {
-        console.error("Error fetching count productgroups:", error);
-        setCountProductGroups(0);
-      } finally {
-        setLoadingCountPG(false);
-      }
-    };
-    fetchCountProductGroups();
-  }, []);
+      // Update loading states
+      setLoadingEmployee(false);
+      setLoadingCategory(false);
+      setLoadingCount(false);
+      setLoadingCountPG(false);
+      setLoadingCustomer(false);
+      endMetric('state-updates');
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      setLoadingCustomer(true);
-      try {
-        const response = await axios.get("/api/countCustomer");
-        setCountCustomer(Math.floor(response.data.count / 1000) * 1000);
-      } catch (error) {
-        console.error("Error fetching count customers:", error);
-        setCountCustomer(0);
-      } finally {
-        setLoadingCustomer(false);
-      }
+      endMetric('total-data-load');
     };
-    fetchCustomers();
+
+    fetchAllData();
   }, []);
 
   // Hàm xác định label, icon và href cho Sale Orders dựa trên chucVuVi
@@ -619,7 +640,7 @@ const HomeContent = () => {
 
   const cartItemsCount = cartItems.length;
 
-  // Add this useEffect to fetch products
+  // Add this useEffect to fetch products (integrated with parallel loading)
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -640,7 +661,9 @@ const HomeContent = () => {
       }
     };
 
-    fetchProducts();
+    // Delay products loading slightly to prioritize categories/counts
+    const timer = setTimeout(fetchProducts, 100);
+    return () => clearTimeout(timer);
   }, []);
 
   // Add custom styles for animations
@@ -1125,6 +1148,39 @@ const HomeContent = () => {
             />
           );
         })()}
+
+        {/* Brand strip - logos from public/thuong-hieu (moved below main) */}
+
+        {/* Loading skeleton for categories section */}
+        {loadingCategory && (
+          <section className="w-full py-3 bg-gradient-to-r from-cyan-500 to-cyan-600">
+            <div className="w-full px-4">
+              <div className="p-3">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-6 w-48 bg-white/20 rounded animate-pulse"></div>
+                    <span className="inline-block w-14 h-1 bg-amber-300 rounded" />
+                  </div>
+                  <div className="h-4 w-20 bg-amber-300/30 rounded animate-pulse"></div>
+                </div>
+                <div className="grid gap-2 items-stretch" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+                  {Array.from({ length: 8 }).map((_, index) => (
+                    <div key={index} className="block text-center no-underline">
+                      <div className="bg-white rounded-sm border border-gray-200 h-full flex flex-col items-center min-h-[120px] animate-pulse">
+                        <div className="w-full p-2 flex items-center justify-center">
+                          <div className="mx-auto h-20 w-20 bg-gray-200 rounded"></div>
+                        </div>
+                        <div className="w-full mt-auto bg-gray-50 border-t px-2 py-2">
+                          <div className="text-xs bg-gray-200 rounded h-4 w-3/4 mx-auto"></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
         {/* Floor Scrubber Showcase - show immediately under Featured Categories */}
 
         {/* Products for top 5 featured categories */}
@@ -1409,6 +1465,12 @@ const HomeContent = () => {
         {/* NewsSection temporarily removed */}
         {/* </section> */}
       </main>
+
+      {/* Brand strip placed below page main content and above footer */}
+      <BrandStrip />
+
+      {/* Guides / Cẩm nang - placed immediately under featured brands */}
+      <GuidesSection />
 
       <Footer />
       <Toolbar />

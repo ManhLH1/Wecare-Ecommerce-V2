@@ -492,11 +492,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     setIsAdding(false);
     showToast.success('Đã thêm sản phẩm vào danh sách!');
 
-    // Trigger promotion popup only after user has added at least one product
-    // and total amount qualifies (not just when customer is selected)
-    if (customerId && orderSummary.total > 0 && productList.length > 0 && !showPromotionOrderPopup) {
-      setTimeout(() => autoSelectPromotions(), 500); // Small delay to allow UI update
-    }
+    // Promotion popup will be triggered only after save, not when adding products
   };
 
   // Refresh SOBG details programmatically

@@ -291,10 +291,10 @@ const getTop30ProductsWithPromotion = async (req: NextApiRequest, res: NextApiRe
       );
     });
 
-    // Lấy tất cả thông tin khuyến mãi
+    // Lấy thông tin khuyến mãi một cách tối ưu hơn - chỉ lấy những promotion có sản phẩm liên quan
     const promotionData = await circuitBreaker.execute(async () => {
       return await getCachedData(
-        `promotions_all`,
+        `promotions_active`,
         "promotionData",
         async () => {
           const promotionTable = "crdfd_promotions";
@@ -311,12 +311,15 @@ const getTop30ProductsWithPromotion = async (req: NextApiRequest, res: NextApiRe
             "crdfd_end_date",
             "cr1bb_congdonsoluong",
             "cr1bb_soluongapdung",
-            "crdfd_type",
             "_crdfd_promotion_value",
             "crdfd_promotiontypetext",
           ].join(',');
 
-          const promotionEndpoint = `${baseUrl}/${promotionTable}?$select=${promotionColumns}&$filter=statecode eq 0 and crdfd_promotion_deactive eq 'Active'`;
+          // Add date filter to only get current promotions
+          const now = new Date().toISOString();
+          const dateFilter = `crdfd_start_date le ${now} and (crdfd_end_date ge ${now} or crdfd_end_date eq null)`;
+
+          const promotionEndpoint = `${baseUrl}/${promotionTable}?$select=${promotionColumns}&$filter=statecode eq 0 and crdfd_promotion_deactive eq 'Active' and ${dateFilter}&$top=100`;
           const response = await axios.get(promotionEndpoint, { headers });
           return response.data.value || [];
         }
