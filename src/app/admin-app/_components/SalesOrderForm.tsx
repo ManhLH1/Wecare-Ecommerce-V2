@@ -783,10 +783,11 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             savedProductGroupCodes
           );
 
-          // Chỉ hiển thị popup nếu có promotion chiết khấu 2 (chietKhau2 = true)
-          const chietKhau2Promotions = promotionOrderResult.allPromotions?.filter(p => p.chietKhau2) || [];
-          // Also surface special promotions. Prefer explicit `specialPromotions` returned by API,
-          // otherwise fallback to scanning `allPromotions`.
+          // Determine available promotions (top section) and special promotions (bottom section)
+          const available: PromotionOrderItem[] = promotionOrderResult.availablePromotions || [];
+          const chietKhau2Promotions = (promotionOrderResult.allPromotions || []).filter(p => p.chietKhau2) || [];
+
+          // Determine special promotions (prefer API-provided specialPromotions)
           let special: PromotionOrderItem[] = [];
           if (Array.isArray(promotionOrderResult.specialPromotions) && promotionOrderResult.specialPromotions.length > 0) {
             special = promotionOrderResult.specialPromotions;
@@ -797,12 +798,22 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           }
           if (special.length > 0) setSpecialPromotionList(special);
 
+          // Populate top list with availablePromotions (prefer chietKhau2 selection for pre-selection)
+          setPromotionOrderList(available.length > 0 ? available : chietKhau2Promotions);
+
+          // Pre-select chietKhau2 promotions if present, otherwise none
           if (chietKhau2Promotions.length > 0) {
+            setSelectedPromotionOrders(chietKhau2Promotions);
+          } else {
+            setSelectedPromotionOrders([]);
+          }
+
+          // Show popup if there are any available or special promotions
+          if ((available && available.length > 0) || (special && special.length > 0)) {
             setSoId(savedSoId);
-            setPromotionOrderList(chietKhau2Promotions);
             setShowPromotionOrderPopup(true);
           } else {
-            // No chiet khau 2 promotions -> clear all form data after successful save
+            // No applicable promotions -> clear all form data after successful save
             clearEverything();
           }
         } catch (error) {

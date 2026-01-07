@@ -340,8 +340,8 @@ const FeaturedCategoriesProducts: React.FC<{
                 return (
                   <div key={key} className="px-2">
                     <div
-                      className="relative rounded-lg bg-white p-2 flex flex-col justify-between text-center shadow-sm hover:shadow-md transition-transform transition-colors transform-gpu hover:-translate-y-1 border border-cyan-200 hover:border-cyan-600"
-                      style={{ height: 300 }}
+                      className="relative rounded-lg bg-white p-2 flex flex-col justify-between text-center shadow-sm hover:shadow-md transition-transform transition-colors transform-gpu hover:-translate-y-1"
+                      style={{ height: 300, border: '1px solid #049dbf' }}
                     >
                       {/* Discount ribbon */}
                       {discountPerc ? (

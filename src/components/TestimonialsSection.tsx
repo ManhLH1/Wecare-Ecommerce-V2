@@ -41,12 +41,12 @@ const BenefitsItem: React.FC<{ icon: React.ReactNode; title: string; desc?: stri
 const TestimonialsSection: React.FC = () => {
   return (
     <section className="w-full bg-gray-100 py-10">
-      <div className="relative px-[5px] md:px-[50px]">
-        <h3 className="text-center text-2xl font-semibold text-gray-700 mb-8">
-          Khách hàng nói gì về WECARE
-        </h3>
+      <div className="relative px-4 md:px-12">
+          <h3 className="text-center text-2xl font-semibold text-gray-700 mb-8">
+            Khách hàng nói gì về WECARE
+          </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 max-w-7xl mx-auto">
           <TestimonialCard
             title="Giao hàng rất nhanh"
             text="Đặt hàng buổi sáng, hẹn chiều giao dễ đi công trình. Vừa ăn trưa xong, hàng giao luôn tới công trình. Rất nhanh chóng, tiện lợi cho công việc."
@@ -71,8 +71,7 @@ const TestimonialsSection: React.FC = () => {
         </div>
 
         <div className="bg-amber-400 rounded p-6">
-          <div className="max-w-7xl mx-auto px-4 md:px-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-center">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-center max-w-7xl mx-auto px-0">
               <BenefitsItem
                 icon={<span>🚚</span>}
                 title="Giao siêu tốc"
@@ -96,7 +95,6 @@ const TestimonialsSection: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
     </section>
   );
 };

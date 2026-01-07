@@ -728,12 +728,34 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         // Chỉ hiển thị popup nếu có promotion chiết khấu 2 (chietKhau2 = true)
         const chietKhau2Promotions = promotionOrderResult.allPromotions?.filter(p => p.chietKhau2) || [];
 
+        // Also surface special promotions similar to SalesOrderForm
+        let special: PromotionOrderItem[] = [];
+        if (Array.isArray(promotionOrderResult.specialPromotions) && promotionOrderResult.specialPromotions.length > 0) {
+          special = promotionOrderResult.specialPromotions;
+        } else {
+          special = (promotionOrderResult.allPromotions || []).filter((p: PromotionOrderItem) =>
+            SPECIAL_PROMOTION_KEYWORDS.some(k => !!p.name && p.name.includes(k))
+          );
+        }
+        if (special.length > 0) setSpecialPromotionList(special);
+
+        // Determine available promotions (top section) and show special promotions below
+        const available: PromotionOrderItem[] = promotionOrderResult.availablePromotions || [];
+        setPromotionOrderList(available.length > 0 ? available : chietKhau2Promotions);
+
+        // Pre-select chietKhau2 promotions if present
         if (chietKhau2Promotions.length > 0) {
+          setSelectedPromotionOrders(chietKhau2Promotions);
+        } else {
+          setSelectedPromotionOrders([]);
+        }
+
+        // Show popup if there are any available or special promotions
+        if ((available && available.length > 0) || (special && special.length > 0)) {
           setSoId(savedSoId);
-          setPromotionOrderList(chietKhau2Promotions);
           setShowPromotionOrderPopup(true);
         } else {
-          // No chiet khau 2 promotions -> keep current behavior (do not force clearEverything)
+          // No promotions to show -> keep current behavior
         }
       } catch (err: any) {
         console.error('[SOBG Promotion] ❌ Error checking promotion orders after save:', err);

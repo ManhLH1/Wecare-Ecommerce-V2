@@ -386,12 +386,12 @@ const buildPromotionFilters = (
   const filters = [
     "statecode eq 0", // Active
     "crdfd_promotion_deactive eq 'Active'",
-    "crdfd_type eq 'Order'"
   ];
 
-  // Time window filter
+  // Time window filter: start_date <= now AND (no end_date OR end_date >= now)
   const nowIso = new Date().toISOString();
   filters.push(`crdfd_start_date le ${nowIso}`);
+  filters.push(`(crdfd_end_date ge ${nowIso} or crdfd_end_date eq null)`);
 
   // Customer code filter
   if (customerCode && typeof customerCode === "string" && customerCode.trim()) {
@@ -573,10 +573,12 @@ export default async function handler(
 
     // Step 4: Build filters and fetch available promotions
     const filters = buildPromotionFilters(customerCode, totalAmount);
-    let availablePromotions = await fetchAvailablePromotions(filters, headers);
-    // Preserve full fetched list (before product filtering) so we can surface
+    const fetchedPromotions = await fetchAvailablePromotions(filters, headers);
+    // Preserve full fetched list (before further narrowing) so we can surface
     // "special" promotions regardless of product code constraints.
-    const allFetchedPromotions = availablePromotions.slice();
+    const allFetchedPromotions = fetchedPromotions.slice();
+    // Narrow available promotions to those of type 'Order' for normal processing
+    let availablePromotions = fetchedPromotions.filter(p => String(p.type || '').toLowerCase() === 'order');
 
     // Debug logging
     console.log(`Available promotions before filtering: ${availablePromotions.length}`);
@@ -639,9 +641,68 @@ export default async function handler(
       "[ALL] VOUCHER SINH NHẬT - 50.000Đ"
     ];
 
-    const specialPromotions = allFetchedPromotionsAnnotated.filter(p =>
-      SPECIAL_PROMOTION_NAMES.includes(String(p.name || '').trim())
-    );
+    // Match special promotions by case-insensitive substring to tolerate minor name differences
+    let specialPromotions = allFetchedPromotionsAnnotated.filter(p => {
+      const name = String(p.name || '').trim().toLowerCase();
+      return SPECIAL_PROMOTION_NAMES.some(sp => name.includes(String(sp).trim().toLowerCase()));
+    });
+
+    // If some special promotions are missing from the initial fetch (due to filters like customerCode/totalAmount/time window),
+    // explicitly query CRM for those promotion names and merge results.
+    if (specialPromotions.length < SPECIAL_PROMOTION_NAMES.length) {
+      try {
+        const missingNames = SPECIAL_PROMOTION_NAMES.filter(n => !specialPromotions.some(p => String(p.name || '').trim() === n));
+        if (missingNames.length > 0) {
+        // Use contains(...) to find promotions that include the target name fragment (case-insensitive)
+        const nameFilters = missingNames.map(n => `contains(tolower(crdfd_name),'${escapeODataValue(String(n).toLowerCase())}')`).join(' or ');
+          // Keep basic active/time filters so we don't return inactive promotions
+          const nowIso = new Date().toISOString();
+          const extraFilter = `statecode eq 0 and crdfd_promotion_deactive eq 'Active' and (${nameFilters}) and crdfd_start_date le ${nowIso} and (crdfd_end_date ge ${nowIso} or crdfd_end_date eq null)`;
+          const selectFields = [
+            "crdfd_promotionid",
+            "crdfd_name",
+            "crdfd_type",
+            "crdfd_value",
+            "crdfd_vn",
+            "cr1bb_chietkhau2",
+            "crdfd_masanpham_multiple",
+            "cr1bb_manhomsp_multiple",
+            "cr1bb_tongtienapdung",
+            "cr1bb_ieukhoanthanhtoanapdung",
+            "crdfd_start_date",
+            "crdfd_end_date"
+          ];
+          const extraQuery = `$select=${selectFields.join(",")}&$filter=${encodeURIComponent(extraFilter)}`;
+          const extraEndpoint = `${BASE_URL}${PROMOTION_TABLE}?${extraQuery}`;
+          const extraResp = await axios.get(extraEndpoint, { headers });
+          const extraPromos = (extraResp.data.value || []).map((promo: any) => ({
+            id: promo.crdfd_promotionid,
+            name: promo.crdfd_name,
+            type: promo.crdfd_type,
+            value: parsePromotionValue(promo.crdfd_value),
+            vndOrPercent: promo.crdfd_vn,
+            chietKhau2: normalizeChietKhau2(promo.cr1bb_chietkhau2),
+            productCodes: promo.crdfd_masanpham_multiple,
+            productGroupCodes: promo.cr1bb_manhomsp_multiple,
+            totalAmountCondition: promo.cr1bb_tongtienapdung,
+            ieukhoanthanhtoanapdung: promo.cr1bb_ieukhoanthanhtoanapdung,
+            startDate: promo.crdfd_start_date,
+            endDate: promo.crdfd_end_date,
+          }));
+
+          // Annotate these extra promos with payment terms as earlier
+          const extraAnnotated = annotateWithPaymentTerms(extraPromos);
+          // Merge any missing ones
+          for (const ep of extraAnnotated) {
+            if (!specialPromotions.some(p => p.id === ep.id)) {
+              specialPromotions.push(ep);
+            }
+          }
+        }
+      } catch (err: any) {
+        console.warn('[promotion-orders] Could not fetch missing special promotions:', (err as any)?.message || err);
+      }
+    }
 
     // Debug logging
     console.log(`Final available promotions (max value): ${promotionOrderMax.length}`);
