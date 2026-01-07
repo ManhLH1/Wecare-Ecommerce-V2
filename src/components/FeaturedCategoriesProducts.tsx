@@ -288,7 +288,7 @@ const FeaturedCategoriesProducts: React.FC<{
               ))}
             </div>
           ) : products && products.length > 0 ? (
-            <div className="bg-white rounded-md p-3 shadow-sm border border-gray-200">
+            <div className="bg-white rounded-md p-3 shadow-sm">
               <Slider {...sliderSettings}>
               {products.map((p: any, idx: number) => {
                 const title = p.crdfd_tensanphamtext || p.crdfd_name || p.name || "";
@@ -338,9 +338,9 @@ const FeaturedCategoriesProducts: React.FC<{
                 const key = productId;
 
                 return (
-                  <div key={key} className="px-3">
+                  <div key={key} className="px-2">
                     <div
-                      className="relative rounded-lg bg-white p-2 flex flex-col justify-between text-center shadow-sm hover:shadow-md transition-transform transition-colors transform-gpu hover:-translate-y-1 border border-gray-200 hover:border-gray-300"
+                      className="relative rounded-lg bg-white p-2 flex flex-col justify-between text-center shadow-sm hover:shadow-md transition-transform transition-colors transform-gpu hover:-translate-y-1 border border-cyan-200 hover:border-cyan-600"
                       style={{ height: 300 }}
                     >
                       {/* Discount ribbon */}

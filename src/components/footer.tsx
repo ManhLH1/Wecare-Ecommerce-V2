@@ -75,8 +75,8 @@ const Footer = () => {
     <footer className="footer-custom mt-8">
       {/* Top: Newsletter + Social */}
       <div className="container-responsive py-6">
-        {/* Desktop: 2 columns (auto-fill left, fixed right). Mobile: stacked */}
-        <div className="grid grid-cols-1 md:grid-cols-[1fr,320px] gap-5 items-stretch">
+        {/* Desktop: single column for newsletter */}
+        <div className="grid grid-cols-1 gap-5 items-stretch">
           <div className="w-full bg-white/5 rounded-xl p-4 md:p-5">
             <h3 className="font-semibold text-base text-white mb-3">Đăng ký nhận tin</h3>
             <form onSubmit={onSubmitSubscribe} className="w-full flex flex-col sm:flex-row items-stretch gap-2">
@@ -92,121 +92,109 @@ const Footer = () => {
             </form>
           </div>
 
-          <div className="w-full md:w-[320px] bg-white/5 rounded-xl p-4 md:p-5 h-full">
-            <span className="text-white font-semibold block mb-3">Kết nối với chúng tôi</span>
-            <div className="flex items-center gap-3 flex-wrap">
-              <Link aria-label="Facebook" href="https://www.facebook.com/wecareyourproduct" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12.07C22 6.48 17.52 2 11.93 2 6.34 2 1.86 6.48 1.86 12.07c0 4.99 3.65 9.13 8.43 9.93v-7.03H7.9v-2.9h2.39V9.41c0-2.36 1.4-3.66 3.55-3.66 1.03 0 2.1.18 2.1.18v2.31h-1.18c-1.16 0-1.52.72-1.52 1.46v1.75h2.59l-.41 2.9h-2.18V22c4.78-.8 8.43-4.94 8.43-9.93z"/></svg>
-              </Link>
-              <Link aria-label="Zalo" href="https://zalo.me/3642371097976835684" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
-                <Image src={ZaloIcon} alt="Zalo" width={18} height={18} className="rounded-full" />
-              </Link>
-              <Link aria-label="TikTok" href="https://www.tiktok.com/@wecaresieuthicongnghiep?_t=ZS-8zYG0SMLRxQ&_r=1" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 3.5c.7 1.6 2.1 2.8 3.8 3.2v3.1c-1.7 0-3.3-.6-4.6-1.6v6.8c0 3.6-2.9 6.5-6.5 6.5S2.7 18.6 2.7 15s2.9-6.5 6.5-6.5c.4 0 .7 0 1.1.1v3.2c-.3-.1-.7-.2-1.1-.2-1.8 0-3.3 1.5-3.3 3.3S7.4 18.2 9.2 18.2s3.3-1.5 3.3-3.3V2.5h4z"/></svg>
-              </Link>
-            </div>
-          </div>
+          {/* removed duplicate "Kết nối với chúng tôi" box (socials moved to main footer) */}
         </div>
       </div>
 
       {/* Main */}
-      <div className="container-responsive py-10">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 text-white">
-          {/* Company */}
-          <div>
-            <Link href="/" className="flex items-center no-underline group">
-              <Image src={LogoSvg} alt="Wecare Logo" width={40} height={40} className="object-contain" />
-              <span className="pl-3 text-xl tracking-wider font-bold text-[#04A1B3]">WECARE</span>
-            </Link>
-            <p className="text-sm text-gray-200 leading-relaxed mt-4">
-              Cung cấp giải pháp cung ứng vật tư, nguyên vật liệu, phụ kiện cho nhà máy, ngành công nghiệp.
-            </p>
-            <div className="mt-4 space-y-3 text-sm">
-              <div>
-                <p className="font-medium text-white uppercase tracking-wide text-xs">Trụ sở 1</p>
-                <p>14-16-18-20, Đường 36, P. Bình Phú, Q6, HCM</p>
-                <p>📞 037 833 9009</p>
-              </div>
-              <div>
-                <p className="font-medium text-white uppercase tracking-wide text-xs">Trụ sở 2</p>
-                <p>Lô B39, Khu Công nghiệp Phú Tài, Phường Quy Nhơn Bắc, Tỉnh Gia Lai</p>
-                <p>📞 +84 378 339 009</p>
-              </div>
-              <p><span className="font-medium text-white">Email:</span> support@wecare.com.vn</p>
-            </div>
-          </div>
-
-          {/* Categories */}
-          <div>
-            <h4 className="text-white font-semibold mb-4">Ngành hàng</h4>
-            <ul className="space-y-2">
-              {(loadingCategories || categories.length === 0 ? fallbackCategories : categories)
-                .slice(0, 8)
-                .map((item: any, index: number) => {
-                  const label = typeof item === "string" ? item : item.crdfd_productname;
-                  const key = typeof item === "string" ? `${index}` : item.crdfd_productgroupid;
-                  return (
-                    <li key={key}>
-                      <Link href="/san-pham" className="text-sm text-gray-300 hover:text-white transition-colors">
-                        {label}
-                      </Link>
-                    </li>
-                  );
-                })}
+      <div className="container-responsive py-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 text-white md:divide-x md:divide-white/5">
+          {/* Column 1: Về chúng tôi */}
+          <div className="px-4 md:px-6">
+            <h4 className="text-white font-semibold mb-3 uppercase text-xs tracking-wide">Về chúng tôi</h4>
+            <ul className="space-y-1 text-xs text-gray-300">
+              <li><Link href="/ve-chung-toi" className="block py-1 text-xs text-gray-300 hover:text-white no-underline">Về chúng tôi</Link></li>
+              <li><Link href="/hop-tac" className="block py-1 text-xs text-gray-300 hover:text-white no-underline">Hợp tác với chúng tôi</Link></li>
+              <li><Link href="/lien-he" className="block py-1 text-xs text-gray-300 hover:text-white no-underline">Liên hệ / Góp ý</Link></li>
+              <li><Link href="/khuyen-mai" className="block py-1 text-xs text-gray-300 hover:text-white no-underline">Khuyến mãi</Link></li>
+              <li><Link href="/tuyen-dung" className="block py-1 text-xs text-gray-300 hover:text-white no-underline">Tuyển dụng</Link></li>
             </ul>
           </div>
 
-          {/* Brands */}
-          <div>
-            <h4 className="text-white font-semibold mb-4">Thương hiệu</h4>
-            <ul className="space-y-2">
-              {(loadingBrands ? [] : brands).slice(0, 8).map((brand) => (
-                <li key={brand}>
-                  <Link href="/san-pham" className="text-sm text-gray-300 hover:text-white transition-colors">
-                    {brand}
-                  </Link>
-                </li>
-              ))}
-              {!loadingBrands && brands.length === 0 && (
-                <li className="text-sm text-gray-300">Đang cập nhật</li>
-              )}
-              {!loadingBrands && totalBrands > 8 && (
-                <li className="text-xs text-white/70 italic">và hơn {totalBrands - 8} thương hiệu khác</li>
-              )}
+          {/* Column 2: Chính sách & điều khoản */}
+          <div className="px-4 md:px-6">
+            <h4 className="text-white font-semibold mb-3 uppercase text-xs tracking-wide">Chính sách &amp; điều khoản</h4>
+            <ul className="space-y-1 text-xs text-gray-300">
+              <li><Link href="/post/dieu-khoan-mua-hang" className="block py-1 text-xs text-gray-300 hover:text-white no-underline">Điều khoản mua hàng</Link></li>
+              <li><Link href="/post/hinh-thuc-thanh-toan" className="block py-1 text-xs text-gray-300 hover:text-white no-underline">Hình thức thanh toán</Link></li>
+              <li><Link href="/post/chinh-sach-tra-gop" className="block py-1 text-xs text-gray-300 hover:text-white no-underline">Chính sách trả góp</Link></li>
+              <li><Link href="/post/chinh-sach-giao-hang" className="block py-1 text-xs text-gray-300 hover:text-white no-underline">Chính sách giao hàng</Link></li>
+              <li><Link href="/post/chinh-sach-doi-tra" className="block py-1 text-xs text-gray-300 hover:text-white no-underline">Chính sách đổi trả</Link></li>
+              <li><Link href="/post/chinh-sach-bao-hanh" className="block py-1 text-xs text-gray-300 hover:text-white no-underline">Chính sách bảo hành</Link></li>
+              <li><Link href="/post/chinh-sach-bao-mat" className="block py-1 text-xs text-gray-300 hover:text-white no-underline">Chính sách bảo mật</Link></li>
             </ul>
           </div>
 
-          {/* Certifications (tạm ẩn)
-          <div>
-            <h4 className="text-white font-semibold mb-4">Chứng chỉ</h4>
-            <div className="grid grid-cols-3 gap-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="aspect-square rounded-md border border-white/20 bg-white/10 flex items-center justify-center text-[10px] text-gray-100">
-                  ISO
-                </div>
-              ))}
+          {/* Column 3: Thông tin liên hệ */}
+          <div className="px-4 md:px-6">
+            <h4 className="text-white font-semibold mb-3 uppercase text-xs tracking-wide">Thông tin liên hệ</h4>
+            <div className="text-xs text-gray-300 space-y-1">
+              <div>
+                <p className="font-medium text-white text-[11px] uppercase">Địa chỉ</p>
+                <p>Trụ sở 1: Lô B39, KCN Phú Tài, P. Quy Nhơn Bắc, Gia Lai</p>
+                <p>Trụ sở 2: 14-16-18-20, Đường 36, P. Bình Phú, TP.HCM</p>
+              </div>
+              <div>
+                <p className="font-medium text-white text-[11px] uppercase">Hotline</p>
+                <p className="text-amber-300 font-semibold">037 833 9009</p>
+                <p>0934 794 477 • 0823 871 339</p>
+              </div>
+              <div>
+                <p className="font-medium text-white text-[11px] uppercase">Email</p>
+                <p>support@wecare.com.vn</p>
+              </div>
+              <div>
+                <p className="font-medium text-white text-[11px] uppercase">Giờ làm việc</p>
+                <p>- T2 - T7: 9h00 - 20h00</p>
+                <p>- CN: 9h00 - 17h00</p>
+              </div>
             </div>
           </div>
-          */}
+
+          {/* Column 4: Kết nối & thanh toán */}
+          <div className="px-4 md:px-6">
+            <h4 className="text-white font-semibold mb-3 uppercase text-xs tracking-wide">Kết nối với chúng tôi</h4>
+            <div className="flex items-center gap-2 mb-3">
+              <Link aria-label="Facebook" href="https://www.facebook.com/wecareyourproduct" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors no-underline">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12.07C22 6.48 17.52 2 11.93 2 6.34 2 1.86 6.48 1.86 12.07c0 4.99 3.65 9.13 8.43 9.93v-7.03H7.9v-2.9h2.39V9.41c0-2.36 1.4-3.66 3.55-3.66 1.03 0 2.1.18 2.1.18v2.31h-1.18c-1.16 0-1.52.72-1.52 1.46v1.75h2.59l-.41 2.9h-2.18V22c4.78-.8 8.43-4.94 8.43-9.93z"/></svg>
+              </Link>
+              <Link aria-label="Zalo" href="https://zalo.me/3642371097976835684" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 transition-colors no-underline">
+                <Image src={ZaloIcon} alt="Zalo" width={16} height={16} className="rounded-full" />
+              </Link>
+              <Link aria-label="TikTok" href="https://www.tiktok.com/@wecaresieuthicongnghiep?_t=ZS-8zYG0SMLRxQ&_r=1" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors no-underline">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 3.5c.7 1.6 2.1 2.8 3.8 3.2v3.1c-1.7 0-3.3-.6-4.6-1.6v6.8c0 3.6-2.9 6.5-6.5 6.5S2.7 18.6 2.7 15s2.9-6.5 6.5-6.5c.4 0 .7 0 1.1.1v3.2c-.3-.1-.7-.2-1.1-.2-1.8 0-3.3 1.5-3.3 3.3S7.4 18.2 9.2 18.2s3.3-1.5 3.3-3.3V2.5h4z"/></svg>
+              </Link>
+            </div>
+            <div className="mb-2">
+              <h5 className="text-white font-semibold text-xs mb-2">Đối tác &amp; thanh toán</h5>
+              <div className="flex items-center gap-3 flex-wrap">
+                {[
+                  "Nhựa Bình Minh.png",
+                  "Nhựa Hoa Sen.png",
+                  "Song Long.png",
+                  "Vĩnh Phát.png",
+                ].map((name) => (
+                  <div key={name} className="h-10 w-20 flex items-center justify-center">
+                    <img
+                      src={`/thuong-hieu/${encodeURIComponent(name)}`}
+                      alt={name}
+                      className="h-10 object-contain"
+                      loading="lazy"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Bottom */}
-      <div className="border-t border-white/10">
-        <div className="container-responsive py-6 text-sm text-white/80">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
-            <div className="flex flex-col items-center lg:items-start gap-3">
-              <p className="text-center lg:text-left">© {new Date().getFullYear()} Wecare Group. All rights reserved.</p>
-              <span className="text-white/50 text-xs bg-white/10 px-2 py-1 rounded-full">Version 1.0</span>
-            </div>
-            <div className="flex items-center gap-6">
-              <Link href="/post/chinh-sach-bao-mat" className="hover:text-white transition-colors duration-200 text-white/70 hover:text-white">
-                Bảo mật
-              </Link>
-              <Link href="/post/dieu-khoan-su-dung" className="hover:text-white transition-colors duration-200 text-white/70 hover:text-white">
-                Điều khoản
-              </Link>
-            </div>
+      {/* Bottom - orange bar */}
+      <div className="mt-6">
+        <div className="w-full bg-[#f15a24]">
+          <div className="container-responsive py-2 text-center text-white">
+            <div className="text-xs font-semibold">CÔNG TY TNHH WECARE</div>
+            <div className="text-[11px] mt-1">GPKD số 0316172950 do Sở Kế hoạch Đầu tư TPHCM cấp ngày 28/02/2020</div>
           </div>
         </div>
       </div>

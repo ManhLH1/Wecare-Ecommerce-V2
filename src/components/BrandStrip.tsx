@@ -22,7 +22,7 @@ const BrandStrip: React.FC = () => {
         <div className="p-3">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <h3 className="text-xl font-bold text-gray-800">THƯƠNG HIỆU NỔI BẬT</h3>
+              <h3 className="text-lg font-semibold text-gray-800">THƯƠNG HIỆU NỔI BẬT</h3>
               <span className="inline-block w-14 h-1 bg-amber-300 rounded" />
             </div>
             <a href="/thuong-hieu" className="text-sm text-amber-500 hover:underline">Xem tất cả</a>

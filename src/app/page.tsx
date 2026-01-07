@@ -40,6 +40,7 @@ import JDStyleHeader from "@/components/JDStyleHeader";
 import JDStyleMainContent from "@/components/JDStyleMainContent";
 import BrandStrip from "@/components/BrandStrip";
 import GuidesSection from "@/components/GuidesSection";
+import TestimonialsSection from "@/components/TestimonialsSection";
 
 // Lazy load heavy components for better performance
 const FeaturedCategoriesProducts = dynamic(() => import("@/components/FeaturedCategoriesProducts"), {
@@ -1471,6 +1472,8 @@ const HomeContent = () => {
 
       {/* Guides / Cẩm nang - placed immediately under featured brands */}
       <GuidesSection />
+      {/* Customer testimonials & benefits - added per request (below GuidesSection) */}
+      <TestimonialsSection />
 
       <Footer />
       <Toolbar />

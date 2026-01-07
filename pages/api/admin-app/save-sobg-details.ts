@@ -314,7 +314,33 @@ export default async function handler(
             }
         }
 
-        // ============ STEP 2: SAVE DETAILS ============
+        // ============ STEP 2: VALIDATION - Check required fields before saving ============
+        for (const product of products) {
+            let unitConvId = undefined;
+            // Lookup Unit Conversion ID using productCode and unit (name)
+            if (product.productCode && product.unit) {
+                unitConvId = await lookupUnitConversionId(product.productCode, product.unit, headers) || undefined;
+            }
+            // If lookup failed but frontend provided unitId (unit conversion id), use it
+            if (!unitConvId && product.unitId) {
+                unitConvId = String(product.unitId).trim() || undefined;
+            }
+
+            // VALIDATION: Ensure crdfd_onvi (unit conversion) is available for all products
+            if (!unitConvId) {
+                return res.status(400).json({
+                    error: `Sản phẩm ${product.productCode || product.productName || 'Unknown'} không có thông tin đơn vị (crdfd_onvi). Vui lòng kiểm tra unit/unitId.`,
+                    details: {
+                        productCode: product.productCode,
+                        productName: product.productName,
+                        unit: product.unit,
+                        unitId: product.unitId
+                    }
+                });
+            }
+        }
+
+        // ============ STEP 3: SAVE DETAILS ============
         let totalSaved = 0;
         let failedProducts = [];
         const savedDetails: any[] = [];

@@ -220,6 +220,7 @@ const PRODUCT_TABLE = "crdfd_productses";
 const KHO_BD_TABLE = "crdfd_kho_binh_dinhs";
 const UNIT_CONVERSION_TABLE = "crdfd_unitconvertions";
 const CUSTOMER_TABLE = "crdfd_customers";
+const PROMOTION_TABLE = "crdfd_promotions";
 const PROVINCE_TABLE = "crdfd_tinhthanhs"; // Tỉnh/Thành
 const DISTRICT_TABLE = "cr1bb_quanhuyens"; // Quận/Huyện
 
@@ -251,6 +252,75 @@ function normalizeGuid(value: any): string | null {
   const str = String(value).trim();
   if (!str) return null;
   return GUID_PATTERN.test(str) ? str : null;
+}
+
+// Payment terms normalization copied from promotions.ts so we can validate promotions here.
+const PAYMENT_TERMS_MAP: Record<string, string> = {
+  "0": "Thanh toán sau khi nhận hàng",
+  "14": "Thanh toán 2 lần vào ngày 10 và 25",
+  "30": "Thanh toán vào ngày 5 hàng tháng",
+  "283640000": "Tiền mặt",
+  "283640001": "Công nợ 7 ngày",
+  "191920001": "Công nợ 20 ngày",
+  "283640002": "Công nợ 30 ngày",
+  "283640003": "Công nợ 45 ngày",
+  "283640004": "Công nợ 60 ngày",
+  "283640005": "Thanh toán trước khi nhận hàng",
+};
+
+const normalizePaymentTerm = (input?: string | null) : string | null => {
+  if (!input && input !== "") return null;
+  const t = String(input || "").trim();
+  if (t === "") return null;
+  if (PAYMENT_TERMS_MAP[t]) return t;
+  const foundKey = Object.keys(PAYMENT_TERMS_MAP).find(
+    (k) => PAYMENT_TERMS_MAP[k].toLowerCase() === t.toLowerCase()
+  );
+  if (foundKey) return foundKey;
+  const digits = t.replace(/\D/g, "");
+  if (digits && PAYMENT_TERMS_MAP[digits]) return digits;
+  return t;
+};
+
+// Validate whether a promotion (by id) is applicable to the given order payment terms.
+async function isPromotionApplicableToPaymentTerm(
+  promotionId: string,
+  requestedPaymentTerms: any,
+  headers: any
+): Promise<{ applicable: boolean; reason?: string }> {
+  if (!promotionId) return { applicable: false, reason: "Missing promotionId" };
+  try {
+    // If no order payment term provided, treat as applicable
+    if (!requestedPaymentTerms && requestedPaymentTerms !== 0) {
+      return { applicable: true };
+    }
+
+    const promoEndpoint = `${PROMOTION_TABLE}(${promotionId})?$select=cr1bb_ieukhoanthanhtoanapdung`;
+    const resp = await apiClient.get(promoEndpoint, { headers });
+    const promo = resp.data;
+    const promoPayment = promo?.cr1bb_ieukhoanthanhtoanapdung;
+
+    // If promotion has no payment-term restriction -> applicable
+    if (!promoPayment || String(promoPayment).trim() === "") {
+      return { applicable: true };
+    }
+
+    const promoNormalized = normalizePaymentTerm(promoPayment);
+    const requestedNormalized = normalizePaymentTerm(requestedPaymentTerms);
+
+    if (promoNormalized && requestedNormalized && String(promoNormalized) === String(requestedNormalized)) {
+      return { applicable: true };
+    }
+
+    return {
+      applicable: false,
+      reason: `Promotion requires payment terms "${promoPayment}", order has "${requestedPaymentTerms}"`
+    };
+  } catch (err: any) {
+    console.error('[Save SOD] Error validating promotion payment terms:', err?.message || err);
+    // Fail-safe: treat as not applicable to avoid applying unknown promotion
+    return { applicable: false, reason: 'Error validating promotion payment terms' };
+  }
 }
 
 async function tryPatchCustomerLookup(
@@ -856,6 +926,8 @@ export default async function handler(
       customerLoginId,
       customerId,
       userInfo,
+      // Optional: payment terms of the sale order (string or option set value)
+      paymentTerms,
       products,
     } = req.body;
 
@@ -1090,6 +1162,38 @@ export default async function handler(
     console.log(`[Save SOD] ✅ Pre-fetched ${productIdMap.size} product IDs and ${unitIdMap.size} unit IDs`);
     progress.addStep(`Pre-fetched ${productIdMap.size} product IDs and ${unitIdMap.size} unit IDs`);
 
+    // ============ VALIDATION - Check required fields before saving ============
+    console.log('[Save SOD] 🔍 Validating required fields for all products...');
+
+    for (let i = 0; i < products.length; i++) {
+        const product = products[i];
+
+        // Get final unit ID (from product.unitId or from lookup map)
+        let finalUnitId = product.unitId;
+        if (!finalUnitId) {
+            finalUnitId = unitIdMap.get(i);
+        }
+
+        // VALIDATION: Ensure crdfd_onvi (unit conversion) is available for all products
+        if (!finalUnitId) {
+            return res.status(400).json({
+                error: `Sản phẩm ${product.productCode || product.productName || 'Unknown'} không có thông tin đơn vị (crdfd_onvi). Vui lòng kiểm tra unit/unitId.`,
+                details: {
+                    productIndex: i,
+                    productCode: product.productCode,
+                    productName: product.productName,
+                    unit: product.unit,
+                    unitId: product.unitId,
+                    lookupAttempted: !product.unitId, // true if we attempted lookup
+                    validationFailed: true
+                }
+            });
+        }
+    }
+
+    console.log('[Save SOD] ✅ All products passed validation - proceeding with save');
+    progress.addStep('Validation completed - all products have required unit information');
+
     // ============ PATCH SALE ORDER DETAILS (PARALLEL PROCESSING) ============
     const savedDetails: any[] = [];
     const failedProducts: any[] = [];
@@ -1148,6 +1252,28 @@ export default async function handler(
         // Set promotionId từ frontend (đã được validate và lookup từ phía client)
         if (product.promotionId) {
           const promotionIdClean = String(product.promotionId).replace(/^{|}$/g, '').trim();
+
+          // Validate promotion applicability against order payment terms (if provided)
+          try {
+            const promoCheck = await isPromotionApplicableToPaymentTerm(promotionIdClean, paymentTerms, headers);
+            if (!promoCheck.applicable) {
+              // Return a failure result for this product so it's reported in the multi-status response
+              return {
+                success: false,
+                product,
+                error: `Promotion không áp dụng cho điều khoản thanh toán của đơn hàng.`,
+                fullError: promoCheck.reason || null
+              };
+            }
+          } catch (err: any) {
+            return {
+              success: false,
+              product,
+              error: `Lỗi khi kiểm tra điều khoản thanh toán cho chương trình khuyến mãi.`,
+              fullError: err?.message || err
+            };
+          }
+
           // Set promotion lookup using navigation binding (lookup) to promotions entity
           payload[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${promotionIdClean})`;
           console.log(`[Save SOD] ✅ Set promotion lookup for product ${product.productCode}: crdfd_Promotion@odata.bind = /crdfd_promotions(${promotionIdClean})`);
