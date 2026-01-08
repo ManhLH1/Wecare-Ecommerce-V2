@@ -1111,7 +1111,8 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
 
   // Áp dụng Promotion Order cho SOBG
   const handleApplyPromotionOrder = async () => {
-    if (selectedPromotionOrders.length === 0) {
+    const promosToApply = Array.from(new Map(selectedPromotionOrders.map(p => [p.id, p])).values());
+    if (promosToApply.length === 0) {
       showToast.error('Vui lòng chọn ít nhất một Promotion Order');
       return;
     }
@@ -1125,7 +1126,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     try {
       // Validate promotions against current SOBG total before applying
       const currentOrderTotal = orderSummary?.total || totalAmount || productList.reduce((s, p) => s + (p.totalAmount || ((p.discountedPrice ?? p.price) * (p.quantity || 0) + ((p.vat || 0) ? Math.round(((p.discountedPrice ?? p.price) * (p.quantity || 0) * (p.vat || 0)) / 100) : 0))), 0);
-      const invalid = selectedPromotionOrders.filter(p => {
+      const invalid = promosToApply.filter(p => {
         const cond = Number((p as any).totalAmountCondition || 0);
         return !isNaN(cond) && cond > 0 && currentOrderTotal < cond;
       });
@@ -1136,7 +1137,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         return;
       }
       // Apply promotions one by one (API expects single promotion per request)
-      const applyResults = await Promise.all(selectedPromotionOrders.map(promo =>
+      const applyResults = await Promise.all(promosToApply.map(promo =>
         applySOBGPromotionOrder({
           sobgId: soId, // soId trong SOBG context là sobgId
           promotionId: promo.id,
@@ -1146,6 +1147,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           chietKhau2: promo.chietKhau2 === 191920001,
           productCodes: promo.productCodes,
           productGroupCodes: promo.productGroupCodes,
+          orderTotal: currentOrderTotal, // pass UI-calculated total for server-side re-check
         }).catch((err) => {
           console.error('Error applying single SOBG promotion:', promo.id, err);
           return { success: false, message: err?.message || 'Unknown error' } as any;
@@ -1157,7 +1159,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         showToast.success(`Đã áp dụng ${successfulCount} promotion(s) thành công!`);
 
         // Update promotion text
-        const promotionNames = selectedPromotionOrders.map(p => p.name).join(', ');
+        const promotionNames = promosToApply.map(p => p.name).join(', ');
         setPromotionText(`Promotion: ${promotionNames}`);
 
         // Close popup
@@ -1264,6 +1266,17 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
                               [Chiết khấu 2]
                             </span>
                           )}
+                          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>
+                            {(!meetsCondition && conditionNum !== null) && (
+                              <div style={{ color: '#b91c1c', fontWeight: 600 }}>Yêu cầu tối thiểu: {conditionNum.toLocaleString('vi-VN')} VNĐ</div>
+                            )}
+                            {(promo as any).paymentTermsMismatch && (
+                              <div style={{ color: '#b91c1c', fontWeight: 600 }}>Điều khoản thanh toán không khớp</div>
+                            )}
+                            {(promo as any).warningMessage && (
+                              <div style={{ color: '#92400e' }}>{(promo as any).warningMessage}</div>
+                            )}
+                          </div>
                         </span>
                         <div style={{ marginLeft: '12px', textAlign: 'right' }}>
                           {conditionNum !== null ? (

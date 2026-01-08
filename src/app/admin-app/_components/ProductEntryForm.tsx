@@ -2464,6 +2464,61 @@ export default function ProductEntryForm({
                 setUnitChangeTrigger(prev => prev + 1); // Force warehouse quantity recalculation
                 userSelectedUnitRef.current = true; // Đánh dấu người dùng đã chọn đơn vị
                 userHasManuallySelectedUnitRef.current = true; // Persist manual selection for this product session
+                // Immediately map unit -> price using already-fetched prices (no network call)
+                try {
+                  const selectedRaw = option?.label || '';
+                  const prefNorm = normalizeText(selectedRaw);
+                  // Prefer same priceGroupText if already set, otherwise any region-aware match first
+                  const groupPref = (priceGroupText || '').trim();
+                  const groupPrefNorm = groupPref ? normalizeText(groupPref) : null;
+                  // Find candidate entries matching the unit
+                  let candidate = (pricesFromApi || []).find((p: any) => {
+                    const n1 = normalizeText(p.unitName || '');
+                    const n2 = normalizeText(p.crdfd_onvichuan || '');
+                    return n1 === prefNorm || n2 === prefNorm;
+                  });
+
+                  // If we have a group preference, try to prefer an entry within same group
+                  if (groupPrefNorm) {
+                    const groupMatch = (pricesFromApi || []).find((p: any) => {
+                      const n1 = normalizeText(p.unitName || '');
+                      const n2 = normalizeText(p.crdfd_onvichuan || '');
+                      const pg = normalizeText(p.priceGroupText || p.crdfd_nhomoituongtext || '');
+                      return (n1 === prefNorm || n2 === prefNorm) && pg === groupPrefNorm;
+                    });
+                    if (groupMatch) candidate = groupMatch;
+                  }
+
+                  // As a final fallback, try substring match (no diacritics)
+                  if (!candidate) {
+                    const prefNo = normalizeText(selectedRaw);
+                    candidate = (pricesFromApi || []).find((p: any) => {
+                      const pgUnit = normalizeText(p.unitName || p.crdfd_onvichuan || '');
+                      return pgUnit.includes(prefNo);
+                    });
+                  }
+
+                  if (candidate) {
+                    const priceVal = candidate.price ?? candidate.crdfd_gia ?? candidate.crdfd_giatheovc ?? null;
+                    const priceNoVatVal = candidate.priceNoVat ?? candidate.cr1bb_giakhongvat ?? null;
+                    const useNoVat = isVatSo;
+                    let chosenPrice: number | null = null;
+                    if (useNoVat && priceNoVatVal !== null && priceNoVatVal !== undefined) chosenPrice = Number(priceNoVatVal);
+                    else if (priceVal !== null && priceVal !== undefined) chosenPrice = Number(priceVal);
+                    else if (priceNoVatVal !== null && priceNoVatVal !== undefined) chosenPrice = Number(priceNoVatVal);
+
+                    if (chosenPrice !== null && !isNaN(chosenPrice)) {
+                      const rounded = Math.round(chosenPrice);
+                      setApiPrice(rounded);
+                      handlePriceChange(String(rounded));
+                      setPriceGroupText(candidate.priceGroupText || candidate.crdfd_nhomoituongtext || '');
+                      // Also update selectedPriceFromApi so other UI pieces can react
+                      setSelectedPriceFromApi(candidate);
+                    }
+                  }
+                } catch (e) {
+                  console.warn('[ProductEntryForm] Error mapping unit->price locally', e);
+                }
                 // NOTE: Do NOT trigger a full price reload here. The component already
                 // stores `pricesFromApi` and maps `selectedPriceFromApi` in a separate
                 // effect when `unitId` or `pricesFromApi` changes. Removing the forced

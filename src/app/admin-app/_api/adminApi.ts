@@ -613,6 +613,7 @@ export interface ApplySOBGPromotionOrderRequest {
   chietKhau2?: boolean;
   productCodes?: string;
   productGroupCodes?: string;
+  orderTotal?: number;
 }
 
 export interface ApplySOBGPromotionOrderResponse {

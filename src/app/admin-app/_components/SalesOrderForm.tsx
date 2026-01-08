@@ -917,6 +917,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setIsApplyingPromotion(true);
     try {
       // Chuẩn bị dữ liệu đơn hàng
+      // Dedupe selected promotions before including in payload
+      const promosToInclude = Array.from(new Map(selectedPromotionOrders.map(p => [p.id, p])).values());
+
       const orderData = {
         customerCode,
         customerName: customer,
@@ -958,7 +961,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             stockQuantity: item.stockQuantity,
           };
         }),
-        promotions: selectedPromotionOrders.map(promo => ({
+        // Only include unique selected promotions (dedupe by id)
+        promotions: promosToInclude.map((promo: PromotionOrderItem) => ({
           promotionId: promo.id,
           promotionName: promo.name,
           promotionValue: promo.value || 0,
@@ -971,7 +975,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
 
       // Validate promotions against order total (cr1bb_tongtienapdung)
       const orderTotalForValidation = orderSummary?.total || totalAmount || productList.reduce((s, p) => s + (p.totalAmount || ((p.discountedPrice ?? p.price) * (p.quantity || 0) + ((p.vat || 0) ? Math.round(((p.discountedPrice ?? p.price) * (p.quantity || 0) * (p.vat || 0)) / 100) : 0))), 0);
-      const invalidPromos = selectedPromotionOrders.filter((promo) => {
+      const promosToValidate = Array.from(new Map(selectedPromotionOrders.map(p => [p.id, p])).values());
+      const invalidPromos = promosToValidate.filter((promo) => {
         const cond = (promo as any).totalAmountCondition;
         return typeof cond === 'number' && cond > 0 && orderTotalForValidation < cond;
       });
@@ -1038,7 +1043,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     try {
       // Validate promotions against current order total before applying
       const currentOrderTotal = totalAmount || orderSummary?.total || productList.reduce((s, p) => s + (p.totalAmount || ((p.discountedPrice ?? p.price) * (p.quantity || 0) + ((p.vat || 0) ? Math.round(((p.discountedPrice ?? p.price) * (p.quantity || 0) * (p.vat || 0)) / 100) : 0))), 0);
-      const invalid = selectedPromotionOrders.filter(p => {
+      const promosToApply = Array.from(new Map(selectedPromotionOrders.map(p => [p.id, p])).values());
+      const invalid = promosToApply.filter(p => {
         const cond = (p as any).totalAmountCondition;
         return typeof cond === 'number' && cond > 0 && currentOrderTotal < cond;
       });
@@ -1050,7 +1056,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       }
       // Áp dụng từng promotion order
       const results = [];
-      for (const promo of selectedPromotionOrders) {
+      for (const promo of promosToApply) {
         try {
           // Validate payment terms: nếu promotion chỉ định điều khoản thanh toán và không khớp
           // với điều khoản trên đơn hàng hiện tại thì bỏ qua promotion này và show warning.
@@ -1141,7 +1147,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       const failedCount = results.filter(r => r && r.success === false).length;
 
       if (successCount > 0) {
-        showToast.success(`Đã áp dụng ${successCount}/${selectedPromotionOrders.length} Promotion Order thành công!`);
+        showToast.success(`Đã áp dụng ${successCount}/${promosToApply.length} Promotion Order thành công!`);
         setShowPromotionOrderPopup(false);
         setSelectedPromotionOrders([]);
         setPromotionOrderList([]);
@@ -1502,6 +1508,18 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                               [Chiết khấu 2]
                             </span>
                           )}
+                          {/* Detailed reasons */}
+                          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>
+                            {(!meetsCondition && conditionNum !== null) && (
+                              <div style={{ color: '#b91c1c', fontWeight: 600 }}>Yêu cầu tối thiểu: {conditionNum.toLocaleString('vi-VN')} VNĐ</div>
+                            )}
+                            {(promo as any).paymentTermsMismatch && (
+                              <div style={{ color: '#b91c1c', fontWeight: 600 }}>Điều khoản thanh toán không khớp</div>
+                            )}
+                            {(promo as any).warningMessage && (
+                              <div style={{ color: '#92400e' }}>{(promo as any).warningMessage}</div>
+                            )}
+                          </div>
                         </span>
                         <div style={{ marginLeft: '12px', textAlign: 'right' }}>
                           {conditionNum !== null ? (
