@@ -389,8 +389,8 @@ export default async function handler(
             sodsToUpdate.push(sod);
           }
         }
-
         const updatedSodIds = new Set<string>();
+        console.log('[ApplyPromotion] SODs matched for update:', sodsToUpdate.length, 'soId=', soId, 'productCodes=', productCodeListNorm, 'productGroups=', productGroupCodeListNorm);
         for (const sod of sodsToUpdate) {
           try {
             const sodId = sod.crdfd_saleorderdetailid;
@@ -424,12 +424,36 @@ export default async function handler(
     // Cập nhật trường crdfd_chieckhau2 trên Sale Order (header) để phản ánh promotionValue (raw)
     try {
       const soUpdatePayload: any = {
-        crdfd_chieckhau2: chietKhau2ValueToStore,
+        // Use correct Sale Order field name (crdfd_chietkhau2) — previous name crdfd_chieckhau2 may not exist
+        crdfd_chieckhau2 : chietKhau2ValueToStore,
       };
       const soUpdateEndpoint = `${BASE_URL}${SALE_ORDERS_TABLE}(${soId})`;
       await axios.patch(soUpdateEndpoint, soUpdatePayload, { headers });
     } catch (err: any) {
-      console.warn('[ApplyPromotion] Failed to update SO crdfd_chieckhau2/chietkhau2:', err?.message || err);
+      console.warn('[ApplyPromotion] Failed to update SO crdfd_chieckhau2/chietkhau2:', (err as any)?.message || err);
+      if ((err as any)?.response) {
+        console.warn('[ApplyPromotion] Error response:', {
+          status: (err as any).response.status,
+          data: (err as any).response.data
+        });
+      }
+      // Try fallback with alternate field name if available
+      try {
+        const fallbackPayload: any = {
+          crdfd_chietkhau2: chietKhau2ValueToStore
+        };
+        const fallbackEndpoint = `${BASE_URL}${SALE_ORDERS_TABLE}(${soId})`;
+        await axios.patch(fallbackEndpoint, fallbackPayload, { headers });
+        console.log('[ApplyPromotion] Fallback: updated SO crdfd_chietkhau2 successfully');
+      } catch (fallbackErr: any) {
+        console.warn('[ApplyPromotion] Fallback update also failed:', (fallbackErr as any)?.message || fallbackErr);
+        if ((fallbackErr as any)?.response) {
+          console.warn('[ApplyPromotion] Fallback error response:', {
+            status: (fallbackErr as any).response.status,
+            data: (fallbackErr as any).response.data
+          });
+        }
+      }
     }
 
     res.status(200).json({
