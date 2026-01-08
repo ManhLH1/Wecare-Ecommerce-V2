@@ -87,6 +87,7 @@ const Footer = () => {
             <h4 className="text-gray-900 font-semibold mb-3 uppercase text-xs tracking-wide">Về chúng tôi</h4>
             <ul className="space-y-1 text-xs">
               <li><Link href="/ve-chung-toi" className="block py-1 text-xs text-gray-600 hover:text-black no-underline">Về chúng tôi</Link></li>
+              <li><Link href="/tieu-chi-ban-hang" className="block py-1 text-xs text-gray-600 hover:text-black no-underline">Tiêu chí bán hàng</Link></li>
               <li><Link href="/hop-tac" className="block py-1 text-xs text-gray-600 hover:text-black no-underline">Hợp tác với chúng tôi</Link></li>
               <li><Link href="/lien-he" className="block py-1 text-xs text-gray-600 hover:text-black no-underline">Liên hệ / Góp ý</Link></li>
               <li><Link href="/khuyen-mai" className="block py-1 text-xs text-gray-600 hover:text-black no-underline">Khuyến mãi</Link></li>
