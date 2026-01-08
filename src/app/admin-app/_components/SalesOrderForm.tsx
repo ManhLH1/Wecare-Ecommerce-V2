@@ -91,6 +91,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const [deliveryDate, setDeliveryDate] = useState('');
   const [customerIndustry, setCustomerIndustry] = useState<number | null>(null);
   const [customerDistrictKey, setCustomerDistrictKey] = useState<string>('');
+  const [customerRegion, setCustomerRegion] = useState<string>('');
   const [note, setNote] = useState('');
   const [approver, setApprover] = useState('');
   const [priceEntryMethod, setPriceEntryMethod] = useState<'Nhập thủ công' | 'Theo chiết khấu'>('Nhập thủ công');
@@ -1633,7 +1634,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
               title="Khuyến mãi đặc biệt"
               disabled={!customerId || !soId}
             >
-              🎁 Khuyến mãi đặc biệt
+              Khuyến mãi đặc biệt
             </button>
             <button
               className="admin-app-header-btn admin-app-header-btn-submit"
@@ -1751,6 +1752,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                     setCustomerIndustry(option?.crdfd_nganhnghe ?? null);
                     const districtKey = option?.crdfd_keyquanhuyen || '';
                     setCustomerDistrictKey(districtKey);
+                    // Capture region text (e.g. "Miền Nam", "Miền Trung") from customer option
+                    setCustomerRegion(option?.cr1bb_vungmien_text || option?.cr1bb_vungmien || '');
                     // Clear SO và các selected khi đổi customer
                     setSo('');
                     setSoId('');
@@ -1876,6 +1879,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             customerId={customerId}
             customerCode={customerCode}
             customerName={customer}
+            customerRegion={customerRegion}
             vatText={selectedVatText}
             paymentTerms={selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan}
             orderType={selectedSo?.crdfd_loai_don_hang}

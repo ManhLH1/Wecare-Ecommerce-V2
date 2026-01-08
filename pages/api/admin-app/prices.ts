@@ -195,10 +195,12 @@ export default async function handler(
         .join(" or ");
       filters.push(`(${groupFilters})`);
     } else if (region && typeof region === "string" && region.trim()) {
-      // Fallback: For orders without customer groups, try region filter (cả VAT và không VAT)
-      // Ưu tiên "Shop" nếu có
+      // Fallback: For orders without customer groups, try region filter (both exact region and "region Không VAT")
+      // Include Shop as a fallback option as well.
       const safeRegion = region.replace(/'/g, "''");
-      filters.push(`(crdfd_nhomoituongtext eq 'Shop' or crdfd_nhomoituongtext eq '${safeRegion} Không VAT')`);
+      filters.push(
+        `(crdfd_nhomoituongtext eq 'Shop' or crdfd_nhomoituongtext eq '${safeRegion}' or crdfd_nhomoituongtext eq '${safeRegion} Không VAT')`
+      );
     }
 
     const filter = filters.join(" and ");
@@ -266,35 +268,154 @@ export default async function handler(
       };
     });
 
-    // Backward compatibility: Trả về cả object đầu tiên (để code cũ vẫn hoạt động)
-    // VÀ mảng prices để code mới có thể xử lý nhiều đơn vị
-    const first = allPrices[0];
+    // Normalize helpers (used below)
+    const normalizeStr = (v: any) =>
+      (String(v ?? "").normalize
+        ? String(v ?? "").normalize("NFC")
+        : String(v ?? "")
+      )
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+
+    const removeDiacritics = (s: string) =>
+      s && s.normalize ? s.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : s;
+
+    const normalizeNoDiacritics = (v: any) =>
+      removeDiacritics(String(v ?? ""))
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+
+    // If region provided, for each unit prefer region-specific rows and drop Shop rows for that unit.
+    // This prevents mixing Shop and region prices for the same unit (ambiguous UI mapping).
+    let effectivePrices = prices;
+    if (region && typeof region === "string" && region.trim()) {
+      const safeRegionNorm = normalizeStr(region);
+      const safeRegionNoDiac = normalizeNoDiacritics(region);
+
+      const pricesByUnit = new Map<string, any[]>();
+      for (const p of prices) {
+        const unitKey = normalizeStr(p.unitName || p.crdfd_onvichuan || p.crdfd_onvichuantext || "default");
+        if (!pricesByUnit.has(unitKey)) pricesByUnit.set(unitKey, []);
+        pricesByUnit.get(unitKey)!.push(p);
+      }
+
+      const rebuilt: any[] = [];
+      for (const [, group] of pricesByUnit) {
+        // Find region-specific entries in this unit group
+        const regionEntries = group.filter((p: any) => {
+          const pg = String(p.priceGroupText || p.crdfd_nhomoituongtext || "");
+          return normalizeStr(pg) === safeRegionNorm || normalizeNoDiacritics(pg) === safeRegionNoDiac;
+        });
+
+        if (regionEntries.length > 0) {
+          // Keep only region entries for this unit
+          rebuilt.push(...regionEntries);
+        } else {
+          // Keep all original entries for this unit
+          rebuilt.push(...group);
+        }
+      }
+
+      // Sort rebuilt according to crdfd_giatheovc asc (keep cheapest per unit first)
+      effectivePrices = rebuilt.sort((a: any, b: any) => {
+        const va = Number(a.crdfd_giatheovc ?? a.price ?? 0);
+        const vb = Number(b.crdfd_giatheovc ?? b.price ?? 0);
+        return va - vb;
+      });
+    }
+
+    // Backward compatibility & priority selection:
+    // Choose the preferred price row using the following priority:
+    // 1) If customerGroups exist: pick the first price whose crdfd_nhomoituongtext matches any group.
+    // 2) Else if region provided: prefer a price matching the region (exact), then "<region> Không VAT", then "Shop".
+    // 3) Else: fallback to the first returned row.
+    const parsedQuantity = quantity && typeof quantity === "string" ? parseFloat(quantity) : 1;
+
+    // Prefer selection using the processed `effectivePrices` array (region/customer-groups aware)
+    let preferred: any = null;
+
+    try {
+      // If region is provided, prefer any price rows whose priceGroupText matches the region
+      if (region && typeof region === "string" && region.trim()) {
+        const safeRegionNorm = normalizeStr(region);
+        const safeRegionNoDiac = normalizeNoDiacritics(region);
+
+        // Debug: log received region and available price groups (helps troubleshoot mismatched values)
+        try {
+          console.debug("[Prices] region:", region, "normalized:", safeRegionNorm, "noDiac:", safeRegionNoDiac);
+          console.debug(
+            "[Prices] available price groups:",
+            prices.map((p: any) => p.priceGroupText || p.crdfd_nhomoituongtext || null)
+          );
+        } catch (e) {
+          /* ignore logging errors */
+        }
+
+        // Collect region-matching candidates (exact normalized or no-diacritics)
+        const regionCandidates = effectivePrices.filter((p: any) => {
+          const pg = p.priceGroupText || p.crdfd_nhomoituongtext || "";
+          return normalizeStr(pg) === safeRegionNorm || normalizeNoDiacritics(pg) === safeRegionNoDiac;
+        });
+
+        if (regionCandidates.length > 0) {
+          // Prefer a candidate that is already ordered by crdfd_giatheovc asc (prices was built in that order),
+          // but also try to choose the one with the lowest price per conversion factor among region candidates.
+          let best = regionCandidates[0];
+          try {
+            best = regionCandidates.reduce((a: any, b: any) => {
+              const pa = Number(a.price ?? 0) / (Number(a.crdfd_giatrichuyenoi ?? 1) || 1);
+              const pb = Number(b.price ?? 0) / (Number(b.crdfd_giatrichuyenoi ?? 1) || 1);
+              return pb < pa ? b : a;
+            }, regionCandidates[0]);
+          } catch (e) {
+            // ignore reduce errors, fallback to first
+          }
+          preferred = best;
+        }
+      }
+
+      // If region-based selection didn't find anything, fall back to customer groups selection
+      if (!preferred && customerGroups && customerGroups.length > 0) {
+        const groupSet = new Set(customerGroups.map((g) => normalizeStr(g)));
+        preferred = effectivePrices.find((p: any) => groupSet.has(normalizeStr(p.priceGroupText || "")));
+      }
+
+      if (!preferred) {
+        // fallback: prefer Shop if present, otherwise first price
+        preferred =
+          effectivePrices.find((p: any) => String(p.priceGroupText || "").toLowerCase() === "shop") ||
+          effectivePrices[0] ||
+          null;
+      }
+    } catch (err) {
+      preferred = effectivePrices[0] || null;
+    }
+
+    const first = preferred;
+
     const firstUnitName =
-      first?.crdfd_onvi?.crdfd_onvichuyenoitransfome ||  // Từ unit conversions (ưu tiên)
-      first?.crdfd_onvi?.crdfd_name ||                   // Từ units
+      first?.unitName ||
       first?.crdfd_onvichuantext ||
       first?.crdfd_onvichuan ||
       undefined;
 
-    // Lấy giá trị chuyển đổi từ expanded lookup cho item đầu tiên
-    const firstGiatrichuyenoi = first?.crdfd_onvi?.crdfd_giatrichuyenoi ?? 0;
-
-    // Tính SL theo kho cho item đầu tiên
-    const parsedQuantity = quantity && typeof quantity === "string" ? parseFloat(quantity) : 1;
+    const firstGiatrichuyenoi = first?.crdfd_giatrichuyenoi ?? 0;
     const firstSlTheoKho = parsedQuantity * firstGiatrichuyenoi;
 
     const result = {
-      // Object đầu tiên (backward compatibility)
-      price: first?.crdfd_gia ?? null,
-      priceNoVat: first?.cr1bb_giakhongvat ?? null,
+      // Object đầu tiên theo ưu tiên (backward compatibility)
+      price: first?.price ?? null,
+      priceNoVat: first?.priceNoVat ?? null,
       unitName: firstUnitName,
-      priceGroupText: first?.crdfd_nhomoituongtext || undefined,
+      priceGroupText: first?.priceGroupText || undefined,
       crdfd_masanpham: first?.crdfd_masanpham || productCode,
       crdfd_onvichuan: first?.crdfd_onvichuan || undefined,
-      crdfd_giatrichuyenoi: firstGiatrichuyenoi, // Giá trị chuyển đổi từ lookup hoặc field
-      slTheoKho: firstSlTheoKho, // SL theo kho = Số lượng x crdfd_giatrichuyenoi
-      // Mảng tất cả các giá (theo các đơn vị khác nhau)
-      prices: prices,
+      crdfd_giatrichuyenoi: firstGiatrichuyenoi,
+      slTheoKho: firstSlTheoKho,
+      // Mảng tất cả các giá (theo các đơn vị khác nhau) - effective (region-prioritized)
+      prices: effectivePrices,
     };
 
     // Cache the result

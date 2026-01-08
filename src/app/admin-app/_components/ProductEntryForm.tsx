@@ -77,6 +77,7 @@ interface ProductEntryFormProps {
   customerIndustry?: number | null;
   customerName?: string;
   customerDistrictKey?: string;
+  customerRegion?: string;
   paymentTerms?: string | number | null;
   soId?: string;
   orderType?: number | null; // Loại đơn hàng OptionSet value (optional)
@@ -149,6 +150,7 @@ export default function ProductEntryForm({
   customerCode,
   customerName,
   customerDistrictKey,
+  customerRegion,
   paymentTerms,
   soId,
   orderType,
@@ -230,6 +232,12 @@ export default function ProductEntryForm({
   const [availableUnitsFromPrices, setAvailableUnitsFromPrices] = useState<any[]>([]);
   const [pricesFromApi, setPricesFromApi] = useState<any[]>([]);
   const [selectedPriceFromApi, setSelectedPriceFromApi] = useState<any | null>(null);
+  // Debug: monitor unit changes
+  useEffect(() => {
+    try {
+      console.debug('[UnitDebug] state unitId/unit changed', { unitId, unit, userSelectedUnit: userSelectedUnitRef.current, availableUnitsFromPricesCount: availableUnitsFromPrices.length, pricesFromApiCount: pricesFromApi.length });
+    } catch (e) {}
+  }, [unitId, unit, availableUnitsFromPrices.length, pricesFromApi.length]);
   const [warehouseId, setWarehouseId] = useState('');
   const [selectedProductCode, setSelectedProductCode] = useState<string | undefined>();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -270,6 +278,7 @@ export default function ProductEntryForm({
   const [isProcessingAdd, setIsProcessingAdd] = useState<boolean>(false); // Flag để ngăn bấm liên tục
   const hasSetUnitFromApiRef = useRef<boolean>(false); // Track nếu đã set đơn vị từ API để không reset lại
   const userSelectedUnitRef = useRef<boolean>(false); // Track nếu người dùng đã chọn đơn vị thủ công
+  const userHasManuallySelectedUnitRef = useRef<boolean>(false); // Persistent until product changes
   const lastPriceFetchKeyRef = useRef<string | null>(null); // Dedupe key for price fetches
 
   const isVatSo = useMemo(() => {
@@ -1045,19 +1054,23 @@ export default function ProductEntryForm({
       // CHỈ chạy nếu người dùng chưa chọn đơn vị thủ công
       const found = units.find((u) => u.crdfd_name === unit);
       if (found) {
+        try { console.debug('[UnitDebug] auto-mapping unit from parent unit name ->', unit, 'found id', found.crdfd_unitsid); } catch(e) {}
         setUnitId(found.crdfd_unitsid);
       } else if ((availableUnitsFromPrices && availableUnitsFromPrices.length > 0)) {
+        try { console.debug('[UnitDebug] auto-select first availableUnitsFromPrices ->', availableUnitsFromPrices[0].crdfd_name); } catch(e) {}
         setUnitId(availableUnitsFromPrices[0].crdfd_unitsid);
         setUnit(availableUnitsFromPrices[0].crdfd_name);
       } else if (units.length > 0) {
+        try { console.debug('[UnitDebug] fallback select first CRM unit ->', units[0].crdfd_name); } catch(e) {}
         setUnitId(units[0].crdfd_unitsid);
         setUnit(units[0].crdfd_name);
       }
       return;
     }
 
-    if (!unit && unitIdIsEmpty && (availableUnitsFromPrices && availableUnitsFromPrices.length > 0) && !userSelectedUnitRef.current) {
+    if (!unit && unitIdIsEmpty && (availableUnitsFromPrices && availableUnitsFromPrices.length > 0) && !userHasManuallySelectedUnitRef.current) {
       // Auto-select first unit from availableUnitsFromPrices when available (prefers price-derived units)
+      try { console.debug('[UnitDebug] auto-select unitsFromPrices first ->', availableUnitsFromPrices[0].crdfd_name); } catch(e) {}
       setUnitId(availableUnitsFromPrices[0].crdfd_unitsid);
       setUnit(availableUnitsFromPrices[0].crdfd_name);
       return;
@@ -1065,10 +1078,12 @@ export default function ProductEntryForm({
 
     if (!unitIdIsEmpty && !currentUnitExists && (availableUnitsFromPrices && availableUnitsFromPrices.length > 0)) {
       // If current unitId is no longer in list, fallback to first availableUnitsFromPrices
+      try { console.debug('[UnitDebug] current unitId not exists -> fallback to availableUnitsFromPrices[0]'); } catch(e) {}
       setUnitId(availableUnitsFromPrices[0].crdfd_unitsid);
       setUnit(availableUnitsFromPrices[0].crdfd_name);
     } else if (!unitIdIsEmpty && !currentUnitExists && units.length > 0) {
       // Fallback to real units list
+      try { console.debug('[UnitDebug] current unitId not exists -> fallback to CRM units[0]'); } catch(e) {}
       setUnitId(units[0].crdfd_unitsid);
       setUnit(units[0].crdfd_name);
     }
@@ -1098,6 +1113,7 @@ export default function ProductEntryForm({
         setPriceLoading(false);
         hasSetUnitFromApiRef.current = false; // Reset flag khi không có sản phẩm
         userSelectedUnitRef.current = false; // Reset flag khi không có sản phẩm
+        userHasManuallySelectedUnitRef.current = false;
         // Reset last fetch key when product cleared
         lastPriceFetchKeyRef.current = null;
         // Clear giá khi không có sản phẩm (trừ khi đang ở chế độ nhập thủ công với duyệt giá)
@@ -1109,8 +1125,9 @@ export default function ProductEntryForm({
       }
 
       // Build a simple dedupe key to avoid consecutive identical fetches
-      // Include unitId so changing unit forces a fresh fetch
-      const fetchKey = `${selectedProductCode}::${customerCode || ''}::${vatPercent || 0}::${vatText || ''}::${shouldReloadPrice || 0}::${unitId || ''}`;
+      // Do NOT include unitId here — changing unit should NOT trigger a network call.
+      // Keep customerRegion so region changes still refetch prices.
+      const fetchKey = `${selectedProductCode}::${customerCode || ''}::${vatPercent || 0}::${vatText || ''}::${shouldReloadPrice || 0}::${customerRegion || ''}`;
       if (lastPriceFetchKeyRef.current === fetchKey) {
         // Skip duplicate fetch
         // console.debug('[Price] Skipping duplicate fetch for', fetchKey);
@@ -1138,11 +1155,12 @@ export default function ProductEntryForm({
         const isVatOrder = vatPercent > 0 || (vatText?.toLowerCase().includes('có vat') ?? false);
 
         // API không cần unitId và isVatOrder - sẽ trả về tất cả giá
+        // Pass customerRegion so backend can prefer regional prices (e.g., "Miền Nam")
         const result = await fetchProductPrice(
           selectedProductCode,
           customerCode,
           undefined, // Không truyền unitId
-          undefined, // region filter removed
+          customerRegion || undefined, // Pass region from parent if available
           undefined  // Không truyền isVatOrder
         );
 
@@ -1158,10 +1176,41 @@ export default function ProductEntryForm({
         const currentUnitOnvichuan =
           (fromPricesUnit as any)?.crdfd_onvichuan || (currentUnit as any)?.crdfd_onvichuan || undefined;
 
+        // Tìm giá theo khu vực (customerRegion) trước nếu có — ưu tiên chọn giá theo vùng miền khách hàng
+        let selectedPrice: any = null;
+        if (allPrices.length > 0 && (customerRegion || '').trim() !== '') {
+          try {
+            const regionNorm = normalizeText(customerRegion || '');
+            // Exact match (normalized)
+            selectedPrice = allPrices.find((p: any) => {
+              const pg = (p.priceGroupText || p.crdfd_nhomoituongtext || '') as string;
+              return normalizeText(pg) === regionNorm;
+            });
+
+            // Exact "<region> Không VAT"
+            if (!selectedPrice) {
+              selectedPrice = allPrices.find((p: any) => {
+                const pg = (p.priceGroupText || p.crdfd_nhomoituongtext || '') as string;
+                return normalizeText(pg) === `${regionNorm} không vat`;
+              });
+            }
+
+            // Loose substring match (no diacritics)
+            if (!selectedPrice) {
+              selectedPrice = allPrices.find((p: any) => {
+                const pg = (p.priceGroupText || p.crdfd_nhomoituongtext || '') as string;
+                return normalizeText(pg).includes(regionNorm);
+              });
+            }
+          } catch (e) {
+            // ignore and continue to unit-based selection
+            selectedPrice = null;
+          }
+        }
+
         // Tìm giá theo đơn vị đã chọn (nếu có)
         // Ưu tiên map theo unitName từ API (đã được lấy từ crdfd_onvi lookup)
         // Sau đó mới map theo crdfd_onvichuan
-        let selectedPrice: any = null;
         // Build list of available units based on prices returned by API.
         // Strategy:
         // 1) Extract unit names from API prices (prefer crdfd_onvichuan, fallback to unitName)
@@ -1187,7 +1236,7 @@ export default function ProductEntryForm({
         setAvailableUnitsFromPrices(unitsFromPrices);
         // Save API prices and selected price for other UI (SL theo kho) to consume
         setPricesFromApi(allPrices);
-        if (allPrices.length > 0 && currentUnitName) {
+        if (!selectedPrice && allPrices.length > 0 && currentUnitName) {
           // Bước 1: Tìm theo unitName từ API (đã được lấy từ crdfd_onvi lookup) - chính xác nhất
           selectedPrice = allPrices.find((p: any) => {
             if (!p.unitName) return false;
@@ -1223,7 +1272,7 @@ export default function ProductEntryForm({
         // After building the units list from prices, automatically select the unit
         // based on the canonical `crdfd_onvichuan` value returned in the API if the
         // user hasn't manually chosen a unit.
-        if (!userSelectedUnitRef.current && unitsFromPrices.length > 0) {
+        if (!userHasManuallySelectedUnitRef.current && unitsFromPrices.length > 0) {
           // Prefer API's unitName first, then crdfd_onvichuan
           const preferredRaw =
             (selectedPrice && (selectedPrice.unitName || selectedPrice.crdfd_onvichuan)) ||
@@ -1263,6 +1312,7 @@ export default function ProductEntryForm({
           }
 
           if (found) {
+            try { console.debug('[UnitDebug] setUnitId from unitsFromPrices found ->', found.crdfd_name, found.crdfd_unitsid); } catch(e) {}
             setUnitId(found.crdfd_unitsid);
             setUnit(found.crdfd_name);
             hasSetUnitFromApiRef.current = true;
@@ -1357,7 +1407,7 @@ export default function ProductEntryForm({
     };
 
     loadPrice();
-  }, [selectedProductCode, product, customerCode, vatPercent, vatText, shouldReloadPrice, unitId]);
+  }, [selectedProductCode, product, customerCode, vatPercent, vatText, shouldReloadPrice, customerRegion]);
 
   // Update selectedPriceFromApi when user changes selected unit or when API prices change
   useEffect(() => {
@@ -1391,6 +1441,41 @@ export default function ProductEntryForm({
     setSelectedPriceFromApi(matched || null);
   }, [unitId, pricesFromApi, availableUnitsFromPrices, units]);
  
+  // When user explicitly changes unit (userSelectedUnitRef), apply selectedPriceFromApi to UI price
+  useEffect(() => {
+    if (!selectedPriceFromApi) return;
+
+    // Only react when user explicitly selected a unit
+    if (!userSelectedUnitRef.current) return;
+
+    try {
+      const priceVal = selectedPriceFromApi.price ?? selectedPriceFromApi.crdfd_gia ?? selectedPriceFromApi.crdfd_giatheovc ?? null;
+      const priceNoVatVal = selectedPriceFromApi.priceNoVat ?? selectedPriceFromApi.cr1bb_giakhongvat ?? null;
+
+      // Determine which price to use based on SO VAT
+      const useNoVat = isVatSo; // if SO has VAT, prefer priceNoVat when available
+      let chosen: number | null = null;
+      if (useNoVat && priceNoVatVal !== null && priceNoVatVal !== undefined) {
+        chosen = Number(priceNoVatVal);
+      } else if (priceVal !== null && priceVal !== undefined) {
+        chosen = Number(priceVal);
+      } else if (priceNoVatVal !== null && priceNoVatVal !== undefined) {
+        chosen = Number(priceNoVatVal);
+      }
+
+      if (chosen !== null && !isNaN(chosen)) {
+        const rounded = Math.round(chosen);
+        setApiPrice(rounded);
+        handlePriceChange(String(rounded));
+        setPriceGroupText(selectedPriceFromApi.priceGroupText || selectedPriceFromApi.crdfd_nhomoituongtext || '');
+      }
+    } finally {
+      // Reset user selection flag after applying
+      userSelectedUnitRef.current = false;
+      userHasManuallySelectedUnitRef.current = false;
+    }
+  }, [selectedPriceFromApi, unitId, isVatSo]);
+
   // Fetch promotions based on product code and customer code
   useEffect(() => {
     const loadPromotions = async () => {
@@ -2303,6 +2388,7 @@ export default function ProductEntryForm({
                 setUnitId('');
                 setUnit('');
                 userSelectedUnitRef.current = false; // Reset khi chọn sản phẩm mới
+                userHasManuallySelectedUnitRef.current = false;
                 hasSetUnitFromApiRef.current = false; // Reset khi chọn sản phẩm mới
               }}
               placeholder={isFormDisabled ? "Chọn KH và SO trước" : "Chọn sản phẩm"}
@@ -2370,10 +2456,14 @@ export default function ProductEntryForm({
               }))}
               value={unitId}
               onChange={(value, option) => {
-                setUnitId(value);
+                try {
+                  console.debug('[ProductEntryForm] Unit change requested', { value, label: option?.label });
+                } catch (e) { /* ignore */ }
                 setUnit(option?.label || '');
+                setUnitId(value);
                 setUnitChangeTrigger(prev => prev + 1); // Force warehouse quantity recalculation
                 userSelectedUnitRef.current = true; // Đánh dấu người dùng đã chọn đơn vị
+                userHasManuallySelectedUnitRef.current = true; // Persist manual selection for this product session
                 // NOTE: Do NOT trigger a full price reload here. The component already
                 // stores `pricesFromApi` and maps `selectedPriceFromApi` in a separate
                 // effect when `unitId` or `pricesFromApi` changes. Removing the forced
