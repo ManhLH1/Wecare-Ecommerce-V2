@@ -466,6 +466,11 @@ export interface PromotionOrderItem {
   productCodes?: string;
   productGroupCodes?: string;
   totalAmountCondition?: number;
+  // Optional server-side annotations
+  ieukhoanthanhtoanapdung?: any;
+  paymentTermsNormalized?: string | null;
+  applicable?: boolean;
+  paymentTermsMismatch?: boolean;
 }
 
 export interface PromotionOrderResponse {
@@ -513,6 +518,31 @@ export const fetchPromotionOrders = async (
   }
 };
 
+/**
+ * Lấy danh sách Promotion đặc biệt cho khách hàng
+ */
+export const fetchSpecialPromotionOrders = async (
+  soId: string,
+  customerCode: string,
+  paymentTerms?: string
+): Promise<FetchSpecialPromotionOrdersResponse> => {
+  try {
+    const params: Record<string, string> = { soId, customerCode };
+    if (paymentTerms) params.paymentTerms = paymentTerms;
+
+    const response = await axios.get(`${BASE_URL}/special-promotion-orders`, { params });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching special promotion orders:', error);
+    return {
+      existingSpecialPromotionOrders: [],
+      hasExistingSpecialPromotionOrder: false,
+      specialPromotions: [],
+      totalCount: 0,
+    };
+  }
+};
+
 export interface ApplyPromotionOrderRequest {
   soId: string;
   promotionId: string;
@@ -522,6 +552,8 @@ export interface ApplyPromotionOrderRequest {
   chietKhau2?: boolean;
   productCodes?: string;
   productGroupCodes?: string;
+  paymentTerms?: string;
+  orderTotal?: number;
 }
 
 export interface ApplyPromotionOrderResponse {
@@ -529,6 +561,32 @@ export interface ApplyPromotionOrderResponse {
   ordersXPromotionId?: string;
   updatedSodCount?: number;
   message?: string;
+}
+
+export interface SpecialPromotionItem {
+  id: string;
+  name: string;
+  type: string;
+  value: number;
+  vndOrPercent: string;
+  chietKhau2?: number; // 191920000 = No, 191920001 = Yes (matches PromotionOrderItem)
+  productCodes?: string;
+  productGroupCodes?: string;
+  totalAmountCondition?: number;
+  ieukhoanthanhtoanapdung?: any;
+  startDate?: string;
+  endDate?: string;
+  paymentTermsNormalized?: string | null;
+  applicable?: boolean;
+  paymentTermsMismatch?: boolean;
+  warningMessage?: string;
+}
+
+export interface FetchSpecialPromotionOrdersResponse {
+  existingSpecialPromotionOrders: any[];
+  hasExistingSpecialPromotionOrder: boolean;
+  specialPromotions: SpecialPromotionItem[];
+  totalCount: number;
 }
 
 /**

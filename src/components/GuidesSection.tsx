@@ -96,7 +96,7 @@
         <div className="py-2">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
-              <h3 className="text-lg font-semibold text-gray-800">CẨM NANG - KINH NGHIỆM</h3>
+              <h3 className="text-cyan-600 no-underline hover:text-cyan-700 text-2xl uppercase">CẨM NANG - KINH NGHIỆM</h3>
               <span className="inline-block w-12 h-1 bg-amber-300 rounded" />
             </div>
             <Link href="/post" className="text-sm text-amber-500 hover:underline">Xem tất cả</Link>

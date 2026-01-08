@@ -5,7 +5,7 @@ import ProductEntryForm from './ProductEntryForm';
 import ProductTable from './ProductTable';
 import Dropdown from './Dropdown';
 import { useCustomers, useSaleOrderBaoGia } from '../_hooks/useDropdownData';
-import { saveSOBGDetails, fetchSOBGDetails, SaleOrderDetail, fetchPromotionOrders, applySOBGPromotionOrder, PromotionOrderItem, SOBaoGia } from '../_api/adminApi';
+import { saveSOBGDetails, fetchSOBGDetails, SaleOrderDetail, fetchPromotionOrders, fetchSpecialPromotionOrders, applySOBGPromotionOrder, PromotionOrderItem, SOBaoGia } from '../_api/adminApi';
 import { showToast } from '../../../components/ToastManager';
 import { getItem } from '../../../utils/SecureStorage';
 import { getStoredUser } from '../_utils/implicitAuthService';
@@ -722,7 +722,8 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           savedCustomerCode,
           savedTotalAmount,
           savedProductCodes,
-          savedProductGroupCodes
+          savedProductGroupCodes,
+          selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan
         );
 
         // Chỉ hiển thị popup nếu có promotion chiết khấu 2 (chietKhau2 = true)
@@ -737,10 +738,17 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             SPECIAL_PROMOTION_KEYWORDS.some(k => !!p.name && p.name.includes(k))
           );
         }
+        special = special.filter(p => (p.applicable === true) || (String(p.applicable).toLowerCase() === 'true'));
         if (special.length > 0) setSpecialPromotionList(special);
 
-        // Determine available promotions (top section) and show special promotions below
-        const available: PromotionOrderItem[] = promotionOrderResult.availablePromotions || [];
+        // Use allPromotions but filter out those not applicable or not meeting total condition
+        const allPromos: PromotionOrderItem[] = promotionOrderResult.allPromotions || [];
+        const available: PromotionOrderItem[] = allPromos.filter(p => {
+          const cond = Number(p.totalAmountCondition || 0);
+          const meetsTotal = isNaN(cond) || cond === 0 || Number(savedTotalAmount) >= cond;
+          const isApplicable = (p.applicable === true) || (String(p.applicable).toLowerCase() === 'true');
+          return isApplicable && meetsTotal;
+        });
         setPromotionOrderList(available.length > 0 ? available : chietKhau2Promotions);
 
         // Pre-select chietKhau2 promotions if present
@@ -750,8 +758,8 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           setSelectedPromotionOrders([]);
         }
 
-        // Show popup if there are any available or special promotions
-        if ((available && available.length > 0) || (special && special.length > 0)) {
+        // Show popup if there are any available, chiết khấu 2, or special promotions
+        if ((available && available.length > 0) || (chietKhau2Promotions && chietKhau2Promotions.length > 0) || (special && special.length > 0)) {
           setSoId(savedSoId);
           setShowPromotionOrderPopup(true);
         } else {
@@ -979,10 +987,18 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         orderTotal,
         // Ensure arrays are typed as string[] (filter out undefined/null)
         productList.map(p => p.productCode).filter((c): c is string => typeof c === 'string' && c.trim() !== ''),
-        productList.map(p => p.productGroupCode).filter((c): c is string => typeof c === 'string' && c.trim() !== '')
+        productList.map(p => p.productGroupCode).filter((c): c is string => typeof c === 'string' && c.trim() !== ''),
+        selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan
       );
 
-      const available = promotionOrderResult.availablePromotions || [];
+      // Use allPromotions but filter out those not applicable or not meeting total condition
+      const allPromos: PromotionOrderItem[] = promotionOrderResult.allPromotions || [];
+      const available = allPromos.filter(p => {
+        const cond = Number(p.totalAmountCondition || 0);
+        const meetsTotal = isNaN(cond) || cond === 0 || Number(orderTotal) >= cond;
+        const isApplicable = (p.applicable === true) || (String(p.applicable).toLowerCase() === 'true');
+        return isApplicable && meetsTotal;
+      });
       // Surface special promotions from allPromotions so they can always be shown
       try {
         // Prefer API-provided `specialPromotions` if available; otherwise scan allPromotions.
@@ -1107,6 +1123,18 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
 
     setIsApplyingPromotion(true);
     try {
+      // Validate promotions against current SOBG total before applying
+      const currentOrderTotal = orderSummary?.total || totalAmount || productList.reduce((s, p) => s + (p.totalAmount || ((p.discountedPrice ?? p.price) * (p.quantity || 0) + ((p.vat || 0) ? Math.round(((p.discountedPrice ?? p.price) * (p.quantity || 0) * (p.vat || 0)) / 100) : 0))), 0);
+      const invalid = selectedPromotionOrders.filter(p => {
+        const cond = Number((p as any).totalAmountCondition || 0);
+        return !isNaN(cond) && cond > 0 && currentOrderTotal < cond;
+      });
+      if (invalid.length > 0) {
+        const names = invalid.map(p => p.name).join(', ');
+        showToast.error(`Không thể áp dụng Promotion vì SOBG chưa đạt điều kiện: ${names}`);
+        setIsApplyingPromotion(false);
+        return;
+      }
       // Apply promotions one by one (API expects single promotion per request)
       const applyResults = await Promise.all(selectedPromotionOrders.map(promo =>
         applySOBGPromotionOrder({
@@ -1537,6 +1565,31 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             onAdd={handleAddProduct}
             onSave={handleSave} // Sử dụng handleSave của SOBG
             onRefresh={handleRefresh}
+            onOpenSpecialPromotions={async () => {
+              try {
+                if (!soId || !customerCode) {
+                  showToast.warning('Vui lòng chọn khách hàng và SOBG trước khi tải khuyến mãi đặc biệt.');
+                  return;
+                }
+
+                // Use the dedicated special promotions API
+                const res = await fetchSpecialPromotionOrders(soId, customerCode);
+
+                if (!res.specialPromotions || res.specialPromotions.length === 0) {
+                  showToast.info('Không tìm thấy khuyến mãi đặc biệt cho khách hàng này.');
+                  return;
+                }
+
+                setSpecialPromotionList(res.specialPromotions);
+                setPromotionOrderList(res.specialPromotions);
+                setSelectedPromotionOrders([]);
+                setSoId(soId);
+                setShowPromotionOrderPopup(true);
+              } catch (err: any) {
+                console.error('Error loading special promotions (child SOBG):', err);
+                showToast.error('Lỗi khi tải khuyến mãi đặc biệt.');
+              }
+            }}
             priceEntryMethod={priceEntryMethod}
             setPriceEntryMethod={setPriceEntryMethod}
             discountRate={discountRate}

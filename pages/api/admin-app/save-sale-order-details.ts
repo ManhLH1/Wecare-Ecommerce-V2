@@ -186,6 +186,8 @@ async function processSaleOrderUpdatesInBackground(
 
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
 
+const ORDERS_X_PROMOTION_TABLE = "crdfd_ordersxpromotions";
+
 // Axios configuration for better performance and timeout handling
 const DEFAULT_TIMEOUT = 60000; // 60 seconds per request (increased for complex operations)
 const MAX_SOCKETS = 50;
@@ -290,6 +292,16 @@ async function isPromotionApplicableToPaymentTerm(
 ): Promise<{ applicable: boolean; reason?: string }> {
   if (!promotionId) return { applicable: false, reason: "Missing promotionId" };
   try {
+    // Helper: split multi-select values into normalized tokens
+    const splitAndNormalize = (raw?: any) : string[] => {
+      if (raw === null || raw === undefined) return [];
+      const s = String(raw).trim();
+      if (s === "") return [];
+      const tokens = s.split(/[,;|\/]+/).map(t => t.trim()).filter(Boolean);
+      const normalized = tokens.map(tok => normalizePaymentTerm(tok)).filter(Boolean) as string[];
+      return normalized;
+    };
+
     // If no order payment term provided, treat as applicable
     if (!requestedPaymentTerms && requestedPaymentTerms !== 0) {
       return { applicable: true };
@@ -305,10 +317,20 @@ async function isPromotionApplicableToPaymentTerm(
       return { applicable: true };
     }
 
-    const promoNormalized = normalizePaymentTerm(promoPayment);
-    const requestedNormalized = normalizePaymentTerm(requestedPaymentTerms);
+    // Support multi-select promoPayment and requestedPaymentTerms: accept if any normalized token intersects
+    const promoTokens = splitAndNormalize(promoPayment);
+    const requestedTokens = splitAndNormalize(requestedPaymentTerms);
 
-    if (promoNormalized && requestedNormalized && String(promoNormalized) === String(requestedNormalized)) {
+    // If either side has no normalized tokens, fall back to simple normalize equality
+    if (promoTokens.length === 0 && requestedTokens.length === 0) {
+      const promoNorm = normalizePaymentTerm(promoPayment);
+      const reqNorm = normalizePaymentTerm(requestedPaymentTerms);
+      if (promoNorm && reqNorm && String(promoNorm) === String(reqNorm)) return { applicable: true };
+      return { applicable: false, reason: `Promotion requires payment terms "${promoPayment}", order has "${requestedPaymentTerms}"` };
+    }
+
+    const intersection = promoTokens.filter(t => requestedTokens.includes(t));
+    if (intersection.length > 0) {
       return { applicable: true };
     }
 
@@ -951,6 +973,20 @@ export default async function handler(
       "OData-Version": "4.0",
     };
 
+    // Ensure we have order/payment terms to validate promotions.
+    // If client didn't provide paymentTerms, fetch from the SO header to avoid false-positive applicabilities.
+    let effectivePaymentTerms = paymentTerms;
+    if ((effectivePaymentTerms === undefined || effectivePaymentTerms === null || effectivePaymentTerms === "") && soId) {
+      try {
+        const soResp = await apiClient.get(`${SALE_ORDERS_TABLE}(${soId})?$select=crdfd_dieu_khoan_thanh_toan`, { headers });
+        const soData = soResp.data || {};
+        effectivePaymentTerms = soData.crdfd_dieu_khoan_thanh_toan;
+      } catch (err: any) {
+        // If fetch fails, keep effectivePaymentTerms undefined so downstream logic treats as applicable by design.
+        console.warn('[Save SOD] Could not fetch SO payment terms for promotion validation:', err?.message || err, err?.response?.data);
+      }
+    }
+
     // Customer id to stamp into lookup columns (owner/created by - lookup Customers)
     // Prefer login customerId, fallback to selected customerId if provided.
     const customerIdToStamp = normalizeGuid(customerLoginId) || normalizeGuid(customerId);
@@ -1199,6 +1235,17 @@ export default async function handler(
     const failedProducts: any[] = [];
 
     // Process products in parallel batches to avoid overwhelming the server
+    // Pre-calculate order total (used to validate promotion min total conditions)
+    const orderTotal = products.reduce((s, p) => {
+      const subtotal = p.subtotal ?? ((p.discountedPrice ?? p.price) * (p.quantity || 0));
+      const vatAmount = p.vatAmount ?? Math.round((subtotal * (p.vat || 0)) / 100);
+      const total = p.totalAmount ?? (subtotal + vatAmount);
+      return s + (Number(total) || 0);
+    }, 0);
+
+    // Promotion cache to avoid repeated promo fetches
+    const promoCache: Record<string, any> = {};
+
     const BATCH_SIZE = 5; // Process 5 products at a time
     for (let i = 0; i < products.length; i += BATCH_SIZE) {
       const batch = products.slice(i, i + BATCH_SIZE);
@@ -1249,34 +1296,79 @@ export default async function handler(
           crdfd_promotiontext: product.promotionText || "",
         };
 
+        // Assume promotion will be applied unless a validation marks it skipped
+        let promotionApplicableForThisProduct = !!product.promotionId; // Only applicable if promotionId exists
+
         // Set promotionId từ frontend (đã được validate và lookup từ phía client)
         if (product.promotionId) {
           const promotionIdClean = String(product.promotionId).replace(/^{|}$/g, '').trim();
 
-          // Validate promotion applicability against order payment terms (if provided)
+          // Fetch promotion (cached) to validate min-total condition and payment terms
           try {
-            const promoCheck = await isPromotionApplicableToPaymentTerm(promotionIdClean, paymentTerms, headers);
-            if (!promoCheck.applicable) {
-              // Return a failure result for this product so it's reported in the multi-status response
-              return {
-                success: false,
-                product,
-                error: `Promotion không áp dụng cho điều khoản thanh toán của đơn hàng.`,
-                fullError: promoCheck.reason || null
-              };
+            let promoData: any = promoCache[promotionIdClean];
+            if (!promoData) {
+              const promoResp = await apiClient.get(`${PROMOTION_TABLE}(${promotionIdClean})?$select=cr1bb_tongtienapdung,cr1bb_ieukhoanthanhtoanapdung`, { headers });
+              promoData = promoResp.data;
+              promoCache[promotionIdClean] = promoData;
+            }
+
+            // Validate total amount condition (if promotion requires minimum)
+            const minTotalReq = Number(promoData?.cr1bb_tongtienapdung) || 0;
+            if (minTotalReq > 0 && Number(orderTotal) < minTotalReq) {
+              // Skip applying promotion for this product (do not fail the whole save)
+              promotionApplicableForThisProduct = false;
+              console.log(`[Save SOD] Skipping promotion ${promotionIdClean} for product ${product.productCode} due to min total (${minTotalReq})`);
+            }
+
+            // Validate promotion applicability against order payment terms (if provided)
+            if (promotionApplicableForThisProduct) {
+              const promoCheck = await isPromotionApplicableToPaymentTerm(promotionIdClean, effectivePaymentTerms, headers);
+              if (!promoCheck.applicable) {
+                // Skip applying promotion for this product (do not fail the whole save)
+                promotionApplicableForThisProduct = false;
+                console.log(`[Save SOD] Skipping promotion ${promotionIdClean} for product ${product.productCode} due to payment term mismatch: ${promoCheck.reason}`);
+              }
             }
           } catch (err: any) {
             return {
               success: false,
               product,
-              error: `Lỗi khi kiểm tra điều khoản thanh toán cho chương trình khuyến mãi.`,
+              error: `Lỗi khi kiểm tra chương trình khuyến mãi.`,
               fullError: err?.message || err
             };
           }
 
-          // Set promotion lookup using navigation binding (lookup) to promotions entity
-          payload[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${promotionIdClean})`;
-          console.log(`[Save SOD] ✅ Set promotion lookup for product ${product.productCode}: crdfd_Promotion@odata.bind = /crdfd_promotions(${promotionIdClean})`);
+        // Set promotion lookup only if promotion was actually applied to this order and passed validations.
+        // Defensive check: verify an Orders x Promotion record exists linking this SO and Promotion.
+        try {
+          if (promotionApplicableForThisProduct) {
+            const existingFilter = `_crdfd_so_value eq ${soId} and _crdfd_promotion_value eq ${promotionIdClean} and crdfd_type eq 'Order' and statecode eq 0`;
+            const existingQuery = `$filter=${encodeURIComponent(existingFilter)}&$select=crdfd_ordersxpromotionid`;
+            const existingEndpoint = `${BASE_URL}${ORDERS_X_PROMOTION_TABLE}?${existingQuery}`;
+            const existingResp = await apiClient.get(existingEndpoint, { headers });
+            const existingItems = existingResp.data?.value || [];
+            if (existingItems.length > 0) {
+              payload[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${promotionIdClean})`;
+              payload.crdfd_promotiontext = product.promotionText || "";
+              console.log(`[Save SOD] ✅ Set promotion lookup for product ${product.productCode}: crdfd_Promotion@odata.bind = /crdfd_promotions(${promotionIdClean})`);
+            } else {
+              // Promotion not actually applied on the order — do not save promotion lookup/text
+              console.log(`[Save SOD] ℹ️ Skipping promotion for product ${product.productCode} because Orders x Promotion record not found (SO=${soId}, promo=${promotionIdClean})`);
+              payload.crdfd_promotiontext = "";
+            }
+          } else {
+            // Skip applying promotion due to validation; ensure promotion fields are empty
+            payload.crdfd_promotiontext = "";
+            console.log(`[Save SOD] Promotion ${promotionIdClean} skipped for product ${product.productCode} (will not be saved on SOD)`);
+          }
+        } catch (err: any) {
+          // On error, be conservative and skip setting promotion to avoid writing incorrect data
+          console.error(`[Save SOD] Error checking Orders x Promotion existence:`, err?.message || err, err?.response?.data);
+          payload.crdfd_promotiontext = "";
+        }
+        } else {
+          // Ensure promotion fields are empty if no promotionId
+          payload.crdfd_promotiontext = "";
         }
 
         // Add note (ghi chú) if available

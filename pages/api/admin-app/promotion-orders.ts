@@ -630,8 +630,10 @@ export default async function handler(
     console.log(`After payment terms filtering: ${availablePromotions.length}`);
     availablePromotions.forEach(p => console.log(`- ${p.name} (ID: ${p.id}, applicable: ${p.applicable})`));
 
+    // Step 7: Only consider promotions that are applicable for max-value selection
+    const applicableAvailablePromotions = availablePromotions.filter(p => (p.applicable === true) || (String(p.applicable).toLowerCase() === 'true'));
     // Step 7: Get max value promotions (apply chietKhau2 filter and max logic)
-    const promotionOrderMax = getMaxValuePromotions(availablePromotions);
+    const promotionOrderMax = getMaxValuePromotions(applicableAvailablePromotions);
 
     // Step 7b: Extract "special" promotions that should be shown regardless of product codes.
     // These promotions are identified by name and must be surfaced even when existingPromotionOrders exist.
@@ -702,6 +704,13 @@ export default async function handler(
       } catch (err: any) {
         console.warn('[promotion-orders] Could not fetch missing special promotions:', (err as any)?.message || err);
       }
+    }
+
+    // If there are available promotions that include chiết khấu 2 (line discounts),
+    // do not surface special promotions (specials should not be shown when chietKhau2 promotions exist).
+    const hasChietKhau2 = availablePromotions.some(p => Boolean(p.chietKhau2));
+    if (hasChietKhau2) {
+      specialPromotions = [];
     }
 
     // Debug logging

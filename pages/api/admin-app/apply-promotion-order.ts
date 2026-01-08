@@ -7,6 +7,34 @@ const ORDERS_X_PROMOTION_TABLE = "crdfd_ordersxpromotions";
 const SOD_TABLE = "crdfd_saleorderdetails";
 const SALE_ORDERS_TABLE = "crdfd_sale_orders";
 
+// Payment terms mapping used to normalize values
+const PAYMENT_TERMS_MAP: Record<string, string> = {
+  "0": "Thanh toán sau khi nhận hàng",
+  "14": "Thanh toán 2 lần vào ngày 10 và 25",
+  "30": "Thanh toán vào ngày 5 hàng tháng",
+  "283640000": "Tiền mặt",
+  "283640001": "Công nợ 7 ngày",
+  "191920001": "Công nợ 20 ngày",
+  "283640002": "Công nợ 30 ngày",
+  "283640003": "Công nợ 45 ngày",
+  "283640004": "Công nợ 60 ngày",
+  "283640005": "Thanh toán trước khi nhận hàng",
+};
+
+const normalizePaymentTerm = (input?: any): string | null => {
+  if (input === null || input === undefined || input === "") return null;
+  const t = String(input).trim();
+  if (t === "") return null;
+  if (PAYMENT_TERMS_MAP[t]) return t;
+  const foundKey = Object.keys(PAYMENT_TERMS_MAP).find(
+    (k) => PAYMENT_TERMS_MAP[k].toLowerCase() === t.toLowerCase()
+  );
+  if (foundKey) return foundKey;
+  const digits = t.replace(/\D/g, "");
+  if (digits && PAYMENT_TERMS_MAP[digits]) return digits;
+  return t;
+};
+
 /**
  * API để áp dụng Promotion Order cho Sales Order
  * 
@@ -60,6 +88,48 @@ export default async function handler(
       "OData-Version": "4.0",
     };
 
+    // 0. Validate promotion conditions before applying
+    let promoData: any = null;
+    try {
+      const promoEndpoint = `${BASE_URL}crdfd_promotions(${promotionId})?$select=cr1bb_tongtienapdung,crdfd_value,crdfd_vn,cr1bb_chietkhau2,crdfd_masanpham_multiple,cr1bb_manhomsp_multiple,cr1bb_ieukhoanthanhtoanapdung`;
+      const promoResp = await axios.get(promoEndpoint, { headers });
+      promoData = promoResp.data;
+    } catch (err) {
+      console.warn('[ApplyPromotion] Could not fetch promotion details for validation:', (err as any)?.message || err);
+      return res.status(400).json({ error: "Không thể lấy thông tin promotion để kiểm tra điều kiện" });
+    }
+
+    // Check total amount condition - use UI-provided total (do NOT fetch SODs)
+    // The UI must provide one of: `orderTotal`, `uiTotal`, `totalAmount`, or `crdfd_tongtien`.
+    if (promoData && promoData.cr1bb_tongtienapdung !== null && promoData.cr1bb_tongtienapdung !== undefined) {
+      const minTotal = Number(promoData.cr1bb_tongtienapdung) || 0;
+      if (minTotal > 0) {
+        const uiTotalRaw = req.body.orderTotal ?? req.body.uiTotal ?? req.body.totalAmount ?? req.body.crdfd_tongtien;
+        if (uiTotalRaw === null || uiTotalRaw === undefined || uiTotalRaw === "") {
+          return res.status(400).json({
+            error: `Missing order total from UI to validate promotion minimum. Promotion requires ${minTotal.toLocaleString('vi-VN')}đ.`
+          });
+        }
+
+        // Normalize UI total to number (accept strings with thousand separators)
+        const uiTotalNum = typeof uiTotalRaw === "number"
+          ? uiTotalRaw
+          : Number(String(uiTotalRaw).replace(/[^\d.-]+/g, ""));
+
+        if (isNaN(uiTotalNum)) {
+          return res.status(400).json({
+            error: `Invalid order total provided from UI for promotion validation.`
+          });
+        }
+
+        if (uiTotalNum < minTotal) {
+          return res.status(400).json({
+            error: `Promotion "${promotionName}" yêu cầu đơn hàng tối thiểu ${minTotal.toLocaleString('vi-VN')}đ. Tổng tiền hiện tại (UI): ${Math.round(uiTotalNum).toLocaleString('vi-VN')}đ`
+          });
+        }
+      }
+    }
+
     // 1. Prepare effective promotion values (enrich from CRM if necessary)
     // Support both text and OptionSet numeric for vndOrPercent.
     const OPTION_PERCENT = "191920000";
@@ -75,33 +145,36 @@ export default async function handler(
     let effectiveProductCodes = productCodes;
     let effectiveProductGroupCodes = productGroupCodes;
 
-    // Try to fetch promotion record to get canonical values (if needed)
-    let promoData: any = null;
-    try {
-      const promoEndpoint = `${BASE_URL}crdfd_promotions(${promotionId})?$select=crdfd_value,crdfd_vn,cr1bb_chietkhau2,crdfd_masanpham_multiple,cr1bb_manhomsp_multiple`;
-      const promoResp = await axios.get(promoEndpoint, { headers });
-      promoData = promoResp.data;
-      if (promoData) {
-        if (!effectiveChietKhau2) {
-          effectiveChietKhau2 = (promoData.cr1bb_chietkhau2 === 191920001) || Boolean(promoData.cr1bb_chietkhau2 === '191920001');
+    // Try to fetch promotion record to get canonical values (if needed) - re-use promoData from validation
+    if (!promoData) {
+      try {
+        const promoEndpoint = `${BASE_URL}crdfd_promotions(${promotionId})?$select=crdfd_value,crdfd_vn,cr1bb_chietkhau2,crdfd_masanpham_multiple,cr1bb_manhomsp_multiple,cr1bb_ieukhoanthanhtoanapdung`;
+        const promoResp = await axios.get(promoEndpoint, { headers });
+        promoData = promoResp.data;
+        if (promoData) {
+          if (!effectiveChietKhau2) {
+            effectiveChietKhau2 = (promoData.cr1bb_chietkhau2 === 191920001) || Boolean(promoData.cr1bb_chietkhau2 === '191920001');
+          }
+          if (effectivePromotionValue === undefined || effectivePromotionValue === null) {
+            const rawVal = promoData.crdfd_value;
+            const parsed = typeof rawVal === 'number' ? rawVal : (rawVal ? Number(rawVal) : 0);
+            effectivePromotionValue = !isNaN(parsed) ? parsed : effectivePromotionValue;
+          }
+          if (!effectiveVndOrPercent) {
+            effectiveVndOrPercent = promoData.crdfd_vn;
+          }
+          if (!effectiveProductCodes && promoData.crdfd_masanpham_multiple) {
+            effectiveProductCodes = promoData.crdfd_masanpham_multiple;
+          }
+          if (!effectiveProductGroupCodes && promoData.cr1bb_manhomsp_multiple) {
+            effectiveProductGroupCodes = promoData.cr1bb_manhomsp_multiple;
+          }
+          // promoData may include applicable payment terms (multi-select); keep it available
+          // as promoData.cr1bb_ieukhoanthanhtoanapdung
         }
-        if (effectivePromotionValue === undefined || effectivePromotionValue === null) {
-          const rawVal = promoData.crdfd_value;
-          const parsed = typeof rawVal === 'number' ? rawVal : (rawVal ? Number(rawVal) : 0);
-          effectivePromotionValue = !isNaN(parsed) ? parsed : effectivePromotionValue;
-        }
-        if (!effectiveVndOrPercent) {
-          effectiveVndOrPercent = promoData.crdfd_vn;
-        }
-        if (!effectiveProductCodes && promoData.crdfd_masanpham_multiple) {
-          effectiveProductCodes = promoData.crdfd_masanpham_multiple;
-        }
-        if (!effectiveProductGroupCodes && promoData.cr1bb_manhomsp_multiple) {
-          effectiveProductGroupCodes = promoData.cr1bb_manhomsp_multiple;
-        }
+      } catch (err) {
+        console.warn('[ApplyPromotion] Could not fetch promotion details to enrich request (pre-create):', (err as any)?.message || err);
       }
-    } catch (err) {
-      console.warn('[ApplyPromotion] Could not fetch promotion details to enrich request (pre-create):', (err as any)?.message || err);
     }
 
     // Special-case promotions: force apply as line-level discount (pre-VAT) for known promotion names
@@ -111,18 +184,14 @@ export default async function handler(
       "[ALL] VOUCHER SINH NHẬT - 50.000Đ"
     ].map(s => s.toLowerCase());
 
+    // Detect special promotions - for special promotions we will NOT update SODs (only header)
+    let isSpecialPromotion = false;
     try {
       const promoNameNorm = String(promotionName || "").toLowerCase();
-      if (FORCE_PRE_VAT_PROMOTIONS.some(p => promoNameNorm.includes(p))) {
-        effectiveChietKhau2 = true;
-        // Ensure we use promotion's stored type/value if available; treat as percent if promoData indicates percent
-        if (effectiveVndOrPercent === "" && promoData?.crdfd_vn) {
-          effectiveVndOrPercent = promoData.crdfd_vn;
-        }
-        if ((effectivePromotionValue === undefined || effectivePromotionValue === null) && promoData?.crdfd_value) {
-          effectivePromotionValue = promoData.crdfd_value;
-        }
-        console.log(`[ApplyPromotion] Forcing pre-VAT line discount for promotion "${promotionName}"`);
+      isSpecialPromotion = FORCE_PRE_VAT_PROMOTIONS.some(p => promoNameNorm.includes(p));
+      if (isSpecialPromotion) {
+        // For special promotions, do NOT force chiết khấu 2 at line level; keep header creation only.
+        console.log(`[ApplyPromotion] Detected special promotion "${promotionName}" - will apply as header-only.`);
       }
     } catch (e) {
       // ignore
@@ -131,6 +200,16 @@ export default async function handler(
     // Determine loai (Tiền / Phần trăm)
     const isVnd = effectiveVndOrPercent === "VNĐ" || (typeof effectiveVndOrPercent === 'string' && effectiveVndOrPercent.toUpperCase() === "VND") || effectiveVndOrPercent === OPTION_VND;
     const loai = isVnd ? "Tiền" : "Phần trăm";
+
+    console.log('[ApplyPromotion] Effective values:', {
+      promotionId,
+      promotionName,
+      effectivePromotionValue,
+      effectiveVndOrPercent,
+      effectiveChietKhau2,
+      isSpecialPromotion,
+      loai
+    });
 
     // Normalize value to store on Orders x Promotion / SO header:
     // - For percent types, store percentage number (e.g., 5)
@@ -176,7 +255,32 @@ export default async function handler(
       console.warn('[ApplyPromotion] Failed to check existing Orders x Promotion:', (err as any)?.message || err);
     }
 
+    // Extra safety: re-check total before creating Orders x Promotion using UI-provided total
     if (!createdOrderXPromotionId) {
+      try {
+        if (promoData && promoData.cr1bb_tongtienapdung !== null && promoData.cr1bb_tongtienapdung !== undefined) {
+          const minTotalSafety = Number(promoData.cr1bb_tongtienapdung) || 0;
+          if (minTotalSafety > 0) {
+            const uiTotalRaw = req.body.orderTotal ?? req.body.uiTotal ?? req.body.totalAmount ?? req.body.crdfd_tongtien;
+            if (uiTotalRaw === null || uiTotalRaw === undefined || uiTotalRaw === "") {
+              return res.status(400).json({ error: `Missing order total from UI to validate promotion minimum (safety check).` });
+            }
+            const uiTotalNum = typeof uiTotalRaw === "number"
+              ? uiTotalRaw
+              : Number(String(uiTotalRaw).replace(/[^\d.-]+/g, ""));
+            if (isNaN(uiTotalNum)) {
+              return res.status(400).json({ error: "Invalid order total provided from UI for promotion safety validation." });
+            }
+            if (uiTotalNum < minTotalSafety) {
+              return res.status(400).json({ error: `Promotion \"${promotionName}\" không được áp dụng vì đơn hàng chưa đạt điều kiện tổng tiền.` });
+            }
+          }
+        }
+      } catch (err: any) {
+        console.error('[ApplyPromotion] Safety total re-check failed, aborting apply:', err?.message || err, err?.response?.data);
+        return res.status(500).json({ error: "Lỗi khi kiểm tra lại tổng tiền đơn hàng trước khi áp dụng promotion" });
+      }
+
       const createOrderXPromotionEndpoint = `${BASE_URL}${ORDERS_X_PROMOTION_TABLE}`;
       const createResponse = await axios.post(
         createOrderXPromotionEndpoint,
@@ -192,158 +296,105 @@ export default async function handler(
 
     // 3. Nếu là chiết khấu 2 (chietKhau2 = true) và không phải direct discount promotion, cập nhật crdfd_chieckhau2 và giá trên các SOD matching
     let updatedSodCount = 0;
-    // Always attempt to update SOD records when applying a promotion order,
-    // even if effectiveChietKhau2 is false. This ensures re-applying promotions
-    // will update ck2 for all lines in the SO.
-    {
-      // Lấy danh sách SOD của SO
-      const sodFilters = [
-        "statecode eq 0",
-        `_crdfd_socode_value eq ${soId}`,
-      ];
-
-      const sodQuery = `$filter=${encodeURIComponent(
-        sodFilters.join(" and ")
-      )}&$select=crdfd_saleorderdetailid,crdfd_masanpham,crdfd_manhomsp`;
-
-      const sodEndpoint = `${BASE_URL}${SOD_TABLE}?${sodQuery}`;
-      const sodResponse = await axios.get(sodEndpoint, { headers });
-      const sodList = sodResponse.data.value || [];
-
-      // Filter SOD matching productCodes or productGroupCodes
-      // Normalize effective product codes/groups into arrays (trim, remove empties)
-      const productCodeListRaw = effectiveProductCodes 
-        ? (Array.isArray(effectiveProductCodes) ? effectiveProductCodes : String(effectiveProductCodes).split(","))
-        : [];
-      const productCodeList = productCodeListRaw.map((c: any) => String(c || '').trim()).filter((c: string) => c !== '');
-      const productGroupCodeListRaw = effectiveProductGroupCodes
-        ? (Array.isArray(effectiveProductGroupCodes) ? effectiveProductGroupCodes : String(effectiveProductGroupCodes).split(","))
-        : [];
-      const productGroupCodeList = productGroupCodeListRaw.map((c: any) => String(c || '').trim()).filter((c: string) => c !== '');
-      // Normalize for case-insensitive matching
-      const productCodeListNorm = productCodeList.map(s => s.toUpperCase());
-      const productGroupCodeListNorm = productGroupCodeList.map(s => s.toUpperCase());
-
-      // Tính toán giá trị chiết khấu 2 (đã được tính ở trên)
-      // chietKhau2ValueToStore: VNĐ => số tiền, % => decimal (0.05)
-      // Chuẩn hóa giá trị dùng để tính giá trên SOD (promotionValueForCalc):
-      // - Nếu là percent: đảm bảo là decimal (0.05)
-      // - Nếu là VNĐ: giữ nguyên số tiền
-      const percentCodesForCalc = [OPTION_PERCENT, "%"];
-      const effectiveVndOrPercentStr = effectiveVndOrPercent !== undefined && effectiveVndOrPercent !== null ? String(effectiveVndOrPercent).trim() : "";
-      const isPercentTypeForCalc = percentCodesForCalc.includes(effectiveVndOrPercentStr);
-      let promotionValueForCalc = 0;
-      {
-        const rawNum = typeof effectivePromotionValue === 'number' ? effectivePromotionValue : (effectivePromotionValue ? Number(effectivePromotionValue) : 0);
-        if (isNaN(rawNum)) {
-          promotionValueForCalc = 0;
-        } else if (isPercentTypeForCalc) {
-          promotionValueForCalc = rawNum > 1 ? rawNum / 100 : rawNum;
-        } else {
-          promotionValueForCalc = rawNum;
-        }
-      }
-
-      // Force update: prepare list of all SODs to update (ignore productCodes filter)
-      const sodsToUpdate: any[] = sodList.slice(); // clone full list
-      // Track updated SOD ids to avoid double-updating in retry/final pass
-      const updatedSodIds = new Set<string>();
-      for (const sod of sodsToUpdate) {
-        try {
-          const sodId = sod.crdfd_saleorderdetailid;
-          if (updatedSodIds.has(sodId)) {
-            continue; // skip already-updated
-          }
-          const updated = await updateSodChietKhau2(
-            sodId,
-            promotionValueForCalc,
-            effectiveVndOrPercent,
-            headers
-          );
-          if (updated && (updated.success || updated.status === 204 || updated.status === 200)) {
-            updatedSodCount++;
-            updatedSodIds.add(sodId);
-          }
-        } catch (err: any) {
-          console.error('[ApplyPromotion] Error updating single SOD:', sod?.crdfd_saleorderdetailid, err?.message || err);
-        }
-      }
-
-      // Sau khi cập nhật chiết khấu 2, tính lại tổng đơn hàng
-      if (updatedSodCount > 0) {
-        await recalculateOrderTotals(soId, headers);
-      }
-      // Nếu không cập nhật được SOD nào (ví dụ SOD mới vừa được lưu & chưa hiện trong query),
-      // thử re-fetch 1 lần sau delay ngắn để bắt SOD mới.
-      if (updatedSodCount === 0) {
-        try {
-          await new Promise(resolve => setTimeout(resolve, 500));
-          const sodRespRetry = await axios.get(sodEndpoint, { headers });
-          const sodListRetry = sodRespRetry.data.value || [];
-          // Rebuild sodsToUpdate from retry list
-          const sodsToUpdateRetry: any[] = [];
-          for (const sod of sodListRetry) {
-            const sodProductCodeRaw = sod.crdfd_masanpham || '';
-            const sodProductGroupCodeRaw = sod.crdfd_manhomsp || '';
-            const sodProductCode = String(sodProductCodeRaw).trim().toUpperCase();
-            const sodProductGroupCode = String(sodProductGroupCodeRaw).trim().toUpperCase();
-            const matchesProduct = productCodeListNorm.length === 0 || productCodeListNorm.some((code: string) => sodProductCode.includes(code));
-            const matchesGroup = productGroupCodeListNorm.length === 0 || productGroupCodeListNorm.some((code: string) => sodProductGroupCode.includes(code));
-            if (productCodeListNorm.length === 0 && productGroupCodeListNorm.length === 0) {
-              sodsToUpdateRetry.push(sod);
-            } else if (matchesProduct || matchesGroup) {
-              sodsToUpdateRetry.push(sod);
-            }
-          }
-          for (const sod of sodsToUpdateRetry) {
-            try {
-              const sodId = sod.crdfd_saleorderdetailid;
-              if (updatedSodIds.has(sodId)) {
-                continue; // skip already-updated
-              }
-              const updated = await updateSodChietKhau2(
-                sodId,
-                promotionValueForCalc,
-                effectiveVndOrPercent,
-                headers
-              );
-              if (updated && (updated.success || updated.status === 204 || updated.status === 200)) {
-                updatedSodCount++;
-                updatedSodIds.add(sodId);
-              }
-            } catch (err: any) {
-              console.error('[ApplyPromotion] (retry) Error updating single SOD:', sod?.crdfd_saleorderdetailid, err?.message || err);
-            }
-          }
-          if (updatedSodCount > 0) {
-            await recalculateOrderTotals(soId, headers);
-          }
-        } catch (err: any) {
-          console.warn('[ApplyPromotion] Retry fetch/update SOD failed:', err?.message || err);
-        }
-      }
-
-      // Final pass: ensure ALL SOD records inside this SO are updated (catch any newly saved SODs)
+    // Before applying line-level chiết khấu 2, verify promotion's applicable payment terms (if any) match SO's payment term.
+    let disallowedByPaymentTerms = false;
+    if (effectiveChietKhau2 && !isSpecialPromotion) {
       try {
-        const sodFiltersFinal = [
+        const soEndpoint = `${BASE_URL}${SALE_ORDERS_TABLE}(${soId})?$select=crdfd_dieu_khoan_thanh_toan,crdfd_ieukhoanthanhtoan`;
+        const soResp = await axios.get(soEndpoint, { headers });
+        const soData = soResp.data || {};
+        const soPaymentRaw = soData.crdfd_dieu_khoan_thanh_toan ?? soData.crdfd_ieukhoanthanhtoan;
+        const promoPaymentRaw = promoData?.cr1bb_ieukhoanthanhtoanapdung;
+        // Support multi-select payment terms: check intersection
+        const splitAndNormalize = (raw?: any): string[] => {
+          if (raw === null || raw === undefined) return [];
+          const s = String(raw).trim();
+          if (s === "") return [];
+          const tokens = s.split(/[,;|\/]+/).map((t: string) => t.trim()).filter(Boolean);
+          return tokens.map((tok: string) => normalizePaymentTerm(tok)).filter(Boolean) as string[];
+        };
+        const soTokens = splitAndNormalize(soPaymentRaw);
+        const promoTokens = splitAndNormalize(promoPaymentRaw);
+        if (promoTokens.length > 0 && soTokens.length > 0) {
+          const intersect = promoTokens.filter(t => soTokens.includes(t));
+          if (intersect.length === 0) {
+            disallowedByPaymentTerms = true;
+            console.log(`[ApplyPromotion] Promotion ${promotionId} chietKhau2 not applicable due to payment term mismatch (promo=${promoPaymentRaw} so=${soPaymentRaw})`);
+          }
+        } else if (promoPaymentRaw && String(promoPaymentRaw).trim() !== "" && soTokens.length === 0) {
+          // Promotion restricts payment terms but SO has none -> disallow
+          disallowedByPaymentTerms = true;
+          console.log(`[ApplyPromotion] Promotion ${promotionId} chietKhau2 not applicable: SO missing payment term (promo=${promoPaymentRaw})`);
+        }
+      } catch (err: any) {
+        console.warn('[ApplyPromotion] Failed to fetch SO for payment term check:', err?.message || err);
+      }
+    }
+
+    if (effectiveChietKhau2 && !isSpecialPromotion && !disallowedByPaymentTerms) {
+      try {
+        // Lấy danh sách SOD của SO
+        const sodFilters = [
           "statecode eq 0",
           `_crdfd_socode_value eq ${soId}`,
         ];
-        const sodQueryFinal = `$filter=${encodeURIComponent(
-          sodFiltersFinal.join(" and ")
-        )}&$select=crdfd_saleorderdetailid,crdfd_masanpham,crdfd_manhomsp`;
-        const sodEndpointFinal = `${BASE_URL}${SOD_TABLE}?${sodQueryFinal}`;
-        const sodRespFinal = await axios.get(sodEndpointFinal, { headers });
-        const sodListFinal = sodRespFinal.data.value || [];
 
-        let finalUpdated = 0;
-        for (const sod of sodListFinal) {
+        const sodQuery = `$filter=${encodeURIComponent(
+          sodFilters.join(" and ")
+        )}&$select=crdfd_saleorderdetailid,crdfd_masanpham,crdfd_manhomsp`;
+
+        const sodEndpoint = `${BASE_URL}${SOD_TABLE}?${sodQuery}`;
+        const sodResponse = await axios.get(sodEndpoint, { headers });
+        const sodList = sodResponse.data.value || [];
+
+        // Normalize effective product codes/groups into arrays (trim, remove empties)
+        const productCodeListRaw = effectiveProductCodes
+          ? (Array.isArray(effectiveProductCodes) ? effectiveProductCodes : String(effectiveProductCodes).split(","))
+          : [];
+        const productCodeList = productCodeListRaw.map((c: any) => String(c || '').trim()).filter((c: string) => c !== '');
+        const productGroupCodeListRaw = effectiveProductGroupCodes
+          ? (Array.isArray(effectiveProductGroupCodes) ? effectiveProductGroupCodes : String(effectiveProductGroupCodes).split(","))
+          : [];
+        const productGroupCodeList = productGroupCodeListRaw.map((c: any) => String(c || '').trim()).filter((c: string) => c !== '');
+        const productCodeListNorm = productCodeList.map(s => s.toUpperCase());
+        const productGroupCodeListNorm = productGroupCodeList.map(s => s.toUpperCase());
+
+        const percentCodesForCalc = [OPTION_PERCENT, "%"];
+        const effectiveVndOrPercentStr = effectiveVndOrPercent !== undefined && effectiveVndOrPercent !== null ? String(effectiveVndOrPercent).trim() : "";
+        const isPercentTypeForCalc = percentCodesForCalc.includes(effectiveVndOrPercentStr);
+        let promotionValueForCalc = 0;
+        {
+          const rawNum = typeof effectivePromotionValue === 'number' ? effectivePromotionValue : (effectivePromotionValue ? Number(effectivePromotionValue) : 0);
+          if (isNaN(rawNum)) {
+            promotionValueForCalc = 0;
+          } else if (isPercentTypeForCalc) {
+            promotionValueForCalc = rawNum > 1 ? rawNum / 100 : rawNum;
+          } else {
+            promotionValueForCalc = rawNum;
+          }
+        }
+
+        // Prepare SODs to update (match by product codes/groups if provided)
+        const sodsToUpdate: any[] = [];
+        for (const sod of sodList) {
+          const sodProductCodeRaw = sod.crdfd_masanpham || '';
+          const sodProductGroupCodeRaw = sod.crdfd_manhomsp || '';
+          const sodProductCode = String(sodProductCodeRaw).trim().toUpperCase();
+          const sodProductGroupCode = String(sodProductGroupCodeRaw).trim().toUpperCase();
+          const matchesProduct = productCodeListNorm.length === 0 || productCodeListNorm.some((code: string) => sodProductCode.includes(code));
+          const matchesGroup = productGroupCodeListNorm.length === 0 || productGroupCodeListNorm.some((code: string) => sodProductGroupCode.includes(code));
+          if (productCodeListNorm.length === 0 && productGroupCodeListNorm.length === 0) {
+            sodsToUpdate.push(sod);
+          } else if (matchesProduct || matchesGroup) {
+            sodsToUpdate.push(sod);
+          }
+        }
+
+        const updatedSodIds = new Set<string>();
+        for (const sod of sodsToUpdate) {
           try {
             const sodId = sod.crdfd_saleorderdetailid;
-            if (updatedSodIds.has(sodId)) {
-              continue; // skip already-updated
-            }
-            // Use promotionValueForCalc (decimal for percent) for calculation and effectiveVndOrPercent for type
+            if (updatedSodIds.has(sodId)) continue;
             const updated = await updateSodChietKhau2(
               sodId,
               promotionValueForCalc,
@@ -351,32 +402,34 @@ export default async function handler(
               headers
             );
             if (updated && (updated.success || updated.status === 204 || updated.status === 200)) {
-              finalUpdated++;
+              updatedSodCount++;
+              updatedSodIds.add(sodId);
             }
           } catch (err: any) {
-            console.error('[ApplyPromotion] (final pass) Error updating single SOD:', sod?.crdfd_saleorderdetailid, err?.message || err);
+            console.error('[ApplyPromotion] Error updating single SOD:', sod?.crdfd_saleorderdetailid, err?.message || err);
           }
         }
 
-        if (finalUpdated > 0) {
-          updatedSodCount += finalUpdated;
+        if (updatedSodCount > 0) {
           await recalculateOrderTotals(soId, headers);
         }
+      } catch (err: any) {
+        console.warn('[ApplyPromotion] SOD update block failed:', err?.message || err);
+      }
+    } else {
+      // Not chiết khấu 2 or special promotion: skip SOD updates entirely.
+      updatedSodCount = 0;
+    }
 
-      } catch (err: any) {
-        console.warn('[ApplyPromotion] Final pass failed to update all SODs:', err?.message || err);
-      }
-      // Cập nhật trường crdfd_chieckhau2 trên Sale Order (header) để phản ánh promotionValue (raw)
-      // Một số môi trường/metadata có thể dùng tên trường khác (crdfd_chietkhau2) — ghi cả hai để an toàn.
-      try {
-        const soUpdatePayload: any = {
-          crdfd_chieckhau2: chietKhau2ValueToStore,
-        };
-        const soUpdateEndpoint = `${BASE_URL}${SALE_ORDERS_TABLE}(${soId})`;
-        const soPatchResp = await axios.patch(soUpdateEndpoint, soUpdatePayload, { headers });
-      } catch (err: any) {
-        console.warn('[ApplyPromotion] Failed to update SO crdfd_chieckhau2/chietkhau2:', err?.message || err);
-      }
+    // Cập nhật trường crdfd_chieckhau2 trên Sale Order (header) để phản ánh promotionValue (raw)
+    try {
+      const soUpdatePayload: any = {
+        crdfd_chieckhau2: chietKhau2ValueToStore,
+      };
+      const soUpdateEndpoint = `${BASE_URL}${SALE_ORDERS_TABLE}(${soId})`;
+      await axios.patch(soUpdateEndpoint, soUpdatePayload, { headers });
+    } catch (err: any) {
+      console.warn('[ApplyPromotion] Failed to update SO crdfd_chieckhau2/chietkhau2:', err?.message || err);
     }
 
     res.status(200).json({
@@ -417,7 +470,7 @@ async function recalculateOrderTotals(soId: string, headers: Record<string, stri
 
     const sodQuery = `$filter=${encodeURIComponent(
       sodFilters.join(" and ")
-    )}&$select=crdfd_saleorderdetailid,crdfd_giack2,crdfd_soluong,crdfd_vat`;
+    )}&$select=crdfd_saleorderdetailid,crdfd_giack2,crdfd_vat`;
 
     const sodEndpoint = `${BASE_URL}${SOD_TABLE}?${sodQuery}`;
     const sodResponse = await axios.get(sodEndpoint, { headers });

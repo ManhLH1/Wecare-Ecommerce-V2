@@ -46,7 +46,7 @@ const TestimonialsSection: React.FC = () => {
             Khách hàng nói gì về WECARE
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <TestimonialCard
             title="Giao hàng rất nhanh"
             text="Đặt hàng buổi sáng, hẹn chiều giao dễ đi công trình. Vừa ăn trưa xong, hàng giao luôn tới công trình. Rất nhanh chóng, tiện lợi cho công việc."
@@ -71,7 +71,7 @@ const TestimonialsSection: React.FC = () => {
         </div>
 
         <div className="bg-amber-400 rounded p-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-center max-w-7xl mx-auto px-0">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-center px-0">
               <BenefitsItem
                 icon={<span>🚚</span>}
                 title="Giao siêu tốc"

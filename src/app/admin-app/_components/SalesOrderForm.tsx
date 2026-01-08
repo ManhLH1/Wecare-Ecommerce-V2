@@ -5,7 +5,7 @@ import ProductEntryForm from './ProductEntryForm';
 import ProductTable from './ProductTable';
 import Dropdown from './Dropdown';
 import { useCustomers, useSaleOrders } from '../_hooks/useDropdownData';
-import { fetchSaleOrderDetails, SaleOrderDetail, saveSaleOrderDetails, updateInventory, fetchInventory, fetchUnits, fetchPromotionOrders, applyPromotionOrder, PromotionOrderItem, InventoryInfo } from '../_api/adminApi';
+import { fetchSaleOrderDetails, SaleOrderDetail, saveSaleOrderDetails, updateInventory, fetchInventory, fetchUnits, fetchPromotionOrders, fetchSpecialPromotionOrders, applyPromotionOrder, PromotionOrderItem, InventoryInfo } from '../_api/adminApi';
 import { showToast } from '../../../components/ToastManager';
 import { getItem } from '../../../utils/SecureStorage';
 import { getStoredUser } from '../_utils/implicitAuthService';
@@ -316,66 +316,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     loadSaleOrderDetails();
   }, [soId]);
 
-  // Auto-select promotion orders based on total amount condition (cr1bb_tongtienapdung)
-  useEffect(() => {
-    const autoSelectPromotions = async () => {
-      if (!soId || !customerCode || totalAmount <= 0 || productList.length === 0) {
-        return;
-      }
-
-      try {
-        // Fetch available promotions for current order
-        const promotionOrderResult = await fetchPromotionOrders(
-          soId,
-          customerCode,
-          totalAmount,
-          // Ensure arrays are typed as string[] (filter out undefined/null)
-          productList.map(p => p.productCode).filter((c): c is string => typeof c === 'string' && c.trim() !== ''),
-          productList.map(p => p.productGroupCode).filter((c): c is string => typeof c === 'string' && c.trim() !== '')
-        );
-
-        // Collect special promotions (from allPromotions) so we can always surface them
-        try {
-          const allPromos = promotionOrderResult.allPromotions || [];
-          const special = (allPromos || []).filter((p: PromotionOrderItem) =>
-            SPECIAL_PROMOTION_KEYWORDS.some(k => !!p.name && p.name.includes(k))
-          );
-          if (special.length > 0) setSpecialPromotionList(special);
-        } catch (e) {
-          // ignore
-        }
-
-        if (promotionOrderResult.availablePromotions && promotionOrderResult.availablePromotions.length > 0) {
-          // Auto-select promotions where totalAmount >= totalAmountCondition
-          const autoSelectedPromotions = promotionOrderResult.availablePromotions.filter((promo: PromotionOrderItem) => {
-            const condition = promo.totalAmountCondition;
-            // If no condition or totalAmount >= condition, auto-select
-            return condition === null || condition === undefined || totalAmount >= condition;
-          });
-
-          if (autoSelectedPromotions.length > 0) {
-            // Merge with existing selections (avoid duplicates)
-            const existingIds = selectedPromotionOrders.map(p => p.id);
-            const newSelections = autoSelectedPromotions.filter(p => !existingIds.includes(p.id));
-
-            if (newSelections.length > 0) {
-              setSelectedPromotionOrders([...selectedPromotionOrders, ...newSelections]);
-              setPromotionOrderList(promotionOrderResult.availablePromotions);
-
-              // Auto-show popup if we have new auto-selections and popup is not already shown
-              if (!showPromotionOrderPopup) {
-                setShowPromotionOrderPopup(true);
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error('[Auto-select Promotion] Error auto-selecting promotions:', error);
-      }
-    };
-
-    autoSelectPromotions();
-  }, [soId, customerCode, totalAmount, productList]);
+  // NOTE: promotion-orders API should only be called when user explicitly requests promotions
+  // (on Save or when clicking the special promotions button). The previous auto-fetch
+  // logic was removed to avoid unnecessary server calls on every product/total change.
 
   const handleAddProduct = async (overrides?: { promotionId?: string }) => {
     // Validation: product, unit, quantity, price (bắt buộc phải có giá > 0)
@@ -780,12 +723,24 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             savedCustomerCode,
             savedTotalAmount,
             savedProductCodes,
-            savedProductGroupCodes
+            savedProductGroupCodes,
+            selectedSo?.crdfd_dieu_khoan_thanh_toan
           );
 
-          // Determine available promotions (top section) and special promotions (bottom section)
-          const available: PromotionOrderItem[] = promotionOrderResult.availablePromotions || [];
-          const chietKhau2Promotions = (promotionOrderResult.allPromotions || []).filter(p => p.chietKhau2) || [];
+          // Determine promotions based on allPromotions but filter out those not applicable or not meeting total condition
+          const allPromos: PromotionOrderItem[] = promotionOrderResult.allPromotions || [];
+          const available: PromotionOrderItem[] = allPromos.filter(p => {
+            const cond = Number(p.totalAmountCondition || 0);
+            const meetsTotal = isNaN(cond) || cond === 0 || Number(savedTotalAmount) >= cond;
+            const isApplicable = (p.applicable === true) || (String(p.applicable).toLowerCase() === 'true');
+            return isApplicable && meetsTotal;
+          });
+          const chietKhau2Promotions = allPromos.filter(p => {
+            const cond = Number(p.totalAmountCondition || 0);
+            const meetsTotal = isNaN(cond) || cond === 0 || Number(savedTotalAmount) >= cond;
+            const isApplicable = (p.applicable === true) || (String(p.applicable).toLowerCase() === 'true');
+            return p.chietKhau2 && isApplicable && meetsTotal;
+          }) || [];
 
           // Determine special promotions (prefer API-provided specialPromotions)
           let special: PromotionOrderItem[] = [];
@@ -796,9 +751,11 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
               SPECIAL_PROMOTION_KEYWORDS.some(k => !!p.name && p.name.includes(k))
             );
           }
+          // Only surface special promotions that are applicable
+          special = special.filter(p => (p.applicable === true) || (String(p.applicable).toLowerCase() === 'true'));
           if (special.length > 0) setSpecialPromotionList(special);
 
-          // Populate top list with availablePromotions (prefer chietKhau2 selection for pre-selection)
+          // Populate top list with filtered allPromotions (already removed non-applicable items)
           setPromotionOrderList(available.length > 0 ? available : chietKhau2Promotions);
 
           // Pre-select chietKhau2 promotions if present, otherwise none
@@ -808,8 +765,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             setSelectedPromotionOrders([]);
           }
 
-          // Show popup if there are any available or special promotions
-          if ((available && available.length > 0) || (special && special.length > 0)) {
+          // Show popup if there are any available, chiết khấu 2, or special promotions
+          if ((available && available.length > 0) || (chietKhau2Promotions && chietKhau2Promotions.length > 0) || (special && special.length > 0)) {
             setSoId(savedSoId);
             setShowPromotionOrderPopup(true);
           } else {
@@ -1159,6 +1116,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             chietKhau2: promo.chietKhau2 === 191920001, // 191920001 = Yes
             productCodes: promo.productCodes,
             productGroupCodes: promo.productGroupCodes,
+            orderTotal: currentOrderTotal, // Pass the UI-calculated order total for validation
           });
 
           // Đảm bảo result có success field
@@ -1638,6 +1596,46 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
               )}
             </button>
             <button
+              className="admin-app-header-btn admin-app-header-btn-secondary"
+              onClick={async () => {
+                try {
+                  if (!soId || !customerCode) {
+                    showToast.warning('Vui lòng chọn khách hàng và lưu SO trước khi tải khuyến mãi đặc biệt.');
+                    return;
+                  }
+                  const orderTotal = orderSummary.total;
+                  const productCodes = productList.map(p => p.productCode).filter(Boolean) as string[];
+                  const productGroupCodes = productList.map(p => p.productGroupCode).filter(Boolean) as string[];
+                  const res = await fetchPromotionOrders(soId, customerCode, orderTotal, productCodes, productGroupCodes, selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan);
+                  // Prefer server-provided specialPromotions
+                  let specials = Array.isArray(res.specialPromotions) && res.specialPromotions.length > 0
+                    ? res.specialPromotions
+                    : ((res.allPromotions || []).filter((p: PromotionOrderItem) =>
+                        SPECIAL_PROMOTION_KEYWORDS.some(k => !!p.name && p.name.includes(k))
+                      ));
+                  specials = specials.filter(p => (p.applicable === true) || (String(p.applicable).toLowerCase() === 'true'));
+
+                  if (!specials || specials.length === 0) {
+                    showToast.info('Không tìm thấy khuyến mãi đặc biệt.');
+                    return;
+                  }
+                  setSpecialPromotionList(specials);
+                  // Show only special promotions in the popup for selection
+                  setPromotionOrderList(specials);
+                  setSelectedPromotionOrders([]);
+                  setSoId(soId);
+                  setShowPromotionOrderPopup(true);
+                } catch (err: any) {
+                  console.error('Error loading special promotions:', err);
+                  showToast.error('Lỗi khi tải khuyến mãi đặc biệt.');
+                }
+              }}
+              title="Khuyến mãi đặc biệt"
+              disabled={!customerId || !soId}
+            >
+              🎁 Khuyến mãi đặc biệt
+            </button>
+            <button
               className="admin-app-header-btn admin-app-header-btn-submit"
               disabled
               title="Gửi duyệt"
@@ -1656,6 +1654,52 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             </span>
           </div>
         </div>
+      )}
+      {/* Floating special promotions button when header is hidden */}
+      {hideHeader && customerId && soId && (
+        <button
+          onClick={async () => {
+            try {
+              const orderTotal = orderSummary.total;
+              const productCodes = productList.map(p => p.productCode).filter(Boolean) as string[];
+              const productGroupCodes = productList.map(p => p.productGroupCode).filter(Boolean) as string[];
+              const res = await fetchPromotionOrders(soId, customerCode, orderTotal, productCodes, productGroupCodes, selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan);
+              let specials = Array.isArray(res.specialPromotions) && res.specialPromotions.length > 0
+                ? res.specialPromotions
+                : ((res.allPromotions || []).filter((p: PromotionOrderItem) =>
+                    SPECIAL_PROMOTION_KEYWORDS.some(k => !!p.name && p.name.includes(k))
+                  ));
+              specials = specials.filter(p => (p.applicable === true) || (String(p.applicable).toLowerCase() === 'true'));
+              if (!specials || specials.length === 0) {
+                showToast.info('Không tìm thấy khuyến mãi đặc biệt.');
+                return;
+              }
+              setSpecialPromotionList(specials);
+              setPromotionOrderList(specials);
+              setSelectedPromotionOrders([]);
+              setSoId(soId);
+              setShowPromotionOrderPopup(true);
+            } catch (err: any) {
+              console.error('Error loading special promotions (floating):', err);
+              showToast.error('Lỗi khi tải khuyến mãi đặc biệt.');
+            }
+          }}
+          title="Khuyến mãi đặc biệt"
+          style={{
+            position: 'fixed',
+            right: 120,
+            top: 14,
+            zIndex: 60,
+            padding: '8px 12px',
+            borderRadius: 8,
+            background: '#fff',
+            border: '1px solid #e5e7eb',
+            boxShadow: '0 1px 6px rgba(0,0,0,0.08)',
+            cursor: 'pointer'
+          }}
+        >
+          🎁
+        </button>
       )}
 
       {/* Main Content - 2 Columns Layout */}
@@ -1878,6 +1922,35 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             onRefresh={handleRefresh}
             onInventoryReserved={() => { }} // Callback để trigger reload inventory
             onProductGroupCodeChange={setProductGroupCode} // Callback để cập nhật productGroupCode
+            onOpenSpecialPromotions={async () => {
+              try {
+                if (!soId || !customerCode) {
+                  showToast.warning('Vui lòng chọn khách hàng và lưu SO trước khi tải khuyến mãi đặc biệt.');
+                  return;
+                }
+
+                // Use the dedicated special promotions API
+                const res = await fetchSpecialPromotionOrders(
+                  soId,
+                  customerCode,
+                  selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan
+                );
+
+                if (!res.specialPromotions || res.specialPromotions.length === 0) {
+                  showToast.info('Không tìm thấy khuyến mãi đặc biệt cho khách hàng này.');
+                  return;
+                }
+
+                setSpecialPromotionList(res.specialPromotions as PromotionOrderItem[]);
+                setPromotionOrderList(res.specialPromotions as PromotionOrderItem[]);
+                setSelectedPromotionOrders([]);
+                setSoId(soId);
+                setShowPromotionOrderPopup(true);
+              } catch (err: any) {
+                console.error('Error loading special promotions from child:', err);
+                showToast.error('Lỗi khi tải khuyến mãi đặc biệt.');
+              }
+            }}
           />
         </div>
       </div>

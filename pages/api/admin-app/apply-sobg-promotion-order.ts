@@ -7,6 +7,34 @@ const SOBG_ORDERS_X_PROMOTION_TABLE = "crdfd_sobaogiaxpromotions"; // SO báo gi
 const SOBG_DETAIL_TABLE = "crdfd_sodbaogias"; // SOD báo giá
 const SOBG_HEADER_TABLE = "crdfd_sobaogias"; // SO báo giá
 
+// Payment terms mapping used to normalize values
+const PAYMENT_TERMS_MAP_SOBG: Record<string, string> = {
+  "0": "Thanh toán sau khi nhận hàng",
+  "14": "Thanh toán 2 lần vào ngày 10 và 25",
+  "30": "Thanh toán vào ngày 5 hàng tháng",
+  "283640000": "Tiền mặt",
+  "283640001": "Công nợ 7 ngày",
+  "191920001": "Công nợ 20 ngày",
+  "283640002": "Công nợ 30 ngày",
+  "283640003": "Công nợ 45 ngày",
+  "283640004": "Công nợ 60 ngày",
+  "283640005": "Thanh toán trước khi nhận hàng",
+};
+
+const normalizePaymentTermSOBG = (input?: any): string | null => {
+  if (input === null || input === undefined || input === "") return null;
+  const t = String(input).trim();
+  if (t === "") return null;
+  if (PAYMENT_TERMS_MAP_SOBG[t]) return t;
+  const foundKey = Object.keys(PAYMENT_TERMS_MAP_SOBG).find(
+    (k) => PAYMENT_TERMS_MAP_SOBG[k].toLowerCase() === t.toLowerCase()
+  );
+  if (foundKey) return foundKey;
+  const digits = t.replace(/\D/g, "");
+  if (digits && PAYMENT_TERMS_MAP_SOBG[digits]) return digits;
+  return t;
+};
+
 /**
  * API để áp dụng Promotion Order cho SO Báo Giá (SOBG)
  *
@@ -60,6 +88,71 @@ export default async function handler(
       "OData-Version": "4.0",
     };
 
+    // 0. Validate promotion conditions before applying
+    let promoData: any = null;
+    try {
+      const promoEndpoint = `${BASE_URL}crdfd_promotions(${promotionId})?$select=cr1bb_tongtienapdung,crdfd_value,crdfd_vn,cr1bb_chietkhau2,crdfd_masanpham_multiple,cr1bb_manhomsp_multiple,cr1bb_ieukhoanthanhtoanapdung`;
+      const promoResp = await axios.get(promoEndpoint, { headers });
+      promoData = promoResp.data;
+    } catch (err) {
+      console.warn('[ApplySOBGPromotion] Could not fetch promotion details for validation:', (err as any)?.message || err);
+      return res.status(400).json({ error: "Không thể lấy thông tin promotion để kiểm tra điều kiện" });
+    }
+
+    // Check total amount condition
+    if (promoData && promoData.cr1bb_tongtienapdung !== null && promoData.cr1bb_tongtienapdung !== undefined) {
+      const minTotal = Number(promoData.cr1bb_tongtienapdung) || 0;
+      if (minTotal > 0) {
+        // Calculate current SOBG total from SOD records (like frontend does)
+        try {
+          // Get all SOD báo giá records for this SOBG
+          const sodFilters = [
+            "statecode eq 0",
+            `_crdfd_sobaogia_value eq ${sobgId}`,
+          ];
+
+          const sodQuery = `$filter=${encodeURIComponent(
+            sodFilters.join(" and ")
+          )}&$select=crdfd_gia,crdfd_soluong,crdfd_vat,crdfd_thue`;
+
+          const sodEndpoint = `${BASE_URL}${SOBG_DETAIL_TABLE}?${sodQuery}`;
+          const sodResponse = await axios.get(sodEndpoint, { headers });
+          const sodList = sodResponse.data.value || [];
+
+          // Calculate total like frontend: sum of (price * quantity + VAT)
+          let currentTotal = 0;
+          for (const sod of sodList) {
+            const quantity = Number(sod.crdfd_soluong) || 0;
+            const unitPrice = Number(sod.crdfd_gia) || 0; // Use gia (display price)
+            const vatPercent = Number(sod.crdfd_vat) || Number(sod.crdfd_thue) || 0; // VAT percentage
+
+            const lineSubtotal = unitPrice * quantity;
+            const lineVat = (lineSubtotal * vatPercent) / 100;
+            const lineTotal = lineSubtotal + lineVat;
+
+            currentTotal += lineTotal;
+          }
+
+          if (currentTotal < minTotal) {
+            return res.status(400).json({
+              error: `Promotion "${promotionName}" yêu cầu SOBG tối thiểu ${minTotal.toLocaleString('vi-VN')}đ. Tổng tiền hiện tại: ${Math.round(currentTotal).toLocaleString('vi-VN')}đ`
+            });
+          }
+        } catch (err: any) {
+          console.error('[ApplySOBGPromotion] Could not calculate SOBG total for validation:', {
+            sobgId,
+            error: err?.message || err,
+            response: err?.response?.data,
+            status: err?.response?.status
+          });
+
+          // If we can't calculate the total, log warning but allow the promotion to proceed
+          // This prevents blocking legitimate promotions due to technical issues
+          console.warn('[ApplySOBGPromotion] Skipping total validation due to calculation error, allowing promotion to proceed');
+        }
+      }
+    }
+
     // 1. Tạo record SO báo giá x Promotion
     // Tính Loại và Chiết khấu theo logic PowerApps:
     // Loại: If(VND_Percent='VNĐ/% (Promotion)'.VNĐ,"Tiền","Phần trăm")
@@ -79,6 +172,38 @@ export default async function handler(
       statecode: 0, // Active
     };
 
+    // Safety re-check before creating Orders x Promotion (prevent accidental create when condition not met)
+    try {
+      if (promoData && promoData.cr1bb_tongtienapdung !== null && promoData.cr1bb_tongtienapdung !== undefined) {
+        const minTotalCheck = Number(promoData.cr1bb_tongtienapdung) || 0;
+        if (minTotalCheck > 0) {
+          const sodFiltersCheck = [
+            "statecode eq 0",
+            `_crdfd_sobaogia_value eq ${sobgId}`,
+          ];
+          const sodQueryCheck = `$filter=${encodeURIComponent(sodFiltersCheck.join(" and "))}&$select=crdfd_gia,crdfd_soluong,crdfd_vat,crdfd_thue`;
+          const sodEndpointCheck = `${BASE_URL}${SOBG_DETAIL_TABLE}?${sodQueryCheck}`;
+          const sodRespCheck = await axios.get(sodEndpointCheck, { headers });
+          const sodListCheck = sodRespCheck.data.value || [];
+          let currentTotalCheck = 0;
+          for (const sod of sodListCheck) {
+            const quantity = Number(sod.crdfd_soluong) || 0;
+            const unitPrice = Number(sod.crdfd_gia) || 0;
+            const vatPercent = Number(sod.crdfd_vat) || Number(sod.crdfd_thue) || 0;
+            const lineSubtotal = unitPrice * quantity;
+            const lineVat = (lineSubtotal * vatPercent) / 100;
+            currentTotalCheck += lineSubtotal + lineVat;
+          }
+          if (currentTotalCheck < minTotalCheck) {
+            return res.status(400).json({ error: `Promotion \"${promotionName}\" không được áp dụng vì SOBG chưa đạt điều kiện tổng tiền.` });
+          }
+        }
+      }
+    } catch (err: any) {
+      console.error('[ApplySOBGPromotion] Safety total re-check failed, aborting apply:', err?.message || err, err?.response?.data);
+      return res.status(500).json({ error: "Lỗi khi kiểm tra lại tổng tiền SOBG trước khi áp dụng promotion" });
+    }
+
     const createOrderXPromotionEndpoint = `${BASE_URL}${SOBG_ORDERS_X_PROMOTION_TABLE}`;
     const createResponse = await axios.post(
       createOrderXPromotionEndpoint,
@@ -97,10 +222,10 @@ export default async function handler(
     let effectiveProductCodes = productCodes;
     let effectiveProductGroupCodes = productGroupCodes;
 
-    let promoData: any = null;
-    if (!effectiveChietKhau2 || !effectiveProductCodes) {
+    // Re-use promoData from validation if needed
+    if ((!effectiveChietKhau2 || !effectiveProductCodes) && !promoData) {
       try {
-        const promoEndpoint = `${BASE_URL}crdfd_promotions(${promotionId})?$select=crdfd_value,crdfd_vn,cr1bb_chietkhau2,crdfd_masanpham_multiple,cr1bb_manhomsp_multiple`;
+        const promoEndpoint = `${BASE_URL}crdfd_promotions(${promotionId})?$select=crdfd_value,crdfd_vn,cr1bb_chietkhau2,crdfd_masanpham_multiple,cr1bb_manhomsp_multiple,cr1bb_ieukhoanthanhtoanapdung`;
         const promoResp = await axios.get(promoEndpoint, { headers });
         promoData = promoResp.data;
         if (promoData) {
@@ -135,17 +260,13 @@ export default async function handler(
       "[ALL] VOUCHER SINH NHẬT - 50.000Đ"
     ].map(s => s.toLowerCase());
 
+    // Detect special promotions - for SOBG special promotions should NOT write down to SOD báo giá (header only)
+    let isSpecialPromotionSobg = false;
     try {
       const promoNameNorm = String(promotionName || "").toLowerCase();
-      if (FORCE_PRE_VAT_PROMOTIONS_SOBG.some(p => promoNameNorm.includes(p))) {
-        effectiveChietKhau2 = true;
-        if (!effectiveVndOrPercent && promoData?.crdfd_vn) {
-          effectiveVndOrPercent = promoData.crdfd_vn;
-        }
-        if ((effectivePromotionValue === undefined || effectivePromotionValue === null) && promoData?.crdfd_value) {
-          effectivePromotionValue = promoData.crdfd_value;
-        }
-        console.log(`[ApplySOBGPromotion] Forcing pre-VAT line discount for promotion "${promotionName}"`);
+      isSpecialPromotionSobg = FORCE_PRE_VAT_PROMOTIONS_SOBG.some(p => promoNameNorm.includes(p));
+      if (isSpecialPromotionSobg) {
+        console.log(`[ApplySOBGPromotion] Detected special promotion "${promotionName}" - will apply as header-only for SOBG.`);
       }
     } catch (e) {
       // ignore
@@ -155,7 +276,40 @@ export default async function handler(
 
     // 3. Nếu là chiết khấu 2 (chietKhau2 = true) và không phải direct discount promotion, cập nhật crdfd_chieckhau2 và giá trên các SOD báo giá matching
     let updatedSodCount = 0;
-    if (effectiveChietKhau2) {
+    // Before applying line-level chiết khấu 2 for SOBG, verify promotion's payment terms (if any) match SOBG's payment term.
+    let disallowedByPaymentTermsSobg = false;
+    if (effectiveChietKhau2 && !isSpecialPromotionSobg) {
+      try {
+        const sobgEndpoint = `${BASE_URL}${SOBG_HEADER_TABLE}(${sobgId})?$select=crdfd_dieu_khoan_thanh_toan,crdfd_ieukhoanthanhtoan`;
+        const sobgResp = await axios.get(sobgEndpoint, { headers });
+        const sobgData = sobgResp.data || {};
+        const sobgPaymentRaw = sobgData.crdfd_dieu_khoan_thanh_toan ?? sobgData.crdfd_ieukhoanthanhtoan;
+        const promoPaymentRaw = promoData?.cr1bb_ieukhoanthanhtoanapdung;
+        const splitAndNormalizeSobg = (raw?: any): string[] => {
+          if (raw === null || raw === undefined) return [];
+          const s = String(raw).trim();
+          if (s === "") return [];
+          const tokens = s.split(/[,;|\/]+/).map((t: string) => t.trim()).filter(Boolean);
+          return tokens.map((tok: string) => normalizePaymentTermSOBG(tok)).filter(Boolean) as string[];
+        };
+        const sobgTokens = splitAndNormalizeSobg(sobgPaymentRaw);
+        const promoTokens = splitAndNormalizeSobg(promoPaymentRaw);
+        if (promoTokens.length > 0 && sobgTokens.length > 0) {
+          const intersect = promoTokens.filter(t => sobgTokens.includes(t));
+          if (intersect.length === 0) {
+            disallowedByPaymentTermsSobg = true;
+            console.log(`[ApplySOBGPromotion] Promotion ${promotionId} chietKhau2 not applied due to payment term mismatch (promo=${promoPaymentRaw} sobg=${sobgPaymentRaw})`);
+          }
+        } else if (promoPaymentRaw && String(promoPaymentRaw).trim() !== "" && sobgTokens.length === 0) {
+          disallowedByPaymentTermsSobg = true;
+          console.log(`[ApplySOBGPromotion] Promotion ${promotionId} chietKhau2 not applied: SOBG missing payment term (promo=${promoPaymentRaw})`);
+        }
+      } catch (err: any) {
+        console.warn('[ApplySOBGPromotion] Failed to fetch SOBG for payment term check:', err?.message || err);
+      }
+    }
+
+    if (effectiveChietKhau2 && !isSpecialPromotionSobg && !disallowedByPaymentTermsSobg) {
       // Lấy danh sách SOD báo giá của SOBG
       const sodFilters = [
         "statecode eq 0",

@@ -126,6 +126,8 @@ interface ProductEntryFormProps {
   onProductGroupCodeChange?: (code: string) => void; // Callback khi productGroupCode thay đổi
   disableInventoryReserve?: boolean; // Tắt tính năng giữ hàng tự động (dùng cho SOBG)
   orderTotal?: number; // Tổng tiền toàn đơn (dùng để check Promotion Order & phân bổ chiết khấu VNĐ)
+  onOpenSpecialPromotions?: () => Promise<void> | void;
+  enablePromotionAutoFetch?: boolean;
 }
 
 export default function ProductEntryForm({
@@ -196,6 +198,8 @@ export default function ProductEntryForm({
   onProductGroupCodeChange,
   disableInventoryReserve = false,
   orderTotal,
+  onOpenSpecialPromotions,
+  enablePromotionAutoFetch = false,
 }: ProductEntryFormProps) {
 
   // Disable form if customer or SO is not selected
@@ -1771,7 +1775,7 @@ export default function ProductEntryForm({
   useEffect(() => {
     let cancelled = false;
     const checkOrderLevelPromotion = async () => {
-      if (!soId || !selectedPromotion) {
+      if (!enablePromotionAutoFetch || !soId || !selectedPromotion) {
         setOrderPromotionInfo(null);
         return;
       }
@@ -2144,6 +2148,22 @@ export default function ProductEntryForm({
                 >
                   ↺ Reset
                 </button>
+                  <button
+                    type="button"
+                    className="admin-app-mini-btn admin-app-mini-btn-ghost"
+                    onClick={() => {
+                      if (typeof onOpenSpecialPromotions === 'function') {
+                        onOpenSpecialPromotions();
+                      } else {
+                        showToast.info('Chức năng khuyến mãi đặc biệt chưa sẵn sàng.');
+                      }
+                    }}
+                    disabled={!onOpenSpecialPromotions}
+                    title="Khuyến mãi đặc biệt"
+                    style={{ marginLeft: 6 }}
+                  >
+                    🎁
+                  </button>
                 <button
                   type="button"
                   className="admin-app-mini-btn admin-app-mini-btn-primary"
