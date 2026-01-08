@@ -56,7 +56,7 @@ const AboutUsPage = () => {
                   <div className="space-y-4 text-body">
                     <p>
                       Wecare Group tập trung vào giải pháp cung ứng kim khí – điện nước – vật tư công trình
-                      cho đại lý, nhà thầu và cửa hàng chuyên ngành trên toàn quốc. Với triết lý "Đặt sự tử tế lên hàng đầu",
+                      cho đại lý, nhà thầu và cửa hàng chuyên ngành trên toàn quốc. Với triết lý &ldquo;Đặt sự tử tế lên hàng đầu&rdquo;,
                       Wecare hướng đến việc trở thành nguồn hàng sỉ ổn định, đầy đủ và đáng tin cậy, giúp đối tác
                       tối ưu chi phí nhập hàng, đảm bảo tiến độ thi công và nâng cao hiệu quả kinh doanh lâu dài.
                     </p>
@@ -505,8 +505,8 @@ const AboutUsPage = () => {
                     ))}
                   </div>
                   <p className="text-body text-sm italic">
-                    "WeCare Group đã đồng hành cùng chúng tôi trong suốt 3 năm qua.
-                    Dịch vụ chuyên nghiệp, sản phẩm chất lượng, luôn đáp ứng đúng hẹn."
+                    &ldquo;WeCare Group đã đồng hành cùng chúng tôi trong suốt 3 năm qua.
+                    Dịch vụ chuyên nghiệp, sản phẩm chất lượng, luôn đáp ứng đúng hẹn.&rdquo;
                   </p>
                 </div>
 
@@ -528,8 +528,8 @@ const AboutUsPage = () => {
                     ))}
                   </div>
                   <p className="text-body text-sm italic">
-                    "Đội ngũ tư vấn chuyên nghiệp, giải pháp phù hợp với nhu cầu kinh doanh.
-                    Rất hài lòng với chất lượng dịch vụ của WeCare Group."
+                    &ldquo;Đội ngũ tư vấn chuyên nghiệp, giải pháp phù hợp với nhu cầu kinh doanh.
+                    Rất hài lòng với chất lượng dịch vụ của WeCare Group.&rdquo;
                   </p>
                 </div>
 
@@ -551,8 +551,8 @@ const AboutUsPage = () => {
                     ))}
                   </div>
                   <p className="text-body text-sm italic">
-                    "Từ khi hợp tác với WeCare Group, hiệu quả kinh doanh tăng 30%.
-                    Sản phẩm chất lượng, giá cả cạnh tranh, dịch vụ hậu mãi tốt."
+                    &ldquo;Từ khi hợp tác với WeCare Group, hiệu quả kinh doanh tăng 30%.
+                    Sản phẩm chất lượng, giá cả cạnh tranh, dịch vụ hậu mãi tốt.&rdquo;
                   </p>
                 </div>
               </div>
