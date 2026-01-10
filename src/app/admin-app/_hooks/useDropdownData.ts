@@ -6,7 +6,7 @@ import type { Customer, Product, Unit, SaleOrder, Warehouse, SOBaoGia } from '..
 
 // Simple in-memory cache for API calls
 const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 60 * 1000; // 1 minute (sync with API cache)
 
 function getCachedData<T>(key: string): T | null {
   const cached = cache.get(key);

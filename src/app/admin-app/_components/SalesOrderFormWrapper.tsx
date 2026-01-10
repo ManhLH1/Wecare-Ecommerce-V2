@@ -1,14 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import SalesOrderForm from './SalesOrderForm';
-import SalesOrderBaoGiaForm from './SalesOrderBaoGiaForm';
+import React, { useState, useEffect, Suspense } from 'react';
 import { getStoredUser, logout } from '../_utils/implicitAuthService';
 import { useRouter } from 'next/navigation';
 
+// Lazy load components để cải thiện initial load time
+const SalesOrderForm = React.lazy(() => import('./SalesOrderForm'));
+const SalesOrderBaoGiaForm = React.lazy(() => import('./SalesOrderBaoGiaForm'));
+
 type FormType = 'SO' | 'SOBG';
 
-export default function SalesOrderFormWrapper() {
+function SalesOrderFormWrapper() {
   const [activeForm, setActiveForm] = useState<FormType>('SO');
   const [userInfo, setUserInfo] = useState<{ name?: string; username?: string; email?: string } | null>(null);
   const router = useRouter();
@@ -90,9 +92,18 @@ export default function SalesOrderFormWrapper() {
         </div>
       </div>
 
-      {/* Render Active Form */}
-      {activeForm === 'SO' ? <SalesOrderForm hideHeader /> : <SalesOrderBaoGiaForm hideHeader />}
+      {/* Render Active Form with Suspense for lazy loading */}
+      <Suspense fallback={
+        <div className="admin-app-loading-container">
+          <div className="admin-app-loading-spinner"></div>
+          <p className="admin-app-loading-text">Đang tải form...</p>
+        </div>
+      }>
+        {activeForm === 'SO' ? <SalesOrderForm hideHeader /> : <SalesOrderBaoGiaForm hideHeader />}
+      </Suspense>
     </div>
   );
 }
+
+export default React.memo(SalesOrderFormWrapper);
 

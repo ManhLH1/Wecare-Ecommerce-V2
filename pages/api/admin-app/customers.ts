@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import axiosClient from "./_utils/axiosClient";
-import { getCacheKey, getCachedResponse, setCachedResponse } from "./_utils/cache";
+import { getCacheKey, getCachedResponse, setCachedResponse, shouldCacheResponse } from "./_utils/cache";
 import { deduplicateRequest, getDedupKey } from "./_utils/requestDeduplication";
 
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
@@ -67,8 +67,10 @@ export default async function handler(
     // Log customers with district keys for debugging
     const customersWithDistrictKeys = customers.filter((c: any) => c.crdfd_keyquanhuyen);
 
-    // Cache the result
-    setCachedResponse(cacheKey, customers);
+    // Cache the result only if it should be cached
+    if (shouldCacheResponse(200, customers)) {
+      setCachedResponse(cacheKey, customers);
+    }
 
     res.status(200).json(customers);
   } catch (error: any) {

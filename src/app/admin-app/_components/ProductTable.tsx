@@ -1,6 +1,6 @@
  'use client';
 
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { showToast } from '../../../components/ToastManager';
 
 interface ProductItem {
@@ -56,7 +56,7 @@ interface ProductTableProps {
   isSOBG?: boolean; // nếu true gọi API deactivate SOBG detail thay vì SOD
 }
 
-export default function ProductTable({ 
+function ProductTable({ 
   products, 
   setProducts,
   invoiceType,
@@ -512,4 +512,6 @@ export default function ProductTable({
     </div>
   );
 }
+
+export default React.memo(ProductTable);
 

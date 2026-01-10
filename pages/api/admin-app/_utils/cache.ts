@@ -15,6 +15,11 @@ const shortCache = new LRUCache<string, any>({
   updateAgeOnGet: true,
 });
 
+// Cache statistics for monitoring
+let cacheHits = 0;
+let cacheMisses = 0;
+let totalRequests = 0;
+
 // Generate cache key from endpoint and query params
 export function getCacheKey(endpoint: string, params?: Record<string, any>): string {
   const sortedParams = params
@@ -28,8 +33,17 @@ export function getCacheKey(endpoint: string, params?: Record<string, any>): str
 
 // Get cached response
 export function getCachedResponse(key: string, useShortCache = false): any | undefined {
+  totalRequests++;
   const cache = useShortCache ? shortCache : responseCache;
-  return cache.get(key);
+  const result = cache.get(key);
+
+  if (result !== undefined) {
+    cacheHits++;
+  } else {
+    cacheMisses++;
+  }
+
+  return result;
 }
 
 // Set cached response
@@ -73,5 +87,32 @@ export function clearCachePattern(pattern: string): void {
 export function clearAllCache(): void {
   responseCache.clear();
   shortCache.clear();
+  cacheHits = 0;
+  cacheMisses = 0;
+  totalRequests = 0;
+}
+
+// Get cache statistics
+export function getCacheStats() {
+  const hitRate = totalRequests > 0 ? (cacheHits / totalRequests) * 100 : 0;
+  return {
+    cacheHits,
+    cacheMisses,
+    totalRequests,
+    hitRate: Math.round(hitRate * 100) / 100,
+    longCacheSize: responseCache.size,
+    shortCacheSize: shortCache.size,
+  };
+}
+
+// Selective caching - only cache successful responses
+export function shouldCacheResponse(statusCode: number, data: any): boolean {
+  // Don't cache error responses
+  if (statusCode >= 400) return false;
+
+  // Don't cache empty responses
+  if (!data || (Array.isArray(data) && data.length === 0)) return false;
+
+  return true;
 }
 

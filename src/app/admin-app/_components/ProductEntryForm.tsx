@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { computeDeliveryDate } from '../../../utils/computeDeliveryDate';
 import Dropdown from './Dropdown';
 import { useProducts, useUnits, useWarehouses } from '../_hooks/useDropdownData';
@@ -131,7 +131,7 @@ interface ProductEntryFormProps {
   enablePromotionAutoFetch?: boolean;
 }
 
-export default function ProductEntryForm({
+function ProductEntryForm({
   isAdding = false,
   isSaving = false,
   isLoadingDetails = false,
@@ -1350,9 +1350,10 @@ export default function ProductEntryForm({
         }
 
         // Làm tròn & format giống PowerApps Text(..., "#,###")
+        // Round to 2 decimal places to preserve fractional part (cents)
         const roundedBase =
           basePrice !== null && basePrice !== undefined
-            ? Math.round(Number(basePrice))
+            ? Math.round(Number(basePrice) * 100) / 100
             : null;
 
         const displayPrice =
@@ -1464,7 +1465,7 @@ export default function ProductEntryForm({
       }
 
       if (chosen !== null && !isNaN(chosen)) {
-        const rounded = Math.round(chosen);
+        const rounded = Math.round(chosen * 100) / 100;
         setApiPrice(rounded);
         handlePriceChange(String(rounded));
         setPriceGroupText(selectedPriceFromApi.priceGroupText || selectedPriceFromApi.crdfd_nhomoituongtext || '');
@@ -1580,7 +1581,7 @@ export default function ProductEntryForm({
     if (approvePrice && priceEntryMethod === 'Theo chiết khấu' && basePriceForDiscount > 0) {
       const pct = Number(discountPercent) || 0;
       const discountedPrice = basePriceForDiscount - (basePriceForDiscount * pct / 100);
-      const roundedPrice = Math.round(discountedPrice);
+      const roundedPrice = Math.round(discountedPrice * 100) / 100;
       handlePriceChange(String(roundedPrice));
     }
   }, [approvePrice, priceEntryMethod, discountPercent, basePriceForDiscount]);
@@ -1601,10 +1602,10 @@ export default function ProductEntryForm({
     let newSubtotal = qty * effectivePrice;
 
     const newVat = (newSubtotal * effectiveVat) / 100;
-    // Làm tròn đến hàng đơn vị
-    const roundedSubtotal = Math.round(newSubtotal);
-    const roundedVat = Math.round(newVat);
-    const roundedTotal = Math.round(newSubtotal + newVat);
+    // Round to 2 decimal places (preserve cents)
+    const roundedSubtotal = Math.round(newSubtotal * 100) / 100;
+    const roundedVat = Math.round(newVat * 100) / 100;
+    const roundedTotal = Math.round((newSubtotal + newVat) * 100) / 100;
     setSubtotal(roundedSubtotal);
     setVatAmount(roundedVat);
     setTotalAmount(roundedTotal);
@@ -1626,8 +1627,13 @@ export default function ProductEntryForm({
   };
 
   const handlePriceChange = (value: string) => {
-    // Remove all non-numeric characters (including thousand separators) for internal storage
-    const cleaned = value.replace(/[^\d]/g, '');
+    // Remove all non-numeric characters (including thousand separators) for internal storage, but keep decimal point
+    // Allow only one decimal point
+    let cleaned = value.replace(/[^\d.]/g, '');
+    const parts = cleaned.split('.');
+    if (parts.length > 2) {
+      cleaned = parts[0] + '.' + parts.slice(1).join('');
+    }
     setPrice(cleaned);
     recomputeTotals(cleaned, quantity, discountPercent || promotionDiscountPercent, vatPercent);
   };
@@ -2508,7 +2514,7 @@ export default function ProductEntryForm({
                     else if (priceNoVatVal !== null && priceNoVatVal !== undefined) chosenPrice = Number(priceNoVatVal);
 
                     if (chosenPrice !== null && !isNaN(chosenPrice)) {
-                      const rounded = Math.round(chosenPrice);
+                      const rounded = Math.round(chosenPrice * 100) / 100;
                       setApiPrice(rounded);
                       handlePriceChange(String(rounded));
                       setPriceGroupText(candidate.priceGroupText || candidate.crdfd_nhomoituongtext || '');
@@ -2614,9 +2620,10 @@ export default function ProductEntryForm({
                 </div>
               )}
               <input
-                type="text"
+                type="number"
+                step="0.01"
                 className={`admin-app-input admin-app-input-compact admin-app-input-money admin-app-input-small${priceLoading || !approvePrice || (approvePrice && priceEntryMethod === 'Theo chiết khấu') ? ' admin-app-input-readonly' : ''}`}
-                value={formatPriceForDisplay(price)}
+                value={price}
                 onChange={(e) => handlePriceChange(e.target.value)}
                 placeholder={priceLoading ? "Đang tải..." : "Giá"}
                 readOnly={priceLoading || !approvePrice || (approvePrice && priceEntryMethod === 'Theo chiết khấu')}
@@ -2790,25 +2797,25 @@ export default function ProductEntryForm({
             const promoDiscountPct = discountPercent || promotionDiscountPercent || 0;
             const discountFactor = 1 - (promoDiscountPct > 0 ? promoDiscountPct / 100 : 0);
             const discountedPrice = priceNum * discountFactor;
-            // Làm tròn để hiển thị giống với cách tính trong recomputeTotals
-            const roundedDiscountedPrice = Math.round(discountedPrice);
+            // Làm tròn đến 2 chữ số thập phân để hiển thị giống với cách tính trong recomputeTotals
+            const roundedDiscountedPrice = Math.round(discountedPrice * 100) / 100;
 
             // Công thức: Giá đã giảm = Giá gốc × (1 - Chiết khấu%)
             let formula = `CÔNG THỨC TÍNH GIÁ ĐÃ GIẢM\n`;
             formula += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-            formula += `Giá gốc: ${priceNum.toLocaleString('vi-VN')} ₫\n`;
+            formula += `Giá gốc: ${priceNum.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
             if (promoDiscountPct > 0) {
               formula += `Chiết khấu: ${promoDiscountPct}%\n`;
-              formula += `Giá đã giảm: ${roundedDiscountedPrice.toLocaleString('vi-VN')} ₫\n`;
+              formula += `Giá đã giảm: ${roundedDiscountedPrice.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
             } else {
               formula += `Chiết khấu: 0%\n`;
-              formula += `Giá đã giảm: ${roundedDiscountedPrice.toLocaleString('vi-VN')} ₫\n`;
+              formula += `Giá đã giảm: ${roundedDiscountedPrice.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
             }
             formula += `\nTính toán:\n`;
             if (promoDiscountPct > 0) {
-              formula += `${priceNum.toLocaleString('vi-VN')} × (1 - ${promoDiscountPct}%) = ${roundedDiscountedPrice.toLocaleString('vi-VN')} ₫`;
+              formula += `${priceNum.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} × (1 - ${promoDiscountPct}%) = ${roundedDiscountedPrice.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             } else {
-              formula += `${priceNum.toLocaleString('vi-VN')} ₫ (không chiết khấu)`;
+              formula += `${priceNum.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (không chiết khấu)`;
             }
 
             return (
@@ -2817,7 +2824,7 @@ export default function ProductEntryForm({
                 <input
                   type="text"
                   className="admin-app-input admin-app-input-compact admin-app-input-readonly admin-app-input-money"
-                  value={`${roundedDiscountedPrice.toLocaleString('vi-VN')} ₫`}
+                  value={roundedDiscountedPrice.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   readOnly
                   title={formula}
                 />
@@ -2839,7 +2846,7 @@ export default function ProductEntryForm({
             formula += `Số lượng: ${quantity}\n`;
             formula += `Giá đơn vị (sau chiết khấu, chưa VAT): ${roundedDiscountedPrice.toLocaleString('vi-VN')} ₫\n\n`;
             formula += `Tính toán:\n`;
-            formula += `${quantity} × ${roundedDiscountedPrice.toLocaleString('vi-VN')} = ${subtotal.toLocaleString('vi-VN')} ₫`;
+            formula += `${quantity} × ${roundedDiscountedPrice.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} = ${subtotal.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
             return (
               <div className="admin-app-field-compact admin-app-field-total">
@@ -2847,7 +2854,7 @@ export default function ProductEntryForm({
                 <input
                   type="text"
                   className="admin-app-input admin-app-input-compact admin-app-input-readonly admin-app-input-money"
-                  value={`${subtotal.toLocaleString('vi-VN')} ₫`}
+                  value={subtotal.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   readOnly
                   title={formula}
                 />
@@ -2857,13 +2864,13 @@ export default function ProductEntryForm({
 
           {hasSelectedProduct && (() => {
             // Công thức: Tổng tiền = Thành tiền + VAT = Thành tiền × (1 + VAT%)
-            const vatAmountCalc = Math.round((subtotal * (vatPercent || 0)) / 100);
+            const vatAmountCalc = Math.round(((subtotal * (vatPercent || 0)) / 100) * 100) / 100;
             let formula = `CÔNG THỨC TÍNH TỔNG TIỀN\n`;
             formula += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-            formula += `Thành tiền: ${subtotal.toLocaleString('vi-VN')} ₫\n`;
-            formula += `VAT (${vatPercent}%): ${vatAmountCalc.toLocaleString('vi-VN')} ₫\n\n`;
+            formula += `Thành tiền: ${subtotal.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
+            formula += `VAT (${vatPercent}%): ${vatAmountCalc.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n\n`;
             formula += `Tính toán:\n`;
-            formula += `${subtotal.toLocaleString('vi-VN')} + ${vatAmountCalc.toLocaleString('vi-VN')} = ${totalAmount.toLocaleString('vi-VN')} ₫`;
+            formula += `${subtotal.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + ${vatAmountCalc.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} = ${totalAmount.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
             return (
               <div className="admin-app-field-compact admin-app-field-grand-total">
@@ -2871,7 +2878,7 @@ export default function ProductEntryForm({
                 <input
                   type="text"
                   className="admin-app-input admin-app-input-compact admin-app-input-readonly admin-app-input-money admin-app-input-total"
-                  value={`${totalAmount.toLocaleString('vi-VN')} ₫`}
+                  value={totalAmount.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   readOnly
                   title={formula}
                 />
@@ -2909,4 +2916,6 @@ export default function ProductEntryForm({
     </div>
   );
 }
+
+export default React.memo(ProductEntryForm);
 

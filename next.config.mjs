@@ -140,9 +140,15 @@ const nextConfig = {
 
     return config;
   },
-  // Cải thiện development experience
+  // Cải thiện development experience và bundle optimization
   experimental: {
-    optimizePackageImports: ['react-icons', 'lucide-react'],
+    optimizePackageImports: ['react-icons', 'lucide-react', '@mui/material', '@mui/icons-material'],
+  },
+
+  // Bundle optimization
+  swcMinify: true,
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
   },
 
   // Tắt source maps trong production để bảo mật
