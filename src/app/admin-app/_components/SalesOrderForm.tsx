@@ -1433,7 +1433,10 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     }
   };
 
-  const currentOrderTotal = totalAmount || orderSummary?.total || productList.reduce((s, p) => s + (p.totalAmount || ((p.discountedPrice ?? p.price) * (p.quantity || 0) + ((p.vat || 0) ? Math.round(((p.discountedPrice ?? p.price) * (p.quantity || 0) * (p.vat || 0)) / 100) : 0))), 0);
+  // Prefer header total from selected SO to match server-side validation
+  const headerTotalSo = selectedSo?.crdfd_tongtiencovat ?? selectedSo?.crdfd_tongtien;
+  const computedLineTotalSo = productList.reduce((s, p) => s + (p.totalAmount || ((p.discountedPrice ?? p.price) * (p.quantity || 0) + ((p.vat || 0) ? Math.round(((p.discountedPrice ?? p.price) * (p.quantity || 0) * (p.vat || 0)) / 100) : 0))), 0);
+  const currentOrderTotal = Number(headerTotalSo ?? totalAmount ?? orderSummary?.total ?? computedLineTotalSo ?? 0);
 
   return (
     <div className="admin-app-compact-layout">
@@ -1463,9 +1466,10 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                 <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '4px', padding: '8px' }}>
                   {promotionOrderList.map((promo) => {
                     const isSelected = selectedPromotionOrders.some(p => p.id === promo.id);
-                    const condition = promo.totalAmountCondition ?? promo.totalAmountCondition === 0 ? promo.totalAmountCondition : null;
-                    const conditionNum = condition !== null ? Number(condition) : null;
-                    const meetsCondition = conditionNum === null || !isNaN(conditionNum) && currentOrderTotal >= conditionNum;
+                    const conditionNum = (promo && promo.totalAmountCondition !== null && promo.totalAmountCondition !== undefined)
+                      ? Number(promo.totalAmountCondition)
+                      : null;
+                    const meetsCondition = conditionNum === null || (!isNaN(conditionNum) && currentOrderTotal >= conditionNum);
 
                     return (
                       <label

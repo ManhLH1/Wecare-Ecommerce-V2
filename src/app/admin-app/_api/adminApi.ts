@@ -519,6 +519,38 @@ export const fetchPromotionOrders = async (
 };
 
 /**
+ * Lấy danh sách Promotion Order cho một SOBG (Sales Order Báo Giá)
+ */
+export const fetchPromotionOrdersSOBG = async (
+  sobgId: string,
+  customerCode?: string,
+  totalAmount?: number,
+  productCodes?: string[],
+  productGroupCodes?: string[],
+  paymentTerms?: string
+): Promise<PromotionOrderResponse> => {
+  try {
+    const params: Record<string, string> = { sobgId };
+    if (customerCode) params.customerCode = customerCode;
+    if (productCodes && productCodes.length > 0) params.productCodes = productCodes.join(",");
+    if (productGroupCodes && productGroupCodes.length > 0) params.productGroupCodes = productGroupCodes.join(",");
+    if (paymentTerms) params.paymentTerms = paymentTerms;
+    if (totalAmount !== undefined && totalAmount !== null) params.totalAmount = String(totalAmount);
+
+    const response = await axios.get(`${BASE_URL}/promotion-orders-sobg`, { params });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching promotion orders (SOBG):', error);
+    return {
+      existingPromotionOrders: [],
+      hasExistingPromotionOrder: false,
+      availablePromotions: [],
+      allPromotions: [],
+    };
+  }
+};
+
+/**
  * Lấy danh sách Promotion đặc biệt cho khách hàng
  */
 export const fetchSpecialPromotionOrders = async (

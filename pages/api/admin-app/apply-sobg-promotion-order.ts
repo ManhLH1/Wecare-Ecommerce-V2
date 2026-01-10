@@ -66,6 +66,7 @@ export default async function handler(
       chietKhau2,
       productCodes,
       productGroupCodes,
+      orderTotal: orderTotalFromClient,
     } = req.body;
 
     if (!sobgId) {
@@ -103,34 +104,38 @@ export default async function handler(
     if (promoData && promoData.cr1bb_tongtienapdung !== null && promoData.cr1bb_tongtienapdung !== undefined) {
       const minTotal = Number(promoData.cr1bb_tongtienapdung) || 0;
       if (minTotal > 0) {
-        // Calculate current SOBG total from SOD records (like frontend does)
+        // Prefer aggregated SOBG header totals (consistent with frontend) and fall back to summing SOD lines.
         try {
-          // Get all SOD báo giá records for this SOBG
-          const sodFilters = [
-            "statecode eq 0",
-            `_crdfd_sobaogia_value eq ${sobgId}`,
-          ];
-
-          const sodQuery = `$filter=${encodeURIComponent(
-            sodFilters.join(" and ")
-          )}&$select=crdfd_gia,crdfd_soluong,crdfd_vat,crdfd_thue`;
-
-          const sodEndpoint = `${BASE_URL}${SOBG_DETAIL_TABLE}?${sodQuery}`;
-          const sodResponse = await axios.get(sodEndpoint, { headers });
-          const sodList = sodResponse.data.value || [];
-
-          // Calculate total like frontend: sum of (price * quantity + VAT)
           let currentTotal = 0;
-          for (const sod of sodList) {
-            const quantity = Number(sod.crdfd_soluong) || 0;
-            const unitPrice = Number(sod.crdfd_gia) || 0; // Use gia (display price)
-            const vatPercent = Number(sod.crdfd_vat) || Number(sod.crdfd_thue) || 0; // VAT percentage
+          try {
+            const headerEndpoint = `${BASE_URL}${SOBG_HEADER_TABLE}(${sobgId})?$select=crdfd_tongtien,crdfd_tongtiencovat,crdfd_tongtienkhongvat`;
+            const headerResp = await axios.get(headerEndpoint, { headers });
+            const headerData = headerResp.data || {};
+            currentTotal = Number(headerData.crdfd_tongtiencovat ?? headerData.crdfd_tongtien ?? headerData.crdfd_tongtienkhongvat) || 0;
+          } catch (hdrErr) {
+            // Ignore header fetch errors and fall back to SOD summation
+            currentTotal = 0;
+          }
 
-            const lineSubtotal = unitPrice * quantity;
-            const lineVat = (lineSubtotal * vatPercent) / 100;
-            const lineTotal = lineSubtotal + lineVat;
+          if (!currentTotal || currentTotal === 0) {
+            const sodFilters = [
+              "statecode eq 0",
+              `_crdfd_sobaogia_value eq ${sobgId}`,
+            ];
+            const sodQuery = `$filter=${encodeURIComponent(sodFilters.join(" and "))}&$select=crdfd_gia,crdfd_soluong,crdfd_vat,crdfd_thue`;
+            const sodEndpoint = `${BASE_URL}${SOBG_DETAIL_TABLE}?${sodQuery}`;
+            const sodResponse = await axios.get(sodEndpoint, { headers });
+            const sodList = sodResponse.data.value || [];
 
-            currentTotal += lineTotal;
+            currentTotal = 0;
+            for (const sod of sodList) {
+              const quantity = Number(sod.crdfd_soluong) || 0;
+              const unitPrice = Number(sod.crdfd_gia) || 0; // Use gia (display price)
+              const vatPercent = Number(sod.crdfd_vat) || Number(sod.crdfd_thue) || 0; // VAT percentage
+              const lineSubtotal = unitPrice * quantity;
+              const lineVat = (lineSubtotal * vatPercent) / 100;
+              currentTotal += lineSubtotal + lineVat;
+            }
           }
 
           if (currentTotal < minTotal) {
@@ -147,7 +152,6 @@ export default async function handler(
           });
 
           // If we can't calculate the total, log warning but allow the promotion to proceed
-          // This prevents blocking legitimate promotions due to technical issues
           console.warn('[ApplySOBGPromotion] Skipping total validation due to calculation error, allowing promotion to proceed');
         }
       }
@@ -200,8 +204,9 @@ export default async function handler(
         }
       }
     } catch (err: any) {
-      console.error('[ApplySOBGPromotion] Safety total re-check failed, aborting apply:', err?.message || err, err?.response?.data);
-      return res.status(500).json({ error: "Lỗi khi kiểm tra lại tổng tiền SOBG trước khi áp dụng promotion" });
+      console.warn('[ApplySOBGPromotion] Safety total re-check failed, allowing apply to proceed. Error:', err?.message || err, err?.response?.data);
+      // Do NOT abort apply when safety check fails due to transient errors (network/token/etc).
+      // Continue to create the Orders x Promotion record to avoid blocking the user.
     }
 
     const createOrderXPromotionEndpoint = `${BASE_URL}${SOBG_ORDERS_X_PROMOTION_TABLE}`;
@@ -313,7 +318,7 @@ export default async function handler(
       // Lấy danh sách SOD báo giá của SOBG
       const sodFilters = [
         "statecode eq 0",
-        `_crdfd_maonhang_value eq ${sobgId}`,
+        `_crdfd_sobaogia_value eq ${sobgId}`,
       ];
 
       const sodQuery = `$filter=${encodeURIComponent(
@@ -428,7 +433,7 @@ async function recalculateSOBGTotals(sobgId: string, headers: Record<string, str
     // Lấy tất cả SOD báo giá của SOBG
     const sodFilters = [
       "statecode eq 0",
-      `_crdfd_maonhang_value eq ${sobgId}`,
+      `_crdfd_sobaogia_value eq ${sobgId}`,
     ];
 
     const sodQuery = `$filter=${encodeURIComponent(

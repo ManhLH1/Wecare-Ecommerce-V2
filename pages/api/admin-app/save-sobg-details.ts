@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import axios from "axios";
 import { getAccessToken } from "../getAccessToken";
+import { createBackgroundJob, updateJobStatus, cleanupOldJobs } from "./_backgroundJobs";
 
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
 const SODBAOGIA_TABLE = "crdfd_sodbaogias"; // Bảng Detail
@@ -11,6 +12,7 @@ const UNIT_CONVERSION_TABLE = "crdfd_unitconvertions";
 const EMPLOYEE_TABLE = "crdfd_employees";
 const SYSTEMUSER_TABLE = "systemusers";
 const PROMOTION_TABLE = "crdfd_promotions";
+const KHO_BD_TABLE = "crdfd_kho_binh_dinhs";
 
 // Helper lookup Product
 async function lookupProductId(productCode: string, headers: any): Promise<string | null> {
@@ -237,6 +239,67 @@ async function isPromotionValid(promotionId: string, headers: any): Promise<bool
     }
 }
 
+// Validate whether a promotion (by id) is applicable to the given order payment terms.
+async function isPromotionApplicableToPaymentTerm(
+    promotionId: string,
+    requestedPaymentTerms: any,
+    headers: any
+): Promise<{ applicable: boolean; reason?: string }> {
+    if (!promotionId) return { applicable: false, reason: "Missing promotionId" };
+    try {
+        // Helper: split multi-select values into normalized tokens
+        const splitAndNormalize = (raw?: any): string[] => {
+            if (raw === null || raw === undefined) return [];
+            const s = String(raw).trim();
+            if (s === "") return [];
+            const tokens = s.split(/[,;|\/]+/).map(t => t.trim()).filter(Boolean);
+            const normalized = tokens.map(tok => {
+                // reuse simple normalization: keep numeric keys or lookups
+                return tok;
+            }).filter(Boolean) as string[];
+            return normalized;
+        };
+
+        // If no order payment term provided, treat as applicable
+        if (!requestedPaymentTerms && requestedPaymentTerms !== 0) {
+            return { applicable: true };
+        }
+
+        const promoEndpoint = `${PROMOTION_TABLE}(${promotionId})?$select=cr1bb_ieukhoanthanhtoanapdung`;
+        const resp = await axios.get(promoEndpoint, { headers });
+        const promo = resp.data;
+        const promoPayment = promo?.cr1bb_ieukhoanthanhtoanapdung;
+
+        // If promotion has no payment-term restriction -> applicable
+        if (!promoPayment || String(promoPayment).trim() === "") {
+            return { applicable: true };
+        }
+
+        const promoTokens = splitAndNormalize(promoPayment);
+        const requestedTokens = splitAndNormalize(requestedPaymentTerms);
+
+        if (promoTokens.length === 0 && requestedTokens.length === 0) {
+            const promoNorm = promoPayment;
+            const reqNorm = requestedPaymentTerms;
+            if (promoNorm && reqNorm && String(promoNorm) === String(reqNorm)) return { applicable: true };
+            return { applicable: false, reason: `Promotion requires payment terms "${promoPayment}", order has "${requestedPaymentTerms}"` };
+        }
+
+        const intersection = promoTokens.filter(t => requestedTokens.includes(t));
+        if (intersection.length > 0) {
+            return { applicable: true };
+        }
+
+        return {
+            applicable: false,
+            reason: `Promotion requires payment terms "${promoPayment}", order has "${requestedPaymentTerms}"`
+        };
+    } catch (err: any) {
+        console.error('[Save SOBG] Error validating promotion payment terms:', err?.message || err);
+        return { applicable: false, reason: 'Error validating promotion payment terms' };
+    }
+}
+
 export default async function handler(
     req: NextApiRequest,
     res: NextApiResponse
@@ -338,6 +401,24 @@ export default async function handler(
                     }
                 });
             }
+        }
+
+        // Compute order total to validate promotion min-total conditions
+        const orderTotalRaw = (products || []).reduce((s: number, p: any) => {
+            const subtotal = p.subtotal ?? ((p.discountedPrice ?? p.price) * (p.quantity || 0));
+            const vatAmount = p.vatAmount ?? Math.round((subtotal * (p.vat || 0)) / 100);
+            const total = p.totalAmount ?? (subtotal + vatAmount);
+            return s + (Number(total) || 0);
+        }, 0);
+        const orderTotal = Math.round(orderTotalRaw * 100) / 100;
+
+        // Fetch effective payment terms from SOBG header (if present) for promotion validation
+        let effectivePaymentTerms: any = undefined;
+        try {
+            const sobgResp = await axios.get(`${BASE_URL}${SODBAOGIA_TABLE}(${sobgId})?$select=crdfd_dieu_khoan_thanh_toan`, { headers });
+            effectivePaymentTerms = sobgResp.data?.crdfd_dieu_khoan_thanh_toan;
+        } catch (e) {
+            // ignore - treat as no payment term restriction
         }
 
         // ============ STEP 3: SAVE DETAILS ============
@@ -452,9 +533,11 @@ export default async function handler(
                 }
 
                 // Compute canonical subtotal/vat/total to match UI 'Tổng' (subtotal + VAT)
-                const computedSubtotal = product.subtotal ?? ((product.discountedPrice ?? product.price) * (product.quantity || 0));
-                const computedVatAmount = product.vatAmount ?? Math.round((computedSubtotal * (product.vat || 0)) / 100);
-                const computedTotal = product.totalAmount ?? (computedSubtotal + computedVatAmount);
+                const computedSubtotalRaw = product.subtotal ?? ((product.discountedPrice ?? product.price) * (product.quantity || 0));
+                // Round to 2 decimal places (preserve cents)
+                const computedSubtotal = Math.round(computedSubtotalRaw * 100) / 100;
+                const computedVatAmount = product.vatAmount ?? (Math.round(((computedSubtotal * (product.vat || 0)) / 100) * 100) / 100);
+                const computedTotal = product.totalAmount ?? (Math.round(((computedSubtotal + computedVatAmount) * 100) / 1) / 100);
 
                 // Compute deliveryDateNew and shift (ca) server-side if frontend didn't provide shift
                 const { deliveryDateNew, shift } = await calculateDeliveryDateAndShift(product, products, customerIndustry, product.deliveryDate);
@@ -588,19 +671,46 @@ export default async function handler(
 
                 // Step 4: (legacy) If frontend provided promotionId earlier we already used it; nothing to do here.
 
-                // Validate promotion is active and within date window before binding
+                // Validate promotion: check min-total condition and payment-term applicability, then active/date
                 if (promotionId) {
                     try {
-                        const ok = await isPromotionValid(promotionId, headers);
-                        if (ok) {
-                            entity[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${promotionId})`;
-                        } else {
-                            console.log(`[Save SOBG] Promotion ${promotionId} is not valid/active - skipping binding for product ${product.productCode}`);
+                        // Fetch promotion metadata for min-total and payment-terms
+                        let promoData: any = null;
+                        try {
+                            const promoResp = await axios.get(`${BASE_URL}${PROMOTION_TABLE}(${promotionId})?$select=cr1bb_tongtienapdung,cr1bb_ieukhoanthanhtoanapdung`, { headers });
+                            promoData = promoResp.data;
+                        } catch (innerErr) {
+                            // ignore, will still try basic active validation
+                        }
+
+                        // Validate min-total requirement (if any)
+                        const minTotalReq = Number(promoData?.cr1bb_tongtienapdung) || 0;
+                        if (minTotalReq > 0 && Number(orderTotal) < minTotalReq) {
+                            console.log(`[Save SOBG] Skipping promotion ${promotionId} for product ${product.productCode} due to min total (${minTotalReq})`);
                             promotionId = null;
+                        }
+
+                        // Validate payment term applicability (if still candidate)
+                        if (promotionId) {
+                            const promoCheck = await isPromotionApplicableToPaymentTerm(promotionId, effectivePaymentTerms, headers);
+                            if (!promoCheck.applicable) {
+                                console.log(`[Save SOBG] Skipping promotion ${promotionId} for product ${product.productCode} due to payment term mismatch: ${promoCheck.reason}`);
+                                promotionId = null;
+                            }
+                        }
+
+                        // Finally validate active/date window before binding
+                        if (promotionId) {
+                            const ok = await isPromotionValid(promotionId, headers);
+                            if (ok) {
+                                entity[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${promotionId})`;
+                            } else {
+                                console.log(`[Save SOBG] Promotion ${promotionId} is not valid/active - skipping binding for product ${product.productCode}`);
+                                promotionId = null;
+                            }
                         }
                     } catch (e) {
                         console.warn('[Save SOBG] Error validating promotion before binding:', (e as any)?.message || e);
-                        // If validation fails due to error, avoid binding to prevent saving expired/invalid promotion
                         promotionId = null;
                     }
                 }
@@ -714,11 +824,160 @@ export default async function handler(
             });
         }
 
-        return res.status(200).json({ success: true, totalSaved, totalRequested: products.length, savedDetails, message: "OK" });
+        // Create background job for inventory updates if warehouse provided and we saved items
+        const backgroundJobs: string[] = [];
+        if (warehouseName && savedDetails.length > 0) {
+            try {
+                const inventoryJobId = createBackgroundJob('inventory_update');
+                backgroundJobs.push(inventoryJobId);
+                // Run in background (no await)
+                processInventoryUpdatesInBackground(inventoryJobId, savedDetails, warehouseName, isVatOrder, headers)
+                    .catch((err) => console.error('[Save SOBG] Background inventory job failed:', err));
+            } catch (e) {
+                console.warn('[Save SOBG] Could not create background job for inventory:', (e as any)?.message || e);
+            }
+        }
+
+        return res.status(200).json({ success: true, totalSaved, totalRequested: products.length, savedDetails, message: "OK", backgroundJobs });
 
     } catch (error: any) {
         console.error("System Error SOBG:", error);
         return res.status(500).json({ error: "Lỗi hệ thống", details: error.message });
+    }
+}
+
+// Helper function to update inventory after saving SOBG (atomic updates)
+// Re-check inventory right before update to prevent negative stock. Similar to SOD logic.
+async function updateInventoryAfterSaleSOBG(
+    productCode: string,
+    quantity: number,
+    warehouseName: string | undefined,
+    isVatOrder: boolean,
+    headers: any,
+    productGroupCode?: string,
+    skipStockCheck?: boolean
+): Promise<void> {
+    if (!productCode || !warehouseName) return;
+    const safeCode = productCode.trim().replace(/'/g, "''");
+    const safeWarehouse = warehouseName.trim().replace(/'/g, "''");
+    try {
+        if (!isVatOrder) {
+            let invFilter = `cr44a_masanpham eq '${safeCode}' and statecode eq 0`;
+            if (safeWarehouse) invFilter += ` and cr1bb_vitrikhotext eq '${safeWarehouse}'`;
+            const invColumns = "cr44a_inventoryweshopid,cr44a_soluongtonlythuyet,cr1bb_soluonglythuyetgiuathang,cr1bb_vitrikhotext";
+            const invQuery = `$select=${invColumns}&$filter=${encodeURIComponent(invFilter)}&$top=1`;
+            const invEndpoint = `${BASE_URL}${INVENTORY_TABLE}?${invQuery}`;
+            const invResponse = await axios.get(invEndpoint, { headers });
+            const invResults = invResponse.data.value || [];
+            let invRecord: any = null;
+            if (invResults.length > 0) invRecord = invResults[0];
+            else if (safeWarehouse) {
+                const fallbackFilter = `cr44a_masanpham eq '${safeCode}' and statecode eq 0`;
+                const fallbackQuery = `$select=${invColumns}&$filter=${encodeURIComponent(fallbackFilter)}&$top=1`;
+                const fallbackEndpoint = `${BASE_URL}${INVENTORY_TABLE}?${fallbackQuery}`;
+                const fallbackResponse = await axios.get(fallbackEndpoint, { headers });
+                const fallbackResults = fallbackResponse.data.value || [];
+                if (fallbackResults.length > 0) invRecord = fallbackResults[0];
+            }
+
+            if (invRecord && invRecord.cr44a_inventoryweshopid) {
+                const currentInventory = invRecord.cr44a_soluongtonlythuyet ?? 0;
+                const reservedQuantity = invRecord.cr1bb_soluonglythuyetgiuathang ?? 0;
+                const ALLOWED_PRODUCT_GROUPS = ['NSP-00027', 'NSP-000872', 'NSP-000409', 'NSP-000474', 'NSP-000873'];
+                const isSpecialProduct = productGroupCode && ALLOWED_PRODUCT_GROUPS.includes(productGroupCode);
+                if (!skipStockCheck && !isSpecialProduct && currentInventory < quantity) {
+                    throw new Error(`Không đủ tồn kho để chốt đơn! Sản phẩm ${productCode} có tồn kho: ${currentInventory}, yêu cầu: ${quantity}`);
+                }
+                const newReservedQuantity = Math.max(0, reservedQuantity - quantity);
+                let newCurrentInventory: number | undefined;
+                if (!isSpecialProduct) newCurrentInventory = currentInventory - quantity;
+                else newCurrentInventory = undefined;
+                const updateInvEndpoint = `${BASE_URL}${INVENTORY_TABLE}(${invRecord.cr44a_inventoryweshopid})`;
+                const updatePayload: any = { cr1bb_soluonglythuyetgiuathang: newReservedQuantity };
+                if (newCurrentInventory !== undefined) updatePayload.cr44a_soluongtonlythuyet = newCurrentInventory;
+                await axios.patch(updateInvEndpoint, updatePayload, { headers });
+            }
+        }
+
+        if (isVatOrder) {
+            let khoBDFilter = `crdfd_masp eq '${safeCode}' and statecode eq 0`;
+            if (safeWarehouse) khoBDFilter += ` and crdfd_vitrikhofx eq '${safeWarehouse}'`;
+            const khoBDColumns = "crdfd_kho_binh_dinhid,cr1bb_soluonganggiuathang,crdfd_vitrikhofx";
+            const khoBDQuery = `$select=${khoBDColumns}&$filter=${encodeURIComponent(khoBDFilter)}&$top=1`;
+            const khoBDEndpoint = `${BASE_URL}${KHO_BD_TABLE}?${khoBDQuery}`;
+            const khoBDResponse = await axios.get(khoBDEndpoint, { headers });
+            const khoBDResults = khoBDResponse.data.value || [];
+            if (khoBDResults.length > 0) {
+                const khoBDRecord = khoBDResults[0];
+                const reservedQuantity = khoBDRecord.cr1bb_soluonganggiuathang ?? 0;
+                const newReservedQuantity = Math.max(0, reservedQuantity - quantity);
+                const updateKhoBDEndpoint = `${BASE_URL}${KHO_BD_TABLE}(${khoBDRecord.crdfd_kho_binh_dinhid})`;
+                const updatePayload: any = { cr1bb_soluonganggiuathang: newReservedQuantity };
+                await axios.patch(updateKhoBDEndpoint, updatePayload, { headers });
+            }
+        }
+    } catch (err: any) {
+        throw err;
+    }
+}
+
+// Background processor for inventory updates (uses updateInventoryAfterSaleSOBG)
+async function processInventoryUpdatesInBackground(
+    jobId: string,
+    savedDetails: any[],
+    warehouseName: string | undefined,
+    isVatOrder: boolean,
+    headers: any
+): Promise<void> {
+    updateJobStatus(jobId, 'running', {
+        progress: { total: savedDetails.length, completed: 0, currentStep: 'Grouping products' }
+    });
+    try {
+        const inventoryGroups = new Map<string, Array<{ product: any, quantity: number }>>();
+        for (const savedProduct of savedDetails) {
+            if (savedProduct.productCode && savedProduct.quantity > 0) {
+                const key = `${savedProduct.productCode}::${warehouseName}`;
+                if (!inventoryGroups.has(key)) inventoryGroups.set(key, []);
+                inventoryGroups.get(key)!.push({ product: savedProduct, quantity: savedProduct.quantity });
+            }
+        }
+
+        const INVENTORY_BATCH_SIZE = 3;
+        let processedCount = 0;
+        const promises: Promise<void>[] = [];
+        const inventoryErrors: any[] = [];
+
+        for (const [groupKey, items] of inventoryGroups) {
+            const p = (async () => {
+                const [productCode] = groupKey.split('::');
+                const firstProduct = items[0].product;
+                try {
+                    const totalQuantity = items.reduce((s, it) => s + it.quantity, 0);
+                    await updateInventoryAfterSaleSOBG(productCode, totalQuantity, warehouseName, isVatOrder, headers, firstProduct.productGroupCode, false);
+                } catch (err: any) {
+                    inventoryErrors.push({
+                        productCode,
+                        productName: firstProduct.productName,
+                        quantity: items.reduce((s, it) => s + it.quantity, 0),
+                        error: err?.message || err
+                    });
+                }
+            })();
+            promises.push(p);
+            if (promises.length >= INVENTORY_BATCH_SIZE) {
+                await Promise.allSettled(promises);
+                promises.length = 0;
+                processedCount += INVENTORY_BATCH_SIZE;
+                updateJobStatus(jobId, 'running', {
+                    progress: { total: inventoryGroups.size, completed: processedCount, currentStep: `Processed ${processedCount}/${inventoryGroups.size} product groups` }
+                });
+            }
+        }
+        if (promises.length > 0) await Promise.allSettled(promises);
+        const success = inventoryErrors.length === 0;
+        updateJobStatus(jobId, success ? 'completed' : 'failed', { result: { totalGroups: inventoryGroups.size, errors: inventoryErrors }, error: success ? undefined : 'Some inventory updates failed' });
+    } catch (err: any) {
+        updateJobStatus(jobId, 'failed', { error: err?.message || err });
     }
 }
 

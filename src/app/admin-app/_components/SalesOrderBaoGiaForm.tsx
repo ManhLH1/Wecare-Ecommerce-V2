@@ -5,7 +5,7 @@ import ProductEntryForm from './ProductEntryForm';
 import ProductTable from './ProductTable';
 import Dropdown from './Dropdown';
 import { useCustomers, useSaleOrderBaoGia } from '../_hooks/useDropdownData';
-import { saveSOBGDetails, fetchSOBGDetails, SaleOrderDetail, fetchPromotionOrders, fetchSpecialPromotionOrders, applySOBGPromotionOrder, PromotionOrderItem, SOBaoGia } from '../_api/adminApi';
+import { saveSOBGDetails, fetchSOBGDetails, SaleOrderDetail, fetchPromotionOrders, fetchPromotionOrdersSOBG, fetchSpecialPromotionOrders, applySOBGPromotionOrder, PromotionOrderItem, SOBaoGia } from '../_api/adminApi';
 import { showToast } from '../../../components/ToastManager';
 import { getItem } from '../../../utils/SecureStorage';
 import { getStoredUser } from '../_utils/implicitAuthService';
@@ -712,12 +712,12 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       const savedCustomerCode = customerCode;
       const savedProductCodes = productsToSave.map(p => p.productCode).filter(Boolean) as string[];
       const savedProductGroupCodes = productsToSave.map(p => p.productGroupCode).filter(Boolean) as string[];
-      const savedTotalAmount = orderSummary.total;
+      const savedTotalAmount = selectedSo?.crdfd_tongtiencovat ?? selectedSo?.crdfd_tongtien ?? orderSummary.total;
 
       // After save: check promotion orders and show popup similar to SalesOrderForm
       try {
 
-        const promotionOrderResult = await fetchPromotionOrders(
+        const promotionOrderResult = await fetchPromotionOrdersSOBG(
           savedSoId,
           savedCustomerCode,
           savedTotalAmount,
@@ -978,10 +978,10 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     if (!customerId || orderSummary.total <= 0) return;
 
     try {
-      const orderTotal = orderSummary.total;
+    const orderTotal = selectedSo?.crdfd_tongtiencovat ?? selectedSo?.crdfd_tongtien ?? orderSummary.total;
 
       // Fetch available promotions for current order
-      const promotionOrderResult = await fetchPromotionOrders(
+      const promotionOrderResult = await fetchPromotionOrdersSOBG(
         soId,
         customerCode || undefined,
         orderTotal,
