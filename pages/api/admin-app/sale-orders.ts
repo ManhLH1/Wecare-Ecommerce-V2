@@ -86,7 +86,7 @@ export default async function handler(
     filter += ` and crdfd_activedata eq false`;
 
     // Select payment term field - prefer `crdfd_dieu_khoan_thanh_toan`
-    const columns = "crdfd_sale_orderid,crdfd_name,crdfd_so_code,crdfd_so_auto,cr1bb_vattext,cr1bb_loaihoaon,crdfd_dieu_khoan_thanh_toan";
+    const columns = "crdfd_sale_orderid,crdfd_name,crdfd_so_code,crdfd_so_auto,cr1bb_vattext,cr1bb_loaihoaon,crdfd_dieu_khoan_thanh_toan,crdfd_tongtien,crdfd_tongtiencovat";
     // Sort by Created On (createdon) descending as per Power BI logic
     const query = `$select=${columns}&$filter=${encodeURIComponent(
       filter
@@ -134,6 +134,8 @@ export default async function handler(
         crdfd_dieu_khoan_thanh_toan_label:
           item["crdfd_dieu_khoan_thanh_toan@OData.Community.Display.V1.FormattedValue"] ||
           null,
+        crdfd_tongtien: item.crdfd_tongtien || 0, // Raw total amount field
+        crdfd_tongtiencovat: item.crdfd_tongtiencovat || 0, // Raw total with VAT field
       };
     });
 

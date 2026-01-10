@@ -65,6 +65,7 @@ export default async function handler(
       "crdfd_gtgt",                 // GTGT
       "crdfd_tongtien",             // Tổng tiền
       "crdfd_tongtienkhongvat",     // Tổng tiền không VAT
+      "crdfd_tongtiencovat",        // Tổng tiền có VAT
       "crdfd_vat",                  // VAT
       "crdfd_vattext",              // VAT text
       "crdfd_tenpromotion",         // Tên Promotion
@@ -119,6 +120,8 @@ export default async function handler(
       xuatHoaDon: item.crdfd_xuat_hoa_don || false,
       dieuKhoanThanhToan: item.crdfd_ieukhoanthanhtoan || null,
       crdfd_ieukhoanthanhtoan: item.crdfd_ieukhoanthanhtoan || "",
+      crdfd_tongtien: item.crdfd_tongtien || 0, // Raw total amount field
+      crdfd_tongtiencovat: item.crdfd_tongtiencovat || 0, // Raw total with VAT field
 
       // Map lookups (using expanded values for customer, others just ID)
       chinhanhKH: {

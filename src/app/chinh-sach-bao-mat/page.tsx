@@ -79,7 +79,7 @@ const PrivacyPolicyPage = () => {
                   <div className="bg-gray-50 rounded-lg p-6">
                     <h3 className="text-2xl font-bold text-gray-900 mb-4">3. Mục đích thu thập và sử dụng thông tin</h3>
                     <p className="text-gray-700 leading-relaxed mb-4">
-                      Wecare Group thu thập và sử dụng thông tin cá nhân với mục đích phù hợp và hoàn toàn tuân thủ nội dung của "Chính sách bảo mật" này. Cụ thể:
+                      Wecare Group thu thập và sử dụng thông tin cá nhân với mục đích phù hợp và hoàn toàn tuân thủ nội dung của &quot;Chính sách bảo mật&quot; này. Cụ thể:
                     </p>
                     <ul className="list-disc list-inside text-gray-700 space-y-3 ml-4">
                       <li><strong>Xử lý đơn hàng:</strong> Gọi điện/tin nhắn xác nhận việc đặt hàng, thông báo về trạng thái đơn hàng & thời gian giao hàng, xác nhận việc huỷ đơn hàng và xử lý các vấn đề khác liên quan đến đơn đặt hàng của bạn</li>
