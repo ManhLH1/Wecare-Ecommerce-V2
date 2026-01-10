@@ -56,7 +56,6 @@ export interface SaleOrder {
   crdfd_dieu_khoan_thanh_toan?: string;
   crdfd_ieukhoanthanhtoan?: string;
   crdfd_tongtien?: number; // Tổng tiền (raw field)
-  crdfd_tongtiencovat?: number; // Tổng tiền có VAT (raw field)
 }
 
 export interface Warehouse {

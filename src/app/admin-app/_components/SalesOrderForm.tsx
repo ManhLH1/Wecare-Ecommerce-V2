@@ -1434,7 +1434,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   };
 
   // Prefer header total from selected SO to match server-side validation
-  const headerTotalSo = selectedSo?.crdfd_tongtiencovat ?? selectedSo?.crdfd_tongtien;
+  const headerTotalSo = selectedSo?.crdfd_tongtien;
   const computedLineTotalSo = productList.reduce((s, p) => s + (p.totalAmount || ((p.discountedPrice ?? p.price) * (p.quantity || 0) + ((p.vat || 0) ? Math.round(((p.discountedPrice ?? p.price) * (p.quantity || 0) * (p.vat || 0)) / 100) : 0))), 0);
   const currentOrderTotal = Number(headerTotalSo ?? totalAmount ?? orderSummary?.total ?? computedLineTotalSo ?? 0);
 
