@@ -1341,7 +1341,7 @@ export default async function handler(
         // Set promotion lookup only if promotion was actually applied to this order and passed validations.
         // Defensive check: verify an Orders x Promotion record exists linking this SO and Promotion.
         try {
-          if (promotionApplicableForThisProduct) {
+            if (promotionApplicableForThisProduct) {
             const existingFilter = `_crdfd_so_value eq ${soId} and _crdfd_promotion_value eq ${promotionIdClean} and crdfd_type eq 'Order' and statecode eq 0`;
             const existingQuery = `$filter=${encodeURIComponent(existingFilter)}&$select=crdfd_ordersxpromotionid`;
             const existingEndpoint = `${BASE_URL}${ORDERS_X_PROMOTION_TABLE}?${existingQuery}`;
@@ -1352,9 +1352,31 @@ export default async function handler(
               payload.crdfd_promotiontext = product.promotionText || "";
               console.log(`[Save SOD] ✅ Set promotion lookup for product ${product.productCode}: crdfd_Promotion@odata.bind = /crdfd_promotions(${promotionIdClean})`);
             } else {
-              // Promotion not actually applied on the order — do not save promotion lookup/text
-              console.log(`[Save SOD] ℹ️ Skipping promotion for product ${product.productCode} because Orders x Promotion record not found (SO=${soId}, promo=${promotionIdClean})`);
-              payload.crdfd_promotiontext = "";
+              // Try to create Orders x Promotion linking SO & Promotion if missing
+              try {
+                const createPayload: any = {
+                  [`crdfd_SO@odata.bind`]: `/crdfd_sale_orders(${soId})`,
+                  [`crdfd_Promotion@odata.bind`]: `/crdfd_promotions(${promotionIdClean})`,
+                  crdfd_type: 'Order',
+                  statecode: 0,
+                  crdfd_name: `SO ${soId} - Promo ${promotionIdClean}`
+                };
+                const createResp = await apiClient.post(`${BASE_URL}${ORDERS_X_PROMOTION_TABLE}`, createPayload, { headers });
+                const createdId = createResp.data?.crdfd_ordersxpromotionid || null;
+                if (createdId) {
+                  payload[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${promotionIdClean})`;
+                  payload.crdfd_promotiontext = product.promotionText || "";
+                  console.log(`[Save SOD] ✅ Created Orders x Promotion (${createdId}) and set promotion lookup for product ${product.productCode}`);
+                } else {
+                  // Could not confirm creation, skip saving promotion lookup
+                  console.warn(`[Save SOD] ⚠️ Orders x Promotion creation returned no id for SO=${soId}, promo=${promotionIdClean}`);
+                  payload.crdfd_promotiontext = "";
+                }
+              } catch (createErr: any) {
+                console.error(`[Save SOD] ❌ Failed to create Orders x Promotion for SO=${soId}, promo=${promotionIdClean}:`, createErr?.message || createErr);
+                // Skip setting promotion to avoid write errors
+                payload.crdfd_promotiontext = "";
+              }
             }
           } else {
             // Skip applying promotion due to validation; ensure promotion fields are empty

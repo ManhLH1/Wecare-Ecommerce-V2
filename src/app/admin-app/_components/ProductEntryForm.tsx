@@ -78,6 +78,7 @@ interface ProductEntryFormProps {
   customerName?: string;
   customerDistrictKey?: string;
   customerRegion?: string;
+  customerWecareRewards?: string | null;
   paymentTerms?: string | number | null;
   soId?: string;
   orderType?: number | null; // Loại đơn hàng OptionSet value (optional)
@@ -151,6 +152,7 @@ function ProductEntryForm({
   customerName,
   customerDistrictKey,
   customerRegion,
+  customerWecareRewards,
   paymentTerms,
   soId,
   orderType,
@@ -289,6 +291,105 @@ function ProductEntryForm({
   const hasSelectedProduct = useMemo(() => {
     return Boolean(productId || selectedProductCode);
   }, [productId, selectedProductCode]);
+
+  // Compute discount percent to show next to price group badge (e.g., "Diamond (-4%)")
+  const priceGroupDiscountPct = useMemo(() => {
+    const group = (priceGroupText || '').trim();
+    if (!group) return null;
+
+    // Local normalizer (avoid using normalizeText before it's declared)
+    const localNormalize = (v: string | undefined | null) =>
+      (v || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+    const normGroup = localNormalize(group);
+
+    // Prefer selectedPriceFromApi if it matches the group
+    const sel = selectedPriceFromApi as any;
+    let matched: any = null;
+    try {
+      if (sel) {
+        const selGroup = (sel.priceGroupText || sel.crdfd_nhomoituongtext || '').trim();
+        if (selGroup && localNormalize(selGroup) === normGroup) {
+          matched = sel;
+        }
+      }
+      if (!matched && Array.isArray(pricesFromApi)) {
+        matched = pricesFromApi.find((p: any) => {
+          const pg = (p.priceGroupText || p.crdfd_nhomoituongtext || '').trim();
+          if (!pg) return false;
+          return localNormalize(pg) === normGroup;
+        });
+      }
+    } catch (e) {
+      matched = null;
+    }
+
+    const raw = matched ? (matched.discountRate ?? matched.crdfd_discount_rate ?? null) : null;
+    if (raw === null || raw === undefined) return null;
+    const num = Number(raw);
+    if (isNaN(num)) return null;
+    // If API returns fraction (0 < num <= 1), convert to percent with one decimal: 0.027 -> 2.7
+    let pctNumber: number;
+    if (num > 0 && num <= 1) {
+      pctNumber = Math.round(num * 1000) / 10; // keep one decimal
+    } else {
+      // Assume already percent-like, keep one decimal precision
+      pctNumber = Math.round(num * 10) / 10;
+    }
+    return pctNumber;
+  }, [priceGroupText, selectedPriceFromApi, pricesFromApi]);
+
+  // Compute discount percent for customerWecareRewards badge (show percent next to rewards)
+  const customerRewardDiscountPct = useMemo(() => {
+    const group = (customerWecareRewards || '').trim();
+    if (!group) return null;
+
+    const localNormalize = (v: string | undefined | null) =>
+      (v || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+    const normGroup = localNormalize(group);
+
+    const sel = selectedPriceFromApi as any;
+    let matched: any = null;
+    try {
+      // Prefer selectedPriceFromApi.discountRate when it exists
+      if (sel && sel.discountRate !== undefined && sel.discountRate !== null) {
+        matched = sel;
+      }
+      // Otherwise try to find a price entry that matches the customer reward group
+      if (!matched && Array.isArray(pricesFromApi)) {
+        matched = pricesFromApi.find((p: any) => {
+          const pg = (p.priceGroupText || p.crdfd_nhomoituongtext || '').trim();
+          if (pg && localNormalize(pg) === normGroup) return true;
+          return false;
+        }) || null;
+      }
+      // Fallback: use first entry that has discountRate defined
+      if (!matched && Array.isArray(pricesFromApi)) {
+        matched = pricesFromApi.find((p: any) => p.discountRate !== undefined && p.discountRate !== null) || null;
+      }
+    } catch (e) {
+      matched = null;
+    }
+
+    const raw = matched ? (matched.discountRate ?? matched.crdfd_discount_rate ?? null) : null;
+    if (raw === null || raw === undefined) return null;
+    const num = Number(raw);
+    if (isNaN(num)) return null;
+    let pctNumber: number;
+    if (num > 0 && num <= 1) {
+      pctNumber = Math.round(num * 1000) / 10; // keep one decimal
+    } else {
+      pctNumber = Math.round(num * 10) / 10;
+    }
+    return pctNumber;
+  }, [customerWecareRewards, selectedPriceFromApi, pricesFromApi]);
 
   const normalizePriceInput = (value: any) => {
     if (value === null || value === undefined) return '';
@@ -1599,11 +1700,14 @@ function ProductEntryForm({
 
   // Calculate totals with promotion discount
   const recomputeTotals = (priceValue: string | number, qty: number, promoDiscountPct: number, vatPct: number) => {
-    const priceNum = parseFloat(String(priceValue).replace(/,/g, '')) || 0;
+    // Use basePriceForDiscount (price from API before API discountRate) when available,
+    // so "Giá đã giảm" = basePriceForDiscount × (1 - promoDiscountPct/100).
+    const rawPriceNum = (basePriceForDiscount && basePriceForDiscount > 0)
+      ? basePriceForDiscount
+      : parseFloat(String(priceValue).replace(/,/g, '')) || 0;
 
-    // Base after primary promotion percent
     const discountFactor = 1 - (promoDiscountPct > 0 ? promoDiscountPct / 100 : 0);
-    let effectivePrice = priceNum * discountFactor;
+    let effectivePrice = rawPriceNum * discountFactor;
 
 
     const vatTextLower = (vatText || '').toLowerCase();
@@ -2620,7 +2724,21 @@ function ProductEntryForm({
                   borderRadius: '4px',
                   border: '1px solid #a7f3d0'
                 }}>
-                  {priceGroupText}
+                  {priceGroupText}{(priceGroupDiscountPct && normalizeText(priceGroupText) !== 'shop') ? ` (-${(Number.isInteger(priceGroupDiscountPct) ? priceGroupDiscountPct : priceGroupDiscountPct.toFixed(1))}%)` : ''}
+                </span>
+              )}
+              {customerWecareRewards && (
+                <span className="admin-app-rewards-badge" style={{
+                  marginLeft: '8px',
+                  fontSize: '10px',
+                  fontWeight: '500',
+                  color: '#7c3aed',
+                  backgroundColor: '#f3e8ff',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  border: '1px solid #d8b4fe'
+                }}>
+                  {customerWecareRewards}{(customerRewardDiscountPct && (String(customerWecareRewards || '').toLowerCase().trim() !== 'shop')) ? ` (-${(Number.isInteger(customerRewardDiscountPct) ? customerRewardDiscountPct : customerRewardDiscountPct.toFixed(1))}%)` : ''}
                 </span>
               )}
             </label>
@@ -2803,26 +2921,25 @@ function ProductEntryForm({
         <div className="admin-app-form-row-compact admin-app-form-row-summary admin-app-form-row-summary-no-stock">
           {hasSelectedProduct && (() => {
             // Tính giá đã giảm (giá đơn vị sau khi áp dụng chiết khấu, KHÔNG bao gồm VAT)
-            // Logic giống với recomputeTotals để đảm bảo tính toán nhất quán
-            const priceNum = parseFloat(String(price)) || 0;
+            // Sử dụng ưu tiên: nếu API trả về discountRate thì dùng discountRate này,
+            // ngược lại fallback sang promotion/discountPercent client-side.
+            const priceNum = (basePriceForDiscount && basePriceForDiscount > 0) ? basePriceForDiscount : (parseFloat(String(price)) || 0);
+
             const promoDiscountPct = discountPercent || promotionDiscountPercent || 0;
+
+            // Ignore API discountRate for "Giá đã giảm" — always compute using client-side promotion/discountPercent
             const discountFactor = 1 - (promoDiscountPct > 0 ? promoDiscountPct / 100 : 0);
             const discountedPrice = priceNum * discountFactor;
             // Làm tròn đến 2 chữ số thập phân để hiển thị giống với cách tính trong recomputeTotals
             const roundedDiscountedPrice = Math.round(discountedPrice * 100) / 100;
 
-            // Công thức: Giá đã giảm = Giá gốc × (1 - Chiết khấu%)
-            let formula = `CÔNG THỨC TÍNH GIÁ ĐÃ GIẢM\n`;
+            // Build formula title (note that API discountRate is ignored here)
+            let formula = `CÔNG THỨC TÍNH GIÁ ĐÃ GIẢM (BỎ QUA discountRate từ API)\n`;
             formula += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
             formula += `Giá gốc: ${priceNum.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
-            if (promoDiscountPct > 0) {
-              formula += `Chiết khấu: ${promoDiscountPct}%\n`;
-              formula += `Giá đã giảm: ${roundedDiscountedPrice.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
-            } else {
-              formula += `Chiết khấu: 0%\n`;
-              formula += `Giá đã giảm: ${roundedDiscountedPrice.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
-            }
-            formula += `\nTính toán:\n`;
+            formula += `Chiết khấu áp dụng (promotion/chiết khấu client): ${promoDiscountPct}%\n`;
+            formula += `Giá đã giảm: ${roundedDiscountedPrice.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n\n`;
+            formula += `Tính toán:\n`;
             if (promoDiscountPct > 0) {
               formula += `${priceNum.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} × (1 - ${promoDiscountPct}%) = ${roundedDiscountedPrice.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             } else {
@@ -2838,6 +2955,7 @@ function ProductEntryForm({
                   value={roundedDiscountedPrice.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   readOnly
                   title={formula}
+                  aria-label={`Công thức tính: ${formula}`}
                 />
               </div>
             );

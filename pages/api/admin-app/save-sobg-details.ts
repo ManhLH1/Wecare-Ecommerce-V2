@@ -802,12 +802,50 @@ export default async function handler(
                     id: createdRecordId || null
                 });
 
+                // Collect promotionId to ensure we create header-level SOBG x Promotion entries later
+                try {
+                    const bound = entity['crdfd_Promotion@odata.bind'];
+                    if (bound && typeof bound === 'string') {
+                        const m = bound.match(/\(([^)]+)\)/);
+                        if (m && m[1]) {
+                            const pid = m[1];
+                            if (!promotionsToApplyMap.has(pid)) {
+                                promotionsToApplyMap.set(pid, { promotionId: pid });
+                            }
+                        }
+                    }
+                } catch (e) {
+                    /* ignore collection errors */
+                }
+
             } catch (err: any) {
                 console.error(`Failed to save product ${product.productName}:`, err?.response?.data || err.message);
                 failedProducts.push({
                     productCode: product.productCode,
                     error: err?.response?.data?.error?.message || err.message
                 });
+            }
+        }
+
+        // After saving all details, ensure header-level SOBG x Promotion records exist for each promotion used by details.
+        if (promotionsToApplyMap.size > 0) {
+            for (const [promoId] of promotionsToApplyMap) {
+                try {
+                    // Call internal apply promotion API which handles validation and creation
+                    await axios.post(`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/api/admin-app/apply-sobg-promotion-order`, {
+                        sobgId,
+                        promotionId: promoId,
+                        promotionName: null,
+                        promotionValue: null,
+                        vndOrPercent: null,
+                        chietKhau2: null,
+                        productCodes: null,
+                        productGroupCodes: null,
+                        orderTotal
+                    }, { headers });
+                } catch (e: any) {
+                    console.warn('[Save SOBG] Could not create header SOBG x Promotion for promotionId', promoId, (e?.response?.data || e?.message || e));
+                }
             }
         }
 
