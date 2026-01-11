@@ -65,7 +65,6 @@ export default async function handler(
       "crdfd_gtgt",                 // GTGT
       "crdfd_tongtien",             // Tổng tiền
       "crdfd_tongtienkhongvat",     // Tổng tiền không VAT
-      "crdfd_tongtiencovat",        // Tổng tiền có VAT
       "crdfd_vat",                  // VAT
       "crdfd_vattext",              // VAT text
       "crdfd_tenpromotion",         // Tên Promotion
@@ -87,9 +86,9 @@ export default async function handler(
     ].join(",");
 
     // Expand only crdfd_Khachhang for name, avoid others to prevent errors
-    // Note: relationship name usually matches schema name, check case sensitivity if needed. 
+    // Note: relationship name usually matches schema name, check case sensitivity if needed.
     // Trying 'crdfd_Khachhang' first, if fails might need 'crdfd_khachhang'
-    const expand = "$expand=crdfd_Khachhang($select=crdfd_name,cr44a_makhachhang)";
+    const expand = "$expand=crdfd_Khachhang($select=crdfd_name,cr44a_makhachhang,crdfd_wecare_rewards)";
 
     const query = `$select=${columns}&$filter=${encodeURIComponent(filter)}&${expand}&$orderby=createdon desc`;
 
@@ -121,7 +120,6 @@ export default async function handler(
       dieuKhoanThanhToan: item.crdfd_ieukhoanthanhtoan || null,
       crdfd_ieukhoanthanhtoan: item.crdfd_ieukhoanthanhtoan || "",
       crdfd_tongtien: item.crdfd_tongtien || 0, // Raw total amount field
-      crdfd_tongtiencovat: item.crdfd_tongtiencovat || 0, // Raw total with VAT field
 
       // Map lookups (using expanded values for customer, others just ID)
       chinhanhKH: {
@@ -132,6 +130,7 @@ export default async function handler(
         id: item._crdfd_khachhang_value || null,
         name: item.crdfd_Khachhang?.crdfd_name || "",
         maKhachHang: item.crdfd_Khachhang?.cr44a_makhachhang || "",
+        rewards: item.crdfd_Khachhang?.crdfd_wecare_rewards || null,
       },
       nhanVienBanHang: {
         id: item._crdfd_nhanvienbanhang_value || null,

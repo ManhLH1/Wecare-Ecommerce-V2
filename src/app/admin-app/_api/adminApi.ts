@@ -695,6 +695,7 @@ export interface SOBaoGia {
     id: string | null;
     name: string;
     maKhachHang: string;
+    rewards?: string | null;
   };
   createdon?: string;
 }

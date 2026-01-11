@@ -59,6 +59,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   const [customerId, setCustomerId] = useState('');
   const [customerCode, setCustomerCode] = useState('');
   const [customerSearch, setCustomerSearch] = useState('');
+  const [customerWecareRewards, setCustomerWecareRewards] = useState<string | null>(null);
   const [so, setSo] = useState('');
   const [soId, setSoId] = useState('');
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
@@ -315,6 +316,12 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         // Sort by STT descending (already sorted by API, but ensure it)
         mappedProducts.sort((a, b) => (b.stt || 0) - (a.stt || 0));
         setProductList(mappedProducts);
+
+        // Set customer wecare rewards from customer list if available
+        const customerOption = customers.find(c => c.crdfd_customerid === customerId);
+        if (customerOption?.crdfd_wecare_rewards) {
+          setCustomerWecareRewards(customerOption.crdfd_wecare_rewards);
+        }
       } catch (error) {
         console.error('Error loading SOBG details:', error);
         setProductList([]);
@@ -1439,6 +1446,8 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
                     setCustomer(option?.label || '');
                     setCustomerCode(option?.cr44a_makhachhang || option?.cr44a_st || '');
                     setCustomerIndustry(option?.crdfd_nganhnghe ?? null);
+                    // Capture wecare rewards
+                    setCustomerWecareRewards(option?.crdfd_wecare_rewards || null);
                     // Clear SOBG và các selected khi đổi customer
                     setSo('');
                     setSoId(''); // Clear soId trước để tránh trigger load details với soId cũ
@@ -1468,6 +1477,20 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
                   searchable
                   onSearch={setCustomerSearch}
                 />
+              </div>
+
+              {/* Wecare rewards badge (display under customer dropdown) */}
+              <div className="admin-app-field-compact" style={{ marginTop: 6 }}>
+                {customerWecareRewards ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12, color: '#6b7280' }}>Wecare Rewards:</span>
+                    <span className="admin-app-badge" title={`Wecare Rewards: ${customerWecareRewards}`} style={{ background: 'rgba(99,102,241,0.08)', color: '#4338ca', border: '1px solid rgba(99,102,241,0.18)' }}>
+                      {customerWecareRewards}
+                    </span>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, color: '#9ca3af' }}>Không có thông tin rewards</div>
+                )}
               </div>
 
               <div className="admin-app-field-compact">
@@ -1538,6 +1561,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             customerId={customerId}
             customerCode={customerCode}
             customerName={customer}
+            customerWecareRewards={customerWecareRewards}
             vatText={selectedVatText}
             paymentTerms={selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan}
             soId={soId}

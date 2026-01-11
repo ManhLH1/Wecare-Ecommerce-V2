@@ -425,6 +425,8 @@ export default async function handler(
         let totalSaved = 0;
         let failedProducts = [];
         const savedDetails: any[] = [];
+        // Collect promotions to apply at header level (SOBG x Promotion)
+        const promotionsToApplyMap: Map<string, { promotionId: string }> = new Map();
         // Fetch existing SOBG x Promotion records for this SOBG (if any)
         let sobgPromotions: Array<{
             promotionId?: string;
