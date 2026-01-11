@@ -1266,6 +1266,8 @@ function ProductEntryForm({
         // Fallback về format cũ nếu API chưa có prices array
         const priceWithVat = selectedPrice?.price ?? result?.price ?? null;
         const priceNoVat = selectedPrice?.priceNoVat ?? (result as any)?.priceNoVat ?? null;
+        const finalPrice = selectedPrice?.finalPrice ?? (result as any)?.finalPrice ?? null;
+        const discountRate = selectedPrice?.discountRate ?? (result as any)?.discountRate ?? null;
         const apiUnitName = selectedPrice?.unitName ?? result?.unitName ?? undefined;
         const apiPriceGroupText = selectedPrice?.priceGroupText ?? result?.priceGroupText ?? undefined;
 
@@ -1319,34 +1321,43 @@ function ProductEntryForm({
           }
         }
 
-        // Chọn giá dựa vào VAT của SO và SẢN PHẨM
-        // Logic:
-        // 1. SO có VAT + Sản phẩm có VAT → dùng priceNoVat
-        // 2. SO có VAT + Sản phẩm không VAT → dùng price
-        // 3. SO không VAT + Sản phẩm có VAT → dùng price
-        // 4. SO không VAT + Sản phẩm không VAT → dùng price
+        // Ưu tiên dùng finalPrice (đã áp dụng discount rate) nếu có
+        // Nếu không có finalPrice, fallback về logic cũ
         let basePrice: number | null = null;
 
-        // Xác định SO có VAT hay không
-        const vatTextLower = (vatText || '').toLowerCase();
-        const soIsVat = vatTextLower.includes('có vat') || vatPercent > 0;
-
-        // Xác định sản phẩm có VAT hay không (dựa vào crdfd_gtgt)
-        // Tìm sản phẩm từ selectedProduct hoặc từ products list
-        const currentProduct = selectedProduct || (selectedProductCode ? products.find((p) => p.crdfd_masanpham === selectedProductCode) : null);
-        const productVatOptionValue = currentProduct?.crdfd_gtgt_option ?? currentProduct?.crdfd_gtgt;
-        const productVatPercent = productVatOptionValue !== undefined ? VAT_OPTION_MAP[Number(productVatOptionValue)] : undefined;
-        const productIsVat = productVatPercent !== undefined && productVatPercent > 0;
-
-        // Áp dụng logic chọn giá (đơn giản hoá để tránh mapping nhầm giữa giá có VAT / không VAT)
-        // - Nếu SO có VAT và SP có VAT => dùng priceNoVat (giá chưa VAT)
-        // - Các trường hợp khác => dùng priceWithVat (giá từ API hoặc fallback)
-        if (soIsVat && productIsVat) {
-          // SO có VAT + SP có VAT: ưu tiên dùng giá chưa VAT (priceNoVat)
-          basePrice = priceNoVat ?? null;
+        if (finalPrice !== null && finalPrice !== undefined) {
+          // Có finalPrice từ API (priceNoVat x discountRate) - ưu tiên dùng
+          basePrice = finalPrice;
         } else {
-          // Các trường hợp khác dùng priceWithVat (fallback sang result.price nếu cần)
-          basePrice = priceWithVat ?? result?.price ?? null;
+          // Fallback về logic cũ nếu không có finalPrice
+          // Chọn giá dựa vào VAT của SO và SẢN PHẨM
+          // Logic:
+          // 1. SO có VAT + Sản phẩm có VAT → dùng priceNoVat
+          // 2. SO có VAT + Sản phẩm không VAT → dùng price
+          // 3. SO không VAT + Sản phẩm có VAT → dùng price
+          // 4. SO không VAT + Sản phẩm không VAT → dùng price
+
+          // Xác định SO có VAT hay không
+          const vatTextLower = (vatText || '').toLowerCase();
+          const soIsVat = vatTextLower.includes('có vat') || vatPercent > 0;
+
+          // Xác định sản phẩm có VAT hay không (dựa vào crdfd_gtgt)
+          // Tìm sản phẩm từ selectedProduct hoặc từ products list
+          const currentProduct = selectedProduct || (selectedProductCode ? products.find((p) => p.crdfd_masanpham === selectedProductCode) : null);
+          const productVatOptionValue = currentProduct?.crdfd_gtgt_option ?? currentProduct?.crdfd_gtgt;
+          const productVatPercent = productVatOptionValue !== undefined ? VAT_OPTION_MAP[Number(productVatOptionValue)] : undefined;
+          const productIsVat = productVatPercent !== undefined && productVatPercent > 0;
+
+          // Áp dụng logic chọn giá (đơn giản hoá để tránh mapping nhầm giữa giá có VAT / không VAT)
+          // - Nếu SO có VAT và SP có VAT => dùng priceNoVat (giá chưa VAT)
+          // - Các trường hợp khác => dùng priceWithVat (giá từ API hoặc fallback)
+          if (soIsVat && productIsVat) {
+            // SO có VAT + SP có VAT: ưu tiên dùng giá chưa VAT (priceNoVat)
+            basePrice = priceNoVat ?? null;
+          } else {
+            // Các trường hợp khác dùng priceWithVat (fallback sang result.price nếu cần)
+            basePrice = priceWithVat ?? result?.price ?? null;
+          }
         }
 
         // Làm tròn & format giống PowerApps Text(..., "#,###")

@@ -76,6 +76,8 @@ export interface InventoryInfo {
 export interface ProductPrice {
   price: number | null;
   priceNoVat?: number | null; // Giá không VAT
+  finalPrice?: number | null; // priceNoVat x discountRate
+  discountRate?: number | null; // Tỷ lệ discount dựa trên wecare_rewards
   unitName?: string;
   priceGroupText?: string;
   priceGroupName?: string;

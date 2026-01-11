@@ -148,3 +148,5 @@ next.config.mjs (bundle optimization)
 
 **Kết luận:** Đã tối ưu hóa thành công admin-app với focus vào performance mà không ảnh hưởng đến functionality. Các improvements sẽ mang lại better user experience đặc biệt với large datasets và slow networks.
 
+
+

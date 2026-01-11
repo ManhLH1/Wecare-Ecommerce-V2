@@ -37,7 +37,7 @@ export default async function handler(
       filter += ` and (contains(crdfd_name, '${searchTerm}') or contains(cr44a_st, '${searchTerm}') or contains(crdfd_phone2, '${searchTerm}'))`;
     }
 
-    const columns = "crdfd_customerid,crdfd_name,cr44a_st,crdfd_phone2,cr44a_makhachhang,crdfd_nganhnghe,crdfd_keyquanhuyen,_crdfd_tinhthanh_value";
+    const columns = "crdfd_customerid,crdfd_name,cr44a_st,crdfd_phone2,cr44a_makhachhang,crdfd_nganhnghe,crdfd_keyquanhuyen,crdfd_wecare_rewards,_crdfd_tinhthanh_value";
     const expand = "$expand=crdfd_Tinhthanh($select=crdfd_tinhthanhid,crdfd_name,new_vungmienfx)";
     const query = `$select=${columns}&${expand}&$filter=${encodeURIComponent(
       filter
@@ -58,6 +58,7 @@ export default async function handler(
       cr44a_makhachhang: item.cr44a_makhachhang || "",
       crdfd_nganhnghe: item.crdfd_nganhnghe ?? null,
       crdfd_keyquanhuyen: item.crdfd_keyquanhuyen || "",
+      crdfd_wecare_rewards: item.crdfd_wecare_rewards ?? null,
       crdfd_tinhthanh: item._crdfd_tinhthanh_value || null,
       crdfd_tinhthanh_name: item.crdfd_Tinhthanh?.crdfd_name || "",
       cr1bb_vungmien: item.crdfd_Tinhthanh?.new_vungmienfx || null,

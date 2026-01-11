@@ -8,55 +8,71 @@ const QUOTE_DETAIL_TABLE = "crdfd_baogiachitiets";
 const GROUP_KH_TABLE = "cr1bb_groupkhs"; // Group - KH
 const CUSTOMER_TABLE = "crdfd_customers";
 
-// Helper function to get customer ID from customerCode or customerId
-async function getCustomerId(
+// Helper function to get customer info (ID and rewards) from customerCode or customerId
+async function getCustomerInfo(
   customerCode: string | undefined,
   customerId: string | undefined,
   headers: any
-): Promise<string | null> {
+): Promise<{ customerId: string | null; wecareRewards: string | null }> {
   if (customerId) {
     // Validate GUID format
     const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (guidPattern.test(customerId)) {
-      return customerId;
+      // Valid GUID provided, but we still need to fetch rewards from DB
+      // Continue to the deduplication logic below
     }
   }
 
-  if (!customerCode) {
-    return null;
+  if (!customerCode && !customerId) {
+    return { customerId: null, wecareRewards: null };
   }
 
   // Check cache first
-  const cacheKey = getCacheKey(`customer-id`, { customerCode });
+  const cacheKey = getCacheKey(`customer-info`, { customerCode, customerId });
   const cached = getCachedResponse(cacheKey, true); // Use short cache (1 min)
   if (cached !== undefined) {
     return cached;
   }
 
   // Use deduplication to prevent concurrent requests
-  const dedupKey = getDedupKey(`${CUSTOMER_TABLE}-id`, { customerCode });
-  
+  const dedupKey = getDedupKey(`${CUSTOMER_TABLE}-info`, { customerCode, customerId });
+
   return deduplicateRequest(dedupKey, async () => {
     try {
-      const safeCode = customerCode.replace(/'/g, "''");
-      const customerFilter = `statecode eq 0 and cr44a_makhachhang eq '${safeCode}'`;
-      const customerQuery = `$select=crdfd_customerid&$filter=${encodeURIComponent(customerFilter)}&$top=1`;
+      let customerFilter = "statecode eq 0";
+      let customerQuery = "";
+
+      if (customerId) {
+        // If we have customerId, query directly
+        customerFilter += ` and crdfd_customerid eq ${customerId}`;
+        customerQuery = `$select=crdfd_customerid,crdfd_wecare_rewards&$filter=${encodeURIComponent(customerFilter)}&$top=1`;
+      } else if (customerCode) {
+        // If we have customerCode, query by code
+        const safeCode = customerCode.replace(/'/g, "''");
+        customerFilter += ` and cr44a_makhachhang eq '${safeCode}'`;
+        customerQuery = `$select=crdfd_customerid,crdfd_wecare_rewards&$filter=${encodeURIComponent(customerFilter)}&$top=1`;
+      }
+
       const customerEndpoint = `${BASE_URL}${CUSTOMER_TABLE}?${customerQuery}`;
       const customerResponse = await axiosClient.get(customerEndpoint, { headers });
       const customer = customerResponse.data.value?.[0];
 
-      const result = customer?.crdfd_customerid || null;
-      
+      const result = {
+        customerId: customer?.crdfd_customerid || null,
+        wecareRewards: customer?.crdfd_wecare_rewards || null
+      };
+
       // Cache the result
       setCachedResponse(cacheKey, result, true);
-      
+
       return result;
+      return { customerId: null, wecareRewards: null };
     } catch (error: any) {
-      console.error("❌ [Get Customer ID] Error:", {
+      console.error("❌ [Get Customer Info] Error:", {
         error: error.message,
         response: error.response?.data,
       });
-      return null;
+      return { customerId: null, wecareRewards: null };
     }
   });
 }
@@ -141,10 +157,11 @@ export default async function handler(
       "OData-Version": "4.0",
     };
 
-    // Step 1 & 2: Get customer ID and groups in parallel when possible
+    // Step 1 & 2: Get customer info (ID and rewards) and groups in parallel when possible
     // If we have customerId (GUID), we can get groups immediately
     // Otherwise, we need to get customerId first, then groups
     let finalCustomerId: string | null = null;
+    let customerWecareRewards: string | null = null;
     let customerGroups: string[] = [];
 
     if (customerId && typeof customerId === "string") {
@@ -152,25 +169,35 @@ export default async function handler(
       if (guidPattern.test(customerId)) {
         // We have a valid GUID, can fetch both in parallel
         finalCustomerId = customerId;
+        const customerInfo = await getCustomerInfo(
+          undefined,
+          customerId,
+          headers
+        );
+        customerWecareRewards = customerInfo.wecareRewards;
         [customerGroups] = await Promise.all([
           getCustomerGroups(finalCustomerId, headers),
         ]);
       } else {
         // Not a GUID, need to resolve customerCode first
-        finalCustomerId = await getCustomerId(
+        const customerInfo = await getCustomerInfo(
           customerCode as string | undefined,
           customerId as string | undefined,
           headers
         );
+        finalCustomerId = customerInfo.customerId;
+        customerWecareRewards = customerInfo.wecareRewards;
         customerGroups = await getCustomerGroups(finalCustomerId, headers);
       }
     } else {
       // Need to get customerId from customerCode first
-      finalCustomerId = await getCustomerId(
+      const customerInfo = await getCustomerInfo(
         customerCode as string | undefined,
         undefined,
         headers
       );
+      finalCustomerId = customerInfo.customerId;
+      customerWecareRewards = customerInfo.wecareRewards;
       customerGroups = await getCustomerGroups(finalCustomerId, headers);
     }
 
@@ -208,7 +235,7 @@ export default async function handler(
     // crdfd_onvi có thể là lookup đến crdfd_unitses hoặc crdfd_unitconversions
     // Cần expand để lấy cả crdfd_name (từ units), crdfd_onvichuyenoitransfome và crdfd_giatrichuyenoi (từ unit conversions)
     const columns =
-      "crdfd_baogiachitietid,crdfd_masanpham,crdfd_gia,cr1bb_giakhongvat,crdfd_onvichuantext,crdfd_onvichuan,crdfd_nhomoituongtext,crdfd_giatheovc,crdfd_onvi";
+      "crdfd_baogiachitietid,crdfd_masanpham,crdfd_gia,cr1bb_giakhongvat,crdfd_onvichuantext,crdfd_onvichuan,crdfd_nhomoituongtext,crdfd_giatheovc,crdfd_onvi,crdfd_discount_rate";
     // Order by crdfd_giatheovc asc to get cheapest price first (per unit)
     // BỎ $top=1 để lấy TẤT CẢ các dòng báo giá (theo các đơn vị khác nhau)
     // Expand lookup để lấy tên đơn vị - thử cả units và unit conversions
@@ -234,6 +261,40 @@ export default async function handler(
 
     const allPrices = response.data.value || [];
     
+    // Helper function to get discount rate from JSON based on wecare rewards
+    const getDiscountRate = (discountRateJson: any, wecareRewards: string | null): number | null => {
+      if (!discountRateJson || !wecareRewards) return null;
+
+      try {
+        let discountRates: any;
+        if (typeof discountRateJson === 'string') {
+          discountRates = JSON.parse(discountRateJson);
+        } else {
+          discountRates = discountRateJson;
+        }
+
+        // Normalize wecareRewards for matching (lowercase, trim)
+        const normalizedRewards = wecareRewards.toLowerCase().trim();
+
+        // Try exact match first
+        if (discountRates[normalizedRewards] !== undefined) {
+          return discountRates[normalizedRewards];
+        }
+
+        // Try case-insensitive match
+        const keys = Object.keys(discountRates);
+        const matchedKey = keys.find(key => key.toLowerCase().trim() === normalizedRewards);
+        if (matchedKey) {
+          return discountRates[matchedKey];
+        }
+
+        return null;
+      } catch (error) {
+        console.error("❌ [Parse Discount Rate] Error:", error);
+        return null;
+      }
+    };
+
     // Trả về mảng tất cả các giá (mỗi giá theo 1 đơn vị)
     // Bao gồm crdfd_masanpham và crdfd_onvichuan trong mỗi item
     // Lấy tên đơn vị và giá trị chuyển đổi từ expanded lookup hoặc từ field text
@@ -256,15 +317,26 @@ export default async function handler(
       const parsedQuantity = quantity && typeof quantity === "string" ? parseFloat(quantity) : 1;
       const slTheoKho = parsedQuantity * giatrichuyenoi;
 
+      // Get discount rate based on customer's wecare rewards
+      const discountRate = getDiscountRate(item.crdfd_discount_rate, customerWecareRewards);
+
+      // Calculate final price: giakhongvat - (priceNoVat * discountRate)
+      const priceNoVat = item.cr1bb_giakhongvat ?? null;
+      const finalPrice = (priceNoVat !== null && discountRate !== null)
+        ? priceNoVat - (priceNoVat * discountRate)
+        : priceNoVat;
+
       return {
         price: item.crdfd_gia ?? null,
-        priceNoVat: item.cr1bb_giakhongvat ?? null,
+        priceNoVat: priceNoVat,
+        finalPrice: finalPrice, // priceNoVat x discountRate
         unitName: unitName,
         priceGroupText: item.crdfd_nhomoituongtext || undefined,
         crdfd_masanpham: item.crdfd_masanpham || productCode, // Thêm mã sản phẩm
         crdfd_onvichuan: item.crdfd_onvichuan || undefined, // Thêm đơn vị chuẩn để map
         crdfd_giatrichuyenoi: giatrichuyenoi, // Giá trị chuyển đổi từ lookup hoặc field
         slTheoKho: slTheoKho, // SL theo kho = Số lượng x crdfd_giatrichuyenoi
+        discountRate: discountRate, // Discount rate based on wecare rewards
       };
     });
 
@@ -302,7 +374,7 @@ export default async function handler(
       }
 
       const rebuilt: any[] = [];
-      for (const [, group] of pricesByUnit) {
+      pricesByUnit.forEach((group) => {
         // Find region-specific entries in this unit group
         const regionEntries = group.filter((p: any) => {
           const pg = String(p.priceGroupText || p.crdfd_nhomoituongtext || "");
@@ -316,7 +388,7 @@ export default async function handler(
           // Keep all original entries for this unit
           rebuilt.push(...group);
         }
-      }
+      });
 
       // Sort rebuilt according to crdfd_giatheovc asc (keep cheapest per unit first)
       effectivePrices = rebuilt.sort((a: any, b: any) => {
@@ -406,14 +478,16 @@ export default async function handler(
 
     const result = {
       // Object đầu tiên theo ưu tiên (backward compatibility)
-      price: first?.price ?? null,
+      price: first?.finalPrice ?? first?.price ?? null, // Use finalPrice (giakhongvat - (priceNoVat * discountRate)) if available
       priceNoVat: first?.priceNoVat ?? null,
+      finalPrice: first?.finalPrice ?? null, // giakhongvat - (priceNoVat * discountRate)
       unitName: firstUnitName,
       priceGroupText: first?.priceGroupText || undefined,
       crdfd_masanpham: first?.crdfd_masanpham || productCode,
       crdfd_onvichuan: first?.crdfd_onvichuan || undefined,
       crdfd_giatrichuyenoi: firstGiatrichuyenoi,
       slTheoKho: firstSlTheoKho,
+      discountRate: first?.discountRate ?? null,
       // Mảng tất cả các giá (theo các đơn vị khác nhau) - effective (region-prioritized)
       prices: effectivePrices,
     };
