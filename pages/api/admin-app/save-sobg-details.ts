@@ -5,6 +5,7 @@ import { createBackgroundJob, updateJobStatus, cleanupOldJobs } from "./_backgro
 
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
 const SODBAOGIA_TABLE = "crdfd_sodbaogias"; // Bảng Detail
+const SOD_TABLE = "crdfd_saleorderdetails";
 const INVENTORY_TABLE = "cr44a_inventoryweshops";
 const PRODUCT_TABLE = "crdfd_productses";
 // Theo metadata: crdfd_onvi trỏ tới crdfd_unitconvertions, không phải crdfd_units
@@ -633,7 +634,7 @@ export default async function handler(
                 }, 0);
             }
         } catch (err) {
-            console.warn('[Save SOBG] Could not fetch existing order total, using 0:', err?.message || err);
+            console.warn('[Save SOBG] Could not fetch existing order total, using 0:', (err as any)?.message || err);
         }
 
         const newProductsTotalRaw = (products || []).reduce((s: number, p: any) => {
