@@ -331,10 +331,19 @@ function ProductEntryForm({
     if (raw === null || raw === undefined) return null;
     const num = Number(raw);
     if (isNaN(num)) return null;
-    // If API returns fraction (0 < num <= 1), convert to percent with one decimal: 0.027 -> 2.7
+    // Normalize API discount numbers which may come in different formats:
+    // - Small fractions (e.g., 0.027) should be shown as percent (2.7)
+    // - Larger decimals (e.g., 0.94) likely represent a percent with decimals and should be shown as 0.94
+    // - Values > 1 are already percent-like (e.g., 4 or 4.5 -> 4.0 or 4.5)
     let pctNumber: number;
     if (num > 0 && num <= 1) {
-      pctNumber = Math.round(num * 1000) / 10; // keep one decimal
+      if (num < 0.05) {
+        // Very small fractions: 0.027 -> 2.7 (one decimal)
+        pctNumber = Math.round(num * 1000) / 10;
+      } else {
+        // Larger decimals likely already represent percent with decimals: 0.94 -> 0.94 (two decimals)
+        pctNumber = Math.round(num * 100) / 100;
+      }
     } else {
       // Assume already percent-like, keep one decimal precision
       pctNumber = Math.round(num * 10) / 10;
@@ -383,9 +392,14 @@ function ProductEntryForm({
     const num = Number(raw);
     if (isNaN(num)) return null;
     let pctNumber: number;
-    if (num > 0 && num <= 1) {
-      pctNumber = Math.round(num * 1000) / 10; // keep one decimal
+    if (num > 0 && num < 0.05) {
+      // Very small fractions: 0.027 -> 2.7
+      pctNumber = Math.round(num * 1000) / 10;
+    } else if (num > 0 && num <= 1) {
+      // Larger decimals likely represent percent-with-decimals: 0.94 -> 0.94
+      pctNumber = Math.round(num * 100) / 100;
     } else {
+      // Values > 1 are percent-like, keep one decimal
       pctNumber = Math.round(num * 10) / 10;
     }
     return pctNumber;
@@ -1925,11 +1939,17 @@ function ProductEntryForm({
     for (const c of candidates) {
       const num = Number(c);
       if (isNaN(num)) continue;
+      if (num > 0 && num < 0.05) {
+        // Very small fraction -> percent with one decimal (0.027 -> 2.7)
+        return Math.round(num * 1000) / 10;
+      }
       if (num > 0 && num <= 1) {
-        return Math.round(num * 100); // convert fraction to %
+        // Larger decimal likely percent-with-decimals (0.94 -> 0.94)
+        return Math.round(num * 100) / 100;
       }
       if (num > 0) {
-        return num;
+        // Percent-like value (>1), keep one decimal
+        return Math.round(num * 10) / 10;
       }
     }
     return 0;

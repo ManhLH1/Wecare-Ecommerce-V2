@@ -15,6 +15,7 @@ export interface Customer {
   crdfd_tinhthanh_name?: string; // Province name
   cr1bb_vungmien?: number; // Region OptionSet value
   cr1bb_vungmien_text?: string; // Region text (Miền Trung/Miền Nam)
+  crdfd_wecare_rewards?: string | null; // Wecare rewards data
 }
 
 export interface Product {
@@ -839,6 +840,27 @@ export const saveSOBGDetails = async (
     console.error('Error saving SOBG details:', error);
     if (error.response?.data) {
       throw new Error(error.response.data.details || error.response.data.error || 'Failed to save SOBG details');
+    }
+    throw error;
+  }
+};
+
+/**
+ * Import JSON data for SOBG (Sales Order Bao Gia)
+ */
+export const importSOBGJson = async (data: any): Promise<any> => {
+  try {
+    const response = await axios.post(`${BASE_URL}/import-sobg-json`, data, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      timeout: 300000, // 5 minutes timeout for large imports
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error importing SOBG JSON:', error);
+    if (error.response?.data) {
+      throw new Error(error.response.data.details || error.response.data.error || 'Failed to import SOBG JSON');
     }
     throw error;
   }

@@ -281,8 +281,13 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             discount2: (() => {
               const raw = (detail as any).crdfd_chieckhau2 ?? (detail as any).crdfd_chietkhau2 ?? (detail as any).chietKhau2 ?? (detail as any).discount2 ?? 0;
               const num = Number(raw) || 0;
-              if (num > 0 && num <= 1) return Math.round(num * 100);
-              return num;
+              // Normalize backend decimal formats:
+              // - Very small fractions (e.g., 0.027) -> show as percent with one decimal (2.7)
+              // - Larger decimals between 0.05 and 1 likely represent percent-with-decimals (e.g., 0.94 -> 0.94)
+              // - Values > 1 are percent-like, keep one decimal
+              if (num > 0 && num < 0.05) return Math.round(num * 1000) / 10;
+              if (num > 0 && num <= 1) return Math.round(num * 100) / 100;
+              return Math.round(num * 10) / 10;
             })(),
             discount2Enabled: Boolean((detail as any).crdfd_chieckhau2 ?? (detail as any).crdfd_chietkhau2 ?? (detail as any).chietKhau2 ?? (detail as any).discount2),
             unit: detail.unit,

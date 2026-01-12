@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import ProductEntryForm from './ProductEntryForm';
 import ProductTable from './ProductTable';
 import Dropdown from './Dropdown';
+import ImportModal from './ImportModal';
 import { useCustomers, useSaleOrderBaoGia } from '../_hooks/useDropdownData';
 import { saveSOBGDetails, fetchSOBGDetails, SaleOrderDetail, fetchPromotionOrders, fetchPromotionOrdersSOBG, fetchSpecialPromotionOrders, applySOBGPromotionOrder, PromotionOrderItem, SOBaoGia } from '../_api/adminApi';
 import { showToast } from '../../../components/ToastManager';
@@ -66,6 +67,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   const [isSaving, setIsSaving] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [isOrderInfoCollapsed, setIsOrderInfoCollapsed] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   // Fetch data for dropdowns
   const { customers, loading: customersLoading } = useCustomers(customerSearch);
@@ -333,7 +335,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     loadSOBGDetails();
   }, [soId, customerId]);
 
-  const handleAddProduct = async () => {
+  const handleAddProduct = async (overrides?: { promotionId?: string }) => {
     // Validation: product, unit, quantity, price (bắt buộc phải có giá > 0)
     const priceNum = parseFloat(price || '0') || 0;
     const hasValidPrice = priceNum > 0;
@@ -379,6 +381,9 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     const discountedPriceCalc = basePrice * (1 - (discountPercent || 0) / 100) - (discountAmount || 0);
     const finalPrice = discountedPriceCalc * (1 + invoiceSurchargeRate);
 
+    // Determine promotionId to use for this add (child may pass overrides)
+    const promoIdToUse = overrides?.promotionId ?? promotionId;
+
     // Check if product already exists with same productCode/productName, unit, and price
     // Only combine products that haven't been saved to CRM (isSodCreated = false)
     const existingProductIndex = productList.findIndex((p) => {
@@ -420,6 +425,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         discountAmount: discountAmount,
         vat: vatPercent,
         invoiceSurcharge: invoiceSurchargeRate,
+        promotionId: promoIdToUse,
         // Merge notes if both have notes
         note: existingProduct.note && formattedNoteForMerge
           ? `${existingProduct.note}; ${formattedNoteForMerge}`
@@ -474,6 +480,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         approvePrice: approvePrice,
         approveSupPrice: approveSupPrice,
         promotionText: promotionText,
+        promotionId: promoIdToUse,
         invoiceSurcharge: invoiceSurchargeRate,
         createdOn: new Date().toISOString(),
         isSodCreated: false,
@@ -551,8 +558,13 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           discount2: (() => {
             const raw = (detail as any).crdfd_chietkhau2 ?? (detail as any).chietKhau2 ?? (detail as any).discount2 ?? 0;
             const num = Number(raw) || 0;
-            if (num > 0 && num <= 1) return Math.round(num * 100);
-            return num;
+            // Normalize backend decimal formats:
+            // - Very small fractions (e.g., 0.027) -> show as percent with one decimal (2.7)
+            // - Larger decimals between 0.05 and 1 likely represent percent-with-decimals (e.g., 0.94 -> 0.94)
+            // - Values > 1 are percent-like, keep one decimal
+            if (num > 0 && num < 0.05) return Math.round(num * 1000) / 10;
+            if (num > 0 && num <= 1) return Math.round(num * 100) / 100;
+            return Math.round(num * 10) / 10;
           })(),
           discount2Enabled: Boolean((detail as any).crdfd_chietkhau2 ?? (detail as any).chietKhau2 ?? (detail as any).discount2),
           isSodCreated: true,
@@ -885,6 +897,13 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     setDiscountAmount(0);
     setPromotionText('');
     setProductList([]);
+  };
+
+  // Handler for successful import - refresh SOBG details
+  const handleImportSuccess = async () => {
+    if (soId && customerId) {
+      await handleRefreshSOBGDetails();
+    }
   };
 
   // Handler để update một sản phẩm đơn lẻ (Inline Edit)
@@ -1363,6 +1382,14 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           </div>
           <div className="admin-app-header-compact-right">
             <button
+              className="admin-app-header-btn admin-app-header-btn-import"
+              onClick={() => setIsImportModalOpen(true)}
+              disabled={!soId}
+              title="Import JSON"
+            >
+              📄 Import JSON
+            </button>
+            <button
               className="admin-app-header-btn admin-app-header-btn-save"
               onClick={handleSave}
               disabled={isSaveDisabled}
@@ -1665,6 +1692,14 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           </div>
         </div>
       )}
+
+      {/* Import Modal */}
+      <ImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImportSuccess={handleImportSuccess}
+        sobgId={soId}
+      />
     </div>
   );
 }

@@ -14,44 +14,107 @@ const SYSTEMUSER_TABLE = "systemusers";
 const PROMOTION_TABLE = "crdfd_promotions";
 const KHO_BD_TABLE = "crdfd_kho_binh_dinhs";
 
-// Helper lookup Product
-async function lookupProductId(productCode: string, headers: any): Promise<string | null> {
-    if (!productCode) return null;
+// Batch lookup Product IDs
+async function batchLookupProductIds(productCodes: string[], headers: any): Promise<Map<string, string | null>> {
+    const result = new Map<string, string | null>();
+    if (!productCodes.length) return result;
+
     try {
-        const safeCode = productCode.trim().replace(/'/g, "''");
-        const endpoint = `${PRODUCT_TABLE}?$select=crdfd_productsid&$filter=statecode eq 0 and crdfd_masanpham eq '${safeCode}'&$top=1`;
+        // Create filter for multiple product codes
+        const safeCodes = productCodes.map(code => `'${code.trim().replace(/'/g, "''")}'`).join(',');
+        const filter = `statecode eq 0 and crdfd_masanpham in (${safeCodes})`;
+        const endpoint = `${PRODUCT_TABLE}?$select=crdfd_productsid,crdfd_masanpham&$filter=${encodeURIComponent(filter)}`;
+
         const res = await axios.get(`${BASE_URL}${endpoint}`, { headers });
         if (res.data.value && res.data.value.length > 0) {
-            return res.data.value[0].crdfd_productsid;
+            // Create lookup map
+            const productMap = new Map<string, string>();
+            res.data.value.forEach((item: any) => {
+                if (item.crdfd_masanpham && item.crdfd_productsid) {
+                    productMap.set(item.crdfd_masanpham.toLowerCase().trim(), item.crdfd_productsid);
+                }
+            });
+
+            // Map back to input codes
+            productCodes.forEach(code => {
+                const normalizedCode = code.toLowerCase().trim();
+                result.set(code, productMap.get(normalizedCode) || null);
+            });
+        } else {
+            // No products found, set all to null
+            productCodes.forEach(code => result.set(code, null));
         }
     } catch (e) {
-        console.error("Lookup product failed:", e);
+        console.error("Batch lookup products failed:", e);
+        // Set all to null on error
+        productCodes.forEach(code => result.set(code, null));
     }
-    return null;
+    return result;
 }
 
-// Helper lookup Unit Conversion
-// Cần tìm conversion id dựa trên product code và unit name (frontend gửi unit name hoặc unitId bảng unit??)
-// Frontend SalesOrderForm thường gửi unitId của bảng Unit (nếu có). 
-// Nếu SOBG yêu cầu link tới Unit Conversion, ta phải tìm Unit Conversion record.
-async function lookupUnitConversionId(productCode: string, unitName: string, headers: any): Promise<string | null> {
-    if (!productCode || !unitName) return null;
-    try {
-        const safeCode = productCode.trim().replace(/'/g, "''");
-        const safeUnitName = unitName.trim().replace(/'/g, "''");
+// Batch lookup Unit Conversion IDs
+async function batchLookupUnitConversionIds(
+    productUnitPairs: Array<{ productCode: string; unitName: string }>,
+    headers: any
+): Promise<Map<string, string | null>> {
+    const result = new Map<string, string | null>();
+    if (!productUnitPairs.length) return result;
 
-        // Filter: Product Code (cr44a_masanpham) AND Unit Name (crdfd_onvichuyenoitransfome)
-        const filter = `cr44a_masanpham eq '${safeCode}' and statecode eq 0 and crdfd_onvichuyenoitransfome eq '${safeUnitName}'`;
-        const endpoint = `${UNIT_CONVERSION_TABLE}?$select=crdfd_unitconvertionid&$filter=${encodeURIComponent(filter)}&$top=1`;
+    try {
+        // Create filter for multiple combinations
+        const conditions = productUnitPairs
+            .filter(pair => pair.productCode && pair.unitName)
+            .map(pair => {
+                const safeCode = pair.productCode.trim().replace(/'/g, "''");
+                const safeUnit = pair.unitName.trim().replace(/'/g, "''");
+                return `(cr44a_masanpham eq '${safeCode}' and crdfd_onvichuyenoitransfome eq '${safeUnit}')`;
+            });
+
+        if (conditions.length === 0) {
+            productUnitPairs.forEach(pair => result.set(`${pair.productCode}::${pair.unitName}`, null));
+            return result;
+        }
+
+        const filter = `statecode eq 0 and (${conditions.join(' or ')})`;
+        const endpoint = `${UNIT_CONVERSION_TABLE}?$select=crdfd_unitconvertionid,cr44a_masanpham,crdfd_onvichuyenoitransfome&$filter=${encodeURIComponent(filter)}`;
 
         const res = await axios.get(`${BASE_URL}${endpoint}`, { headers });
         if (res.data.value && res.data.value.length > 0) {
-            return res.data.value[0].crdfd_unitconvertionid;
+            // Create lookup map
+            const unitMap = new Map<string, string>();
+            res.data.value.forEach((item: any) => {
+                if (item.cr44a_masanpham && item.crdfd_onvichuyenoitransfome && item.crdfd_unitconvertionid) {
+                    const key = `${item.cr44a_masanpham.toLowerCase().trim()}::${item.crdfd_onvichuyenoitransfome.toLowerCase().trim()}`;
+                    unitMap.set(key, item.crdfd_unitconvertionid);
+                }
+            });
+
+            // Map back to input pairs
+            productUnitPairs.forEach(pair => {
+                const key = `${pair.productCode.toLowerCase().trim()}::${pair.unitName.toLowerCase().trim()}`;
+                result.set(`${pair.productCode}::${pair.unitName}`, unitMap.get(key) || null);
+            });
+        } else {
+            // No conversions found, set all to null
+            productUnitPairs.forEach(pair => result.set(`${pair.productCode}::${pair.unitName}`, null));
         }
     } catch (e) {
-        console.error("Lookup unit conversion failed:", e);
+        console.error("Batch lookup unit conversions failed:", e);
+        // Set all to null on error
+        productUnitPairs.forEach(pair => result.set(`${pair.productCode}::${pair.unitName}`, null));
     }
-    return null;
+    return result;
+}
+
+// Legacy single lookup functions (for backward compatibility)
+async function lookupProductId(productCode: string, headers: any): Promise<string | null> {
+    const results = await batchLookupProductIds([productCode], headers);
+    return results.get(productCode) || null;
+}
+
+async function lookupUnitConversionId(productCode: string, unitName: string, headers: any): Promise<string | null> {
+    const results = await batchLookupUnitConversionIds([{ productCode, unitName }], headers);
+    return results.get(`${productCode}::${unitName}`) || null;
 }
 
 // Helper function to lookup systemuser ID from username or email
@@ -121,79 +184,192 @@ async function lookupEmployeeByEmail(
     return null;
 }
 
-// Helper: lookup promotion ID by exact promotion text
-async function lookupPromotionIdByText(
-    promotionText: string,
+// Cached promotion lookups to avoid repeated API calls
+let promotionCache: Map<string, { id: string; name?: string } | null> = new Map();
+let promotionValidationCache: Map<string, boolean> = new Map();
+
+// Batch lookup promotions for multiple promotion texts
+async function batchLookupPromotionsByText(
+    promotionTexts: string[],
     headers: any
-): Promise<string | null> {
-    if (!promotionText) return null;
+): Promise<Map<string, { id: string; name?: string } | null>> {
+    const result = new Map<string, { id: string; name?: string } | null>();
+    const uncachedTexts: string[] = [];
+
+    // Check cache first
+    promotionTexts.forEach(text => {
+        const normalizedText = text.toLowerCase().trim();
+        if (promotionCache.has(normalizedText)) {
+            result.set(text, promotionCache.get(normalizedText)!);
+        } else {
+            uncachedTexts.push(text);
+        }
+    });
+
+    if (uncachedTexts.length === 0) return result;
+
     try {
-        const safeText = String(promotionText).trim().replace(/'/g, "''");
-        const filter = `statecode eq 0 and crdfd_name eq '${safeText}'`;
-        const query = `$select=crdfd_promotionid,crdfd_name&$filter=${encodeURIComponent(filter)}&$top=1`;
+        // Create filter for multiple promotion texts
+        const safeTexts = uncachedTexts.map(text => `'${text.trim().replace(/'/g, "''")}'`).join(',');
+        const filter = `statecode eq 0 and crdfd_name in (${safeTexts})`;
+        const query = `$select=crdfd_promotionid,crdfd_name,crdfd_masanpham_multiple&$filter=${encodeURIComponent(filter)}`;
         const endpoint = `${BASE_URL}${PROMOTION_TABLE}?${query}`;
+
         const resp = await axios.get(endpoint, { headers });
         const rows = resp.data.value || [];
-        if (rows.length > 0) {
-            console.log(`[Save SOBG] Found promotion by text "${promotionText}": ${rows[0].crdfd_promotionid}`);
-            return rows[0].crdfd_promotionid;
-        }
-        console.log(`[Save SOBG] No promotion found with exact text "${promotionText}"`);
+
+        // Create lookup map
+        const promoMap = new Map<string, { id: string; name?: string }>();
+        rows.forEach((row: any) => {
+            if (row.crdfd_name && row.crdfd_promotionid) {
+                const normalizedName = row.crdfd_name.toLowerCase().trim();
+                promoMap.set(normalizedName, { id: row.crdfd_promotionid, name: row.crdfd_name });
+                // Cache the result
+                promotionCache.set(normalizedName, { id: row.crdfd_promotionid, name: row.crdfd_name });
+            }
+        });
+
+        // Map back to input texts
+        uncachedTexts.forEach(text => {
+            const normalizedText = text.toLowerCase().trim();
+            const found = promoMap.get(normalizedText);
+            result.set(text, found || null);
+            // Cache null results too to avoid repeated lookups
+            if (!promotionCache.has(normalizedText)) {
+                promotionCache.set(normalizedText, null);
+            }
+        });
     } catch (err) {
-        console.warn('[Save SOBG] Could not lookup promotion by text:', (err as any)?.message || err);
+        console.warn('[Save SOBG] Batch lookup promotions by text failed:', (err as any)?.message || err);
+        // Set all uncached to null
+        uncachedTexts.forEach(text => {
+            result.set(text, null);
+            const normalizedText = text.toLowerCase().trim();
+            if (!promotionCache.has(normalizedText)) {
+                promotionCache.set(normalizedText, null);
+            }
+        });
     }
-    return null;
+
+    return result;
 }
 
-// Helper: try to find a promotion by product code or promotion text
+// Batch find promotions for multiple product-code/promotion-text combinations
+async function batchFindPromotionsForProducts(
+    productPromotionPairs: Array<{ productCode?: string; promotionText?: string }>,
+    headers: any
+): Promise<Map<string, { id: string; name?: string } | null>> {
+    const result = new Map<string, { id: string; name?: string } | null>();
+
+    // First, collect all unique promotion texts for batch lookup
+    const uniqueTexts = new Set<string>();
+    productPromotionPairs.forEach(pair => {
+        if (pair.promotionText) uniqueTexts.add(pair.promotionText);
+    });
+
+    // Batch lookup by text first
+    const textResults = await batchLookupPromotionsByText(Array.from(uniqueTexts), headers);
+
+    // Now handle broader searches for pairs that didn't match by text
+    const remainingPairs: Array<{ pair: { productCode?: string; promotionText?: string }; key: string }> = [];
+
+    productPromotionPairs.forEach((pair, index) => {
+        const key = `${pair.productCode || ''}::${pair.promotionText || ''}`;
+        if (pair.promotionText && textResults.get(pair.promotionText)) {
+            result.set(key, textResults.get(pair.promotionText)!);
+        } else {
+            remainingPairs.push({ pair, key });
+        }
+    });
+
+    if (remainingPairs.length > 0) {
+        try {
+            // Create broader filter for remaining pairs
+            const orClauses: string[] = [];
+            remainingPairs.forEach(({ pair }) => {
+                const conditions: string[] = [];
+                if (pair.productCode) {
+                    const safeCode = String(pair.productCode).replace(/'/g, "''");
+                    conditions.push(`contains(crdfd_masanpham_multiple,'${safeCode}')`);
+                }
+                if (pair.promotionText) {
+                    const safeText = String(pair.promotionText).replace(/'/g, "''");
+                    conditions.push(`contains(crdfd_name,'${safeText}')`);
+                }
+                if (conditions.length > 0) {
+                    orClauses.push(`(${conditions.join(' or ')})`);
+                }
+            });
+
+            if (orClauses.length > 0) {
+                const baseFilter = "statecode eq 0";
+                const select = "crdfd_promotionid,crdfd_name,crdfd_masanpham_multiple";
+                const filterClause = `${baseFilter} and (${orClauses.join(" or ")})`;
+                const query = `$select=${select}&$filter=${encodeURIComponent(filterClause)}`;
+                const endpoint = `${BASE_URL}${PROMOTION_TABLE}?${query}`;
+
+                const resp = await axios.get(endpoint, { headers });
+                const rows = resp.data.value || [];
+
+                // For each remaining pair, find the best match
+                remainingPairs.forEach(({ pair, key }) => {
+                    let bestMatch: { id: string; name?: string } | null = null;
+                    let bestScore = 0;
+
+                    rows.forEach((row: any) => {
+                        let score = 0;
+                        if (pair.productCode && row.crdfd_masanpham_multiple &&
+                            row.crdfd_masanpham_multiple.toLowerCase().includes(pair.productCode.toLowerCase())) {
+                            score += 2; // Product code match is highest priority
+                        }
+                        if (pair.promotionText && row.crdfd_name &&
+                            row.crdfd_name.toLowerCase().includes(pair.promotionText.toLowerCase())) {
+                            score += 1; // Text match is secondary
+                        }
+
+                        if (score > bestScore && row.crdfd_promotionid) {
+                            bestScore = score;
+                            bestMatch = { id: row.crdfd_promotionid, name: row.crdfd_name };
+                        }
+                    });
+
+                    result.set(key, bestMatch);
+                    // Cache the result
+                    if (bestMatch && pair.promotionText) {
+                        const normalizedText = pair.promotionText.toLowerCase().trim();
+                        if (!promotionCache.has(normalizedText)) {
+                            promotionCache.set(normalizedText, bestMatch);
+                        }
+                    }
+                });
+            } else {
+                // No conditions, set all remaining to null
+                remainingPairs.forEach(({ key }) => result.set(key, null));
+            }
+        } catch (err) {
+            console.warn('[Save SOBG] Batch find promotions failed:', (err as any)?.message || err);
+            remainingPairs.forEach(({ key }) => result.set(key, null));
+        }
+    }
+
+    return result;
+}
+
+// Legacy single lookup functions (for backward compatibility)
+async function lookupPromotionIdByText(promotionText: string, headers: any): Promise<string | null> {
+    const results = await batchLookupPromotionsByText([promotionText], headers);
+    const result = results.get(promotionText);
+    return result ? result.id : null;
+}
+
 async function findPromotionForProduct(
     productCode: string | undefined,
     promotionText: string | undefined,
     headers: any
 ): Promise<{ id: string; name?: string } | null> {
-    try {
-        const baseFilter = "statecode eq 0";
-
-        // First try: exact match by promotion name (if promotionText provided)
-        if (promotionText) {
-            const safeText = String(promotionText).trim().replace(/'/g, "''");
-            const exactFilter = `${baseFilter} and crdfd_name eq '${safeText}'`;
-            const exactQuery = `$select=crdfd_promotionid,crdfd_name,crdfd_masanpham_multiple&$filter=${encodeURIComponent(exactFilter)}&$top=1`;
-            const exactEndpoint = `${BASE_URL}${PROMOTION_TABLE}?${exactQuery}`;
-            const exactResp = await axios.get(exactEndpoint, { headers });
-            const exactRows = exactResp.data.value || [];
-            if (exactRows.length > 0) {
-                console.log(`[Save SOBG] Found exact promotion match: ${exactRows[0].crdfd_name} (${exactRows[0].crdfd_promotionid})`);
-                return { id: exactRows[0].crdfd_promotionid, name: exactRows[0].crdfd_name };
-            }
-        }
-
-        // Second try: broader search including product code matching
-        const orClauses: string[] = [];
-        if (productCode) {
-            const safeCode = String(productCode).replace(/'/g, "''");
-            orClauses.push(`contains(crdfd_masanpham_multiple,'${safeCode}')`);
-        }
-        if (promotionText) {
-            const safeText = String(promotionText).replace(/'/g, "''");
-            orClauses.push(`contains(crdfd_name,'${safeText}')`);
-        }
-        if (orClauses.length === 0) return null;
-
-        const select = "crdfd_promotionid,crdfd_name,crdfd_masanpham_multiple";
-        const filterClause = `${baseFilter} and (${orClauses.join(" or ")})`;
-        const query = `$select=${select}&$filter=${encodeURIComponent(filterClause)}&$top=1`;
-        const endpoint = `${BASE_URL}${PROMOTION_TABLE}?${query}`;
-        const resp = await axios.get(endpoint, { headers });
-        const rows = resp.data.value || [];
-        if (rows.length > 0) {
-            console.log(`[Save SOBG] Found contains promotion match: ${rows[0].crdfd_name} (${rows[0].crdfd_promotionid})`);
-            return { id: rows[0].crdfd_promotionid, name: rows[0].crdfd_name };
-        }
-    } catch (err) {
-        console.warn('[Save SOBG] Could not lookup promotion by product/text:', (err as any)?.message || err);
-    }
-    return null;
+    const results = await batchFindPromotionsForProducts([{ productCode, promotionText }], headers);
+    const key = `${productCode || ''}::${promotionText || ''}`;
+    return results.get(key) || null;
 }
 
 // Helper: validate that a promotion record is active and within start/end date window
@@ -308,15 +484,32 @@ export default async function handler(
         return res.status(405).json({ error: "Method not allowed" });
     }
 
+    // Timeout handling for large datasets - return partial results if taking too long
+    const TIMEOUT_MS = parseInt(process.env.SOBG_TIMEOUT_MS || '240000'); // 4 minutes default (Vercel limit is ~5 minutes)
+    let timeoutReached = false;
+    let responseSent = false;
+
+    const timeoutPromise = new Promise((resolve) => {
+        setTimeout(() => {
+            timeoutReached = true;
+            if (!responseSent) {
+                console.warn(`[Save SOBG] Timeout reached after ${TIMEOUT_MS}ms - returning partial results`);
+                resolve(null);
+            }
+        }, TIMEOUT_MS);
+    });
+
     try {
-        const {
-            sobgId,
-            warehouseName,
-            isVatOrder,
-            customerIndustry,
-            userInfo,
-            products,
-        } = req.body;
+        // Wrap main processing logic in Promise.race with timeout
+        const mainProcessingPromise = async () => {
+            const {
+                sobgId,
+                warehouseName,
+                isVatOrder,
+                customerIndustry,
+                userInfo,
+                products,
+            } = req.body;
 
         if (!sobgId) return res.status(400).json({ error: "sobgId is required" });
         if (!products || !Array.isArray(products) || products.length === 0) {
@@ -377,12 +570,36 @@ export default async function handler(
             }
         }
 
-        // ============ STEP 2: VALIDATION - Check required fields before saving ============
+        // ============ STEP 2: PREPARATION - Batch lookups for all products ============
+        console.log(`[Save SOBG] Starting batch lookups for ${products.length} products`);
+
+        // Collect all unique product codes and unit conversion pairs for batch processing
+        const uniqueProductCodes = new Set<string>();
+        const productUnitPairs: Array<{ productCode: string; unitName: string }> = [];
+
+        products.forEach(product => {
+            if (product.productCode) {
+                uniqueProductCodes.add(product.productCode);
+                if (product.unit) {
+                    productUnitPairs.push({ productCode: product.productCode, unitName: product.unit });
+                }
+            }
+        });
+
+        // Batch lookup product IDs and unit conversions concurrently
+        const [productIdMap, unitConversionMap] = await Promise.all([
+            batchLookupProductIds(Array.from(uniqueProductCodes), headers),
+            batchLookupUnitConversionIds(productUnitPairs, headers)
+        ]);
+
+        console.log(`[Save SOBG] Completed batch lookups - products: ${productIdMap.size}, units: ${unitConversionMap.size}`);
+
+        // ============ STEP 3: VALIDATION - Check required fields before saving ============
         for (const product of products) {
             let unitConvId = undefined;
-            // Lookup Unit Conversion ID using productCode and unit (name)
+            // Get Unit Conversion ID from batch lookup
             if (product.productCode && product.unit) {
-                unitConvId = await lookupUnitConversionId(product.productCode, product.unit, headers) || undefined;
+                unitConvId = unitConversionMap.get(`${product.productCode}::${product.unit}`) || undefined;
             }
             // If lookup failed but frontend provided unitId (unit conversion id), use it
             if (!unitConvId && product.unitId) {
@@ -404,13 +621,29 @@ export default async function handler(
         }
 
         // Compute order total to validate promotion min-total conditions
-        const orderTotalRaw = (products || []).reduce((s: number, p: any) => {
+        // Include both existing SOBG products and new products being added
+        let existingOrderTotal = 0;
+        try {
+            // Fetch existing products from SOBG to calculate their total
+            const existingProductsResp = await axios.get(`${BASE_URL}${SOD_TABLE}?$filter=_crdfd_maonhang_value eq ${sobgId} and statecode eq 0&$select=crdfd_tongtienkhongvat,crdfd_gtgt,crdfd_tongtien`, { headers });
+            if (existingProductsResp.data?.value) {
+                existingOrderTotal = existingProductsResp.data.value.reduce((sum: number, item: any) => {
+                    const total = Number(item.crdfd_tongtien) || 0;
+                    return sum + total;
+                }, 0);
+            }
+        } catch (err) {
+            console.warn('[Save SOBG] Could not fetch existing order total, using 0:', err?.message || err);
+        }
+
+        const newProductsTotalRaw = (products || []).reduce((s: number, p: any) => {
             const subtotal = p.subtotal ?? ((p.discountedPrice ?? p.price) * (p.quantity || 0));
             const vatAmount = p.vatAmount ?? Math.round((subtotal * (p.vat || 0)) / 100);
             const total = p.totalAmount ?? (subtotal + vatAmount);
             return s + (Number(total) || 0);
         }, 0);
-        const orderTotal = Math.round(orderTotalRaw * 100) / 100;
+
+        const orderTotal = Math.round((existingOrderTotal + newProductsTotalRaw) * 100) / 100;
 
         // Fetch effective payment terms from SOBG header (if present) for promotion validation
         let effectivePaymentTerms: any = undefined;
@@ -421,9 +654,11 @@ export default async function handler(
             // ignore - treat as no payment term restriction
         }
 
-        // ============ STEP 3: SAVE DETAILS ============
+        // ============ STEP 4: SAVE DETAILS ============
+        console.log(`[Save SOBG] Starting to save ${products.length} products`);
+
         let totalSaved = 0;
-        let failedProducts = [];
+        let failedProducts: Array<{ productCode: string; error: string }> = [];
         const savedDetails: any[] = [];
         // Collect promotions to apply at header level (SOBG x Promotion)
         const promotionsToApplyMap: Map<string, { promotionId: string }> = new Map();
@@ -454,9 +689,248 @@ export default async function handler(
             console.warn('[Save SOBG] Could not fetch SOBG promotions:', (err as any)?.message || err);
         }
 
+        // Prepare all products for concurrent processing
+        const productProcessingTasks: Array<{
+            product: any;
+            index: number;
+            productId?: string;
+            unitConvId?: string;
+            promotionId?: string | null;
+            entity: any;
+        }> = [];
+
+        // Pre-compute promotion IDs for all products to avoid repeated API calls
+        console.log(`[Save SOBG] Pre-computing promotion IDs for all products`);
+        const promotionTasks: Array<{ product: any; index: number }> = products.map((product, index) => ({ product, index }));
+
+        // Configurable concurrency limits (can be set via environment variables)
+        // Increased batch sizes for better performance with large datasets (300+ products)
+        const CONCURRENT_BATCH_SIZE = parseInt(process.env.SOBG_CONCURRENT_BATCH_SIZE || '50'); // Process N products concurrently (increased from 10)
+        const PROMOTION_BATCH_SIZE = parseInt(process.env.SOBG_PROMOTION_BATCH_SIZE || '25'); // Process N promotions concurrently (increased from 5)
+        const PATCH_BATCH_SIZE = parseInt(process.env.SOBG_PATCH_BATCH_SIZE || '25'); // Process N patches concurrently (increased from 5)
+        const MAX_CONCURRENT_BATCHES = parseInt(process.env.SOBG_MAX_CONCURRENT_BATCHES || '3'); // Max concurrent batches to run in parallel
+
+        // Process promotions in parallel batches with concurrency control
+        const promotionResults: Array<{ index: number; promotionId: string | null }> = [];
+
+        // Create all promotion batches
+        const promotionBatches: Array<{ batchIndex: number; tasks: Array<{ product: any; index: number }> }> = [];
+        for (let i = 0; i < promotionTasks.length; i += PROMOTION_BATCH_SIZE) {
+            promotionBatches.push({
+                batchIndex: Math.floor(i / PROMOTION_BATCH_SIZE),
+                tasks: promotionTasks.slice(i, i + PROMOTION_BATCH_SIZE)
+            });
+        }
+
+        // Process promotion batches with limited concurrency
+        const processPromotionBatch = async (batch: { batchIndex: number; tasks: Array<{ product: any; index: number }> }) => {
+            const batchPromises = batch.tasks.map(async ({ product, index }) => {
+                let promotionId: string | null = null;
+
+                try {
+                    // Step 0: If frontend provided a promotionId, prefer it (frontend overrides server inference)
+                    if (product.promotionId) {
+                        promotionId = String(product.promotionId).replace(/^{|}$/g, '').trim();
+                    }
+
+                    // Step 1: Try to match against SOBG promotions previously selected/applied (crdfd_sobaogiaxpromotions)
+                    if (!promotionId) {
+                        const prodCode = (product.productCode || '').toString().trim().toUpperCase();
+                        const prodGroup = (product.productGroupCode || '').toString().trim().toUpperCase();
+                        let matched = null as any;
+                        for (const sp of (sobgPromotions || [])) {
+                            const codesRaw = sp.productCodes || '';
+                            const groupsRaw = sp.productGroupCodes || '';
+                            const codes = Array.isArray(codesRaw) ? codesRaw : String(codesRaw).split(',').map((c: any) => String(c || '').trim().toUpperCase()).filter(Boolean);
+                            const groups = Array.isArray(groupsRaw) ? groupsRaw : String(groupsRaw).split(',').map((c: any) => String(c || '').trim().toUpperCase()).filter(Boolean);
+                            const matchProduct = codes.length === 0 || (prodCode && codes.some((c: string) => prodCode.includes(c)));
+                            const matchGroup = groups.length === 0 || (prodGroup && groups.some((g: string) => prodGroup.includes(g)));
+                            if ((codes.length === 0 && groups.length === 0) || matchProduct || matchGroup) {
+                                if (sp.promotionId) {
+                                    matched = sp;
+                                    break;
+                                }
+                            }
+                        }
+                        if (matched && matched.promotionId) {
+                            promotionId = String(matched.promotionId).replace(/^{|}$/g, '').trim();
+                        }
+                    }
+
+                    // Step 2: Nếu không tìm thấy trong SOBG promotions (và frontend không override), thử lookup từ promotionText của product
+                    if (!promotionId && product.promotionText) {
+                        promotionId = await lookupPromotionIdByText(product.promotionText, headers);
+                    }
+
+                    // Step 3: Fallback - lookup by productCode và promotionText trong promotions table
+                    if (!promotionId) {
+                        const inferred = await findPromotionForProduct(product.productCode, product.promotionText, headers);
+                        if (inferred && inferred.id) {
+                            promotionId = String(inferred.id).replace(/^{|}$/g, '').trim();
+                        }
+                    }
+
+                    // Validate promotion if found
+                    if (promotionId) {
+                        try {
+                            // Fetch promotion metadata for min-total and payment-terms
+                            let promoData: any = null;
+                            try {
+                                const promoResp = await axios.get(`${BASE_URL}${PROMOTION_TABLE}(${promotionId})?$select=cr1bb_tongtienapdung,cr1bb_ieukhoanthanhtoanapdung`, { headers });
+                                promoData = promoResp.data;
+                            } catch (innerErr) {
+                                // ignore, will still try basic active validation
+                            }
+
+                            // Validate min-total requirement (if any)
+                            const minTotalReq = Number(promoData?.cr1bb_tongtienapdung) || 0;
+                            if (minTotalReq > 0 && Number(orderTotal) < minTotalReq) {
+                                promotionId = null;
+                            }
+
+                            // Validate payment term applicability (if still candidate)
+                            if (promotionId) {
+                                const promoCheck = await isPromotionApplicableToPaymentTerm(promotionId, effectivePaymentTerms, headers);
+                                if (!promoCheck.applicable) {
+                                    promotionId = null;
+                                }
+                            }
+
+                            // Finally validate active/date window before binding
+                            if (promotionId) {
+                                const ok = await isPromotionValid(promotionId, headers);
+                                if (!ok) {
+                                    promotionId = null;
+                                }
+                            }
+                        } catch (e) {
+                            promotionId = null;
+                        }
+                    }
+                } catch (e) {
+                    promotionId = null;
+                }
+
+                return { index, promotionId };
+            });
+
+            const batchResults = await Promise.allSettled(batchPromises);
+            return batchResults.map(result => {
+                if (result.status === 'fulfilled') {
+                    return result.value;
+                } else {
+                    // On error, return null promotionId
+                    return { index: -1, promotionId: null }; // Will be filtered out
+                }
+            }).filter(r => r.index !== -1);
+        };
+
+        // Execute promotion batches with concurrency control
+        const promotionBatchPromises: Promise<Array<{ index: number; promotionId: string | null }>>[] = [];
+        for (let i = 0; i < promotionBatches.length; i += MAX_CONCURRENT_BATCHES) {
+            const concurrentBatches = promotionBatches.slice(i, i + MAX_CONCURRENT_BATCHES);
+            const batchPromises = concurrentBatches.map(batch => processPromotionBatch(batch));
+            promotionBatchPromises.push(...batchPromises);
+
+            // Wait for this wave of concurrent batches to complete before starting next wave
+            if (promotionBatchPromises.length >= MAX_CONCURRENT_BATCHES) {
+                const results = await Promise.allSettled(promotionBatchPromises.splice(0, MAX_CONCURRENT_BATCHES));
+                results.forEach(result => {
+                    if (result.status === 'fulfilled') {
+                        promotionResults.push(...result.value);
+                    }
+                });
+            }
+        }
+
+        // Process remaining batches
+        if (promotionBatchPromises.length > 0) {
+            const results = await Promise.allSettled(promotionBatchPromises);
+            results.forEach(result => {
+                if (result.status === 'fulfilled') {
+                    promotionResults.push(...result.value);
+                }
+            });
+        }
+
+        // Prepare all product entities for concurrent creation
+        for (let i = 0; i < products.length; i++) {
+            const product = products[i];
+            const promotionResult = promotionResults.find(r => r.index === i);
+            const promotionId = promotionResult?.promotionId || null;
+
+            let productId = product.productId;
+            if (!productId && product.productCode) {
+                productId = productIdMap.get(product.productCode) || undefined;
+            }
+
+            let unitConvId = undefined;
+            if (product.productCode && product.unit) {
+                unitConvId = unitConversionMap.get(`${product.productCode}::${product.unit}`) || undefined;
+            }
+            if (!unitConvId && product.unitId) {
+                unitConvId = String(product.unitId).trim() || undefined;
+            }
+
+            // Compute canonical subtotal/vat/total to match UI 'Tổng' (subtotal + VAT)
+            const computedSubtotalRaw = product.subtotal ?? ((product.discountedPrice ?? product.price) * (product.quantity || 0));
+            const computedSubtotal = Math.round(computedSubtotalRaw * 100) / 100;
+            const computedVatAmount = product.vatAmount ?? (Math.round(((computedSubtotal * (product.vat || 0)) / 100) * 100) / 100);
+            const computedTotal = product.totalAmount ?? (Math.round(((computedSubtotal + computedVatAmount) * 100) / 1) / 100);
+
+            // Compute deliveryDateNew and shift (ca) server-side if frontend didn't provide shift
+            const { deliveryDateNew, shift } = await calculateDeliveryDateAndShift(product, products, customerIndustry, product.deliveryDate);
+
+            // Map fields based on Metadata & Prediction (Vietnamese Schema)
+            const entity: any = {
+                "crdfd_Maonhang@odata.bind": `/crdfd_sobaogias(${sobgId})`,
+                ...(productId ? { "crdfd_Sanpham@odata.bind": `/crdfd_productses(${productId})` } : {}),
+                ...(unitConvId ? { "crdfd_onvi@odata.bind": `/crdfd_unitconvertions(${unitConvId})` } : {}),
+                "crdfd_soluong": product.quantity,
+                "crdfd_ongia": product.discountedPrice ?? product.price,
+                "crdfd_ieuchinhgtgt": mapVatPercentToChoice(product.vat),
+                "crdfd_gtgt": mapVatPercentToChoice(product.vat),
+                "crdfd_tongtienkhongvat": computedSubtotal,
+                ...(shift ? { "cr1bb_ca": shift } : {}),
+                "crdfd_ngaygiaodukien": deliveryDateNew ? deliveryDateNew : formatDateForCRM(product.deliveryDate),
+                "crdfd_chietkhau": product.discountPercent ? product.discountPercent / 100 : 0,
+                "crdfd_chietkhauvn": product.discountAmount ?? 0,
+                "crdfd_chietkhau2": product.discount2 ? product.discount2 / 100 : 0,
+                "crdfd_giack1": product.originalPrice ?? product.price ?? 0,
+                "crdfd_giack2": product.discountedPrice ?? product.price ?? 0,
+                "crdfd_giagoc": product.originalPrice ?? product.price,
+                "crdfd_phu_phi_hoa_don": product.surcharge || 0,
+                "crdfd_stton": Number(product.stt) || 0,
+                "crdfd_promotiontext": product.promotionText || "",
+                "crdfd_ghichu": product.note || "",
+                ...(promotionId ? { "crdfd_Promotion@odata.bind": `/crdfd_promotions(${promotionId})` } : {}),
+            };
+
+            // Map and set approval choice if provided/derivable.
+            const mappedApproval = mapApprovalToChoice(product.approvePrice, product.approverChoiceValue || product.approverChoice);
+            if (mappedApproval !== null) {
+                entity["crdfd_duyetgia"] = mappedApproval;
+            }
+
+            // If SUP approver ID is provided, set lookup binding property
+            if (product.approveSupPrice && product.approveSupPriceId) {
+                entity[`cr1bb_duyetgiasup@odata.bind`] = `/crdfd_duyetgias(${product.approveSupPriceId})`;
+            }
+
+            productProcessingTasks.push({
+                product,
+                index: i,
+                productId,
+                unitConvId,
+                promotionId,
+                entity
+            });
+        }
+
         // Helper constants for shift OptionSet values (match CRM)
         const CA_SANG = 283640000; // "Ca sáng"
         const CA_CHIEU = 283640001; // "Ca chiều"
+
         // Helper to calculate delivery date and shift similar to save-sale-order-details logic
         async function calculateDeliveryDateAndShift(
             product: any,
@@ -517,317 +991,292 @@ export default async function handler(
             }
         }
 
-        for (const product of products) {
-            try {
-                let productId = product.productId;
-                if (!productId && product.productCode) {
-                    productId = await lookupProductId(product.productCode, headers) || undefined;
-                }
+        // ============ PARALLEL BATCH PROCESSING ============
+        console.log(`[Save SOBG] Starting parallel batch processing of ${productProcessingTasks.length} products`);
+        const createdRecords: Array<{ recordId: string; product: any; entity: any }> = [];
 
-                let unitConvId = undefined;
-                // Lookup Unit Conversion ID using productCode and unit (name)
-                if (product.productCode && product.unit) {
-                    unitConvId = await lookupUnitConversionId(product.productCode, product.unit, headers) || undefined;
-                }
-                // If lookup failed but frontend provided unitId (unit conversion id), use it
-                if (!unitConvId && product.unitId) {
-                    unitConvId = String(product.unitId).trim() || undefined;
-                }
+        // Create all record creation batches
+        const recordBatches: Array<{ batchIndex: number; tasks: Array<{ product: any; index: number; productId?: string; unitConvId?: string; promotionId?: string | null; entity: any }> }> = [];
+        for (let i = 0; i < productProcessingTasks.length; i += CONCURRENT_BATCH_SIZE) {
+            recordBatches.push({
+                batchIndex: Math.floor(i / CONCURRENT_BATCH_SIZE),
+                tasks: productProcessingTasks.slice(i, i + CONCURRENT_BATCH_SIZE)
+            });
+        }
 
-                // Compute canonical subtotal/vat/total to match UI 'Tổng' (subtotal + VAT)
-                const computedSubtotalRaw = product.subtotal ?? ((product.discountedPrice ?? product.price) * (product.quantity || 0));
-                // Round to 2 decimal places (preserve cents)
-                const computedSubtotal = Math.round(computedSubtotalRaw * 100) / 100;
-                const computedVatAmount = product.vatAmount ?? (Math.round(((computedSubtotal * (product.vat || 0)) / 100) * 100) / 100);
-                const computedTotal = product.totalAmount ?? (Math.round(((computedSubtotal + computedVatAmount) * 100) / 1) / 100);
+        // Process record creation batch
+        const processRecordBatch = async (batch: { batchIndex: number; tasks: Array<{ product: any; index: number; productId?: string; unitConvId?: string; promotionId?: string | null; entity: any }> }) => {
+            console.log(`[Save SOBG] Processing batch ${batch.batchIndex + 1}/${recordBatches.length} (${batch.tasks.length} products)`);
 
-                // Compute deliveryDateNew and shift (ca) server-side if frontend didn't provide shift
-                const { deliveryDateNew, shift } = await calculateDeliveryDateAndShift(product, products, customerIndustry, product.deliveryDate);
+            const batchPromises = batch.tasks.map(async (task) => {
+                const { product, index, entity } = task;
 
-                // Map fields based on Metadata & Prediction (Vietnamese Schema)
-                const entity: any = {
-                    // Lookup Header: Metadata says 'crdfd_Maonhang'
-                    "crdfd_Maonhang@odata.bind": `/crdfd_sobaogias(${sobgId})`,
-
-                    // Lookup Product: Metadata says 'crdfd_Sanpham'
-                    ...(productId ? { "crdfd_Sanpham@odata.bind": `/crdfd_productses(${productId})` } : {}),
-
-                    // Lookup Unit: Metadata says 'crdfd_onvi' -> 'crdfd_unitconvertions'
-                    ...(unitConvId ? { "crdfd_onvi@odata.bind": `/crdfd_unitconvertions(${unitConvId})` } : {}),
-
-                    // NOTE: Do NOT set ownerid/createdby here during CREATE
-                    // Dynamics 365 may not allow setting owner during creation
-                    // We will PATCH after creation instead
-
-                    // Data fields (Mapped from Metadata)
-                    "crdfd_soluong": product.quantity,
-                    // Price mapping: lưu `crdfd_ongia` = đơn giá hiển thị (sau chiết khấu nếu có),
-                    // và `crdfd_giagoc` = giá gốc (original price) để tránh bị đảo ngược khi hiển thị sau khi lưu.
-                    "crdfd_ongia": product.discountedPrice ?? product.price,
-                    // Map VAT percent -> OptionSet value for CRM (crdfd_gtgt)
-                    "crdfd_ieuchinhgtgt": mapVatPercentToChoice(product.vat),
-                    "crdfd_gtgt": mapVatPercentToChoice(product.vat),
-                    // Ensure saved totals match UI 'Tổng' calculations
-                    "crdfd_tongtienkhongvat": computedSubtotal, // Total exclude VAT
-                    // "crdfd_thanhtien": product.totalAmount, // Field not found in metadata. Skip.
-
-                    // Name (Common field)
-                    // "crdfd_name": product.productName || "SOBG Detail",
-
-                    // NEW FIELDS
-                    // Use computed delivery date if available, and set shift (ca) from calculation
-                    ...(shift ? { "cr1bb_ca": shift } : {}),
-                    "crdfd_ngaygiaodukien": deliveryDateNew ? deliveryDateNew : formatDateForCRM(product.deliveryDate),
-                    "crdfd_chietkhau": product.discountPercent ? product.discountPercent / 100 : 0,
-                    "crdfd_chietkhauvn": product.discountAmount ?? 0,
-                    "crdfd_chietkhau2": product.discount2 ? product.discount2 / 100 : 0,
-                    // Keep legacy/auxiliary fields: giack1 = giá gốc, giack2 = giá sau chiết khấu (nếu schema uses these)
-                    "crdfd_giack1": product.originalPrice ?? product.price ?? 0,
-                    "crdfd_giack2": product.discountedPrice ?? product.price ?? 0,
-                    // Ensure crdfd_giagoc (giá gốc) is set to originalPrice
-                    "crdfd_giagoc": product.originalPrice ?? product.price,
-                    "crdfd_phu_phi_hoa_don": product.surcharge || 0,
-
-                    // MISSING FIELDS FROM POWER APPS REQUIREMENTS
-                    // NOTE: schema logical name is `crdfd_stton` (Whole number) in CRM
-                    "crdfd_stton": Number(product.stt) || 0,
-                    // Approval fields in CRM:
-                    // - `crdfd_duyetgia` is a Choice (OptionSet) stored as Int32. We will map and set it below if available.
-                    // - `Duyet gia sup` is a Lookup on a separate table; do NOT send boolean/int for lookup.
-                    "crdfd_promotiontext": product.promotionText || "",
-                    "crdfd_ghichu": product.note || "",
-                };
-
-                // Map and set approval choice if provided/derivable.
-                const mappedApproval = mapApprovalToChoice(product.approvePrice, product.approverChoiceValue || product.approverChoice);
-                if (mappedApproval !== null) {
-                    entity["crdfd_duyetgia"] = mappedApproval;
-                }
-
-                // If SUP approver ID is provided, set lookup binding property used elsewhere in repo (`cr1bb_duyetgiasup@odata.bind`)
-                // This avoids sending a non-existent `crdfd_duyetgiasup` attribute.
-                if (product.approveSupPrice && product.approveSupPriceId) {
-                    entity[`cr1bb_duyetgiasup@odata.bind`] = `/crdfd_duyetgias(${product.approveSupPriceId})`;
-                }
-                // Promotion lookup: allow frontend to provide promotionId, otherwise try SOBG promotions, text, or inference
-                let promotionId: string | null = null;
-
-                // Step 0: If frontend provided a promotionId, prefer it (frontend overrides server inference)
-                if (product.promotionId) {
-                    promotionId = String(product.promotionId).replace(/^{|}$/g, '').trim();
-                    console.log(`[Save SOBG] Using promotionId from frontend for product ${product.productCode}: ${promotionId}`);
-                }
-
-                // Step 1: Try to match against SOBG promotions previously selected/applied (crdfd_sobaogiaxpromotions)
-                // (skipped if frontend already provided promotionId)
                 try {
-                    const prodCode = (product.productCode || '').toString().trim().toUpperCase();
-                    const prodGroup = (product.productGroupCode || '').toString().trim().toUpperCase();
-                    let matched = null as any;
-                    for (const sp of (sobgPromotions || [])) {
-                        const codesRaw = sp.productCodes || '';
-                        const groupsRaw = sp.productGroupCodes || '';
-                        const codes = Array.isArray(codesRaw) ? codesRaw : String(codesRaw).split(',').map((c: any) => String(c || '').trim().toUpperCase()).filter(Boolean);
-                        const groups = Array.isArray(groupsRaw) ? groupsRaw : String(groupsRaw).split(',').map((c: any) => String(c || '').trim().toUpperCase()).filter(Boolean);
-                        const matchProduct = codes.length === 0 || (prodCode && codes.some((c: string) => prodCode.includes(c)));
-                        const matchGroup = groups.length === 0 || (prodGroup && groups.some((g: string) => prodGroup.includes(g)));
-                        if ((codes.length === 0 && groups.length === 0) || matchProduct || matchGroup) {
-                            if (sp.promotionId) {
-                                matched = sp;
-                                break;
-                            }
+                    // Use impersonation to set the correct createdby user
+                    const createHeaders: any = { ...headers };
+                    if (ownerSystemUserId) {
+                        createHeaders['MSCRMCallerID'] = ownerSystemUserId;
+                    }
+
+                    const createResponse = await axios.post(`${BASE_URL}${SODBAOGIA_TABLE}`, entity, { headers: createHeaders });
+
+                    // Get the created record ID from response headers
+                    const createdRecordUrl = createResponse.headers['odata-entityid'] || createResponse.headers['location'];
+                    let createdRecordId: string | null = null;
+
+                    if (createdRecordUrl) {
+                        const match = createdRecordUrl.match(/\(([a-f0-9-]+)\)/i);
+                        if (match) {
+                            createdRecordId = match[1];
                         }
                     }
-                    if (matched && matched.promotionId) {
-                        promotionId = String(matched.promotionId).replace(/^{|}$/g, '').trim();
-                        console.log(`[Save SOBG] Matched promotionId ${promotionId} from SOBG promotions for product ${product.productCode} (group: ${product.productGroupCode})`);
+
+                    if (createdRecordId) {
+                        return { recordId: createdRecordId, product, entity, success: true };
+                    } else {
+                        throw new Error('Could not extract record ID from response');
                     }
-                } catch (e) {
-                    console.warn('[Save SOBG] Error matching SOBG promotions:', (e as any)?.message || e);
+                } catch (err: any) {
+                    console.error(`Failed to create record for product ${product.productCode}:`, err?.response?.data || err.message);
+                    return {
+                        recordId: null,
+                        product,
+                        entity,
+                        success: false,
+                        error: err?.response?.data?.error?.message || err.message
+                    };
                 }
+            });
 
-                // Step 2: Nếu không tìm thấy trong SOBG promotions (và frontend không override), thử lookup từ promotionText của product
-                if (!promotionId && product.promotionText) {
-                    try {
-                        promotionId = await lookupPromotionIdByText(product.promotionText, headers);
-                        if (promotionId) {
-                            console.log(`[Save SOBG] Looked up promotionId ${promotionId} from promotionText "${product.promotionText}" for product ${product.productCode}`);
-                        }
-                    } catch (e) {
-                        console.warn('[Save SOBG] Error looking up promotion by text:', (e as any)?.message || e);
-                    }
+            const batchResults = await Promise.allSettled(batchPromises);
+            return batchResults.map(result => {
+                if (result.status === 'fulfilled') {
+                    return result.value;
+                } else {
+                    // Promise rejected
+                    console.error('[Save SOBG] Batch promise rejected:', result.reason);
+                    return {
+                        recordId: null,
+                        product: { productCode: 'unknown' },
+                        entity: null,
+                        success: false,
+                        error: 'Batch processing error'
+                    };
                 }
+            });
+        };
 
-                // Step 3: Fallback - lookup by productCode và promotionText trong promotions table
-                if (!promotionId) {
-                    try {
-                        const inferred = await findPromotionForProduct(product.productCode, product.promotionText, headers);
-                        if (inferred && inferred.id) {
-                            promotionId = String(inferred.id).replace(/^{|}$/g, '').trim();
-                            console.log(`[Save SOBG] Inferred promotionId ${promotionId} from productCode/promotionText for product ${product.productCode}`);
-                        }
-                    } catch (e) {
-                        console.warn('[Save SOBG] Error inferring promotion:', (e as any)?.message || e);
-                    }
-                }
+        // Execute record batches with concurrency control
+        const recordBatchPromises: Promise<Array<{ recordId: string | null; product: any; entity: any; success: boolean; error?: string }>>[] = [];
+        for (let i = 0; i < recordBatches.length; i += MAX_CONCURRENT_BATCHES) {
+            const concurrentBatches = recordBatches.slice(i, i + MAX_CONCURRENT_BATCHES);
+            const batchPromises = concurrentBatches.map(batch => processRecordBatch(batch));
+            recordBatchPromises.push(...batchPromises);
 
-                // Step 4: (legacy) If frontend provided promotionId earlier we already used it; nothing to do here.
+            // Wait for this wave of concurrent batches to complete before starting next wave
+            if (recordBatchPromises.length >= MAX_CONCURRENT_BATCHES) {
+                const results = await Promise.allSettled(recordBatchPromises.splice(0, MAX_CONCURRENT_BATCHES));
+                results.forEach(result => {
+                    if (result.status === 'fulfilled') {
+                        result.value.forEach(record => {
+                            if (record.success && record.recordId) {
+                                createdRecords.push({ recordId: record.recordId, product: record.product, entity: record.entity });
+                                totalSaved++;
 
-                // Validate promotion: check min-total condition and payment-term applicability, then active/date
-                if (promotionId) {
-                    try {
-                        // Fetch promotion metadata for min-total and payment-terms
-                        let promoData: any = null;
-                        try {
-                            const promoResp = await axios.get(`${BASE_URL}${PROMOTION_TABLE}(${promotionId})?$select=cr1bb_tongtienapdung,cr1bb_ieukhoanthanhtoanapdung`, { headers });
-                            promoData = promoResp.data;
-                        } catch (innerErr) {
-                            // ignore, will still try basic active validation
-                        }
+                                // collect info for frontend
+                                savedDetails.push({
+                                    productCode: record.product.productCode || null,
+                                    productName: record.product.productName || null,
+                                    id: record.recordId
+                                });
 
-                        // Validate min-total requirement (if any)
-                        const minTotalReq = Number(promoData?.cr1bb_tongtienapdung) || 0;
-                        if (minTotalReq > 0 && Number(orderTotal) < minTotalReq) {
-                            console.log(`[Save SOBG] Skipping promotion ${promotionId} for product ${product.productCode} due to min total (${minTotalReq})`);
-                            promotionId = null;
-                        }
-
-                        // Validate payment term applicability (if still candidate)
-                        if (promotionId) {
-                            const promoCheck = await isPromotionApplicableToPaymentTerm(promotionId, effectivePaymentTerms, headers);
-                            if (!promoCheck.applicable) {
-                                console.log(`[Save SOBG] Skipping promotion ${promotionId} for product ${product.productCode} due to payment term mismatch: ${promoCheck.reason}`);
-                                promotionId = null;
-                            }
-                        }
-
-                        // Finally validate active/date window before binding
-                        if (promotionId) {
-                            const ok = await isPromotionValid(promotionId, headers);
-                            if (ok) {
-                                entity[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${promotionId})`;
+                                // Collect promotionId for header-level promotions
+                                try {
+                                    const bound = record.entity['crdfd_Promotion@odata.bind'];
+                                    if (bound && typeof bound === 'string') {
+                                        const m = bound.match(/\(([^)]+)\)/);
+                                        if (m && m[1]) {
+                                            const pid = m[1];
+                                            if (!promotionsToApplyMap.has(pid)) {
+                                                promotionsToApplyMap.set(pid, { promotionId: pid });
+                                            }
+                                        }
+                                    }
+                                } catch (e) {
+                                    /* ignore collection errors */
+                                }
                             } else {
-                                console.log(`[Save SOBG] Promotion ${promotionId} is not valid/active - skipping binding for product ${product.productCode}`);
-                                promotionId = null;
+                                failedProducts.push({
+                                    productCode: record.product.productCode,
+                                    error: record.error || 'Unknown error'
+                                });
                             }
-                        }
-                    } catch (e) {
-                        console.warn('[Save SOBG] Error validating promotion before binding:', (e as any)?.message || e);
-                        promotionId = null;
+                        });
                     }
-                }
-
-                // Use impersonation to set the correct createdby user
-                // MSCRMCallerID header tells Dynamics 365 to create the record as if this user did it
-                const createHeaders: any = { ...headers };
-                if (ownerSystemUserId) {
-                    createHeaders['MSCRMCallerID'] = ownerSystemUserId;
-                }
-
-                const createResponse = await axios.post(`${BASE_URL}${SODBAOGIA_TABLE}`, entity, { headers: createHeaders });
-
-                // Get the created record ID from response headers
-                const createdRecordUrl = createResponse.headers['odata-entityid'] || createResponse.headers['location'];
-                let createdRecordId: string | null = null;
-
-                if (createdRecordUrl) {
-                    // Extract GUID from URL: .../crdfd_sodbaogias(guid)
-                    const match = createdRecordUrl.match(/\(([a-f0-9-]+)\)/i);
-                    if (match) {
-                        createdRecordId = match[1];
-                    }
-                }
-
-                // PATCH to set owner and createdby if we have ownerSystemUserId and createdRecordId
-                if (ownerSystemUserId && createdRecordId) {
-
-                    try {
-                        // Set ownerid to systemuser
-                        await axios.patch(
-                            `${BASE_URL}${SODBAOGIA_TABLE}(${createdRecordId})`,
-                            { "ownerid@odata.bind": `/systemusers(${ownerSystemUserId})` },
-                            { headers }
-                        );
-                    } catch (ownerError: any) {
-                        console.warn('[Save SOBG] ⚠️ Could not set ownerid:', ownerError.message);
-                        console.warn('[Save SOBG] Error details:', ownerError.response?.data);
-                    }
-
-                    // Try to set createdby (may not be settable, but try custom fields)
-                    // Try multiple possible field names since the exact name may vary
-                    const CREATEDBY_CANDIDATES = [
-                        "crdfd_createdby",
-                        "crdfd_createdby_customer",
-                        "cr44a_createdby",
-                        "cr44a_createdby_customer",
-                        "cr1bb_createdby",
-                        "cr1bb_createdby_customer",
-                    ];
-
-                    let createdBySuccess = false;
-                    for (const fieldName of CREATEDBY_CANDIDATES) {
-                        try {
-                            await axios.patch(
-                                `${BASE_URL}${SODBAOGIA_TABLE}(${createdRecordId})`,
-                                { [`${fieldName}@odata.bind`]: `/systemusers(${ownerSystemUserId})` },
-                                { headers }
-                            );
-                            createdBySuccess = true;
-                            break;
-                        } catch (err: any) {
-                            // Continue to next candidate
-                        }
-                    }
-
-                    if (!createdBySuccess) {
-                        console.warn('[Save SOBG] ⚠️ Could not set createdby with any field name');
-                    }
-                }
-                // If create didn't bind promotion for any reason, attempt explicit PATCH of promotion lookup
-                if (createdRecordId && entity && entity['crdfd_Promotion@odata.bind']) {
-                    try {
-                        await axios.patch(
-                            `${BASE_URL}${SODBAOGIA_TABLE}(${createdRecordId})`,
-                            { "crdfd_Promotion@odata.bind": entity['crdfd_Promotion@odata.bind'] },
-                            { headers }
-                        );
-                    } catch (promoPatchErr: any) {
-                        console.warn('[Save SOBG] ⚠️ Could not patch promotion lookup on SOD báo giá:', createdRecordId, promoPatchErr?.message || promoPatchErr);
-                    }
-                }
-
-                totalSaved++;
-                // collect info for frontend to mark items saved and avoid duplicate saves
-                savedDetails.push({
-                    productCode: product.productCode || null,
-                    productName: product.productName || null,
-                    id: createdRecordId || null
-                });
-
-                // Collect promotionId to ensure we create header-level SOBG x Promotion entries later
-                try {
-                    const bound = entity['crdfd_Promotion@odata.bind'];
-                    if (bound && typeof bound === 'string') {
-                        const m = bound.match(/\(([^)]+)\)/);
-                        if (m && m[1]) {
-                            const pid = m[1];
-                            if (!promotionsToApplyMap.has(pid)) {
-                                promotionsToApplyMap.set(pid, { promotionId: pid });
-                            }
-                        }
-                    }
-                } catch (e) {
-                    /* ignore collection errors */
-                }
-
-            } catch (err: any) {
-                console.error(`Failed to save product ${product.productName}:`, err?.response?.data || err.message);
-                failedProducts.push({
-                    productCode: product.productCode,
-                    error: err?.response?.data?.error?.message || err.message
                 });
             }
         }
+
+        // Process remaining batches
+        if (recordBatchPromises.length > 0) {
+            const results = await Promise.allSettled(recordBatchPromises);
+            results.forEach(result => {
+                if (result.status === 'fulfilled') {
+                    result.value.forEach(record => {
+                        if (record.success && record.recordId) {
+                            createdRecords.push({ recordId: record.recordId, product: record.product, entity: record.entity });
+                            totalSaved++;
+
+                            // collect info for frontend
+                            savedDetails.push({
+                                productCode: record.product.productCode || null,
+                                productName: record.product.productName || null,
+                                id: record.recordId
+                            });
+
+                            // Collect promotionId for header-level promotions
+                            try {
+                                const bound = record.entity['crdfd_Promotion@odata.bind'];
+                                if (bound && typeof bound === 'string') {
+                                    const m = bound.match(/\(([^)]+)\)/);
+                                    if (m && m[1]) {
+                                        const pid = m[1];
+                                        if (!promotionsToApplyMap.has(pid)) {
+                                            promotionsToApplyMap.set(pid, { promotionId: pid });
+                                        }
+                                    }
+                                }
+                            } catch (e) {
+                                /* ignore collection errors */
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        console.log(`[Save SOBG] Created ${createdRecords.length} records. Now performing batch updates...`);
+
+        // ============ PARALLEL BATCH PATCH OPERATIONS ============
+        if (createdRecords.length > 0 && ownerSystemUserId) {
+            console.log(`[Save SOBG] Performing parallel batch owner/createdby updates for ${createdRecords.length} records`);
+
+            // Create owner update batches
+            const ownerBatches: Array<{ batchIndex: number; records: Array<{ recordId: string; product: any; entity: any }> }> = [];
+            for (let i = 0; i < createdRecords.length; i += PATCH_BATCH_SIZE) {
+                ownerBatches.push({
+                    batchIndex: Math.floor(i / PATCH_BATCH_SIZE),
+                    records: createdRecords.slice(i, i + PATCH_BATCH_SIZE)
+                });
+            }
+
+            // Process owner updates in parallel batches
+            const processOwnerBatch = async (batch: { batchIndex: number; records: Array<{ recordId: string; product: any; entity: any }> }) => {
+                const ownerPromises = batch.records.map(async (record) => {
+                    try {
+                        await axios.patch(
+                            `${BASE_URL}${SODBAOGIA_TABLE}(${record.recordId})`,
+                            { "ownerid@odata.bind": `/systemusers(${ownerSystemUserId})` },
+                            { headers }
+                        );
+                        return { recordId: record.recordId, success: true };
+                    } catch (err: any) {
+                        console.warn(`[Save SOBG] Could not set ownerid for ${record.recordId}:`, err.message);
+                        return { recordId: record.recordId, success: false };
+                    }
+                });
+                return await Promise.allSettled(ownerPromises);
+            };
+
+            // Execute owner batches with concurrency control
+            const ownerBatchPromises: Promise<PromiseSettledResult<{ recordId: string; success: boolean }>[] >[] = [];
+            for (let i = 0; i < ownerBatches.length; i += MAX_CONCURRENT_BATCHES) {
+                const concurrentBatches = ownerBatches.slice(i, i + MAX_CONCURRENT_BATCHES);
+                const batchPromises = concurrentBatches.map(batch => processOwnerBatch(batch));
+                ownerBatchPromises.push(...batchPromises);
+
+                // Wait for this wave of concurrent batches
+                if (ownerBatchPromises.length >= MAX_CONCURRENT_BATCHES) {
+                    await Promise.allSettled(ownerBatchPromises.splice(0, MAX_CONCURRENT_BATCHES));
+                }
+            }
+
+            // Process remaining owner batches
+            if (ownerBatchPromises.length > 0) {
+                await Promise.allSettled(ownerBatchPromises);
+            }
+
+            // Batch createdby updates with parallel processing
+            const CREATEDBY_CANDIDATES = [
+                "crdfd_createdby",
+                "crdfd_createdby_customer",
+                "cr44a_createdby",
+                "cr44a_createdby_customer",
+                "cr1bb_createdby",
+                "cr1bb_createdby_customer",
+            ];
+
+            // Try each createdby field candidate in parallel batches
+            for (const fieldName of CREATEDBY_CANDIDATES) {
+                const createdByBatches: Array<{ batchIndex: number; records: Array<{ recordId: string; product: any; entity: any }> }> = [];
+                for (let i = 0; i < createdRecords.length; i += PATCH_BATCH_SIZE) {
+                    createdByBatches.push({
+                        batchIndex: Math.floor(i / PATCH_BATCH_SIZE),
+                        records: createdRecords.slice(i, i + PATCH_BATCH_SIZE)
+                    });
+                }
+
+                const processCreatedByBatch = async (batch: { batchIndex: number; records: Array<{ recordId: string; product: any; entity: any }> }) => {
+                    const createdByPromises = batch.records.map(async (record) => {
+                        try {
+                            await axios.patch(
+                                `${BASE_URL}${SODBAOGIA_TABLE}(${record.recordId})`,
+                                { [`${fieldName}@odata.bind`]: `/systemusers(${ownerSystemUserId})` },
+                                { headers }
+                            );
+                            return { recordId: record.recordId, success: true };
+                        } catch (err: any) {
+                            return { recordId: record.recordId, success: false };
+                        }
+                    });
+                    return await Promise.allSettled(createdByPromises);
+                };
+
+                // Execute createdby batches with concurrency
+                const createdByBatchPromises: Promise<PromiseSettledResult<{ recordId: string; success: boolean }>[] >[] = [];
+                for (let i = 0; i < createdByBatches.length; i += MAX_CONCURRENT_BATCHES) {
+                    const concurrentBatches = createdByBatches.slice(i, i + MAX_CONCURRENT_BATCHES);
+                    const batchPromises = concurrentBatches.map(batch => processCreatedByBatch(batch));
+                    createdByBatchPromises.push(...batchPromises);
+
+                    // Wait for this wave and check success
+                    if (createdByBatchPromises.length >= MAX_CONCURRENT_BATCHES) {
+                        const results = await Promise.allSettled(createdByBatchPromises.splice(0, MAX_CONCURRENT_BATCHES));
+                        const successful = results.flatMap(r => r.status === 'fulfilled' ? r.value : [])
+                                                   .filter(r => r.status === 'fulfilled' && r.value.success).length;
+
+                        if (successful > 0) {
+                            console.log(`[Save SOBG] Set createdby using field ${fieldName} for ${successful} records`);
+                            break; // Success with this field, no need to try other fields
+                        }
+                    }
+                }
+
+                // Process remaining createdby batches
+                if (createdByBatchPromises.length > 0) {
+                    const results = await Promise.allSettled(createdByBatchPromises);
+                    const successful = results.flatMap(r => r.status === 'fulfilled' ? r.value : [])
+                                               .filter(r => r.status === 'fulfilled' && r.value.success).length;
+
+                    if (successful > 0) {
+                        console.log(`[Save SOBG] Set createdby using field ${fieldName} for ${successful} records`);
+                        break; // Success with this field, no need to try other fields
+                    }
+                }
+            }
+        }
+
+        console.log(`[Save SOBG] Completed batch processing. Total saved: ${totalSaved}, Failed: ${failedProducts.length}`);
 
         // After saving all details, ensure header-level SOBG x Promotion records exist for each promotion used by details.
         if (promotionsToApplyMap.size > 0) {
@@ -864,21 +1313,48 @@ export default async function handler(
             });
         }
 
-        // Create background job for inventory updates if warehouse provided and we saved items
-        const backgroundJobs: string[] = [];
-        if (warehouseName && savedDetails.length > 0) {
-            try {
-                const inventoryJobId = createBackgroundJob('inventory_update');
-                backgroundJobs.push(inventoryJobId);
-                // Run in background (no await)
-                processInventoryUpdatesInBackground(inventoryJobId, savedDetails, warehouseName, isVatOrder, headers)
-                    .catch((err) => console.error('[Save SOBG] Background inventory job failed:', err));
-            } catch (e) {
-                console.warn('[Save SOBG] Could not create background job for inventory:', (e as any)?.message || e);
+            // Create background job for inventory updates if warehouse provided and we saved items
+            const backgroundJobs: string[] = [];
+            if (warehouseName && savedDetails.length > 0) {
+                try {
+                    const inventoryJobId = createBackgroundJob('inventory_update');
+                    backgroundJobs.push(inventoryJobId);
+                    // Run in background (fire and forget - don't await)
+                    // Use setImmediate to ensure it runs after response is sent
+                    setImmediate(() => {
+                        processInventoryUpdatesInBackground(inventoryJobId, savedDetails, warehouseName, isVatOrder, headers)
+                            .then(() => {
+                                console.log(`[Save SOBG] Background inventory job ${inventoryJobId} completed successfully`);
+                            })
+                            .catch((err) => {
+                                console.error('[Save SOBG] Background inventory job failed:', err);
+                                updateJobStatus(inventoryJobId, 'failed', { error: err?.message || err });
+                            });
+                    });
+                } catch (e) {
+                    console.warn('[Save SOBG] Could not create background job for inventory:', (e as any)?.message || e);
+                }
             }
+
+            return res.status(200).json({ success: true, totalSaved, totalRequested: products.length, savedDetails, message: "OK", backgroundJobs });
+        };
+
+        // Execute main processing with timeout handling
+        const result = await Promise.race([mainProcessingPromise(), timeoutPromise]);
+
+        // If timeout was reached but response not sent yet, send partial results
+        if (timeoutReached && !responseSent) {
+            responseSent = true;
+            return res.status(200).json({
+                success: false,
+                partialSuccess: true,
+                timeout: true,
+                message: `Processing timeout after ${TIMEOUT_MS}ms. Check background jobs for completion status.`
+            });
         }
 
-        return res.status(200).json({ success: true, totalSaved, totalRequested: products.length, savedDetails, message: "OK", backgroundJobs });
+        // If main processing completed successfully, result is already sent
+        // If timeout occurred, we already handled it above
 
     } catch (error: any) {
         console.error("System Error SOBG:", error);
