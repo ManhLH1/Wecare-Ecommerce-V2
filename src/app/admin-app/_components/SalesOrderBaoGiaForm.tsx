@@ -748,6 +748,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       const savedTotalAmount = selectedSo?.crdfd_tongtiencovat ?? selectedSo?.crdfd_tongtien ?? orderSummary.total;
 
       // After save: check promotion orders and show popup similar to SalesOrderForm
+      let shouldShowPromotionPopup = false;
       try {
 
         const promotionOrderResult = await fetchPromotionOrdersSOBG(
@@ -795,12 +796,21 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         if ((available && available.length > 0) || (chietKhau2Promotions && chietKhau2Promotions.length > 0) || (special && special.length > 0)) {
           setSoId(savedSoId);
           setShowPromotionOrderPopup(true);
+          shouldShowPromotionPopup = true;
         } else {
           // No promotions to show -> keep current behavior
+          shouldShowPromotionPopup = false;
         }
       } catch (err: any) {
         console.error('[SOBG Promotion] ❌ Error checking promotion orders after save:', err);
       }
+        // If no promotion popup was shown AND save was full-success, clear entire form (user requested)
+        const wasPartial = Boolean(result.partialSuccess) || (Boolean(result.totalFailed) && Number(result.totalFailed) > 0);
+        if (!shouldShowPromotionPopup && !wasPartial) {
+          // Clear everything (customer, SOBG, product list, form)
+          clearEverything();
+        }
+
         // Mark saved products as created when API returns savedDetails (even on full success)
         if (result.savedDetails && result.savedDetails.length > 0) {
           setProductList(prevList => {
