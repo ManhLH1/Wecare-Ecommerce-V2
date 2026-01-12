@@ -2759,10 +2759,11 @@ function ProductEntryForm({
                 </div>
               )}
               <input
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9.,]*"
                 className={`admin-app-input admin-app-input-compact admin-app-input-money admin-app-input-small${priceLoading || !approvePrice || (approvePrice && priceEntryMethod === 'Theo chiết khấu') ? ' admin-app-input-readonly' : ''}`}
-                value={price}
+                value={formatPriceForDisplay(String(price)) || price}
                 onChange={(e) => handlePriceChange(e.target.value)}
                 placeholder={priceLoading ? "Đang tải..." : "Giá"}
                 readOnly={priceLoading || !approvePrice || (approvePrice && priceEntryMethod === 'Theo chiết khấu')}
@@ -2982,10 +2983,10 @@ function ProductEntryForm({
             // Công thức chi tiết
             let formula = `CÔNG THỨC TÍNH THÀNH TIỀN\n`;
             formula += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-            formula += `Số lượng: ${quantity}\n`;
+            formula += `Số lượng: ${quantity.toLocaleString('vi-VN')}\n`;
             formula += `Giá đơn vị (sau chiết khấu, chưa VAT): ${roundedDiscountedPrice.toLocaleString('vi-VN')} ₫\n\n`;
             formula += `Tính toán:\n`;
-            formula += `${quantity} × ${roundedDiscountedPrice.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} = ${subtotal.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            formula += `${quantity.toLocaleString('vi-VN')} × ${roundedDiscountedPrice.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} = ${subtotal.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
             return (
               <div className="admin-app-field-compact admin-app-field-total">
