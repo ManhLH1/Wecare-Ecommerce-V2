@@ -338,7 +338,6 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       overrides,
       localDiscountPercent: discountPercent,
       localDiscountAmount: discountAmount,
-      selectedPromotionId,
       promotionId,
       productCode,
       price,
