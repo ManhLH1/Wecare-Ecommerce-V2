@@ -15,40 +15,49 @@ const SYSTEMUSER_TABLE = "systemusers";
 const PROMOTION_TABLE = "crdfd_promotions";
 const KHO_BD_TABLE = "crdfd_kho_binh_dinhs";
 
-// Batch lookup Product IDs
-async function batchLookupProductIds(productCodes: string[], headers: any): Promise<Map<string, string | null>> {
-    const result = new Map<string, string | null>();
+// Batch lookup Product IDs and Names
+async function batchLookupProductIds(productCodes: string[], headers: any): Promise<Map<string, { id: string | null; name: string | null }>> {
+    const result = new Map<string, { id: string | null; name: string | null }>();
     if (!productCodes.length) return result;
 
     try {
-        // Create filter for multiple product codes
-        const safeCodes = productCodes.map(code => `'${code.trim().replace(/'/g, "''")}'`).join(',');
-        const filter = `statecode eq 0 and crdfd_masanpham in (${safeCodes})`;
-        const endpoint = `${PRODUCT_TABLE}?$select=crdfd_productsid,crdfd_masanpham&$filter=${encodeURIComponent(filter)}`;
+        // Create filter for multiple product codes.
+        // Some Dynamics instances do not support the OData 'in' operator and return 501.
+        // Use explicit OR clauses which are widely supported.
+        const codeConditions = productCodes.map(code => {
+            const safeCode = code.trim().replace(/'/g, "''");
+            return `crdfd_masanpham eq '${safeCode}'`;
+        });
+        const filter = `statecode eq 0 and (${codeConditions.join(' or ')})`;
+        const endpoint = `${PRODUCT_TABLE}?$select=crdfd_productsid,crdfd_masanpham,crdfd_name&$filter=${encodeURIComponent(filter)}`;
 
         const res = await axios.get(`${BASE_URL}${endpoint}`, { headers });
         if (res.data.value && res.data.value.length > 0) {
             // Create lookup map
-            const productMap = new Map<string, string>();
+            const productMap = new Map<string, { id: string; name: string }>();
             res.data.value.forEach((item: any) => {
                 if (item.crdfd_masanpham && item.crdfd_productsid) {
-                    productMap.set(item.crdfd_masanpham.toLowerCase().trim(), item.crdfd_productsid);
+                    productMap.set(item.crdfd_masanpham.toLowerCase().trim(), {
+                        id: item.crdfd_productsid,
+                        name: item.crdfd_name || null
+                    });
                 }
             });
 
             // Map back to input codes
             productCodes.forEach(code => {
                 const normalizedCode = code.toLowerCase().trim();
-                result.set(code, productMap.get(normalizedCode) || null);
+                const found = productMap.get(normalizedCode);
+                result.set(code, found ? { id: found.id, name: found.name } : { id: null, name: null });
             });
         } else {
             // No products found, set all to null
-            productCodes.forEach(code => result.set(code, null));
+            productCodes.forEach(code => result.set(code, { id: null, name: null }));
         }
     } catch (e) {
         console.error("Batch lookup products failed:", e);
         // Set all to null on error
-        productCodes.forEach(code => result.set(code, null));
+        productCodes.forEach(code => result.set(code, { id: null, name: null }));
     }
     return result;
 }
@@ -110,7 +119,8 @@ async function batchLookupUnitConversionIds(
 // Legacy single lookup functions (for backward compatibility)
 async function lookupProductId(productCode: string, headers: any): Promise<string | null> {
     const results = await batchLookupProductIds([productCode], headers);
-    return results.get(productCode) || null;
+    const result = results.get(productCode);
+    return result ? result.id : null;
 }
 
 async function lookupUnitConversionId(productCode: string, unitName: string, headers: any): Promise<string | null> {
@@ -862,8 +872,11 @@ export default async function handler(
 
             let productId = product.productId;
             if (!productId && product.productCode) {
-                productId = productIdMap.get(product.productCode) || undefined;
+                const productLookup = productIdMap.get(product.productCode);
+                productId = productLookup?.id || undefined;
             }
+            // Normalize GUID (remove surrounding braces) to ensure CRM accepts the lookup binding
+            const normalizedProductId = productId ? String(productId).replace(/[{}]/g, '').trim() : undefined;
 
             let unitConvId = undefined;
             if (product.productCode && product.unit) {
@@ -885,7 +898,7 @@ export default async function handler(
             // Map fields based on Metadata & Prediction (Vietnamese Schema)
             const entity: any = {
                 "crdfd_Maonhang@odata.bind": `/crdfd_sobaogias(${sobgId})`,
-                ...(productId ? { "crdfd_Sanpham@odata.bind": `/crdfd_productses(${productId})` } : {}),
+                ...(normalizedProductId ? { "crdfd_Sanpham@odata.bind": `/crdfd_productses(${normalizedProductId})` } : {}),
                 ...(unitConvId ? { "crdfd_onvi@odata.bind": `/crdfd_unitconvertions(${unitConvId})` } : {}),
                 "crdfd_soluong": product.quantity,
                 "crdfd_ongia": product.discountedPrice ?? product.price,
@@ -1085,9 +1098,10 @@ export default async function handler(
                                 totalSaved++;
 
                                 // collect info for frontend
+                                const productLookup = productIdMap.get(record.product.productCode);
                                 savedDetails.push({
                                     productCode: record.product.productCode || null,
-                                    productName: record.product.productName || null,
+                                    productName: productLookup?.name || record.product.productName || null,
                                     id: record.recordId
                                 });
 
@@ -1129,9 +1143,10 @@ export default async function handler(
                             totalSaved++;
 
                             // collect info for frontend
+                            const productLookup = productIdMap.get(record.product.productCode);
                             savedDetails.push({
                                 productCode: record.product.productCode || null,
-                                productName: record.product.productName || null,
+                                productName: productLookup?.name || record.product.productName || null,
                                 id: record.recordId
                             });
 
@@ -1323,7 +1338,7 @@ export default async function handler(
                     // Run in background (fire and forget - don't await)
                     // Use setImmediate to ensure it runs after response is sent
                     setImmediate(() => {
-                        processInventoryUpdatesInBackground(inventoryJobId, savedDetails, warehouseName, isVatOrder, headers)
+                        processInventoryUpdatesInBackground(inventoryJobId, savedDetails, warehouseName, isVatOrder, headers, productIdMap)
                             .then(() => {
                                 console.log(`[Save SOBG] Background inventory job ${inventoryJobId} completed successfully`);
                             })
@@ -1444,7 +1459,8 @@ async function processInventoryUpdatesInBackground(
     savedDetails: any[],
     warehouseName: string | undefined,
     isVatOrder: boolean,
-    headers: any
+    headers: any,
+    productIdMap: Map<string, { id: string | null; name: string | null }>
 ): Promise<void> {
     updateJobStatus(jobId, 'running', {
         progress: { total: savedDetails.length, completed: 0, currentStep: 'Grouping products' }
@@ -1472,9 +1488,10 @@ async function processInventoryUpdatesInBackground(
                     const totalQuantity = items.reduce((s, it) => s + it.quantity, 0);
                     await updateInventoryAfterSaleSOBG(productCode, totalQuantity, warehouseName, isVatOrder, headers, firstProduct.productGroupCode, false);
                 } catch (err: any) {
-                    inventoryErrors.push({
+                    const productLookup = productIdMap.get(productCode);
+                inventoryErrors.push({
                         productCode,
-                        productName: firstProduct.productName,
+                        productName: productLookup?.name || firstProduct.productName,
                         quantity: items.reduce((s, it) => s + it.quantity, 0),
                         error: err?.message || err
                     });

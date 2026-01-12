@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, ComponentType } from 'react';
 import { getStoredUser, logout } from '../_utils/implicitAuthService';
 import { useRouter } from 'next/navigation';
 
 // Lazy load components để cải thiện initial load time
-const SalesOrderForm = React.lazy(() => import('./SalesOrderForm'));
-const SalesOrderBaoGiaForm = React.lazy(() => import('./SalesOrderBaoGiaForm'));
+const SalesOrderForm = React.lazy(() => import('./SalesOrderForm')) as ComponentType<{ hideHeader?: boolean }>;
+const SalesOrderBaoGiaForm = React.lazy(() => import('./SalesOrderBaoGiaForm')) as ComponentType<{ hideHeader?: boolean }>;
 
 type FormType = 'SO' | 'SOBG';
 
