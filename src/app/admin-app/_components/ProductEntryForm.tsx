@@ -121,7 +121,7 @@ interface ProductEntryFormProps {
   promotionId: string;
   setPromotionId: (value: string) => void;
   setPromotionText: (value: string) => void;
-  onAdd: (overrides?: { promotionId?: string }) => void;
+  onAdd: (overrides?: { promotionId?: string, discountPercent?: number, discountAmount?: number }) => void;
   onSave: () => void;
   onRefresh: () => void;
   onInventoryReserved?: () => void; // Callback khi inventory được reserve để trigger reload
@@ -1857,8 +1857,44 @@ function ProductEntryForm({
         }
       } catch (err) { /* ignore */ }
 
-      console.debug('[ProductEntryForm] calling onAdd with promotionId:', normalizePromotionId(selectedPromotionId || normalizePromotionId(promotions[0]?.id)));
-      onAdd({ promotionId: normalizePromotionId(selectedPromotionId || normalizePromotionId(promotions[0]?.id)) });
+      // Compute promotion discount values directly from the selected promotion to avoid stale state.
+      const currentPromoId = normalizePromotionId(selectedPromotionId || normalizePromotionId(promotions[0]?.id));
+      let computedDiscountPercent = 0;
+      let computedDiscountAmount = 0;
+      try {
+        const sel = selectedPromotion || promotions[0];
+        if (sel) {
+          computedDiscountPercent = derivePromotionPercent(sel);
+          // If promotion is VND-based, compute money value based on VAT context
+          const vatTextLower = (vatText || '').toLowerCase();
+          const isVatOrderForPromo = vatTextLower.includes('có vat') || vatPercent > 0;
+          const moneyCandidates = isVatOrderForPromo
+            ? [sel.valueWithVat, sel.value, sel.value2, sel.value3, sel.valueBuyTogether]
+            : [sel.valueNoVat, sel.valueWithVat, sel.value, sel.value2, sel.value3, sel.valueBuyTogether];
+          for (const c of moneyCandidates) {
+            const num = Number(c);
+            if (!isNaN(num) && num > 0) {
+              computedDiscountAmount = num;
+              break;
+            }
+          }
+          // If percent was derived (non-zero), zero out money value to avoid double-applying
+          if (computedDiscountPercent > 0) {
+            computedDiscountAmount = 0;
+          }
+        }
+      } catch (err) {
+        // fallback to existing local state if any error
+        computedDiscountPercent = promotionDiscountPercent;
+        computedDiscountAmount = discountAmount;
+      }
+
+      console.debug('[ProductEntryForm] calling onAdd with promotionId:', currentPromoId, 'computedPct:', computedDiscountPercent, 'computedAmt:', computedDiscountAmount);
+      onAdd({
+        promotionId: currentPromoId,
+        discountPercent: computedDiscountPercent,
+        discountAmount: computedDiscountAmount,
+      });
 
       // After add, if product is still selected (selectedProductCode not reset), reload price
       // Use setTimeout to ensure form reset completes first

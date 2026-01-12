@@ -333,7 +333,17 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   // (on Save or when clicking the special promotions button). The previous auto-fetch
   // logic was removed to avoid unnecessary server calls on every product/total change.
 
-  const handleAddProduct = async (overrides?: { promotionId?: string }) => {
+  const handleAddProduct = async (overrides?: { promotionId?: string, discountPercent?: number, discountAmount?: number }) => {
+    console.debug('[SalesOrderForm] handleAddProduct called', {
+      overrides,
+      localDiscountPercent: discountPercent,
+      localDiscountAmount: discountAmount,
+      selectedPromotionId,
+      promotionId,
+      productCode,
+      price,
+      quantity,
+    });
     // Validation: product, unit, quantity, price (bắt buộc phải có giá > 0)
     const priceNum = parseFloat(price || '0') || 0;
     const hasValidPrice = priceNum > 0;
@@ -373,10 +383,11 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     const invoiceSurchargeRate = isHoKinhDoanh && isNonVat ? 0.015 : 0;
 
     // Calculate discounted price using the same method as ProductEntryForm:
-    // apply percentage discount directly on the displayed price (priceNum), then subtract any VND discount,
-    // then apply invoice surcharge if applicable.
+    // Prefer overrides from child to avoid React state propagation timing issues.
     const basePrice = priceNum;
-    const discountedPriceCalc = basePrice * (1 - (discountPercent || 0) / 100) - (discountAmount || 0);
+    const usedDiscountPercent = overrides?.discountPercent ?? discountPercent ?? 0;
+    const usedDiscountAmount = overrides?.discountAmount ?? discountAmount ?? 0;
+    const discountedPriceCalc = basePrice * (1 - (usedDiscountPercent || 0) / 100) - (usedDiscountAmount || 0);
     const finalPrice = discountedPriceCalc * (1 + invoiceSurchargeRate);
 
     // Check if product already exists with same productCode/productName, unit, and price
@@ -414,10 +425,10 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         vatAmount: newVatAmount,
         totalAmount: newTotalAmount,
         // Update other fields from new input (in case they changed)
-        discount: discountAmount,
+        discount: usedDiscountAmount,
         discountedPrice: finalPrice,
-        discountPercent: discountPercent,
-        discountAmount: discountAmount,
+        discountPercent: usedDiscountPercent,
+        discountAmount: usedDiscountAmount,
         vat: vatPercent,
         invoiceSurcharge: invoiceSurchargeRate,
         // Merge notes if both have notes
@@ -459,10 +470,10 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         quantity,
         price: priceNum,
         surcharge: 0,
-        discount: discountAmount,
+        discount: usedDiscountAmount,
         discountedPrice: finalPrice,
-        discountPercent: discountPercent,
-        discountAmount: discountAmount,
+        discountPercent: usedDiscountPercent,
+        discountAmount: usedDiscountAmount,
         vat: vatPercent,
         subtotal: subtotalCalc,
         vatAmount: vatCalc,
