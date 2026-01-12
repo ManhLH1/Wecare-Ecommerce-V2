@@ -319,8 +319,8 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
 
         // Set customer wecare rewards from customer list if available
         const customerOption = customers.find(c => c.crdfd_customerid === customerId);
-        if (customerOption?.crdfd_wecare_rewards) {
-          setCustomerWecareRewards(customerOption.crdfd_wecare_rewards);
+        if (customerOption && (customerOption as any).crdfd_wecare_rewards) {
+          setCustomerWecareRewards((customerOption as any).crdfd_wecare_rewards);
         }
       } catch (error) {
         console.error('Error loading SOBG details:', error);
@@ -1447,7 +1447,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
                     setCustomerCode(option?.cr44a_makhachhang || option?.cr44a_st || '');
                     setCustomerIndustry(option?.crdfd_nganhnghe ?? null);
                     // Capture wecare rewards
-                    setCustomerWecareRewards(option?.crdfd_wecare_rewards || null);
+                    setCustomerWecareRewards((option as any)?.crdfd_wecare_rewards || null);
                     // Clear SOBG và các selected khi đổi customer
                     setSo('');
                     setSoId(''); // Clear soId trước để tránh trigger load details với soId cũ

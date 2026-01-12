@@ -310,8 +310,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
 
         // Set customer wecare rewards from customer list if available
         const customerOption = customers.find(c => c.crdfd_customerid === customerId);
-        if (customerOption?.crdfd_wecare_rewards) {
-          setCustomerWecareRewards(customerOption.crdfd_wecare_rewards);
+        if (customerOption && (customerOption as any).crdfd_wecare_rewards) {
+          setCustomerWecareRewards((customerOption as any).crdfd_wecare_rewards);
         }
       } catch (error) {
         console.error('Error loading sale order details:', error);
@@ -1784,7 +1784,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                     // Capture region text (e.g. "Miền Nam", "Miền Trung") from customer option
                     setCustomerRegion(option?.cr1bb_vungmien_text || option?.cr1bb_vungmien || '');
                     // Capture wecare rewards
-                    setCustomerWecareRewards(option?.crdfd_wecare_rewards || null);
+                    setCustomerWecareRewards((option as any)?.crdfd_wecare_rewards || null);
                     // Clear SO và các selected khi đổi customer
                     setSo('');
                     setSoId('');
