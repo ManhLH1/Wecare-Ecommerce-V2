@@ -61,7 +61,7 @@ const TestimonialsSection: React.FC = () => {
             title="Dịch vụ rất yên tâm!"
             text="Vừa đặt máy khoan bê tông, chạy được nửa buổi tự nhiên ngưng, alo lên cty vài tiếng sau có nhân viên xuống kiểm tra, đổi luôn máy mới."
             author="Chị Thoa / Quận 9"
-            rating={4}
+            rating={5}
           />
           <TestimonialCard
             title="Giá quá tốt"
