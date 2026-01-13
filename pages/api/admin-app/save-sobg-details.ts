@@ -922,6 +922,7 @@ export default async function handler(
                 "crdfd_chietkhau": product.discountPercent ? product.discountPercent / 100 : 0,
                 "crdfd_chietkhauvn": product.discountAmount ?? 0,
                 "crdfd_chietkhau2": product.discount2 ? product.discount2 / 100 : 0,
+                "crdfd_chietkhau_phanhang": getDiscountRateFromPrices(product),
                 "crdfd_giack1": product.originalPrice ?? product.price ?? 0,
                 "crdfd_giack2": product.discountedPrice ?? product.price ?? 0,
                 "crdfd_giagoc": product.originalPrice ?? product.price,
@@ -1704,6 +1705,21 @@ function mapApprovalToChoice(approveFlag: any, approverChoiceValue?: any): numbe
 
     // Otherwise do not set the choice (null)
     return null;
+}
+
+// Helper function to get discountRate from product
+function getDiscountRateFromPrices(product: any): number {
+    try {
+        // Use discountRate if already provided directly from frontend
+        if (product.discountRate !== undefined && product.discountRate !== null) {
+            return Number(product.discountRate) || 0;
+        }
+
+        return 0;
+    } catch (error) {
+        console.warn('[Get Discount Rate] Error extracting discountRate:', error);
+        return 0;
+    }
 }
 
 function formatDateForCRM(dateStr: any): string | null {

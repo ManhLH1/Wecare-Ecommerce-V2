@@ -16,6 +16,7 @@ export interface OrderItem {
   priceChangeReason: string;
   crdfd_chieckhau: number;
   crdfd_loaichietkhau: 'percent' | 'amount';
+  crdfd_chietkhau_phanhang?: number;
   _crdfd_onvi_value: string;
   crdfd_giaexuat: number;
   cr1bb_onvichietkhau: string;

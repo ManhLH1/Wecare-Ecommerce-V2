@@ -18,11 +18,11 @@ const ShippingPolicyPage: React.FC = () => {
         />
 
         {/* Main Layout */}
-        <div className="w-full max-w-[2560px] mx-auto pt-[115px] px-4">
+        <div className="w-full max-w-[2560px] mx-auto pt-[115px]">
           <div className="flex flex-col lg:flex-row">
             {/* Main Content */}
             <div className="flex-1 min-w-0">
-              <main className="w-full max-w-[2560px] mx-auto pt-0 px-4">
+              <main className="w-full max-w-[2560px] mx-auto pt-0">
 
                 {/* Page Header */}
                 <section className="py-6 md:py-8">
@@ -31,17 +31,16 @@ const ShippingPolicyPage: React.FC = () => {
                       CHÍNH SÁCH VẬN CHUYỂN
                     </h1>
                     <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-cyan-500 mx-auto mb-6"></div>
-                    <p className="text-lg md:text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed">
+                    <p className="text-lg md:text-xl text-gray-600 max-w-[1400px] mx-auto leading-relaxed">
                       Cam kết giao hàng nhanh chóng, an toàn và đúng hẹn
                     </p>
                   </div>
                 </section>
 
                 {/* Shipping Policy Content */}
-                <section className="pb-12">
-                  <div className="mx-auto w-full max-w-xl sm:max-w-2xl md:max-w-3xl px-4 sm:px-6 lg:px-8">
-
-                  <div className="space-y-8 md:space-y-10">
+                <section className="pb-12 px-4 sm:px-6 lg:px-8">
+                  <div className="mx-auto w-full max-w-[1800px]">
+                    <div className="space-y-8 md:space-y-10">
                     {/* 1. Phương thức giao hàng */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 md:p-8">
                       <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 uppercase text-center">
@@ -138,7 +137,7 @@ const ShippingPolicyPage: React.FC = () => {
                     </div>
 
                     {/* Back to Home */}
-                    <div className="text-center mt-8 px-4 sm:px-6">
+                    <div className="text-center mt-8">
                       <Link
                         href="/"
                         className="w-full md:inline-flex md:w-auto justify-center items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-300 shadow-md hover:shadow-lg"
@@ -149,7 +148,7 @@ const ShippingPolicyPage: React.FC = () => {
                         Về trang chủ
                       </Link>
                     </div>
-                  </div>
+                    </div>
                   </div>
                 </section>
               </main>

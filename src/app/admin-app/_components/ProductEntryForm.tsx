@@ -121,7 +121,7 @@ interface ProductEntryFormProps {
   promotionId: string;
   setPromotionId: (value: string) => void;
   setPromotionText: (value: string) => void;
-  onAdd: (overrides?: { promotionId?: string, discountPercent?: number, discountAmount?: number }) => void;
+  onAdd: (overrides?: { promotionId?: string, discountPercent?: number, discountAmount?: number, discountRate?: number }) => void;
   onSave: () => void;
   onRefresh: () => void;
   onInventoryReserved?: () => void; // Callback khi inventory được reserve để trigger reload
@@ -1512,7 +1512,9 @@ function ProductEntryForm({
           // Lưu basePrice để tính chiết khấu
           // Prefer original price (priceNoVat or priceWithVat) as base for client-side promotions.
           const baseForDiscount = (priceNoVat ?? priceWithVat ?? finalPrice ?? roundedBase);
-          setBasePriceForDiscount(Math.round(Number(baseForDiscount) * 100) / 100);
+          const roundedBasePrice = Math.round(Number(baseForDiscount) * 100) / 100;
+          console.log('💵 Setting basePriceForDiscount:', roundedBasePrice);
+          setBasePriceForDiscount(roundedBasePrice);
           // Set giá từ API, trừ khi đang ở chế độ "Theo chiết khấu" và đã bật "Duyệt giá"
           // (trong trường hợp đó, giá sẽ được tính từ chiết khấu)
           if (priceEntryMethod !== 'Theo chiết khấu' || !approvePrice) {
@@ -1718,13 +1720,32 @@ function ProductEntryForm({
   // Use `discountPercent` prop (numeric) as source of truth for discount value,
   // allowing parent to provide either selected preset or a custom "Khác" value.
   useEffect(() => {
+    console.log('🔄 Discount calculation useEffect triggered:', {
+      approvePrice,
+      priceEntryMethod,
+      discountPercent,
+      basePriceForDiscount,
+      discountRate
+    });
+
     if (approvePrice && priceEntryMethod === 'Theo chiết khấu' && basePriceForDiscount > 0) {
       const pct = Number(discountPercent) || 0;
       const discountedPrice = basePriceForDiscount - (basePriceForDiscount * pct / 100);
       const roundedPrice = Math.round(discountedPrice * 100) / 100;
+      console.log('💰 Calculating discounted price:', {
+        basePrice: basePriceForDiscount,
+        discountPercent: pct,
+        discountedPrice: roundedPrice
+      });
       handlePriceChange(String(roundedPrice));
+    } else {
+      console.log('❌ Discount calculation skipped:', {
+        approvePrice,
+        priceEntryMethod,
+        hasBasePrice: basePriceForDiscount > 0
+      });
     }
-  }, [approvePrice, priceEntryMethod, discountPercent, basePriceForDiscount]);
+  }, [approvePrice, priceEntryMethod, discountPercent, basePriceForDiscount, discountRate]);
 
   // Calculate totals with promotion discount
   const recomputeTotals = (priceValue: string | number, qty: number, promoDiscountPct: number, vatPct: number) => {
@@ -1898,6 +1919,7 @@ function ProductEntryForm({
         promotionId: currentPromoId,
         discountPercent: computedDiscountPercent,
         discountAmount: computedDiscountAmount,
+        discountRate: selectedPriceFromApi?.discountRate,
       });
 
       // After add, if product is still selected (selectedProductCode not reset), reload price
@@ -1998,7 +2020,8 @@ function ProductEntryForm({
   // Sync discount percent from promotion selection
   useEffect(() => {
     // KHI DUYỆT GIÁ: Không áp dụng chiết khấu từ promotion (chiết khấu 1 = 0)
-    if (approvePrice) {
+    // Nhưng vẫn cho phép chiết khấu thủ công nếu đang dùng phương thức "Theo chiết khấu"
+    if (approvePrice && priceEntryMethod !== 'Theo chiết khấu') {
       setPromotionDiscountPercent(0);
       setDiscountPercent(0);
       setPromotionText('');
@@ -2018,7 +2041,10 @@ function ProductEntryForm({
       const effectiveTotal = Number(orderTotal || 0) + Number(totalAmount || 0);
       if (minTotal > 0 && effectiveTotal < minTotal) {
         setPromotionDiscountPercent(0);
-        setDiscountPercent(0);
+        // Không reset discountPercent nếu đang dùng "Theo chiết khấu" với duyệt giá
+        if (!(approvePrice && priceEntryMethod === 'Theo chiết khấu')) {
+          setDiscountPercent(0);
+        }
         setPromotionText(selected?.name || '');
         setPromotionWarning(`Chương trình yêu cầu tổng đơn tối thiểu ${minTotal.toLocaleString('vi-VN')} đ`);
         recomputeTotals(price, quantity, 0, vatPercent);
@@ -2029,7 +2055,10 @@ function ProductEntryForm({
     // If selected promotion is marked not applicable, do not apply its discount and show inline warning
     if (selected && selected.applicable === false) {
       setPromotionDiscountPercent(0);
-      setDiscountPercent(0);
+      // Không reset discountPercent nếu đang dùng "Theo chiết khấu" với duyệt giá
+      if (!(approvePrice && priceEntryMethod === 'Theo chiết khấu')) {
+        setDiscountPercent(0);
+      }
       setPromotionText(selected?.name || '');
       // Build friendly labels for both promotion requirement and order payment term
       const promoReqLabel = getPaymentTermLabelClient(selected?.paymentTermsNormalized || selected?.paymentTerms);
@@ -2040,7 +2069,10 @@ function ProductEntryForm({
     } else {
       const promoPct = derivePromotionPercent(selected);
       setPromotionDiscountPercent(promoPct);
-      setDiscountPercent(promoPct); // propagate to parent state
+      // Không override discountPercent nếu đang dùng "Theo chiết khấu" với duyệt giá
+      if (!(approvePrice && priceEntryMethod === 'Theo chiết khấu')) {
+        setDiscountPercent(promoPct); // propagate to parent state
+      }
       setPromotionText(selected?.name || '');
       setPromotionWarning(null);
       recomputeTotals(price, quantity, promoPct || discountPercent, vatPercent);
@@ -2496,12 +2528,16 @@ function ProductEntryForm({
                       ]}
                       value={discountRate}
                       onChange={(value) => {
+                        console.log('📊 Dropdown onChange:', { value, discountRate: value });
                         setDiscountRate(value);
                         if (value === 'Khác') {
+                          console.log('📊 Setting discountPercent to 0 (Khác selected)');
                           setDiscountPercent(0);
                         } else {
                           const num = Number(value);
-                          setDiscountPercent(isNaN(num) ? 0 : num);
+                          const finalPercent = isNaN(num) ? 0 : num;
+                          console.log('📊 Setting discountPercent to:', finalPercent);
+                          setDiscountPercent(finalPercent);
                         }
                       }}
                       placeholder="Chọn tỉ lệ"

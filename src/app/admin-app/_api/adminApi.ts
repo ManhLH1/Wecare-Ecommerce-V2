@@ -379,6 +379,7 @@ export interface SaveSaleOrderDetailsRequest {
     approver?: string;
     discountPercent?: number;
     discountAmount?: number;
+    discountRate?: number; // Chiết khấu theo rate từ prices array
     promotionText?: string;
     promotionId?: string;
     invoiceSurcharge?: number;
@@ -756,6 +757,7 @@ export interface SaveSOBGDetailsRequest {
     approver?: string;
     discountPercent?: number;
     discountAmount?: number;
+    discountRate?: number; // Chiết khấu theo rate từ prices array
     promotionText?: string;
     promotionId?: string;
     invoiceSurcharge?: number;

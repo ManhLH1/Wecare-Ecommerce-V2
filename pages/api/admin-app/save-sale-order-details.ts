@@ -284,6 +284,21 @@ const normalizePaymentTerm = (input?: string | null) : string | null => {
   return t;
 };
 
+// Helper function to get discountRate from product
+function getDiscountRateFromPrices(product: any): number {
+    try {
+        // Use discountRate if already provided directly from frontend
+        if (product.discountRate !== undefined && product.discountRate !== null) {
+            return Number(product.discountRate) || 0;
+        }
+
+        return 0;
+    } catch (error) {
+        console.warn('[Get Discount Rate] Error extracting discountRate:', error);
+        return 0;
+    }
+}
+
 // Validate whether a promotion (by id) is applicable to the given order payment terms.
 async function isPromotionApplicableToPaymentTerm(
   promotionId: string,
@@ -1010,7 +1025,8 @@ interface SaleOrderDetailInput {
   approver?: string;
   discountPercent?: number;
   discountAmount?: number;
-  discount2?: number; // Chiết khấu 2 (%)
+  discount2?: number;
+  discountRate?: number; // Chiết khấu 2 (%)
   promotionText?: string;
   promotionId?: string;
   invoiceSurcharge?: number; // Phụ phí hoá đơn (%)
@@ -1376,6 +1392,7 @@ export default async function handler(
           crdfd_chieckhauvn: product.discountAmount ?? 0,
           // Secondary discount (Chiết khấu 2) stored as decimal (e.g., 0.05 for 5%)
           crdfd_chieckhau2 : product.discount2 ? product.discount2 / 100 : 0,
+          crdfd_chietkhau_phanhang: getDiscountRateFromPrices(product),
           crdfd_phuphi_hoadon: product.invoiceSurcharge ?? 0,
           cr1bb_donhanggap: product.urgentOrder ?? false,
           crdfd_promotiontext: product.promotionText || "",

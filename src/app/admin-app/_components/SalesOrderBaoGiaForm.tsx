@@ -335,7 +335,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     loadSOBGDetails();
   }, [soId, customerId]);
 
-  const handleAddProduct = async (overrides?: { promotionId?: string, discountPercent?: number, discountAmount?: number }) => {
+  const handleAddProduct = async (overrides?: { promotionId?: string, discountPercent?: number, discountAmount?: number, discountRate?: number }) => {
     console.debug('[SalesOrderBaoGiaForm] handleAddProduct called', {
       overrides,
       localDiscountPercent: discountPercent,
@@ -480,6 +480,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         discountedPrice: finalPrice,
         discountPercent: discountPercent,
         discountAmount: discountAmount,
+        discountRate: overrides?.discountRate,
         vat: vatPercent,
         subtotal: subtotalCalc,
         vatAmount: vatCalc,
@@ -650,6 +651,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           approver: item.approver,
           discountPercent: item.discountPercent,
           discountAmount: item.discountAmount,
+          discountRate: item.discountRate,
           promotionText: item.promotionText,
           // Include promotionId if provided by frontend or if a selectedPromotionOrders matches this product
           promotionId: item.promotionId ?? (() => {

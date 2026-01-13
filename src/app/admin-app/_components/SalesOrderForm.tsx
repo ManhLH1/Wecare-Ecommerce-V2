@@ -40,6 +40,7 @@ interface ProductItem {
   approveSupPriceId?: string;
   discountPercent?: number;
   discountAmount?: number;
+  discountRate?: number; // Chiết khấu theo rate từ prices array
   discount2?: number;
   discount2Enabled?: boolean;
   promotionText?: string;
@@ -333,7 +334,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   // (on Save or when clicking the special promotions button). The previous auto-fetch
   // logic was removed to avoid unnecessary server calls on every product/total change.
 
-  const handleAddProduct = async (overrides?: { promotionId?: string, discountPercent?: number, discountAmount?: number }) => {
+  const handleAddProduct = async (overrides?: { promotionId?: string, discountPercent?: number, discountAmount?: number, discountRate?: number }) => {
     console.debug('[SalesOrderForm] handleAddProduct called', {
       overrides,
       localDiscountPercent: discountPercent,
@@ -473,6 +474,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         discountedPrice: finalPrice,
         discountPercent: usedDiscountPercent,
         discountAmount: usedDiscountAmount,
+        discountRate: overrides?.discountRate,
         vat: vatPercent,
         subtotal: subtotalCalc,
         vatAmount: vatCalc,
@@ -598,6 +600,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           approver: item.approver,
           discountPercent: item.discountPercent,
           discountAmount: item.discountAmount,
+          discountRate: item.discountRate,
             // Secondary discount (Chiết khấu 2) - percent value (e.g., 5 = 5%)
             discount2: item.discount2 ?? 0,
             discount2Enabled: item.discount2Enabled ?? false,
