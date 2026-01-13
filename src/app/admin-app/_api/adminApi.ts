@@ -318,7 +318,7 @@ export const fetchSOBGDetails = async (
   try {
     const params: any = { sobgId };
     if (customerId) params.customerId = customerId;
-    const response = await axios.get(`${BASE_URL}/sobg-details`, { params });
+    const response = await axios.get(`${BASE_URL}/sobg-details`, { params, timeout: 300000 });
     // Sort by STT descending (already sorted by API, but ensure it here too)
     const details = response.data || [];
     return details.sort((a: SaleOrderDetail, b: SaleOrderDetail) => (b.stt || 0) - (a.stt || 0));
