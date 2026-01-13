@@ -236,7 +236,6 @@ export default async function handler(
       "crdfd_Promotion@odata.bind": `/crdfd_promotions(${promotionId})`,
       crdfd_type: "Order",
       crdfd_loai: loai,
-      crdfd_chieckhau2: chietKhau2ValueToStore,
       statecode: 0, // Active
     };
 
@@ -421,40 +420,9 @@ export default async function handler(
       updatedSodCount = 0;
     }
 
-    // Cập nhật trường crdfd_chieckhau2 trên Sale Order (header) để phản ánh promotionValue (raw)
-    try {
-      const soUpdatePayload: any = {
-        // Use correct Sale Order field name (crdfd_chietkhau2) — previous name crdfd_chieckhau2 may not exist
-        crdfd_chieckhau2 : chietKhau2ValueToStore,
-      };
-      const soUpdateEndpoint = `${BASE_URL}${SALE_ORDERS_TABLE}(${soId})`;
-      await axios.patch(soUpdateEndpoint, soUpdatePayload, { headers });
-    } catch (err: any) {
-      console.warn('[ApplyPromotion] Failed to update SO crdfd_chieckhau2/chietkhau2:', (err as any)?.message || err);
-      if ((err as any)?.response) {
-        console.warn('[ApplyPromotion] Error response:', {
-          status: (err as any).response.status,
-          data: (err as any).response.data
-        });
-      }
-      // Try fallback with alternate field name if available
-      try {
-        const fallbackPayload: any = {
-          crdfd_chietkhau2: chietKhau2ValueToStore
-        };
-        const fallbackEndpoint = `${BASE_URL}${SALE_ORDERS_TABLE}(${soId})`;
-        await axios.patch(fallbackEndpoint, fallbackPayload, { headers });
-        console.log('[ApplyPromotion] Fallback: updated SO crdfd_chietkhau2 successfully');
-      } catch (fallbackErr: any) {
-        console.warn('[ApplyPromotion] Fallback update also failed:', (fallbackErr as any)?.message || fallbackErr);
-        if ((fallbackErr as any)?.response) {
-          console.warn('[ApplyPromotion] Fallback error response:', {
-            status: (fallbackErr as any).response.status,
-            data: (fallbackErr as any).response.data
-          });
-        }
-      }
-    }
+    // Note: we intentionally skip updating Sale Order header fields (crdfd_chietkhau2)
+    // because header-level discount storage is managed elsewhere or not desired.
+    console.log('[ApplyPromotion] Skipping Sale Order header update for crdfd_chietkhau2 per configuration.');
 
     res.status(200).json({
       success: true,

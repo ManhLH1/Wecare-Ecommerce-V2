@@ -5,6 +5,35 @@ import { getAccessToken } from "../getAccessToken";
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
 const SOBAOGIA_TABLE = "crdfd_sobaogias";
 
+// Payment terms mapping used to normalize labels to keys (keep in sync with sale-orders.ts)
+const PAYMENT_TERMS_MAP: Record<string, string> = {
+  "0": "Thanh toán sau khi nhận hàng",
+  "14": "Thanh toán 2 lần vào ngày 10 và 25",
+  "30": "Thanh toán vào ngày 5 hàng tháng",
+  "283640000": "Tiền mặt",
+  "283640001": "Công nợ 7 ngày",
+  "191920001": "Công nợ 20 ngày",
+  "283640002": "Công nợ 30 ngày",
+  "283640003": "Công nợ 45 ngày",
+  "283640004": "Công nợ 60 ngày",
+  "283640005": "Thanh toán trước khi nhận hàng",
+};
+
+const normalizePaymentTerm = (input?: string | number | null) : string | null => {
+  // Treat null/undefined as missing; accept numeric 0 as valid input
+  if (input === null || input === undefined) return null;
+  const t = String(input).trim();
+  if (t === "") return null;
+  if (PAYMENT_TERMS_MAP[t]) return t;
+  const foundKey = Object.keys(PAYMENT_TERMS_MAP).find(
+    (k) => PAYMENT_TERMS_MAP[k].toLowerCase() === t.toLowerCase()
+  );
+  if (foundKey) return foundKey;
+  const digits = t.replace(/\D/g, "");
+  if (digits && PAYMENT_TERMS_MAP[digits]) return digits;
+  return t;
+};
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -72,7 +101,6 @@ export default async function handler(
       "crdfd_loaihoadon",           // Loại hóa đơn
       "crdfd_xuat_hoa_don",         // Xuất hóa đơn
       "crdfd_ieukhoanthanhtoan",    // Điều khoản thanh toán
-      // Lookup fields needed for ID references
       "_crdfd_chinhanhkh_value",     // Chi nhánh KH
       "_crdfd_khachhang_value",      // Khách hàng
       "_crdfd_nhanvienbanhang_value", // Nhân viên bán hàng
@@ -117,8 +145,34 @@ export default async function handler(
       trangThaiBaoGia: item.crdfd_trangthaibaogia || null,
       loaiHoaDon: item.crdfd_loaihoadon || null,
       xuatHoaDon: item.crdfd_xuat_hoa_don || false,
-      dieuKhoanThanhToan: item.crdfd_ieukhoanthanhtoan || null,
-      crdfd_ieukhoanthanhtoan: item.crdfd_ieukhoanthanhtoan || "",
+
+      // Payment terms processing (similar to sale-orders.ts)
+      dieuKhoanThanhToan: (() => {
+        // Try raw numeric option set value first
+        let rawPaymentTerm: any = item.crdfd_ieukhoanthanhtoan ?? null;
+
+        // If raw not present, try the OData formatted value and normalize to key
+        const formattedPreferred = item["crdfd_ieukhoanthanhtoan@OData.Community.Display.V1.FormattedValue"];
+        if ((rawPaymentTerm === null || rawPaymentTerm === undefined || rawPaymentTerm === "") &&
+            formattedPreferred) {
+          const formatted = String(formattedPreferred || "");
+          // Try to find the key from the label
+          const foundKey = Object.keys(PAYMENT_TERMS_MAP).find(
+            (k) => PAYMENT_TERMS_MAP[k].toLowerCase() === formatted.toLowerCase()
+          );
+          rawPaymentTerm = foundKey || formatted;
+        }
+
+        // Ensure we return a normalized key where possible
+        return normalizePaymentTerm(rawPaymentTerm) || rawPaymentTerm || null;
+      })(),
+
+      // Raw field for frontend compatibility
+      crdfd_ieukhoanthanhtoan: item.crdfd_ieukhoanthanhtoan ?? null,
+      crdfd_ieukhoanthanhtoan_raw: item.crdfd_ieukhoanthanhtoan ?? null,
+      crdfd_ieukhoanthanhtoan_label:
+        item["crdfd_ieukhoanthanhtoan@OData.Community.Display.V1.FormattedValue"] || null,
+
       crdfd_tongtien: item.crdfd_tongtien || 0, // Raw total amount field
 
       // Map lookups (using expanded values for customer, others just ID)

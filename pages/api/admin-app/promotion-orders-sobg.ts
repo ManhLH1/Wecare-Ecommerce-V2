@@ -136,27 +136,88 @@ const fetchExistingPromotionOrders = async (
   headers: any
 ): Promise<any[]> => {
   try {
-    const filters = [
+    // Also fetch Orders x Promotion records to support SOBG context (mirroring promotion-orders.ts logic)
+    try {
+      const ordersFilters = [
+        "statecode eq 0",
+        `_crdfd_so_value eq ${sobgId}`,
+        "crdfd_type eq 'Order'"
+      ];
+      const ordersSelect = [
+        "crdfd_ordersxpromotionid",
+        "crdfd_name",
+        "_crdfd_promotion_value",
+        "crdfd_type"
+      ];
+      const ordersQuery = `$filter=${encodeURIComponent(ordersFilters.join(" and "))}&$select=${ordersSelect.join(",")}`;
+      const ordersEndpoint = `${BASE_URL}${ORDERS_X_PROMOTION_TABLE}?${ordersQuery}`;
+      const ordersResp = await axios.get(ordersEndpoint, { headers });
+      const orders = (ordersResp.data.value || []).map((item: any) => ({
+        id: item.crdfd_ordersxpromotionid,
+        name: item.crdfd_name,
+        promotionId: item._crdfd_promotion_value,
+        type: item.crdfd_type,
+      }));
+
+      // Fetch SOBG x Promotion records
+      const sobgFilters = [
+        "statecode eq 0",
+        `_crdfd_sobaogia_value eq ${sobgId}`,
+        "crdfd_type eq 'Order'"
+      ];
+      const sobgSelect = [
+        "crdfd_sobaogiaxpromotionid",
+        "crdfd_name",
+        "_crdfd_promotion_value",
+        "crdfd_type"
+      ];
+      const sobgQuery = `$filter=${encodeURIComponent(sobgFilters.join(" and "))}&$select=${sobgSelect.join(",")}`;
+      const sobgEndpoint = `${BASE_URL}${SOBG_X_PROMOTION_TABLE}?${sobgQuery}`;
+      const sobgResp = await axios.get(sobgEndpoint, { headers });
+      const sobgOrders = (sobgResp.data.value || []).map((item: any) => ({
+        id: item.crdfd_sobaogiaxpromotionid,
+        name: item.crdfd_name,
+        promotionId: item._crdfd_promotion_value,
+        type: item.crdfd_type,
+      }));
+
+      // Merge (dedupe by promotionId) - same logic as promotion-orders.ts
+      const combined = [...orders, ...sobgOrders];
+      const uniqByPromotionIdMap: Record<string, any> = {};
+      combined.forEach(o => {
+        if (o.promotionId) {
+          uniqByPromotionIdMap[String(o.promotionId)] = o;
+        }
+      });
+      const uniqueOrders = Object.values(uniqByPromotionIdMap);
+      return await enrichPromotionOrdersWithDetails(uniqueOrders, headers);
+    } catch (e) {
+      // if merge fetch fails, fallback to SOBG only
+      console.warn('[promotion-orders-sobg] Could not fetch Orders x Promotion, falling back to SOBG only:', (e as any)?.message || e);
+    }
+
+    // Fallback: SOBG only (original logic)
+    const sobgFilters = [
       "statecode eq 0",
       `_crdfd_sobaogia_value eq ${sobgId}`,
       "crdfd_type eq 'Order'"
     ];
-    const selectFields = [
+    const sobgSelect = [
       "crdfd_sobaogiaxpromotionid",
       "crdfd_name",
       "_crdfd_promotion_value",
       "crdfd_type"
     ];
-    const query = `$filter=${encodeURIComponent(filters.join(" and "))}&$select=${selectFields.join(",")}`;
-    const endpoint = `${BASE_URL}${SOBG_X_PROMOTION_TABLE}?${query}`;
-    const resp = await axios.get(endpoint, { headers });
-    const orders = (resp.data.value || []).map((item: any) => ({
+    const sobgQuery = `$filter=${encodeURIComponent(sobgFilters.join(" and "))}&$select=${sobgSelect.join(",")}`;
+    const sobgEndpoint = `${BASE_URL}${SOBG_X_PROMOTION_TABLE}?${sobgQuery}`;
+    const sobgResp = await axios.get(sobgEndpoint, { headers });
+    const sobgOrders = (sobgResp.data.value || []).map((item: any) => ({
       id: item.crdfd_sobaogiaxpromotionid,
       name: item.crdfd_name,
       promotionId: item._crdfd_promotion_value,
       type: item.crdfd_type,
     }));
-    return orders;
+    return await enrichPromotionOrdersWithDetails(sobgOrders, headers);
   } catch (err) {
     console.warn("Error fetching existing SOBG promotion orders:", err);
     return [];

@@ -122,7 +122,7 @@ export default async function handler(
               "statecode eq 0",
               `_crdfd_sobaogia_value eq ${sobgId}`,
             ];
-            const sodQuery = `$filter=${encodeURIComponent(sodFilters.join(" and "))}&$select=crdfd_gia,crdfd_soluong,crdfd_vat,crdfd_thue`;
+            const sodQuery = `$filter=${encodeURIComponent(sodFilters.join(" and "))}&$select=crdfd_ongia,crdfd_soluong,crdfd_vat,crdfd_thue`;
             const sodEndpoint = `${BASE_URL}${SOBG_DETAIL_TABLE}?${sodQuery}`;
             const sodResponse = await axios.get(sodEndpoint, { headers });
             const sodList = sodResponse.data.value || [];
@@ -130,7 +130,7 @@ export default async function handler(
             currentTotal = 0;
             for (const sod of sodList) {
               const quantity = Number(sod.crdfd_soluong) || 0;
-              const unitPrice = Number(sod.crdfd_gia) || 0; // Use gia (display price)
+              const unitPrice = Number(sod.crdfd_ongia) || 0; // Use gia (display price)
               const vatPercent = Number(sod.crdfd_vat) || Number(sod.crdfd_thue) || 0; // VAT percentage
               const lineSubtotal = unitPrice * quantity;
               const lineVat = (lineSubtotal * vatPercent) / 100;
@@ -185,14 +185,14 @@ export default async function handler(
             "statecode eq 0",
             `_crdfd_sobaogia_value eq ${sobgId}`,
           ];
-          const sodQueryCheck = `$filter=${encodeURIComponent(sodFiltersCheck.join(" and "))}&$select=crdfd_gia,crdfd_soluong,crdfd_vat,crdfd_thue`;
+          const sodQueryCheck = `$filter=${encodeURIComponent(sodFiltersCheck.join(" and "))}&$select=crdfd_ongia,crdfd_soluong,crdfd_vat,crdfd_thue`;
           const sodEndpointCheck = `${BASE_URL}${SOBG_DETAIL_TABLE}?${sodQueryCheck}`;
           const sodRespCheck = await axios.get(sodEndpointCheck, { headers });
           const sodListCheck = sodRespCheck.data.value || [];
           let currentTotalCheck = 0;
           for (const sod of sodListCheck) {
             const quantity = Number(sod.crdfd_soluong) || 0;
-            const unitPrice = Number(sod.crdfd_gia) || 0;
+            const unitPrice = Number(sod.crdfd_ongia) || 0;
             const vatPercent = Number(sod.crdfd_vat) || Number(sod.crdfd_thue) || 0;
             const lineSubtotal = unitPrice * quantity;
             const lineVat = (lineSubtotal * vatPercent) / 100;

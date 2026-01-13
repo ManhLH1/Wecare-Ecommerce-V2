@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import ProductEntryForm from './ProductEntryForm';
 import ProductTable from './ProductTable';
 import Dropdown from './Dropdown';
@@ -41,6 +41,7 @@ interface ProductItem {
   approveSupPriceId?: string;
   discountPercent?: number;
   discountAmount?: number;
+  discountRate?: number;
   discount2?: number;
   discount2Enabled?: boolean;
   promotionText?: string;
@@ -187,6 +188,23 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   const selectedVatText = getVatLabelText(selectedSo);
   const isNonVatSelected = (selectedVatText || '').toLowerCase().includes('không');
   // Debug logs for payment term fields
+  useEffect(() => {
+    try {
+      if (selectedSo) {
+        console.debug('[SalesOrderBaoGiaForm] selectedSo (debug):', {
+          id: selectedSo.id,
+          name: selectedSo.name,
+          crdfd_ieukhoanthanhtoan: (selectedSo as any).crdfd_ieukhoanthanhtoan,
+          crdfd_dieu_khoan_thanh_toan: (selectedSo as any).crdfd_dieu_khoan_thanh_toan,
+          crdfd_dieu_khoan_thanh_toan_label: (selectedSo as any).crdfd_dieu_khoan_thanh_toan_label,
+        });
+      } else {
+        console.debug('[SalesOrderBaoGiaForm] selectedSo is null/undefined');
+      }
+    } catch (e) {
+      console.debug('[SalesOrderBaoGiaForm] debug error', e);
+    }
+  }, [selectedSo]);
 
   // Helper function to generate SO label from SOBG object (giống SO - không có VAT text trong label)
   const generateSoLabel = useCallback((so: any): string => {
@@ -1133,6 +1151,39 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     }
   };
 
+  // Prefetch-on-intent: when user hovers/focuses Save or opens Promotions UI, fetch promotions early to avoid wait
+  const lastPrefetchAtRef = useRef<number>(0);
+  const prefetchPromotions = useCallback(async () => {
+    try {
+      if (!customerCode || !soId) return;
+      const now = Date.now();
+      // avoid repeat prefetch within 5s
+      if (now - (lastPrefetchAtRef.current || 0) < 5000) return;
+      lastPrefetchAtRef.current = now;
+
+      const orderTotal = selectedSo?.crdfd_tongtiencovat ?? selectedSo?.crdfd_tongtien ?? orderSummary.total;
+      const productCodes = productList.map(p => p.productCode).filter((c): c is string => typeof c === 'string' && c.trim() !== '');
+      const productGroupCodes = productList.map(p => p.productGroupCode).filter((c): c is string => typeof c === 'string' && c.trim() !== '');
+
+      const res = await fetchPromotionOrdersSOBG(
+        soId,
+        customerCode || undefined,
+        orderTotal,
+        productCodes,
+        productGroupCodes,
+        selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan
+      );
+
+      if (!res) return;
+      // Prefill lists so handleSave or user actions can use them immediately.
+      setPromotionOrderList(res.allPromotions || res.availablePromotions || []);
+      setSpecialPromotionList(res.specialPromotions || []);
+    } catch (err) {
+      // non-fatal prefetch failure
+      console.warn('[prefetch promotions] Error prefetching promotions on intent:', err);
+    }
+  }, [customerCode, soId, productList, orderSummary.total, selectedSo]);
+
   // Sync selected promotions to productList: assign promotionId/promotionText to matching products
   useEffect(() => {
     if (!selectedPromotionOrders) return;
@@ -1417,6 +1468,8 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             </button>
             <button
               className="admin-app-header-btn admin-app-header-btn-save"
+              onMouseEnter={() => prefetchPromotions()}
+              onFocus={() => prefetchPromotions()}
               onClick={handleSave}
               disabled={isSaveDisabled}
               title="Lưu"
@@ -1581,9 +1634,9 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
                   loading={soLoading}
                   disabled={!customerId}
                 />
-                {(selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan) && (
+                {(selectedSo?.dieuKhoanThanhToan || selectedSo?.crdfd_ieukhoanthanhtoan) && (
                   <div className="admin-app-field-info" style={{ marginTop: '8px', fontSize: '13px', color: '#6b7280' }}>
-                    <strong>Điều khoản thanh toán:</strong> {getPaymentTermLabel(selectedSo.crdfd_ieukhoanthanhtoan || selectedSo.crdfd_dieu_khoan_thanh_toan)}
+                    <strong>Điều khoản thanh toán:</strong> {getPaymentTermLabel(selectedSo.dieuKhoanThanhToan || selectedSo.crdfd_ieukhoanthanhtoan)}
                   </div>
                 )}
               </div>
@@ -1616,7 +1669,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             customerName={customer}
             customerWecareRewards={customerWecareRewards}
             vatText={selectedVatText}
-            paymentTerms={selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan}
+            paymentTerms={selectedSo?.dieuKhoanThanhToan || selectedSo?.crdfd_ieukhoanthanhtoan}
             soId={soId}
             quantity={quantity}
             setQuantity={setQuantity}
@@ -1657,6 +1710,9 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             onRefresh={handleRefresh}
             onOpenSpecialPromotions={async () => {
               try {
+                // prefetch on intent before opening special promotions UI
+                await prefetchPromotions();
+
                 if (!soId || !customerCode) {
                   showToast.warning('Vui lòng chọn khách hàng và SOBG trước khi tải khuyến mãi đặc biệt.');
                   return;
