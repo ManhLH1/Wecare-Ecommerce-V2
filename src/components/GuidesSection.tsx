@@ -1,7 +1,8 @@
  "use client";
  import React, { useEffect, useState } from "react";
  import axios from "axios";
- import Link from "next/link";
+import Link from "next/link";
+import Image from "next/image";
  import { formatDateToDDMMYYYY } from "@/utils/utils";
 
  interface PostItem {
@@ -90,6 +91,8 @@
     return "/placeholder-image.jpg";
   };
 
+  // We'll use Next.js Image for automatic optimization/responsive srcset.
+
   return (
     <section className="w-full bg-white py-4 mt-6">
       <div className="relative px-4 md:px-12">
@@ -104,7 +107,9 @@
 
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <div className="h-44 bg-gray-100 rounded animate-pulse md:col-span-3" />
+              <div className="aspect-[4/3] bg-gray-100 rounded animate-pulse md:col-span-3 flex items-center justify-center max-h-40 sm:max-h-56 md:max-h-64 lg:max-h-80">
+                <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse" />
+              </div>
               <div className="space-y-2 md:col-span-1">
                 {[...Array(4)].map((_, i) => (
                   <div key={i} className="flex items-center gap-3">
@@ -126,9 +131,24 @@
               {/* Featured (3/4) */}
               <article className="md:col-span-3 rounded overflow-hidden border border-gray-100">
                 <Link href={`/post`} className="block no-underline">
-                  <div className="w-full h-44 md:h-48 bg-gray-200 bg-center bg-cover" style={{
-                    backgroundImage: `url(${resolveImageUrl(featured?.cr1bb_img_url)})`
-                  }} />
+                  <div className="w-full aspect-[4/3] bg-gray-200 overflow-hidden max-h-40 sm:max-h-56 md:max-h-64 lg:max-h-80 relative">
+                    {(() => {
+                      const imgUrl = resolveImageUrl(featured?.cr1bb_img_url);
+                      return (
+                        <Image
+                          src={imgUrl}
+                          alt={featured?.cr1bb_title || "Featured post"}
+                          fill
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 60vw, 800px"
+                          className="object-cover"
+                          onError={(e: any) => {
+                            // fallback to placeholder: replace src by setting src directly isn't possible on Image;
+                            // use CSS background fallback instead by leaving placeholder in resolveImageUrl.
+                          }}
+                        />
+                      );
+                    })()}
+                  </div>
                   <div className="p-3">
                     <h4 className="text-base font-semibold text-gray-900 line-clamp-2">{featured?.cr1bb_title}</h4>
                     <div className="text-xs text-gray-500 mt-1">{featured?.createdon ? formatDateToDDMMYYYY(featured.createdon) : ""}</div>
@@ -141,17 +161,20 @@
               <div className="space-y-3 md:col-span-1">
                 {list.map((post, idx) => (
                   <article key={idx} className="flex items-start gap-3">
-                    <Link href={`/post`} className="w-16 h-12 flex-shrink-0 overflow-hidden rounded">
-                      <img
-                        loading="lazy"
-                        src={resolveImageUrl(post.cr1bb_img_url)}
-                        alt={post.cr1bb_title || "thumb"}
-                        className="w-full h-full object-cover"
-                        onError={(e: any) => {
-                          e.currentTarget.onerror = null;
-                          e.currentTarget.src = "/placeholder-image.jpg";
-                        }}
-                      />
+                    <Link href={`/post`} className="w-16 h-12 flex-shrink-0 overflow-hidden rounded relative">
+                      {(() => {
+                        const thumbUrl = resolveImageUrl(post.cr1bb_img_url);
+                        return (
+                          <Image
+                            src={thumbUrl}
+                            alt={post.cr1bb_title || "thumb"}
+                            width={160}
+                            height={120}
+                            sizes="48px"
+                            className="object-cover"
+                          />
+                        );
+                      })()}
                     </Link>
                     <div className="flex-1">
                       <Link href={`/post`} className="no-underline text-gray-900 hover:text-amber-600">
