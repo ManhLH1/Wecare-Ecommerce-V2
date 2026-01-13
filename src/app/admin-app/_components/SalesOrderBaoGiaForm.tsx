@@ -1269,9 +1269,18 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         setShowPromotionOrderPopup(false);
         setSelectedPromotionOrders([]);
         setPromotionOrderList([]);
-
-        // Refresh product list to see promotion discounts
-        await handleRefreshSOBGDetails();
+        // If any applied promotion includes chiết khấu 2 (line discounts),
+        // clear the entire SOBG form (customer, SO, products) so UI refreshes cleanly.
+        const hasChietKhau2 = promosToApply.some(p => {
+          const v = String((p as any).chietKhau2);
+          return v === '191920001' || v === 'true';
+        });
+        if (hasChietKhau2) {
+          clearEverything();
+        } else {
+          // Refresh product list to see promotion discounts
+          await handleRefreshSOBGDetails();
+        }
       } else {
         const firstFail = applyResults.find(r => !(r as any).success) as any;
         showToast.error(firstFail?.message || 'Không thể áp dụng Promotion Order');

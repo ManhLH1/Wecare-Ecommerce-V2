@@ -209,16 +209,32 @@ export default async function handler(
       // Continue to create the Orders x Promotion record to avoid blocking the user.
     }
 
-    const createOrderXPromotionEndpoint = `${BASE_URL}${SOBG_ORDERS_X_PROMOTION_TABLE}`;
-    const createResponse = await axios.post(
-      createOrderXPromotionEndpoint,
-      sobgOrdersXPromotionPayload,
-      { headers }
-    );
-
-    // Get the created record ID from response headers
-    const createdOrderXPromotionId = createResponse.headers["odata-entityid"]
-      ?.match(/\(([^)]+)\)/)?.[1];
+    // Check if a SOBG x Promotion record already exists for this SOBG + Promotion
+    let createdOrderXPromotionId: string | undefined = undefined;
+    try {
+      const existingFilter = `_crdfd_sobaogia_value eq ${sobgId} and _crdfd_promotion_value eq ${promotionId} and crdfd_type eq 'Order' and statecode eq 0`;
+      const existingQuery = `$filter=${encodeURIComponent(existingFilter)}&$select=crdfd_sobaogiaxpromotionid`;
+      const existingEndpoint = `${BASE_URL}${SOBG_ORDERS_X_PROMOTION_TABLE}?${existingQuery}`;
+      const existingResp = await axios.get(existingEndpoint, { headers });
+      const existingItems = existingResp.data?.value || [];
+      if (existingItems.length > 0) {
+        createdOrderXPromotionId = existingItems[0].crdfd_sobaogiaxpromotionid;
+        console.log(`[ApplySOBGPromotion] Found existing SOBG x Promotion for sobg=${sobgId} promotion=${promotionId} id=${createdOrderXPromotionId}`);
+      } else {
+        const createOrderXPromotionEndpoint = `${BASE_URL}${SOBG_ORDERS_X_PROMOTION_TABLE}`;
+        const createResponse = await axios.post(
+          createOrderXPromotionEndpoint,
+          sobgOrdersXPromotionPayload,
+          { headers }
+        );
+        // Get the created record ID from response headers
+        createdOrderXPromotionId = createResponse.headers["odata-entityid"]
+          ?.match(/\(([^)]+)\)/)?.[1];
+      }
+    } catch (err: any) {
+      console.error('[ApplySOBGPromotion] Error checking/creating SOBG x Promotion:', err?.message || err, err?.response?.data);
+      // If creation/check fails, continue — later logic depends on createdOrderXPromotionId possibly undefined
+    }
 
     // If chietKhau2 flag not provided or false in request, try to fetch promotion record to determine real flag/value/product filters
     let effectiveChietKhau2 = Boolean(chietKhau2);
