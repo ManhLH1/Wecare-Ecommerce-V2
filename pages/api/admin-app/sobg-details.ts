@@ -104,7 +104,7 @@ export default async function handler(
 
     const endpoint = `${BASE_URL}${SOBG_DETAILS_TABLE}?${query}`;
 
-    const response = await axios.get(endpoint, { headers });
+    const response = await axios.get(endpoint, { headers, timeout: 300000 });
 
     // Lookup productCode từ product ID nếu có
     const PRODUCT_TABLE = "crdfd_productses";
@@ -124,7 +124,7 @@ export default async function handler(
           try {
             const productQuery = `$select=crdfd_productsid,crdfd_masanpham&$filter=crdfd_productsid eq ${productId}&$top=1`;
             const productEndpoint = `${BASE_URL}${PRODUCT_TABLE}?${productQuery}`;
-            const productResponse = await axios.get(productEndpoint, { headers });
+            const productResponse = await axios.get(productEndpoint, { headers, timeout: 300000 });
             const products = productResponse.data.value || [];
             if (products.length > 0 && products[0].crdfd_masanpham) {
               productIdToCodeMap.set(productId as string, products[0].crdfd_masanpham);
@@ -160,7 +160,7 @@ export default async function handler(
             const groupFilter = `_cr1bb_khachhang_value eq ${customerId}`;
             const groupQuery = `$select=cr1bb_tennhomkh&$filter=${encodeURIComponent(groupFilter)}`;
             const groupEndpoint = `${BASE_URL}${GROUP_KH_TABLE}?${groupQuery}`;
-            const groupResponse = await axios.get(groupEndpoint, { headers });
+            const groupResponse = await axios.get(groupEndpoint, { headers, timeout: 300000 });
             return (groupResponse.data.value || [])
               .map((item: any) => item.cr1bb_tennhomkh)
               .filter((text: any): text is string => !!text && typeof text === "string");
@@ -204,7 +204,7 @@ export default async function handler(
             const query = `$select=${columns}&$filter=${encodeURIComponent(filter)}&${expand}&$orderby=crdfd_giatheovc asc`;
 
             const endpoint = `${BASE_URL}${QUOTE_DETAIL_TABLE}?${query}`;
-            const priceResponse = await axios.get(endpoint, { headers });
+            const priceResponse = await axios.get(endpoint, { headers, timeout: 300000 });
             const allPrices = priceResponse.data.value || [];
 
             const prices = allPrices.map((item: any) => {
