@@ -22,6 +22,9 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  const startTime = Date.now();
+  console.log(`[SOBG Details API] Started at ${new Date().toISOString()}`);
+
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -104,7 +107,9 @@ export default async function handler(
 
     const endpoint = `${BASE_URL}${SOBG_DETAILS_TABLE}?${query}`;
 
+    console.log(`[SOBG Details API] Fetching SOBG details for sobgId: ${sobgId}`);
     const response = await axios.get(endpoint, { headers, timeout: 300000 });
+    console.log(`[SOBG Details API] Fetched ${response.data.value?.length || 0} SOBG detail records in ${Date.now() - startTime}ms`);
 
     // Lookup productCode từ product ID nếu có
     const PRODUCT_TABLE = "crdfd_productses";
@@ -117,24 +122,28 @@ export default async function handler(
         .filter((id: any): id is string => !!id)
     )];
 
-    // Lookup productCode cho từng product ID
+    // Batch lookup productCode cho tất cả product IDs trong một API call
     if (productIds.length > 0) {
+      const productLookupStart = Date.now();
+      console.log(`[SOBG Details API] Batch lookup ${productIds.length} product codes`);
       try {
-        for (const productId of productIds) {
-          try {
-            const productQuery = `$select=crdfd_productsid,crdfd_masanpham&$filter=crdfd_productsid eq ${productId}&$top=1`;
-            const productEndpoint = `${BASE_URL}${PRODUCT_TABLE}?${productQuery}`;
-            const productResponse = await axios.get(productEndpoint, { headers, timeout: 300000 });
-            const products = productResponse.data.value || [];
-            if (products.length > 0 && products[0].crdfd_masanpham) {
-              productIdToCodeMap.set(productId as string, products[0].crdfd_masanpham);
-            }
-          } catch (err) {
-            // Silently fail individual product lookup
+        // Create OR filter for all product IDs
+        const productIdFilters = productIds.map(id => `crdfd_productsid eq ${id}`).join(" or ");
+        const productQuery = `$select=crdfd_productsid,crdfd_masanpham&$filter=(${productIdFilters})`;
+        const productEndpoint = `${BASE_URL}${PRODUCT_TABLE}?${productQuery}`;
+        const productResponse = await axios.get(productEndpoint, { headers, timeout: 300000 });
+        const products = productResponse.data.value || [];
+
+        // Build the map from the batch response
+        products.forEach((product: any) => {
+          if (product.crdfd_productsid && product.crdfd_masanpham) {
+            productIdToCodeMap.set(product.crdfd_productsid, product.crdfd_masanpham);
           }
-        }
+        });
+        console.log(`[SOBG Details API] Product lookup completed in ${Date.now() - productLookupStart}ms, found ${products.length} products`);
       } catch (err) {
-        // Silently fail batch lookup
+        console.error("Error in batch product lookup:", err);
+        // Continue without product codes if batch lookup fails
       }
     }
 
@@ -148,6 +157,8 @@ export default async function handler(
     // Fetch current prices for all product codes (batch fetch to avoid multiple API calls)
     const currentPricesMap = new Map<string, any>();
     if (productCodes.length > 0) {
+      const priceLookupStart = Date.now();
+      console.log(`[SOBG Details API] Batch lookup prices for ${productCodes.length} product codes`);
       try {
         // Import the prices API logic inline to avoid circular imports
         const QUOTE_DETAIL_TABLE = "crdfd_baogiachitiets";
@@ -176,38 +187,49 @@ export default async function handler(
           customerGroups = await getCustomerGroupsForPrices(customerId);
         }
 
-        // Fetch prices for each product code
-        for (const productCode of productCodes) {
-          try {
-            const safeCode = productCode.replace(/'/g, "''");
-            const filters = [
-              "statecode eq 0", // active
-              "crdfd_pricingdeactive eq 191920001", // Pricing Active
-              `crdfd_masanpham eq '${safeCode}'`,
-              "(crdfd_gia ne null or cr1bb_giakhongvat ne null)",
-            ];
+        // Batch fetch prices for all product codes in a single API call
+        try {
+          const baseFilters = [
+            "statecode eq 0", // active
+            "crdfd_pricingdeactive eq 191920001", // Pricing Active
+            "(crdfd_gia ne null or cr1bb_giakhongvat ne null)",
+          ];
 
-            // Filter by customer groups if available
-            if (customerGroups.length > 0) {
-              const groupFilters = customerGroups
-                .map((group) => {
-                  const safeGroup = String(group).replace(/'/g, "''");
-                  return `crdfd_nhomoituongtext eq '${safeGroup}'`;
-                })
-                .join(" or ");
-              filters.push(`(${groupFilters})`);
-            }
+          // Create OR filter for all product codes
+          const productCodeFilters = productCodes.map(code => {
+            const safeCode = code.replace(/'/g, "''");
+            return `crdfd_masanpham eq '${safeCode}'`;
+          }).join(" or ");
+          baseFilters.push(`(${productCodeFilters})`);
 
-            const filter = filters.join(" and ");
-            const columns = "crdfd_baogiachitietid,crdfd_masanpham,crdfd_gia,cr1bb_giakhongvat,crdfd_onvichuantext,crdfd_onvichuan,crdfd_nhomoituongtext,crdfd_giatheovc,crdfd_onvi";
-            const expand = "$expand=crdfd_onvi($select=crdfd_name,crdfd_onvichuyenoitransfome)";
-            const query = `$select=${columns}&$filter=${encodeURIComponent(filter)}&${expand}&$orderby=crdfd_giatheovc asc`;
+          // Filter by customer groups if available
+          if (customerGroups.length > 0) {
+            const groupFilters = customerGroups
+              .map((group) => {
+                const safeGroup = String(group).replace(/'/g, "''");
+                return `crdfd_nhomoituongtext eq '${safeGroup}'`;
+              })
+              .join(" or ");
+            baseFilters.push(`(${groupFilters})`);
+          }
 
-            const endpoint = `${BASE_URL}${QUOTE_DETAIL_TABLE}?${query}`;
-            const priceResponse = await axios.get(endpoint, { headers, timeout: 300000 });
-            const allPrices = priceResponse.data.value || [];
+          const filter = baseFilters.join(" and ");
+          const columns = "crdfd_baogiachitietid,crdfd_masanpham,crdfd_gia,cr1bb_giakhongvat,crdfd_onvichuantext,crdfd_onvichuan,crdfd_nhomoituongtext,crdfd_giatheovc,crdfd_onvi";
+          const expand = "$expand=crdfd_onvi($select=crdfd_name,crdfd_onvichuyenoitransfome)";
+          const query = `$select=${columns}&$filter=${encodeURIComponent(filter)}&${expand}&$orderby=crdfd_giatheovc asc`;
 
-            const prices = allPrices.map((item: any) => {
+          const endpoint = `${BASE_URL}${QUOTE_DETAIL_TABLE}?${query}`;
+          const priceResponse = await axios.get(endpoint, { headers, timeout: 300000 });
+          const allPrices = priceResponse.data.value || [];
+
+          // Group prices by product code
+          const pricesByCode = new Map<string, any[]>();
+          allPrices.forEach((item: any) => {
+            const code = item.crdfd_masanpham;
+            if (code) {
+              if (!pricesByCode.has(code)) {
+                pricesByCode.set(code, []);
+              }
               const unitName =
                 item.crdfd_onvi?.crdfd_onvichuyenoitransfome ||
                 item.crdfd_onvi?.crdfd_name ||
@@ -215,16 +237,19 @@ export default async function handler(
                 item.crdfd_onvichuan ||
                 undefined;
 
-              return {
+              pricesByCode.get(code)!.push({
                 price: item.crdfd_gia ?? null,
                 priceNoVat: item.cr1bb_giakhongvat ?? null,
                 unitName: unitName,
                 priceGroupText: item.crdfd_nhomoituongtext || undefined,
-                crdfd_masanpham: item.crdfd_masanpham || productCode,
+                crdfd_masanpham: code,
                 crdfd_onvichuan: item.crdfd_onvichuan || undefined,
-              };
-            });
+              });
+            }
+          });
 
+          // Set current prices for each product code
+          pricesByCode.forEach((prices, productCode) => {
             if (prices.length > 0) {
               currentPricesMap.set(productCode, {
                 prices: prices,
@@ -234,9 +259,10 @@ export default async function handler(
                 priceGroupText: prices[0]?.priceGroupText ?? undefined,
               });
             }
-          } catch (err) {
-            console.error(`Error fetching prices for product ${productCode}:`, err);
-          }
+          });
+          console.log(`[SOBG Details API] Price lookup completed in ${Date.now() - priceLookupStart}ms, found prices for ${pricesByCode.size} products`);
+        } catch (err) {
+          console.error("Error in batch price lookup:", err);
         }
       } catch (err) {
         console.error("Error fetching current prices:", err);
@@ -314,10 +340,23 @@ export default async function handler(
     // Sort by STT descending
     details.sort((a: any, b: any) => (b.stt || 0) - (a.stt || 0));
 
+    const totalTime = Date.now() - startTime;
+    console.log(`[SOBG Details API] Completed successfully in ${totalTime}ms, returned ${details.length} records`);
     res.status(200).json(details);
   } catch (error: any) {
-    console.error("Error fetching SOBG details:", error);
-    
+    const totalTime = Date.now() - startTime;
+    console.error(`[SOBG Details API] Failed after ${totalTime}ms:`, error);
+
+    // Check for timeout specifically
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      console.error("[SOBG Details API] Request timed out");
+      return res.status(504).json({
+        error: "Gateway Timeout",
+        message: "The request took too long to complete. Please try again.",
+        details: `Request timed out after ${totalTime}ms`,
+      });
+    }
+
     if (error.response) {
       console.error("Error response status:", error.response.status);
       console.error("Error response data:", JSON.stringify(error.response.data, null, 2));

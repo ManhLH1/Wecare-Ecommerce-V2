@@ -516,6 +516,10 @@ function ProductEntryForm({
   const { units, loading: unitsLoading } = useUnits(selectedProductCode);
   const { warehouses, loading: warehousesLoading } = useWarehouses(customerId);
 
+  // Get warehouse code from selected warehouse
+  const selectedWarehouseData = warehouses.find(w => w.crdfd_name === warehouse);
+  const warehouseCode = selectedWarehouseData?.crdfd_makho;
+
   // Fetch accounting stock (Tồn LT kế toán)
   useEffect(() => {
     const loadAccountingStock = async () => {
@@ -2168,9 +2172,15 @@ function ProductEntryForm({
 
 
       const computed = computeDeliveryDate({
+        // New parameters (2025)
+        warehouseCode: warehouseCode,
+        orderCreatedOn: new Date().toISOString(), // Current time as order creation time
+        districtLeadtime: districtLeadtime,
+
+        // Legacy parameters (keep for backward compatibility)
         promotion: promoRecord,
         varNganhNghe: varNganhNghe ?? undefined,
-        var_leadtime_quanhuyen: districtLeadtime, // Use actual district leadtime from cr1bb_leadtimetheoca
+        var_leadtime_quanhuyen: districtLeadtime,
         var_input_soluong: quantity || 0,
         var_selected_donvi_conversion: Number(conversionFactor) || 1,
         var_selected_SP_tonkho: inventoryTheoretical ?? 0,
@@ -2191,7 +2201,7 @@ function ProductEntryForm({
 
       setDeliveryDate(fallbackDate);
     }
-  }, [selectedPromotionId, promotions, selectedPromotion, customerIndustry, customerName, quantity, unitId, units, inventoryTheoretical, selectedProduct, stockQuantity, districtLeadtime, inventoryLoading]);
+  }, [selectedPromotionId, promotions, selectedPromotion, customerIndustry, customerName, quantity, unitId, units, inventoryTheoretical, selectedProduct, stockQuantity, districtLeadtime, inventoryLoading, warehouse]);
 
 
   // Fetch district leadtime when customer district key changes
@@ -2743,9 +2753,9 @@ function ProductEntryForm({
                 type="date"
                 className="admin-app-input admin-app-input-compact admin-app-input-small"
                 value={formatDdMmYyyyToIso(deliveryDate)}
-                onChange={(e) => setDeliveryDate(formatIsoToDdMmYyyy(e.target.value))}
                 placeholder="dd/mm/yyyy"
-                disabled={false}
+                disabled={true}
+                title="Ngày giao tự động tính toán theo Leadtime"
               />
             </div>
           </div>

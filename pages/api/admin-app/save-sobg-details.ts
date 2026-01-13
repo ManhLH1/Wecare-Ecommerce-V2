@@ -892,8 +892,20 @@ export default async function handler(
             const computedVatAmount = product.vatAmount ?? (Math.round(((computedSubtotal * (product.vat || 0)) / 100) * 100) / 100);
             const computedTotal = product.totalAmount ?? (Math.round(((computedSubtotal + computedVatAmount) * 100) / 1) / 100);
 
-            // Compute deliveryDateNew and shift (ca) server-side if frontend didn't provide shift
-            const { deliveryDateNew, shift } = await calculateDeliveryDateAndShift(product, products, customerIndustry, product.deliveryDate);
+        // Compute deliveryDateNew and shift (ca) server-side if frontend didn't provide shift
+        // Extract warehouse code from context (assuming warehouseName is available in scope)
+        const warehouseCode = extractWarehouseCode(warehouseName);
+
+        const { deliveryDateNew, shift } = await calculateDeliveryDateAndShift(
+          product,
+          products,
+          customerIndustry,
+          product.deliveryDate,
+          undefined, // headers - not used in SOBG
+          warehouseCode, // Extracted from warehouseName
+          undefined, // orderCreatedOn - TODO: get from SOBG record
+          undefined  // districtLeadtime - TODO: get from customer district
+        );
 
             // Map fields based on Metadata & Prediction (Vietnamese Schema)
             const entity: any = {
@@ -945,20 +957,140 @@ export default async function handler(
         const CA_SANG = 283640000; // "Ca sáng"
         const CA_CHIEU = 283640001; // "Ca chiều"
 
+        // Helper function to extract warehouse code from warehouse name (moved up for hoisting)
+        function extractWarehouseCode(warehouseName?: string): string | undefined {
+          if (!warehouseName) return undefined;
+
+          const name = warehouseName.toLowerCase().trim();
+
+          // Map common warehouse names to codes
+          if (name.includes('hồ chí minh') || name.includes('hcm') || name.includes('sài gòn')) {
+            return 'KHOHCM';
+          }
+          if (name.includes('bình định') || name.includes('bd')) {
+            return 'KHOBD';
+          }
+
+          // Try to extract from warehouse code pattern
+          const codeMatch = warehouseName.match(/^([A-Z]{3,}[0-9]*)/i);
+          if (codeMatch) {
+            return codeMatch[1].toUpperCase();
+          }
+
+          return undefined;
+        }
+
         // Helper to calculate delivery date and shift similar to save-sale-order-details logic
         async function calculateDeliveryDateAndShift(
             product: any,
             allProducts: any[],
             customerIndustry: number | undefined,
-            baseDeliveryDate: string | undefined
+            baseDeliveryDate: string | undefined,
+            headers?: any,
+            warehouseCode?: string,
+            orderCreatedOn?: string,
+            districtLeadtime?: number
         ): Promise<{ deliveryDateNew: string | null; shift: number | null }> {
             try {
-                const baseDate = baseDeliveryDate
-                    ? new Date(baseDeliveryDate.split('/').reverse().join('-'))
-                    : new Date();
-                if (isNaN(baseDate.getTime())) return { deliveryDateNew: null, shift: null };
+                // Helper functions (same as SO)
+                const addWorkingDays = (base: Date, days: number): Date => {
+                    const d = new Date(base);
+                    let added = 0;
+                    while (added < days) {
+                        d.setDate(d.getDate() + 1);
+                        const dayOfWeek = d.getDay();
+                        // Skip Saturday (6) and Sunday (0)
+                        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                            added++;
+                        }
+                    }
+                    return d;
+                };
 
-                // Special logic for Shop industry (191920001) - same heuristics as SO save
+                const getWeekendResetTime = (orderTime: Date): Date => {
+                    const d = new Date(orderTime);
+                    const dayOfWeek = d.getDay(); // 0 = Sunday, 6 = Saturday
+
+                    if ((dayOfWeek === 6 && d.getHours() >= 12) || dayOfWeek === 0) {
+                        // Saturday after 12:00 or Sunday → reset to Monday morning
+                        const daysToAdd = dayOfWeek === 6 ? 2 : 1; // Sat → Mon (+2), Sun → Mon (+1)
+                        d.setDate(d.getDate() + daysToAdd);
+                        d.setHours(8, 0, 0, 0); // Monday 8:00 AM
+                        return d;
+                    }
+
+                    return orderTime;
+                };
+
+                const applySundayAdjustment = (resultDate: Date, warehouseCode?: string): Date => {
+                    if (warehouseCode === 'KHOHCM' && resultDate.getDay() === 0) {
+                        // Sunday → Monday
+                        resultDate.setDate(resultDate.getDate() + 1);
+                    }
+                    return resultDate;
+                };
+
+                const addDays = (base: Date, days: number): Date => {
+                    const d = new Date(base);
+                    d.setDate(d.getDate() + days);
+                    return d;
+                };
+
+                const isApolloKimTinPromotion = (product: any): boolean => {
+                    if (!product.promotionText) return false;
+                    const name = product.promotionText.toLowerCase();
+                    return name.includes('apollo') || name.includes('kim tín');
+                };
+
+                // Parse order creation time for weekend reset logic
+                let effectiveOrderTime = orderCreatedOn ? new Date(orderCreatedOn) : new Date();
+                if (isNaN(effectiveOrderTime.getTime())) {
+                    effectiveOrderTime = new Date();
+                }
+
+                // Apply weekend reset logic
+                effectiveOrderTime = getWeekendResetTime(effectiveOrderTime);
+
+                // NEW LOGIC (2025) - Priority 1: District leadtime
+                if (districtLeadtime && districtLeadtime > 0) {
+                    let result = addWorkingDays(effectiveOrderTime, districtLeadtime);
+                    result = applySundayAdjustment(result, warehouseCode);
+
+                    const hour = result.getHours();
+                    const shift = (hour >= 0 && hour <= 12) ? CA_SANG : CA_CHIEU;
+                    const dateStr = result.toISOString().split('T')[0];
+
+                    return { deliveryDateNew: dateStr, shift };
+                }
+
+                // NEW LOGIC (2025) - Priority 2: Out of stock rules by warehouse
+                const requestedQty = product.quantity * (product.conversionFactor || 1);
+                const theoreticalStock = product.theoreticalStock ?? 0;
+                const isOutOfStock = requestedQty > theoreticalStock;
+
+                if (isOutOfStock && warehouseCode) {
+                    let leadtimeCa = 0;
+
+                    if (warehouseCode === 'KHOHCM') {
+                        // Kho HCM: +2 ca (bình thường), +6 ca (promotion Apollo, Kim Tín)
+                        leadtimeCa = isApolloKimTinPromotion(product) ? 6 : 2;
+                    } else if (warehouseCode === 'KHOBD') {
+                        // Kho Bình Định: +4 ca (bình thường), +6 ca (promotion Apollo, Kim Tín)
+                        leadtimeCa = isApolloKimTinPromotion(product) ? 6 : 4;
+                    }
+
+                    if (leadtimeCa > 0) {
+                        let result = addWorkingDays(effectiveOrderTime, leadtimeCa);
+                        result = applySundayAdjustment(result, warehouseCode);
+
+                        const hour = result.getHours();
+                        const shift = (hour >= 0 && hour <= 12) ? CA_SANG : CA_CHIEU;
+
+                        return { deliveryDateNew: result.toISOString().split('T')[0], shift };
+                    }
+                }
+
+                // LEGACY LOGIC - Special logic for Shop industry (191920001) - same heuristics as SO save
                 if (customerIndustry === 191920001) {
                     const thietBiNuoc = allProducts.filter(p =>
                         p.productCategoryLevel2 === "Thiết bị nước" || p.productCategoryLevel4 === "Ống cứng PVC"
@@ -986,6 +1118,13 @@ export default async function handler(
                     }
 
                     if (shouldApplySpecialLogic) {
+                        // Declare baseDate for legacy Shop industry logic
+                        const baseDate = baseDeliveryDate
+                            ? new Date(baseDeliveryDate.split('/').reverse().join('-'))
+                            : new Date();
+
+                        if (isNaN(baseDate.getTime())) return { deliveryDateNew: null, shift: null };
+
                         const newDate = new Date(baseDate);
                         newDate.setHours(newDate.getHours() + leadTimeHours);
                         const hour = newDate.getHours();
@@ -995,7 +1134,13 @@ export default async function handler(
                     }
                 }
 
-                // Default: use baseDeliveryDate hour to determine shift
+                // LEGACY LOGIC - Default: use baseDeliveryDate hour to determine shift
+                const baseDate = baseDeliveryDate
+                    ? new Date(baseDeliveryDate.split('/').reverse().join('-'))
+                    : new Date();
+
+                if (isNaN(baseDate.getTime())) return { deliveryDateNew: null, shift: null };
+
                 const hour = baseDate.getHours();
                 const shift = (hour >= 0 && hour <= 12) ? CA_SANG : CA_CHIEU;
                 const dateStr = baseDate.toISOString().split('T')[0];

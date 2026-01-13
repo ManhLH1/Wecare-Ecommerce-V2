@@ -573,20 +573,87 @@ async function lookupUnitConversionId(
   return null;
 }
 
-// Helper function to calculate delivery date and shift (Ca) based on lead time logic
-// Logic từ buttonadd và code canvas.txt:
-// 1. Nếu ngành nghề = "Shop": Tính từ lead time quận/huyện
-// 2. Nếu không: Tính từ lead time sản phẩm hoặc mặc định 1 ngày
-// 3. Có logic đặc biệt cho một số loại sản phẩm (Thiết bị nước, Thiết bị điện, Vật tư kim khí)
+// NEW LOGIC (2025): Calculate delivery date based on updated business rules
 async function calculateDeliveryDateAndShift(
   product: SaleOrderDetailInput,
   allProducts: SaleOrderDetailInput[],
   customerIndustry: number | undefined,
   baseDeliveryDate: string | undefined,
-  headers: any
+  headers: any,
+  warehouseCode?: string, // New parameter: KHOHCM | KHOBD
+  orderCreatedOn?: string, // New parameter: Order creation timestamp
+  districtLeadtime?: number // New parameter: Leadtime theo quận/huyện (ca)
 ): Promise<{ deliveryDateNew: string | null; shift: number | null }> {
   try {
-    // Nếu không có baseDeliveryDate, sử dụng ngày hiện tại
+    // Helper functions
+    const addWorkingDays = (base: Date, days: number): Date => {
+      const d = new Date(base);
+      let added = 0;
+      while (added < days) {
+        d.setDate(d.getDate() + 1);
+        const dayOfWeek = d.getDay();
+        // Skip Saturday (6) and Sunday (0)
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          added++;
+        }
+      }
+      return d;
+    };
+
+    const getWeekendResetTime = (orderTime: Date): Date => {
+      const d = new Date(orderTime);
+      const dayOfWeek = d.getDay(); // 0 = Sunday, 6 = Saturday
+
+      if ((dayOfWeek === 6 && d.getHours() >= 12) || dayOfWeek === 0) {
+        // Saturday after 12:00 or Sunday → reset to Monday morning
+        const daysToAdd = dayOfWeek === 6 ? 2 : 1; // Sat → Mon (+2), Sun → Mon (+1)
+        d.setDate(d.getDate() + daysToAdd);
+        d.setHours(8, 0, 0, 0); // Monday 8:00 AM
+        return d;
+      }
+      return orderTime;
+    };
+
+    const applySundayAdjustment = (resultDate: Date, warehouseCode?: string): Date => {
+      if (warehouseCode === 'KHOHCM' && resultDate.getDay() === 0) {
+        // Sunday → Monday
+        resultDate.setDate(resultDate.getDate() + 1);
+      }
+      return resultDate;
+    };
+
+    const isApolloKimTinPromotion = (product: SaleOrderDetailInput): boolean => {
+      if (!product.promotionText) return false;
+      const name = product.promotionText.toLowerCase();
+      return name.includes('apollo') || name.includes('kim tín');
+    };
+
+    // Parse base date
+    let effectiveOrderTime = orderCreatedOn ? new Date(orderCreatedOn) : new Date();
+    if (isNaN(effectiveOrderTime.getTime())) {
+      effectiveOrderTime = new Date();
+    }
+
+    // Apply weekend reset logic
+    effectiveOrderTime = getWeekendResetTime(effectiveOrderTime);
+
+    // NEW LOGIC (2025) - Priority 1: District leadtime
+    if (districtLeadtime && districtLeadtime > 0) {
+      let result = addWorkingDays(effectiveOrderTime, districtLeadtime);
+      result = applySundayAdjustment(result, warehouseCode);
+
+      const hour = result.getHours();
+      const shift = (hour >= 0 && hour <= 12) ? CA_SANG : CA_CHIEU;
+      const dateStr = result.toISOString().split('T')[0];
+
+      return { deliveryDateNew: dateStr, shift };
+    }
+
+    // NEW LOGIC (2025) - Priority 2: Out of stock rules by warehouse
+    // Note: This logic should be handled in frontend, backend mainly uses district leadtime
+    // Keep legacy logic below for backward compatibility
+
+    // LEGACY LOGIC (before 2025) - Keep for backward compatibility
     const baseDate = baseDeliveryDate
       ? new Date(baseDeliveryDate.split('/').reverse().join('-'))
       : new Date();
@@ -595,9 +662,9 @@ async function calculateDeliveryDateAndShift(
       return { deliveryDateNew: null, shift: null };
     }
 
-    // Logic đặc biệt cho ngành nghề "Shop" (191920001)
+    // Legacy Shop industry logic
     if (customerIndustry === 191920001) {
-      // Tính tổng số lượng và giá trị theo từng loại sản phẩm
+      // Calculate product categories
       const thietBiNuoc = allProducts.filter(p =>
         p.productCategoryLevel2 === "Thiết bị nước" || p.productCategoryLevel4 === "Ống cứng PVC"
       );
@@ -619,22 +686,18 @@ async function calculateDeliveryDateAndShift(
       let leadTimeHours = 0;
       let shouldApplySpecialLogic = false;
 
-      // Logic cho Thiết bị nước hoặc Ống cứng PVC
+      // Thiết bị nước hoặc Ống cứng PVC
       if (thietBiNuoc.length > 0 &&
         ((countThietBiNuoc >= 50 && sumThietBiNuoc >= 100000000) || sumOngCung >= 100000000)) {
         shouldApplySpecialLogic = true;
-        if (sumThietBiNuoc >= 200000000 || sumOngCung >= 200000000) {
-          leadTimeHours = 24;
-        } else {
-          leadTimeHours = 12;
-        }
+        leadTimeHours = (sumThietBiNuoc >= 200000000 || sumOngCung >= 200000000) ? 24 : 12;
       }
-      // Logic cho Thiết bị điện
+      // Thiết bị điện
       else if (thietBiDien.length > 0 && sumThietBiDien >= 200000000) {
         shouldApplySpecialLogic = true;
         leadTimeHours = 12;
       }
-      // Logic cho Vật tư kim khí
+      // Vật tư kim khí
       else if (vatTuKimKhi.length > 0 && countKimKhi >= 100) {
         shouldApplySpecialLogic = true;
         leadTimeHours = 12;
@@ -646,22 +709,44 @@ async function calculateDeliveryDateAndShift(
 
         const hour = newDate.getHours();
         const shift = (hour >= 0 && hour <= 12) ? CA_SANG : CA_CHIEU;
-
-        const dateStr = newDate.toISOString().split('T')[0]; // YYYY-MM-DD
+        const dateStr = newDate.toISOString().split('T')[0];
 
         return { deliveryDateNew: dateStr, shift };
       }
     }
 
-    // Logic mặc định: Sử dụng baseDeliveryDate và tính ca dựa trên giờ
+    // Default logic: use base date and calculate shift based on hour
     const hour = baseDate.getHours();
     const shift = (hour >= 0 && hour <= 12) ? CA_SANG : CA_CHIEU;
-    const dateStr = baseDate.toISOString().split('T')[0]; // YYYY-MM-DD
+    const dateStr = baseDate.toISOString().split('T')[0];
 
     return { deliveryDateNew: dateStr, shift };
   } catch (error: any) {
     return { deliveryDateNew: null, shift: null };
   }
+}
+
+// Helper function to extract warehouse code from warehouse name
+function extractWarehouseCode(warehouseName?: string): string | undefined {
+  if (!warehouseName) return undefined;
+
+  const name = warehouseName.toLowerCase().trim();
+
+  // Map common warehouse names to codes
+  if (name.includes('hồ chí minh') || name.includes('hcm') || name.includes('sài gòn')) {
+    return 'KHOHCM';
+  }
+  if (name.includes('bình định') || name.includes('bd')) {
+    return 'KHOBD';
+  }
+
+  // Try to extract from warehouse code pattern
+  const codeMatch = warehouseName.match(/^([A-Z]{3,}[0-9]*)/i);
+  if (codeMatch) {
+    return codeMatch[1].toUpperCase();
+  }
+
+  return undefined;
 }
 
 // Helper function to lookup crdfd_giatrichuyenoi from crdfd_unitconversions table
@@ -1459,12 +1544,19 @@ export default async function handler(
         }
 
         // Tính ngày giao mới (crdfd_exdeliverrydate) và ca làm việc (cr1bb_ca) dựa trên lead time logic
+        // Extract warehouse code from warehouse name
+        const warehouseCode = extractWarehouseCode(warehouseName);
+
+        // TODO: Get soCreatedOn from SO record, customerDistrictLeadtime from customer district mapping
         const { deliveryDateNew, shift } = await calculateDeliveryDateAndShift(
           product,
           products,
           customerIndustry,
           product.deliveryDate,
-          headers
+          headers,
+          warehouseCode, // Extracted from warehouseName
+          undefined, // soCreatedOn - TODO: fetch from SO record
+          undefined  // customerDistrictLeadtime - TODO: get from district mapping
         );
 
             if (deliveryDateNew) {
