@@ -388,7 +388,7 @@ const AdvancedFilter: React.FC<AdvancedFilterProps> = ({
   return (
     <div className="w-full">
         <div className="mb-2">
-          <h3 className="text-lg font-bold">Bộ lọc nâng cao</h3>
+          <h3 className="text-lg font-bold">Bộ lọc nâng cao 2</h3>
         </div>
         {/* Quick product search below heading */}
         <form

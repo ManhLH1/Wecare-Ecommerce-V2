@@ -536,7 +536,7 @@ async function updateSodChietKhau2(
 
   // Try to compute crdfd_giack2 from base price BEFORE VAT.
   // Fetch giagoc (preferred) and gia (fallback) and VAT info to compute price-without-VAT when needed.
-  const getSodEndpoint = `${BASE_URL}${SOD_TABLE}(${sodId})?$select=crdfd_giagoc,crdfd_gia,crdfd_vat,crdfd_ieuchinhgtgt`;
+  const getSodEndpoint = `${BASE_URL}${SOD_TABLE}(${sodId})?$select=crdfd_giagoc,crdfd_vat,crdfd_ieuchinhgtgt`;
   let sodData: any = null;
   try {
     const sodResponse = await axios.get(getSodEndpoint, { headers });

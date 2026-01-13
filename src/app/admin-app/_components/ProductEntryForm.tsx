@@ -1511,7 +1511,11 @@ function ProductEntryForm({
         if (priceStr !== '' && roundedBase !== null && roundedBase > 0) {
           // Lưu basePrice để tính chiết khấu
           // Prefer original price (priceNoVat or priceWithVat) as base for client-side promotions.
-          const baseForDiscount = (priceNoVat ?? priceWithVat ?? finalPrice ?? roundedBase);
+          // Prefer finalPrice (already applied customer-specific discounts) as the canonical
+          // base used for client-side promotion/discount calculations. Previously priceNoVat
+          // was preferred which could cause the input to be overwritten by the not-VAT price
+          // after a reload even when finalPrice was available.
+          const baseForDiscount = (finalPrice ?? priceNoVat ?? priceWithVat ?? roundedBase);
           const roundedBasePrice = Math.round(Number(baseForDiscount) * 100) / 100;
           console.log('💵 Setting basePriceForDiscount:', roundedBasePrice);
           setBasePriceForDiscount(roundedBasePrice);
@@ -2732,13 +2736,22 @@ function ProductEntryForm({
                   }
 
                   if (candidate) {
+                    // Prefer finalPrice from API (already applied customer-specific discounts)
+                    // when mapping unit -> price on user unit change. Fallback to previous
+                    // behavior (priceNoVat or price) only when finalPrice is not available.
+                    const finalVal = candidate.finalPrice ?? candidate.final_price ?? null;
                     const priceVal = candidate.price ?? candidate.crdfd_gia ?? candidate.crdfd_giatheovc ?? null;
                     const priceNoVatVal = candidate.priceNoVat ?? candidate.cr1bb_giakhongvat ?? null;
-                    const useNoVat = isVatSo;
+
                     let chosenPrice: number | null = null;
-                    if (useNoVat && priceNoVatVal !== null && priceNoVatVal !== undefined) chosenPrice = Number(priceNoVatVal);
-                    else if (priceVal !== null && priceVal !== undefined) chosenPrice = Number(priceVal);
-                    else if (priceNoVatVal !== null && priceNoVatVal !== undefined) chosenPrice = Number(priceNoVatVal);
+                    if (finalVal !== null && finalVal !== undefined) {
+                      chosenPrice = Number(finalVal);
+                    } else {
+                      const useNoVat = isVatSo;
+                      if (useNoVat && priceNoVatVal !== null && priceNoVatVal !== undefined) chosenPrice = Number(priceNoVatVal);
+                      else if (priceVal !== null && priceVal !== undefined) chosenPrice = Number(priceVal);
+                      else if (priceNoVatVal !== null && priceNoVatVal !== undefined) chosenPrice = Number(priceNoVatVal);
+                    }
 
                     if (chosenPrice !== null && !isNaN(chosenPrice)) {
                       const rounded = Math.round(chosenPrice * 100) / 100;

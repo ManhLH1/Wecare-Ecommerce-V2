@@ -1075,3 +1075,4 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
 };
 
 export default JDStyleHeader;
+
