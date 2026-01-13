@@ -5,7 +5,7 @@ import Footer from '@/components/footer';
 import JDStyleHeader from "@/components/JDStyleHeader";
 import JDStyleMainContent from "@/components/JDStyleMainContent";
 
-const ShippingPolicyPage = () => {
+const ShippingPolicyPage: React.FC = () => {
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col overflow-x-hidden">
       {/* JD Style Layout */}
@@ -149,6 +149,7 @@ const ShippingPolicyPage = () => {
                         Về trang chủ
                       </Link>
                     </div>
+                  </div>
                   </div>
                 </section>
               </main>
