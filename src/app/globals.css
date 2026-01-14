@@ -740,6 +740,39 @@ body {
   }
 }
 
+/* Enforce uppercase for specific headings/links across the site */
+@layer components {
+  /* utility to force uppercase where needed */
+  .force-uppercase, h3.uppercase, a.uppercase, .uppercase {
+    text-transform: uppercase !important;
+    letter-spacing: 0.02em;
+  }
+}
+
+/* Normalize size & weight for prominent uppercase headings/links (Featured sections) */
+@layer components {
+  /* Target h3 and anchor elements that carry the text-2xl + uppercase classes */
+  h3.text-2xl.uppercase,
+  a.text-2xl.uppercase,
+  .text-2xl.uppercase,
+  .flex.items-center.justify-between.mb-3 {
+    font-size: 1.125rem; /* ~18px */
+    line-height: 1.25;
+    font-weight: 700;
+    text-transform: uppercase !important;
+    letter-spacing: 0.02em;
+    color: #0891b2;
+  }
+  /* Ensure these links are visually prominent and non-underlined */
+  a.text-2xl.uppercase {
+    text-decoration: none !important;
+    color: inherit;
+  }
+  a.text-2xl.uppercase:hover {
+    color: #0e7490;
+  }
+}
+
 @layer utilities {
   /* Mobile-specific utilities */
   .mobile-only {

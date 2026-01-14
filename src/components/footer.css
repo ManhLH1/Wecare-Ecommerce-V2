@@ -20,8 +20,8 @@
 }
 .row.large-columns-4 {
   display: flex;
-  /* increase horizontal spacing between columns for better breathing room */
-  gap: 48px;
+  /* compact horizontal spacing between columns */
+  gap: 24px;
   /* align column tops so titles sit on the same horizontal line */
   align-items: flex-start;
   flex-wrap: wrap;
@@ -48,7 +48,7 @@
   font-size: var(--footer-title-size);
   line-height: 1.2;
   text-transform: uppercase;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 /* ensure titles don't get pushed down by inner spacing */
 .col .widget-title {
@@ -56,15 +56,15 @@
 }
 
 /* reduce left column titles and increase contact column title/content */
-.row.large-columns-4 > .col:nth-child(1) .widget-title,
-.row.large-columns-4 > .col:nth-child(2) .widget-title {
-  font-size: 14px;
+.row.large-columns-4 > .col .widget-title {
+  /* unified widget title sizing for all footer columns */
+  font-size: var(--footer-title-size);
   margin-bottom: 6px;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.02em;
 }
-.row.large-columns-4 > .col:nth-child(3) .widget-title {
-  font-size: 18px;
-  margin-bottom: 10px;
+.row.large-columns-4 > .col:nth-child(2) .widget-title {
+  white-space: nowrap;
+  overflow: visible;
 }
 .row.large-columns-4 > .col:nth-child(3) .contact-info li {
   font-size: 13px;
@@ -75,10 +75,10 @@
   width: 36px;
   height: 3px;
   background: #eaeaea;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 .ux-menu .ux-menu-link {
-  padding: 12px 0;
+  padding: 2px 0;
   border-bottom: 1px solid #efefef;
 }
 .ux-menu-link__text {
@@ -92,7 +92,7 @@
   margin: 0;
 }
 .menu-chinh-sach-container .menu li {
-  padding: 10px 0;
+  padding: 4px 0;
   border-bottom: 1px solid #f3f3f3;
 }
 .menu-chinh-sach-container a {
@@ -106,7 +106,7 @@
 .ux-menu-link__link,
 .menu-chinh-sach-container a {
   display: block;
-  padding: 10px 0;
+  padding: 4px 0;
   color: #666;
 }
 .contact-info {
@@ -212,6 +212,14 @@
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
+}
+.payment-icons p strong,
+.payment-icons p b {
+  display: block;
+  font-size: var(--footer-title-size);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  color: #111827;
 }
 .payment-icons img {
   width: 60px;
