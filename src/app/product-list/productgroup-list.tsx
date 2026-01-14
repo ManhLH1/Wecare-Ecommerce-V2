@@ -24,6 +24,10 @@ interface ProductDetails {
   cr1bb_imageurl?: string;
   id?: string;
   cr1bb_giaban?: number | string;
+  /* optional alternate identifiers used by other parts of the app */
+  productCode?: string;
+  productId?: string;
+  crdfd_masanpham?: string;
 }
 
 interface ProductGroup {
