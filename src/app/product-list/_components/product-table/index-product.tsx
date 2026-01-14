@@ -370,6 +370,42 @@ const ProductTable_index: React.FC<ProductTableIndexProps> = ({
     }
   }, [findPromotionForProduct]);
 
+  const handleCheckPromotion = useCallback(async (productId: string, productName: string) => {
+    try {
+      // Gọi API promotion-orders để kiểm tra promotion cho sản phẩm này
+      const response = await axios.get('/api/admin-app/promotion-orders', {
+        params: {
+          productCodes: `SP-${productId}`,
+          customerCode: customerId ? `KH-${customerId}` : undefined
+        }
+      });
+
+      const data = response.data;
+      let message = `Promotion cho sản phẩm "${productName}":\n\n`;
+
+      if (data.availablePromotions && data.availablePromotions.length > 0) {
+        message += `Có ${data.availablePromotions.length} promotion khả dụng:\n`;
+        data.availablePromotions.forEach((promo: any, index: number) => {
+          message += `${index + 1}. ${promo.name} - ${promo.value}${promo.vndOrPercent === '%' ? '%' : 'đ'}\n`;
+        });
+      } else {
+        message += "Không có promotion khả dụng cho sản phẩm này.";
+      }
+
+      if (data.specialPromotions && data.specialPromotions.length > 0) {
+        message += `\n\nPromotion đặc biệt:\n`;
+        data.specialPromotions.forEach((promo: any, index: number) => {
+          message += `${index + 1}. ${promo.name} - ${promo.value}${promo.vndOrPercent === '%' ? '%' : 'đ'}\n`;
+        });
+      }
+
+      alert(message);
+    } catch (error) {
+      console.error('Error checking promotion:', error);
+      alert('Có lỗi xảy ra khi kiểm tra promotion. Vui lòng thử lại.');
+    }
+  }, [customerId]);
+
   // Debug loading states
   
   if (loading || promotionLoading) {
@@ -422,13 +458,15 @@ const ProductTable_index: React.FC<ProductTableIndexProps> = ({
               "Tên sản phẩm",
               "Quy cách",
               "Hoàn thiện",
-              "Giá bán"
+              "Giá bán",
+              "Actions"
             ].map((header, index) => {
               const columnKeys: (keyof Products)[] = [
                 "crdfd_name",
                 "crdfd_quycach",
                 "crdfd_hoanthienbemat",
                 "cr1bb_giaban",
+                "crdfd_productsid", // dummy key for Actions column
               ];
               return (
                 <th
@@ -436,7 +474,7 @@ const ProductTable_index: React.FC<ProductTableIndexProps> = ({
                   className={`${tableStyles.headerCell} ${
                     index === 3 ? 'text-right' : 'text-left'
                   }`}
-                  onClick={() => sortData(columnKeys[index])}
+                  onClick={() => index < 4 ? sortData(columnKeys[index]) : undefined}
                 >
                   <div className="flex items-center justify-between">
                     <span>{header}</span>
@@ -494,6 +532,18 @@ const ProductTable_index: React.FC<ProductTableIndexProps> = ({
                         /{item.don_vi_DH}
                       </div>
                     )}
+                  </td>
+                  <td className={`${tableStyles.cell} text-center`}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent row click
+                        handleCheckPromotion(item.crdfd_productsid, item.crdfd_name || '');
+                      }}
+                      className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                      title="Kiểm tra promotion cho sản phẩm này"
+                    >
+                      Promotion
+                    </button>
                   </td>
                 </tr>
                 {popupProductId === item.crdfd_productsid &&
@@ -628,6 +678,18 @@ const ProductTable_index: React.FC<ProductTableIndexProps> = ({
                     <div className="text-xs text-gray-500">/{item.don_vi_DH}</div>
                   )}
                 </div>
+              </div>
+              <div className="px-2.5 pb-2.5">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent card click
+                    handleCheckPromotion(item.crdfd_productsid, item.crdfd_name || '');
+                  }}
+                  className="w-full px-3 py-1.5 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                  title="Kiểm tra promotion cho sản phẩm này"
+                >
+                  Kiểm tra Promotion
+                </button>
               </div>
             </div>
 

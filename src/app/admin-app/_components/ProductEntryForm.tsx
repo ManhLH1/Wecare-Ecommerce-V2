@@ -15,6 +15,7 @@ import {
   Product,
 } from '../_api/adminApi';
 import { showToast } from '../../../components/ToastManager';
+import axios from 'axios';
 
 // Map option set value of crdfd_gtgt/crdfd_gtgtnew to VAT percentage
 const VAT_OPTION_MAP: Record<number, number> = {
@@ -263,6 +264,55 @@ function ProductEntryForm({
   const [promotionLoading, setPromotionLoading] = useState(false);
   const [promotionError, setPromotionError] = useState<string | null>(null);
   const [selectedPromotionId, setSelectedPromotionId] = useState<string>('');
+  /**
+   * Kiểm tra promotions cho sản phẩm hiện tại bằng API server-side
+   */
+  const handleCheckPromotion = async (evt?: React.MouseEvent) => {
+    try {
+      if (evt) evt.stopPropagation();
+      const code = productCode || selectedProduct?.crdfd_masanpham || selectedProductCode || '';
+      if (!code) {
+        showToast.error('Vui lòng chọn sản phẩm trước khi kiểm tra promotion');
+        return;
+      }
+
+      const params: Record<string, any> = { productCodes: code };
+      if (customerCode) params.customerCode = customerCode;
+      if (customerId) params.customerId = customerId;
+      if (soId) params.soId = soId;
+      if (orderTotal !== undefined && orderTotal !== null) params.totalAmount = String(orderTotal);
+
+      setPromotionLoading(true);
+      const resp = await axios.get('/api/admin-app/promotion-orders', { params });
+      const data = resp.data || {};
+
+      let message = `Promotion cho sản phẩm \"${product || selectedProduct?.crdfd_name || ''}\":\n\n`;
+      const avail = data.availablePromotions || [];
+      if (avail.length > 0) {
+        message += `Có ${avail.length} promotion khả dụng:\n`;
+        avail.forEach((p: any, i: number) => {
+          message += `${i + 1}. ${p.name} - ${p.value}${p.vndOrPercent === '%' ? '%' : 'đ'}\n`;
+        });
+      } else {
+        message += 'Không có promotion khả dụng cho sản phẩm này.\n';
+      }
+
+      const special = data.specialPromotions || [];
+      if (special.length > 0) {
+        message += `\nPromotion đặc biệt:\n`;
+        special.forEach((p: any, i: number) => {
+          message += `${i + 1}. ${p.name} - ${p.value}${p.vndOrPercent === '%' ? '%' : 'đ'}\n`;
+        });
+      }
+
+      alert(message);
+    } catch (err: any) {
+      console.error('[ProductEntryForm] Error checking promotion:', err);
+      showToast.error('Lỗi khi kiểm tra promotion. Vui lòng thử lại.');
+    } finally {
+      setPromotionLoading(false);
+    }
+  };
   const [priceGroupText, setPriceGroupText] = useState<string>('');
   const [priceEntryMethodInternal, setPriceEntryMethodInternal] = useState<'Nhập thủ công' | 'Theo chiết khấu'>('Nhập thủ công');
   const [discountRateInternal, setDiscountRateInternal] = useState<string>('1');
@@ -2947,44 +2997,67 @@ function ProductEntryForm({
             </div>
           )}
 
-          <div className="admin-app-field-compact admin-app-field-add-button">
+          <div className="admin-app-field-compact admin-app-field-add-button" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <label className="admin-app-label-inline" style={{ visibility: 'hidden' }}>Add</label>
-            <button
-              type="button"
-              className="admin-app-mini-btn admin-app-mini-btn-add"
-              onClick={handleAddWithInventoryCheck}
-              disabled={buttonsDisabled || isAdding || isProcessingAdd || priceLoading}
-              title={priceLoading ? "Đang tải giá..." : "Thêm sản phẩm"}
-              aria-label={priceLoading ? "Đang tải giá..." : "Thêm sản phẩm"}
-              style={{
-                width: '100%',
-                height: '36px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '14px',
-                fontWeight: '700'
-              }}
-            >
-              {(isAdding || isProcessingAdd) ? (
-                <>
-                  <div className="admin-app-spinner admin-app-spinner-small" style={{ marginRight: '6px', borderColor: 'rgba(255, 255, 255, 0.3)', borderTopColor: 'white' }}></div>
-                  Đang thêm...
-                </>
-              ) : priceLoading ? (
-                <>
-                  <div className="admin-app-spinner admin-app-spinner-small" style={{ marginRight: '6px', borderColor: 'rgba(255, 255, 255, 0.3)', borderTopColor: 'white' }}></div>
-                  Đang tải giá...
-                </>
-              ) : (
-                '➕ Thêm sản phẩm'
+            <div style={{ flex: 1 }}>
+              <button
+                type="button"
+                className="admin-app-mini-btn admin-app-mini-btn-add"
+                onClick={handleAddWithInventoryCheck}
+                disabled={buttonsDisabled || isAdding || isProcessingAdd || priceLoading}
+                title={priceLoading ? "Đang tải giá..." : "Thêm sản phẩm"}
+                aria-label={priceLoading ? "Đang tải giá..." : "Thêm sản phẩm"}
+                style={{
+                  width: '100%',
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '14px',
+                  fontWeight: '700'
+                }}
+              >
+                {(isAdding || isProcessingAdd) ? (
+                  <>
+                    <div className="admin-app-spinner admin-app-spinner-small" style={{ marginRight: '6px', borderColor: 'rgba(255, 255, 255, 0.3)', borderTopColor: 'white' }}></div>
+                    Đang thêm...
+                  </>
+                ) : priceLoading ? (
+                  <>
+                    <div className="admin-app-spinner admin-app-spinner-small" style={{ marginRight: '6px', borderColor: 'rgba(255, 255, 255, 0.3)', borderTopColor: 'white' }}></div>
+                    Đang tải giá...
+                  </>
+                ) : (
+                  '➕ Thêm sản phẩm'
+                )}
+              </button>
+              {buttonsDisabled && addButtonDisabledReason && (
+                <div className="admin-app-disabled-reason" style={{ marginTop: '2px', fontSize: '9px' }} title={addButtonDisabledReason}>
+                  {addButtonDisabledReason}
+                </div>
               )}
-            </button>
-            {buttonsDisabled && addButtonDisabledReason && (
-              <div className="admin-app-disabled-reason" style={{ marginTop: '2px', fontSize: '9px' }} title={addButtonDisabledReason}>
-                {addButtonDisabledReason}
-              </div>
-            )}
+            </div>
+
+            <div style={{ width: '140px' }}>
+              <button
+                type="button"
+                className="admin-app-mini-btn admin-app-mini-btn-secondary"
+                onClick={handleCheckPromotion}
+                disabled={promotionLoading}
+                title="Kiểm tra promotion"
+                style={{
+                  width: '100%',
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '13px',
+                  fontWeight: '600'
+                }}
+              >
+                {promotionLoading ? 'Đang kiểm tra...' : 'Kiểm tra Promotion'}
+              </button>
+            </div>
           </div>
         </div>
 

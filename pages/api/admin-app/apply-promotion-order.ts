@@ -239,6 +239,11 @@ export default async function handler(
       statecode: 0, // Active
     };
 
+    // Only include crdfd_chieckhau2 when it's a non-zero value
+    if (chietKhau2ValueToStore !== undefined && chietKhau2ValueToStore !== null && Number(chietKhau2ValueToStore) !== 0) {
+      ordersXPromotionPayload.crdfd_chieckhau2 = chietKhau2ValueToStore;
+    }
+
     // Before creating Orders x Promotion, check if a record for the same SO + Promotion already exists
     let createdOrderXPromotionId: string | undefined = undefined;
     try {

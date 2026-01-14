@@ -665,7 +665,7 @@ async function calculateDeliveryDateAndShift(
     // NEW LOGIC (2025) - Priority 2: Out of stock rules by warehouse
     // IMPORTANT: Weekend reset CHỈ áp dụng cho out-of-stock items
     const requestedQty = product.quantity || 0;
-    const theoreticalStock = product.theoreticalStock || 0;
+    const theoreticalStock = (product as any).theoreticalStock ?? 0;
     const isOutOfStock = requestedQty > theoreticalStock;
 
     if (isOutOfStock && warehouseCode) {
@@ -683,7 +683,9 @@ async function calculateDeliveryDateAndShift(
       if (leadtimeCa > 0) {
         let result = addWorkingDays(effectiveOrderTime, leadtimeCa);
         result = applySundayAdjustment(result, warehouseCode);
-        return { deliveryDateNew: result.toISOString().split('T')[0], shift };
+        const hourRes = result.getHours();
+        const shiftRes = (hourRes >= 0 && hourRes <= 12) ? CA_SANG : CA_CHIEU;
+        return { deliveryDateNew: result.toISOString().split('T')[0], shift: shiftRes };
       }
     }
 
@@ -1495,6 +1497,10 @@ export default async function handler(
                   statecode: 0,
                   crdfd_name: `SO ${soId} - Promo ${promotionIdClean}`
                 };
+                // If product-level secondary discount exists, store it on Orders x Promotion as decimal (e.g., 0.05)
+                if (product.discount2) {
+                  createPayload.crdfd_chieckhau2 = product.discount2 ? product.discount2 / 100 : 0;
+                }
                 const createResp = await apiClient.post(`${BASE_URL}${ORDERS_X_PROMOTION_TABLE}`, createPayload, { headers });
                 const createdId = createResp.data?.crdfd_ordersxpromotionid || null;
                 if (createdId) {
