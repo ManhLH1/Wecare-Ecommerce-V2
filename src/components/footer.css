@@ -1,0 +1,272 @@
+/* Basic footer styles to match provided layout */
+.footer-widgets.footer {
+  background: #ffffff;
+  color: #444;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+.footer-widgets {
+  /* footer font size tokens */
+  --footer-title-size: 16px;
+  --footer-body-size: 14px;
+  --footer-small-size: 12px;
+  --footer-line-height: 1.5;
+}
+.footer-widgets .container {
+  /* allow footer to use more horizontal space and reduce side gutters */
+  max-width: 1400px;
+  margin: 0 auto;
+  /* reduce horizontal gutters to bring content closer to edges */
+  padding: 30px 20px;
+}
+.row.large-columns-4 {
+  display: flex;
+  /* increase horizontal spacing between columns for better breathing room */
+  gap: 48px;
+  /* align column tops so titles sit on the same horizontal line */
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.col {
+  /* give columns more room to spread while staying responsive */
+  flex: 1 1 260px;
+  min-width: 220px;
+}
+/* make left two columns narrower so middle contact column appears larger */
+.row.large-columns-4 > .col:nth-child(1),
+.row.large-columns-4 > .col:nth-child(2) {
+  flex: 0 0 220px;
+  max-width: 220px;
+}
+.row.large-columns-4 > .col:nth-child(3) {
+  /* allow contact column to expand */
+  flex: 1 1 420px;
+  min-width: 240px;
+}
+.widget-title {
+  display: block;
+  font-weight: 700;
+  font-size: var(--footer-title-size);
+  line-height: 1.2;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+/* ensure titles don't get pushed down by inner spacing */
+.col .widget-title {
+  margin-top: 0;
+}
+
+/* reduce left column titles and increase contact column title/content */
+.row.large-columns-4 > .col:nth-child(1) .widget-title,
+.row.large-columns-4 > .col:nth-child(2) .widget-title {
+  font-size: 14px;
+  margin-bottom: 6px;
+  letter-spacing: 0.2px;
+}
+.row.large-columns-4 > .col:nth-child(3) .widget-title {
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+.row.large-columns-4 > .col:nth-child(3) .contact-info li {
+  font-size: 13px;
+  padding: 6px 0;
+  color: #222;
+}
+.is-divider.small {
+  width: 36px;
+  height: 3px;
+  background: #eaeaea;
+  margin-bottom: 16px;
+}
+.ux-menu .ux-menu-link {
+  padding: 12px 0;
+  border-bottom: 1px solid #efefef;
+}
+.ux-menu-link__text {
+  color: #666;
+  font-size: var(--footer-body-size);
+  line-height: var(--footer-line-height);
+}
+.menu-chinh-sach-container .menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.menu-chinh-sach-container .menu li {
+  padding: 10px 0;
+  border-bottom: 1px solid #f3f3f3;
+}
+.menu-chinh-sach-container a {
+  color: #666;
+  text-decoration: none;
+  font-size: var(--footer-body-size);
+  line-height: var(--footer-line-height);
+}
+
+/* ensure links have consistent vertical rhythm and color */
+.ux-menu-link__link,
+.menu-chinh-sach-container a {
+  display: block;
+  padding: 10px 0;
+  color: #666;
+}
+.contact-info {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  color: #666;
+}
+.contact-info li {
+  padding: 6px 0;
+  border-bottom: 1px solid #f6f6f6;
+  font-size: var(--footer-body-size);
+  line-height: var(--footer-line-height);
+}
+.contact-info .color-primary {
+  color: #333;
+  font-weight: 600;
+}
+
+/* Make sure the description text matches body size and line-height */
+.footer-description {
+  font-size: var(--footer-body-size);
+  line-height: var(--footer-line-height);
+  color: #555;
+  margin-bottom: 8px;
+}
+
+/* social icons alignment and sizing consistent */
+.social-row .inline-flex,
+.social-icons .icon {
+  vertical-align: middle;
+}
+
+/* Remove underlines for all footer links and keep colors consistent */
+.footer-widgets a,
+.footer-widgets a:link,
+.footer-widgets a:visited,
+.footer-widgets a:hover,
+.footer-widgets a:active,
+.footer-widgets a:focus {
+  text-decoration: none !important;
+  color: inherit;
+}
+.footer-widgets a:hover {
+  color: #0b66d1; /* subtle hover color for links */
+  text-decoration: none;
+}
+.social-icons {
+  display: flex;
+  gap: 12px;
+  margin: 10px 0 16px;
+}
+.social-icons .icon {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #111827; /* dark glyph color */
+  background: #f5f6f8; /* neutral light circle */
+  text-decoration: none;
+  box-shadow: 0 1px 0 rgba(16,24,40,0.04);
+}
+.social-icons .icon.instagram { background:#C13584; }
+.social-icons .icon.tiktok { background:#000; }
+.social-icons .icon.youtube { background:#e52d27; }
+.social-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.social-icons .social-svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+.social-icons .social-svg text {
+  fill: currentColor;
+  dominant-baseline: middle;
+}
+.social-icons .icon.facebook,
+.social-icons .icon.zalo,
+.social-icons .icon.tiktok {
+  background: #f5f6f8;
+}
+.social-icons .icon:hover {
+  background: #eef2f7;
+  color: #0f172a;
+}
+/* ensure svg paths inherit glyph color and scale nicely */
+.social-icons .social-svg path {
+  fill: currentColor;
+}
+.social-icons .icon.zalo .social-svg circle {
+  fill: #fff;
+}
+.social-icons .icon.zalo .social-svg path {
+  fill: #2f93ff;
+}
+.payment-icons .payments {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.payment-icons img {
+  width: 60px;
+  height: auto;
+  object-fit: contain;
+  border-radius: 4px;
+  background: #fff;
+  padding: 4px;
+}
+.cert-image img {
+  width: 160px;
+  max-width: 50%;
+  margin-top: 8px;
+}
+.footer-bottom {
+  background: #3295a8;
+  color: #fff;
+  /* slight increase so the bottom bar has a bit more presence */
+  padding: 8px 0;
+}
+.footer-bottom .footer-bottom-inner {
+  text-align: center;
+  /* use footer small size for bottom bar */
+  line-height: 1.2;
+  padding: 0;
+  font-size: var(--footer-small-size);
+}
+.footer-bottom .footer-bottom-inner strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+}
+.footer-bottom .company-note {
+  margin-top: 2px;
+  font-size: 11px;
+  opacity: 0.95;
+  line-height: 1.2;
+}
+
+/* override container vertical padding inside footer-bottom so it doesn't inherit large footer container padding */
+.footer-bottom > .container {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  max-width: 1400px;
+}
+
+/* Ensure any menu text spans don't show underlines (extra specificity) */
+.ux-menu-link__link,
+.ux-menu-link__link .ux-menu-link__text,
+.menu-chinh-sach-container a {
+  text-decoration: none !important;
+}
+@media (max-width: 768px) {
+  .row.large-columns-4 { flex-direction: column; }
+  .cert-image img { max-width: 70%; }
+}
+
+

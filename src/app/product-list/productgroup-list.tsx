@@ -162,6 +162,20 @@ const ProductCard: React.FC<{ product: ProductDetails }> = ({ product }) => {
     (product.cr1bb_imageurlproduct && product.cr1bb_imageurlproduct.trim()) ||
     "/placeholder-image.jpg";
 
+  const handleProductClick = () => {
+    // Save product data to localStorage
+    localStorage.setItem("productDetail", JSON.stringify(product));
+
+    // Use product code as URL slug for simplicity and reliability
+    const productSlug = product.crdfd_masanpham || product.productCode || product.productId || product.id;
+    if (productSlug) {
+      window.location.href = `/${productSlug}`;
+    } else {
+      // Fallback to a generic product URL
+      window.location.href = '/san-pham';
+    }
+  };
+
   // compute market/old price (try to find max in cr1bb_json_gia)
   let marketPrice = 0;
   if (product.cr1bb_json_gia && Array.isArray(product.cr1bb_json_gia)) {
@@ -186,7 +200,10 @@ const ProductCard: React.FC<{ product: ProductDetails }> = ({ product }) => {
   const discountPercent = hasDiscount ? Math.round(((marketPrice - price) / marketPrice) * 100) : 0;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm transform transition duration-200 hover:shadow-lg hover:-translate-y-1">
+    <div
+      className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm transform transition duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer"
+      onClick={handleProductClick}
+    >
           <div className="p-5 relative">
         <div className="w-full h-48 flex items-center justify-center overflow-hidden rounded-md relative">
           <div className="w-40 h-40 bg-white rounded-full flex items-center justify-center shadow-sm">
