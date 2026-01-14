@@ -245,6 +245,7 @@ function ProductEntryForm({
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [inventoryTheoretical, setInventoryTheoretical] = useState<number>(0);
   const [inventoryLoading, setInventoryLoading] = useState<boolean>(false);
+  const [inventoryLoaded, setInventoryLoaded] = useState<boolean>(false); // Track if inventory has been loaded with real data
   const [inventoryMessage, setInventoryMessage] = useState<string>('Tồn kho (inventory): 0');
   const [bypassWarningMessage, setBypassWarningMessage] = useState<string>(''); // Cảnh báo bỏ qua kiểm tra tồn kho
   const [inventoryInventoryMessage, setInventoryInventoryMessage] = useState<string>(''); // Tồn kho Inventory
@@ -1022,6 +1023,7 @@ function ProductEntryForm({
           ? 'Chọn sản phẩm để xem tồn kho'
           : `${labelPrefix} 0`;
       setInventoryTheoretical(0);
+      setInventoryLoaded(false); // Reset inventory loaded flag
       setStockQuantity(0);
       setBypassWarningMessage(''); // Reset cảnh báo
       setInventoryInventoryMessage(''); // Reset
@@ -1059,6 +1061,7 @@ function ProductEntryForm({
       setInventoryTheoretical(theoretical);
       setReservedQuantity(reserved);
       setAvailableToSell(available);
+      setInventoryLoaded(true); // Mark inventory as loaded with real data
 
       // Tách cảnh báo và thông tin tồn kho thành 2 dòng riêng
       const bypassWarning = shouldBypassInventoryCheck
@@ -1091,6 +1094,7 @@ function ProductEntryForm({
       console.error('❌ [Load Inventory] Error:', e);
       const message = `Lỗi khi tải tồn kho: ${e instanceof Error ? e.message : 'Unknown error'}`;
       setInventoryTheoretical(0);
+      setInventoryLoaded(false); // Reset inventory loaded flag on error
       setStockQuantity(0);
       setBypassWarningMessage(''); // Reset cảnh báo
       setInventoryInventoryMessage(''); // Reset
@@ -2152,10 +2156,35 @@ function ProductEntryForm({
 
   // Auto-calculate deliveryDate similar to ngay_giao logic (simplified)
   useEffect(() => {
-    // Only calculate if we have essential data: selected product, basic customer info, and inventory is not loading
-    if (!selectedProduct || !customerId || inventoryLoading) {
+    console.log('🔄 [DeliveryDate] useEffect triggered', {
+      selectedProduct: selectedProduct?.crdfd_masanpham,
+      customerId,
+      inventoryLoading,
+      inventoryLoaded,
+      inventoryTheoretical,
+      quantity,
+      districtLeadtime,
+      warehouseCode
+    });
+
+    // Only calculate if we have essential data: selected product, basic customer info, and inventory is loaded with real data
+    if (!selectedProduct || !customerId || inventoryLoading || !inventoryLoaded) {
+      console.log('⏸️ [DeliveryDate] Skipping calculation - missing prerequisites', {
+        hasSelectedProduct: !!selectedProduct,
+        hasCustomerId: !!customerId,
+        isInventoryLoading: inventoryLoading,
+        isInventoryLoaded: inventoryLoaded
+      });
       return;
     }
+
+    console.log('🚀 [DeliveryDate] Starting calculation with params:', {
+      productCode: selectedProduct.crdfd_masanpham,
+      quantity,
+      inventoryTheoretical,
+      districtLeadtime,
+      warehouseCode
+    });
 
     // Compute delivery date following canvas logic:
     // 1) Promotion lead time (promotion lead * 12 hours) when applicable
@@ -2207,7 +2236,7 @@ function ProductEntryForm({
         1;
 
 
-      const computed = computeDeliveryDate({
+      const computeParams = {
         // New parameters (2025)
         warehouseCode: warehouseCode,
         orderCreatedOn: new Date().toISOString(), // Current time as order creation time
@@ -2221,9 +2250,21 @@ function ProductEntryForm({
         var_selected_donvi_conversion: Number(conversionFactor) || 1,
         var_selected_SP_tonkho: inventoryTheoretical ?? 0,
         var_selected_SP_leadtime: productLeadTime || 0,
+      };
+
+      console.log('📊 [DeliveryDate] Calling computeDeliveryDate with:', computeParams);
+
+      const computed = computeDeliveryDate(computeParams);
+
+      console.log('📅 [DeliveryDate] Computed result:', {
+        computedDate: computed.toISOString(),
+        computedDayOfWeek: computed.getDay(),
+        computedHours: computed.getHours()
       });
 
       const formattedDate = formatDate(computed);
+
+      console.log('✅ [DeliveryDate] Final formatted date:', formattedDate);
 
       setDeliveryDate(formattedDate);
     } catch (e) {
@@ -2237,7 +2278,7 @@ function ProductEntryForm({
 
       setDeliveryDate(fallbackDate);
     }
-  }, [selectedPromotionId, promotions, selectedPromotion, customerIndustry, customerName, quantity, unitId, units, inventoryTheoretical, selectedProduct, stockQuantity, districtLeadtime, inventoryLoading, warehouse]);
+  }, [selectedPromotionId, promotions, selectedPromotion, customerIndustry, customerName, quantity, unitId, units, inventoryTheoretical, selectedProduct, stockQuantity, districtLeadtime, inventoryLoading, inventoryLoaded, warehouse]);
 
 
   // Fetch district leadtime when customer district key changes
@@ -2315,6 +2356,7 @@ function ProductEntryForm({
       setSelectedProduct(null);
       setUnitId('');
       setInventoryTheoretical(0);
+      setInventoryLoaded(false); // Reset inventory loaded flag
       setBypassWarningMessage(''); // Reset cảnh báo
       setInventoryInventoryMessage(''); // Reset
       setKhoBinhDinhMessage(''); // Reset
@@ -2348,6 +2390,7 @@ function ProductEntryForm({
       setUnitId('');
       setWarehouseId('');
       setInventoryTheoretical(0);
+      setInventoryLoaded(false); // Reset inventory loaded flag
       setBypassWarningMessage(''); // Reset cảnh báo
       setInventoryInventoryMessage(''); // Reset
       setKhoBinhDinhMessage(''); // Reset
@@ -2380,6 +2423,7 @@ function ProductEntryForm({
       setUnitId('');
       setWarehouseId('');
       setInventoryTheoretical(0);
+      setInventoryLoaded(false); // Reset inventory loaded flag
       setBypassWarningMessage(''); // Reset cảnh báo
       setInventoryInventoryMessage(''); // Reset
       setKhoBinhDinhMessage(''); // Reset

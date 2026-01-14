@@ -1049,12 +1049,10 @@ export default async function handler(
                     effectiveOrderTime = new Date();
                 }
 
-                // Apply weekend reset logic
-                effectiveOrderTime = getWeekendResetTime(effectiveOrderTime);
-
                 // NEW LOGIC (2025) - Priority 1: District leadtime
+                // IMPORTANT: District leadtime KHÔNG áp dụng weekend reset
                 if (districtLeadtime && districtLeadtime > 0) {
-                    let result = addWorkingDays(effectiveOrderTime, districtLeadtime);
+                    let result = addWorkingDays(orderTime, districtLeadtime);
                     result = applySundayAdjustment(result, warehouseCode);
 
                     const hour = result.getHours();
@@ -1065,11 +1063,15 @@ export default async function handler(
                 }
 
                 // NEW LOGIC (2025) - Priority 2: Out of stock rules by warehouse
+                // IMPORTANT: Weekend reset CHỈ áp dụng cho out-of-stock items
                 const requestedQty = product.quantity * (product.conversionFactor || 1);
                 const theoreticalStock = product.theoreticalStock ?? 0;
                 const isOutOfStock = requestedQty > theoreticalStock;
 
                 if (isOutOfStock && warehouseCode) {
+                    // Apply weekend reset for out-of-stock items only
+                    let effectiveOrderTime = getWeekendResetTime(orderTime);
+
                     let leadtimeCa = 0;
 
                     if (warehouseCode === 'KHOHCM') {
@@ -1136,15 +1138,25 @@ export default async function handler(
                 }
 
                 // LEGACY LOGIC - Default: use baseDeliveryDate hour to determine shift
-                const baseDate = baseDeliveryDate
+                let finalDate = baseDeliveryDate
                     ? new Date(baseDeliveryDate.split('/').reverse().join('-'))
                     : new Date();
 
-                if (isNaN(baseDate.getTime())) return { deliveryDateNew: null, shift: null };
+                if (isNaN(finalDate.getTime())) return { deliveryDateNew: null, shift: null };
 
-                const hour = baseDate.getHours();
-                const shift = (hour >= 0 && hour <= 12) ? CA_SANG : CA_CHIEU;
-                const dateStr = baseDate.toISOString().split('T')[0];
+                const hour = finalDate.getHours();
+                let shift = (hour >= 0 && hour <= 12) ? CA_SANG : CA_CHIEU;
+
+                // FINAL STEP: Apply Sunday adjustment for HCM warehouse (always, regardless of stock status)
+                finalDate = applySundayAdjustment(finalDate, warehouseCode);
+
+                // Recalculate shift if date changed due to Sunday adjustment
+                if (finalDate.getDay() !== (baseDeliveryDate ? new Date(baseDeliveryDate.split('/').reverse().join('-')).getDay() : new Date().getDay())) {
+                    const newHour = finalDate.getHours();
+                    shift = (newHour >= 0 && newHour <= 12) ? CA_SANG : CA_CHIEU;
+                }
+
+                const dateStr = finalDate.toISOString().split('T')[0];
                 return { deliveryDateNew: dateStr, shift };
             } catch (e) {
                 return { deliveryDateNew: null, shift: null };

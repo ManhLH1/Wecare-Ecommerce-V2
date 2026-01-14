@@ -30,7 +30,7 @@ export default async function handler(
   }
 
   try {
-    const { sobgId, customerId } = req.query;
+    const { sobgId, customerId, region, quantity } = req.query;
     if (!sobgId || typeof sobgId !== "string") {
       return res.status(400).json({ error: "sobgId is required" });
     }
@@ -248,17 +248,100 @@ export default async function handler(
             }
           });
 
-          // Set current prices for each product code
+          // Set current prices for each product code using the same flow as SO prices endpoint:
+          // - Build effectivePrices (if region provided, prefer region rows per unit)
+          // - Selection priority: region (cheapest per unit) -> customerGroups -> Shop -> first
           pricesByCode.forEach((prices, productCode) => {
-            if (prices.length > 0) {
-              currentPricesMap.set(productCode, {
-                prices: prices,
-                price: prices[0]?.price ?? null,
-                priceNoVat: prices[0]?.priceNoVat ?? null,
-                unitName: prices[0]?.unitName ?? undefined,
-                priceGroupText: prices[0]?.priceGroupText ?? undefined,
+            if (!prices || prices.length === 0) return;
+
+            const normalizeStr = (v: any) =>
+              (String(v ?? "").normalize ? String(v ?? "").normalize("NFC") : String(v ?? ""))
+                .replace(/\s+/g, " ")
+                .trim()
+                .toLowerCase();
+            const removeDiacritics = (s: string) =>
+              s && s.normalize ? s.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : s;
+            const normalizeNoDiacritics = (v: any) =>
+              removeDiacritics(String(v ?? ""))
+                .replace(/\s+/g, " ")
+                .trim()
+                .toLowerCase();
+
+            // Build effectivePrices (respect region filter per unit)
+            let effectivePrices = prices.slice();
+            if (region && typeof region === "string" && region.trim()) {
+              const safeRegionNorm = normalizeStr(region);
+              const safeRegionNoDiac = normalizeNoDiacritics(region);
+
+              const pricesByUnit = new Map<string, any[]>();
+              for (const p of prices) {
+                const unitKey = normalizeStr(p.unitName || p.crdfd_onvichuan || p.crdfd_onvichuantext || "default");
+                if (!pricesByUnit.has(unitKey)) pricesByUnit.set(unitKey, []);
+                pricesByUnit.get(unitKey)!.push(p);
+              }
+
+              const rebuilt: any[] = [];
+              pricesByUnit.forEach((group) => {
+                const regionEntries = group.filter((p: any) => {
+                  const pg = p.priceGroupText || p.crdfd_nhomoituongtext || "";
+                  return normalizeStr(pg) === safeRegionNorm || normalizeNoDiacritics(pg) === safeRegionNoDiac;
+                });
+                if (regionEntries.length > 0) {
+                  rebuilt.push(...regionEntries);
+                } else {
+                  rebuilt.push(...group);
+                }
+              });
+
+              // Sort by price per conversion factor ascending
+              effectivePrices = rebuilt.sort((a: any, b: any) => {
+                const va = Number(a.price ?? a.priceNoVat ?? 0) / (Number(a.crdfd_giatrichuyenoi ?? 1) || 1);
+                const vb = Number(b.price ?? b.priceNoVat ?? 0) / (Number(b.crdfd_giatrichuyenoi ?? 1) || 1);
+                return va - vb;
               });
             }
+
+            // Choose preferred row
+            let preferred: any = null;
+            try {
+              // 1) If region provided, prefer cheapest region candidate
+              if (region && typeof region === "string" && region.trim()) {
+                const safeRegionNorm = normalizeStr(region);
+                const safeRegionNoDiac = normalizeNoDiacritics(region);
+                const regionCandidates = effectivePrices.filter((p: any) => {
+                  const pg = p.priceGroupText || p.crdfd_nhomoituongtext || "";
+                  return normalizeStr(pg) === safeRegionNorm || normalizeNoDiacritics(pg) === safeRegionNoDiac;
+                });
+                if (regionCandidates.length > 0) {
+                  preferred = regionCandidates.reduce((a: any, b: any) => {
+                    const pa = Number(a.price ?? a.priceNoVat ?? 0) / (Number(a.crdfd_giatrichuyenoi ?? 1) || 1);
+                    const pb = Number(b.price ?? b.priceNoVat ?? 0) / (Number(b.crdfd_giatrichuyenoi ?? 1) || 1);
+                    return pb < pa ? b : a;
+                  }, regionCandidates[0]);
+                }
+              }
+
+              // 2) If no region preferred, try customerGroups
+              if (!preferred && customerGroups && customerGroups.length > 0) {
+                const groupSet = new Set(customerGroups.map((g) => normalizeStr(g)));
+                preferred = effectivePrices.find((p: any) => groupSet.has(normalizeStr(p.priceGroupText || p.crdfd_nhomoituongtext || "")));
+              }
+
+              // 3) Fallback to Shop or first
+              if (!preferred) {
+                preferred = effectivePrices.find((p: any) => normalizeStr(p.priceGroupText || "") === "shop") || effectivePrices[0] || null;
+              }
+            } catch (e) {
+              preferred = effectivePrices[0] || null;
+            }
+
+            currentPricesMap.set(productCode, {
+              prices: effectivePrices,
+              price: preferred?.price ?? effectivePrices[0]?.price ?? null,
+              priceNoVat: preferred?.priceNoVat ?? effectivePrices[0]?.priceNoVat ?? null,
+              unitName: preferred?.unitName ?? effectivePrices[0]?.unitName ?? undefined,
+              priceGroupText: preferred?.priceGroupText ?? effectivePrices[0]?.priceGroupText ?? undefined,
+            });
           });
           console.log(`[SOBG Details API] Price lookup completed in ${Date.now() - priceLookupStart}ms, found prices for ${pricesByCode.size} products`);
         } catch (err) {
