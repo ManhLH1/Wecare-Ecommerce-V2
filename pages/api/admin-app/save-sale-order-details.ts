@@ -498,8 +498,70 @@ async function trySetTensanphamLookup(
 }
 
 // Ca OptionSet values
-const CA_SANG = 283640000; // "Ca sáng"
-const CA_CHIEU = 283640001; // "Ca chiều"
+const CA_SANG = 283640000; // "Ca sáng" (0:00 - 12:00)
+const CA_CHIEU = 283640001; // "Ca chiều" (12:00 - 23:59)
+
+// Helper function to calculate shift (ca) based on created on time and delivery date
+function calculateShiftFromCreatedOnAndDeliveryDate(
+  orderCreatedOn: string | undefined,
+  deliveryDate: string | undefined
+): number | null {
+  if (!orderCreatedOn || !deliveryDate) {
+    return null;
+  }
+
+  try {
+    // Parse order creation time
+    const createdDateTime = new Date(orderCreatedOn);
+    if (isNaN(createdDateTime.getTime())) {
+      console.warn('[Calculate Shift] Invalid orderCreatedOn format:', orderCreatedOn);
+      return null;
+    }
+
+    // Parse delivery date (format: dd/mm/yyyy or YYYY-MM-DD)
+    let deliveryDateObj: Date;
+    if (deliveryDate.includes('/')) {
+      // Format: dd/mm/yyyy
+      const [day, month, year] = deliveryDate.split('/');
+      deliveryDateObj = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+    } else {
+      // Format: YYYY-MM-DD
+      deliveryDateObj = new Date(deliveryDate);
+    }
+
+    if (isNaN(deliveryDateObj.getTime())) {
+      console.warn('[Calculate Shift] Invalid deliveryDate format:', deliveryDate);
+      return null;
+    }
+
+    // Extract date part (YYYY-MM-DD) for comparison
+    const createdDateStr = createdDateTime.toISOString().split('T')[0];
+    const deliveryDateStr = deliveryDateObj.toISOString().split('T')[0];
+
+    console.log('[Calculate Shift] Comparing dates:', {
+      createdDateStr,
+      deliveryDateStr,
+      createdHour: createdDateTime.getHours()
+    });
+
+    // If delivery date is the same as created date, use the created time to determine shift
+    if (createdDateStr === deliveryDateStr) {
+      const createdHour = createdDateTime.getHours();
+      const shift = (createdHour >= 0 && createdHour < 12) ? CA_SANG : CA_CHIEU;
+      console.log('[Calculate Shift] Same day delivery - using created hour:', createdHour, '-> shift:', shift);
+      return shift;
+    }
+
+    // If delivery date is different from created date, use default morning shift
+    // This can be enhanced later with more complex logic if needed
+    console.log('[Calculate Shift] Different day delivery - defaulting to morning shift');
+    return CA_SANG;
+
+  } catch (error: any) {
+    console.warn('[Calculate Shift] Error calculating shift:', error.message);
+    return null;
+  }
+}
 
 // Map VAT percentage to Điều chỉnh GTGT OptionSet value
 const VAT_TO_IEUCHINHGTGT_MAP: Record<number, number> = {
@@ -1259,6 +1321,19 @@ export default async function handler(
       }
     }
 
+    // ============ FETCH ORDER CREATION TIME FOR SHIFT CALCULATION ============
+    let orderCreatedOn: string | undefined;
+    try {
+      const soResp = await apiClient.get(`${SALE_ORDERS_TABLE}(${soId})?$select=createdon`, { headers });
+      const soData = soResp.data || {};
+      orderCreatedOn = soData.createdon;
+      console.log('[Save SOD] Fetched order created on:', orderCreatedOn);
+    } catch (err: any) {
+      // Use current timestamp as fallback
+      orderCreatedOn = new Date().toISOString();
+      console.warn('[Save SOD] Could not fetch SO createdon, using current time:', err?.message || err);
+    }
+
     // ============ PRE-FETCH LOOKUP DATA FOR ALL PRODUCTS ============
     console.log('[Save SOD] 🔍 Pre-fetching lookup data for all products...');
 
@@ -1398,6 +1473,19 @@ export default async function handler(
             ? product.deliveryDate
             : product.deliveryDate;
 
+        // ============ CALCULATE SHIFT BASED ON CREATED ON AND DELIVERY DATE ============
+        const shift = calculateShiftFromCreatedOnAndDeliveryDate(orderCreatedOn, product.deliveryDate);
+
+        if (shift !== null) {
+          console.log('[Save SOD] Calculated shift for product:', {
+            productCode: product.productCode,
+            productName: product.productName,
+            shift: shift,
+            orderCreatedOn: orderCreatedOn,
+            deliveryDate: product.deliveryDate
+          });
+        }
+
         // Reference to Sale Order using Navigation property with @odata.bind
         // Field name is crdfd_SOcode (with capital S and O), not crdfd_socode
         // Ensure subtotal/vat/total use the same calculation as UI 'Tổng' cell:
@@ -1430,6 +1518,8 @@ export default async function handler(
           crdfd_phuphi_hoadon: product.invoiceSurcharge ?? 0,
           cr1bb_donhanggap: product.urgentOrder ?? false,
           crdfd_promotiontext: product.promotionText || "",
+          // Set shift (ca) based on calculated delivery logic using created on and delivery date
+          ...(shift !== null ? { cr1bb_ca: shift } : {}),
         };
 
         // Assume promotion will be applied unless a validation marks it skipped
