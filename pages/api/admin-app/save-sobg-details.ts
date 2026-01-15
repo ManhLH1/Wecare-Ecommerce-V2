@@ -1070,7 +1070,7 @@ export default async function handler(
 
                 if (isOutOfStock && warehouseCode) {
                     // Apply weekend reset for out-of-stock items only
-                    let effectiveOrderTime = getWeekendResetTime(effectiveOrderTime);
+                    let adjustedOrderTime = getWeekendResetTime(effectiveOrderTime);
 
                     let leadtimeCa = 0;
 
@@ -1083,7 +1083,7 @@ export default async function handler(
                     }
 
                     if (leadtimeCa > 0) {
-                        let result = addWorkingDays(effectiveOrderTime, leadtimeCa);
+                        let result = addWorkingDays(adjustedOrderTime, leadtimeCa);
                         result = applySundayAdjustment(result, warehouseCode);
 
                         const hour = result.getHours();
