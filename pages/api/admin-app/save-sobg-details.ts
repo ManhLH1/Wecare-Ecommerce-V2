@@ -1052,7 +1052,7 @@ export default async function handler(
                 // NEW LOGIC (2025) - Priority 1: District leadtime
                 // IMPORTANT: District leadtime KHÔNG áp dụng weekend reset
                 if (districtLeadtime && districtLeadtime > 0) {
-                    let result = addWorkingDays(orderTime, districtLeadtime);
+                    let result = addWorkingDays(effectiveOrderTime, districtLeadtime);
                     result = applySundayAdjustment(result, warehouseCode);
 
                     const hour = result.getHours();
@@ -1070,7 +1070,7 @@ export default async function handler(
 
                 if (isOutOfStock && warehouseCode) {
                     // Apply weekend reset for out-of-stock items only
-                    let effectiveOrderTime = getWeekendResetTime(orderTime);
+                    let effectiveOrderTime = getWeekendResetTime(effectiveOrderTime);
 
                     let leadtimeCa = 0;
 
