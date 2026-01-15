@@ -1541,13 +1541,22 @@ export default async function handler(
         // Add delivery date if available
         // CRM requires Edm.Date format (YYYY-MM-DD), not ISO string with time
         if (product.deliveryDate) {
+          console.log('[Save SOD] Processing delivery date:', {
+            productCode: product.productCode,
+            deliveryDate: product.deliveryDate,
+            deliveryDateType: typeof product.deliveryDate
+          });
+
           let dateStr = '';
           // Parse date string (format: dd/mm/yyyy) to YYYY-MM-DD
           const dateParts = product.deliveryDate.split('/');
+          console.log('[Save SOD] Date parts after split:', dateParts);
+
           if (dateParts.length === 3) {
             const [day, month, year] = dateParts;
             // Format as YYYY-MM-DD
             dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            console.log('[Save SOD] Formatted date string:', dateStr);
           } else {
             // Try to parse as ISO string or other format
             const dateObj = new Date(product.deliveryDate);
@@ -1556,11 +1565,19 @@ export default async function handler(
               const month = String(dateObj.getMonth() + 1).padStart(2, '0');
               const day = String(dateObj.getDate()).padStart(2, '0');
               dateStr = `${year}-${month}-${day}`;
+              console.log('[Save SOD] Parsed from Date object:', dateStr);
             }
           }
           if (dateStr) {
             payload.crdfd_ngaygiaodukientonghop = dateStr;
+            payload.crdfd_exdeliverrydate = dateStr;
+            console.log('[Save SOD] Set payload.crdfd_ngaygiaodukientonghop:', dateStr);
+            console.log('[Save SOD] Set payload.crdfd_exdeliverrydate:', dateStr);
+          } else {
+            console.log('[Save SOD] Failed to parse delivery date, dateStr is empty');
           }
+        } else {
+          console.log('[Save SOD] No delivery date provided for product:', product.productCode);
         }
 
         // Get pre-fetched product ID (no additional API call needed)
@@ -1598,29 +1615,6 @@ export default async function handler(
           payload.crdfd_tylechuyenoi = tyleChuyenDoi;
         }
 
-        // Tính ngày giao mới (crdfd_exdeliverrydate) và ca làm việc (cr1bb_ca) dựa trên lead time logic
-        // Extract warehouse code from warehouse name
-        const warehouseCode = extractWarehouseCode(warehouseName);
-
-        // TODO: Get soCreatedOn from SO record, customerDistrictLeadtime from customer district mapping
-        const { deliveryDateNew, shift } = await calculateDeliveryDateAndShift(
-          product,
-          products,
-          customerIndustry,
-          product.deliveryDate,
-          headers,
-          warehouseCode, // Extracted from warehouseName
-          undefined, // soCreatedOn - TODO: fetch from SO record
-          undefined  // customerDistrictLeadtime - TODO: get from district mapping
-        );
-
-            if (deliveryDateNew) {
-          payload.crdfd_exdeliverrydate = deliveryDateNew;
-        }
-
-        if (shift !== null) {
-          payload.cr1bb_ca = shift;
-        }
 
         // Add approver if available
         if (product.approver) {
@@ -1666,6 +1660,7 @@ export default async function handler(
 
             console.log('[Save SOD] 🚀 Sending POST to:', createEndpoint);
             console.log('[Save SOD] 🚀 Creation Headers:', JSON.stringify(createHeaders, null, 2));
+            console.log('[Save SOD] 🚀 Payload:', JSON.stringify(payload, null, 2));
 
             const createResponse = await apiClient.post(createEndpoint, payload, {
               headers: createHeaders,

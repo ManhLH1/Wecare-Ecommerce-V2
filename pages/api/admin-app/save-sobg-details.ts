@@ -918,7 +918,7 @@ export default async function handler(
                 "crdfd_gtgt": mapVatPercentToChoice(product.vat),
                 "crdfd_tongtienkhongvat": computedSubtotal,
                 ...(shift ? { "cr1bb_ca": shift } : {}),
-                "crdfd_ngaygiaodukien": deliveryDateNew ? deliveryDateNew : formatDateForCRM(product.deliveryDate),
+                "crdfd_ngaygiaodukien": formatDateForCRM(product.deliveryDate),
                 "crdfd_chietkhau": product.discountPercent ? product.discountPercent / 100 : 0,
                 "crdfd_chietkhauvn": product.discountAmount ?? 0,
                 "crdfd_chietkhau2": product.discount2 ? product.discount2 / 100 : 0,
