@@ -303,6 +303,7 @@ interface ProductEntryFormProps {
   disableInventoryReserve?: boolean; // Tắt tính năng giữ hàng tự động (dùng cho SOBG)
   orderTotal?: number; // Tổng tiền toàn đơn (dùng để check Promotion Order & phân bổ chiết khấu VNĐ)
   onOpenSpecialPromotions?: () => Promise<void> | void;
+  onOpenDiscount2?: () => Promise<void> | void;
   enablePromotionAutoFetch?: boolean;
   onDistrictLeadtimeChange?: (leadtime: number) => void; // Callback khi district leadtime thay đổi
 }
@@ -378,6 +379,7 @@ function ProductEntryForm({
   disableInventoryReserve = false,
   orderTotal,
   onOpenSpecialPromotions,
+  onOpenDiscount2,
   enablePromotionAutoFetch = false,
 }: ProductEntryFormProps) {
 
@@ -1249,6 +1251,19 @@ function ProductEntryForm({
 
   // Function to load inventory with caching
   const loadInventory = async () => {
+    // Inventory functionality disabled — short-circuit and clear inventory state.
+    setInventoryLoading(false);
+    setInventoryLoaded(false);
+    setInventoryTheoretical(0);
+    setReservedQuantity(0);
+    setAvailableToSell(0);
+    setStockQuantity(0);
+    setBypassWarningMessage('');
+    setInventoryInventoryMessage('');
+    setKhoBinhDinhMessage('');
+    setInventoryMessage('');
+    setInventoryColor(undefined);
+    return;
     // Xác định nguồn tồn kho:
     // - Case đặc biệt (shouldBypassInventoryCheck) → luôn lấy từ "Kho Bình Định" (isVatOrder = true)
     // - Case thường: theo VAT của Sales Order:
@@ -2910,6 +2925,22 @@ function ProductEntryForm({
                     type="button"
                     className="admin-app-mini-btn admin-app-mini-btn-ghost"
                     onClick={() => {
+                      if (typeof onOpenDiscount2 === 'function') {
+                        onOpenDiscount2();
+                      } else {
+                        showToast.info('Chức năng chiết khấu 2 chưa sẵn sàng.');
+                      }
+                    }}
+                    disabled={!onOpenDiscount2}
+                    title="Chiết khấu 2"
+                    style={{ marginLeft: 6 }}
+                  >
+                    💰
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-app-mini-btn admin-app-mini-btn-ghost"
+                    onClick={() => {
                       if (typeof onOpenSpecialPromotions === 'function') {
                         onOpenSpecialPromotions();
                       } else {
@@ -3097,50 +3128,7 @@ function ProductEntryForm({
                 <span>Đang tải dữ liệu sản phẩm...</span>
               </div>
             )}
-            {/* Inventory: place directly under product select - Always visible */}
-            <div
-              className="admin-app-inventory-under-product"
-              style={inventoryColor ? { color: inventoryColor } : undefined}
-            >
-              {inventoryLoading && (
-                <div className="admin-app-spinner admin-app-spinner-small" style={{ marginRight: '6px' }}></div>
-              )}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {bypassWarningMessage && (
-                  <span className="admin-app-inventory-text" style={{ color: '#f59e0b' }}>
-                    {bypassWarningMessage}
-                  </span>
-                )}
-                {inventoryLoading ? (
-                  <div className="admin-app-inventory-text">Đang tải tồn kho...</div>
-                ) : inventoryInventoryMessage || khoBinhDinhMessage ? (
-                  <>
-                    <div className="admin-app-inventory-text" style={{ fontStyle: isUsingInventory ? 'normal' : 'italic' }}>
-                      {inventoryInventoryMessage}
-                    </div>
-                    <div className="admin-app-inventory-text" style={{ fontStyle: isUsingInventory ? 'italic' : 'normal' }}>
-                      {khoBinhDinhMessage}
-                    </div>
-                  </>
-                ) : (
-                  <div className="admin-app-inventory-text">Chọn sản phẩm và kho để xem tồn kho</div>
-                )}
-              </div>
-              {!shouldBypassInventoryCheck &&
-                selectedProductCode &&
-                warehouse &&
-                (inventoryTheoretical === 0 || inventoryTheoretical === null) &&
-                !inventoryLoading && (
-                  <button
-                    type="button"
-                    onClick={handleReloadInventory}
-                    className="admin-app-reload-btn"
-                    title="Tải lại tồn kho"
-                  >
-                    ↻
-                  </button>
-                )}
-            </div>
+            {/* Inventory UI removed */}
             {priceWarningMessage && priceWarningMessage !== 'Giá bình thường' && (
               <span className="admin-app-badge-error">{priceWarningMessage}</span>
             )}
@@ -3409,26 +3397,7 @@ function ProductEntryForm({
               )}
             </div>
 
-            <div style={{ width: '140px' }}>
-              <button
-                type="button"
-                className="admin-app-mini-btn admin-app-mini-btn-secondary"
-                onClick={handleCheckPromotion}
-                disabled={promotionLoading}
-                title="Kiểm tra promotion"
-                style={{
-                  width: '100%',
-                  height: '36px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '13px',
-                  fontWeight: '600'
-                }}
-              >
-                {promotionLoading ? 'Đang kiểm tra...' : 'Kiểm tra Promotion'}
-              </button>
-            </div>
+            {/* Promotion and Discount2 buttons removed as requested */}
           </div>
         </div>
 

@@ -981,7 +981,13 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         setShowPromotionOrderPopup(false);
         setSelectedPromotionOrders([]);
 
-        showToast.success('Đã lưu đơn hàng với khuyến mãi thành công!');
+        // Check if any applied promotions are chiết khấu 2
+        const hasDiscount2 = promosToInclude.some(promo => promo.chietKhau2 === 191920001);
+        const message = hasDiscount2
+          ? 'Đã lưu đơn hàng với chiết khấu 2 thành công!'
+          : 'Đã lưu đơn hàng với khuyến mãi thành công!';
+
+        showToast.success(message);
       } else {
         console.error('[Save with Promotions] ❌ Save failed:', result);
         showToast.error(result.message || 'Lưu đơn hàng thất bại');
@@ -1117,7 +1123,13 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       const failedCount = results.filter(r => r && r.success === false).length;
 
       if (successCount > 0) {
-        showToast.success(`Đã áp dụng ${successCount}/${promosToApply.length} Promotion Order thành công!`);
+        // Check if any applied promotions are chiết khấu 2
+        const hasDiscount2 = promosToApply.some(promo => promo.chietKhau2 === 191920001);
+        const message = hasDiscount2
+          ? `Đã áp dụng ${successCount}/${promosToApply.length} chiết khấu 2 thành công!`
+          : `Đã áp dụng ${successCount}/${promosToApply.length} Promotion Order thành công!`;
+
+        showToast.success(message);
         setShowPromotionOrderPopup(false);
         setSelectedPromotionOrders([]);
         setPromotionOrderList([]);
@@ -1593,6 +1605,53 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
               onClick={async () => {
                 try {
                   if (!soId || !customerCode) {
+                    showToast.warning('Vui lòng chọn khách hàng và lưu SO trước khi tải chiết khấu 2.');
+                    return;
+                  }
+                  const orderTotal = orderSummary.total;
+                  const productCodes = productList.map(p => p.productCode).filter(Boolean) as string[];
+                  const productGroupCodes = productList.map(p => p.productGroupCode).filter(Boolean) as string[];
+                  const res = await fetchPromotionOrders(soId, customerCode, orderTotal, productCodes, productGroupCodes, selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan);
+
+                  // Filter for chiết khấu 2 promotions (chietKhau2 = 191920001)
+                  const discount2Promotions = (res.allPromotions || []).filter((p: PromotionOrderItem) =>
+                    p.chietKhau2 === 191920001 && ((p.applicable === true) || (String(p.applicable).toLowerCase() === 'true'))
+                  );
+
+                  console.log('🔍 Chiết khấu 2 debug:', {
+                    soId,
+                    customerCode,
+                    orderTotal,
+                    allPromotionsCount: res.allPromotions?.length || 0,
+                    discount2PromotionsCount: discount2Promotions.length,
+                    discount2Promotions: discount2Promotions.map(p => ({ name: p.name, chietKhau2: p.chietKhau2, applicable: p.applicable }))
+                  });
+
+                  if (!discount2Promotions || discount2Promotions.length === 0) {
+                    showToast.info('Không tìm thấy chiết khấu 2 khả dụng.');
+                    return;
+                  }
+                  setSpecialPromotionList(discount2Promotions);
+                  // Show only chiết khấu 2 promotions in the popup for selection
+                  setPromotionOrderList(discount2Promotions);
+                  setSelectedPromotionOrders([]);
+                  setSoId(soId);
+                  setShowPromotionOrderPopup(true);
+                } catch (err: any) {
+                  console.error('Error loading chiết khấu 2:', err);
+                  showToast.error('Lỗi khi tải chiết khấu 2.');
+                }
+              }}
+              title={`Chiết khấu 2 ${!customerId || !soId ? '(Cần chọn KH & SO)' : ''}`}
+              disabled={!customerId || !soId}
+            >
+              💰 Chiết khấu 2
+            </button>
+            <button
+              className="admin-app-header-btn admin-app-header-btn-secondary"
+              onClick={async () => {
+                try {
+                  if (!soId || !customerCode) {
                     showToast.warning('Vui lòng chọn khách hàng và lưu SO trước khi tải khuyến mãi đặc biệt.');
                     return;
                   }
@@ -1648,51 +1707,96 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           </div>
         </div>
       )}
-      {/* Floating special promotions button when header is hidden */}
+      {/* Floating buttons when header is hidden */}
       {hideHeader && customerId && soId && (
-        <button
-          onClick={async () => {
-            try {
-              const orderTotal = orderSummary.total;
-              const productCodes = productList.map(p => p.productCode).filter(Boolean) as string[];
-              const productGroupCodes = productList.map(p => p.productGroupCode).filter(Boolean) as string[];
-              const res = await fetchPromotionOrders(soId, customerCode, orderTotal, productCodes, productGroupCodes, selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan);
-              let specials = Array.isArray(res.specialPromotions) && res.specialPromotions.length > 0
-                ? res.specialPromotions
-                : ((res.allPromotions || []).filter((p: PromotionOrderItem) =>
-                    SPECIAL_PROMOTION_KEYWORDS.some(k => !!p.name && p.name.includes(k))
-                  ));
-              specials = specials.filter(p => (p.applicable === true) || (String(p.applicable).toLowerCase() === 'true'));
-              if (!specials || specials.length === 0) {
-                showToast.info('Không tìm thấy khuyến mãi đặc biệt.');
-                return;
+        <>
+          <button
+            onClick={async () => {
+              try {
+                const orderTotal = orderSummary.total;
+                const productCodes = productList.map(p => p.productCode).filter(Boolean) as string[];
+                const productGroupCodes = productList.map(p => p.productGroupCode).filter(Boolean) as string[];
+                const res = await fetchPromotionOrders(soId, customerCode, orderTotal, productCodes, productGroupCodes, selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan);
+
+                // Filter for chiết khấu 2 promotions (chietKhau2 = 191920001)
+                const discount2Promotions = (res.allPromotions || []).filter((p: PromotionOrderItem) =>
+                  p.chietKhau2 === 191920001 && ((p.applicable === true) || (String(p.applicable).toLowerCase() === 'true'))
+                );
+
+                if (!discount2Promotions || discount2Promotions.length === 0) {
+                  showToast.info('Không tìm thấy chiết khấu 2 khả dụng.');
+                  return;
+                }
+                setSpecialPromotionList(discount2Promotions);
+                setPromotionOrderList(discount2Promotions);
+                setSelectedPromotionOrders([]);
+                setSoId(soId);
+                setShowPromotionOrderPopup(true);
+              } catch (err: any) {
+                console.error('Error loading chiết khấu 2 (floating):', err);
+                showToast.error('Lỗi khi tải chiết khấu 2.');
               }
-              setSpecialPromotionList(specials);
-              setPromotionOrderList(specials);
-              setSelectedPromotionOrders([]);
-              setSoId(soId);
-              setShowPromotionOrderPopup(true);
-            } catch (err: any) {
-              console.error('Error loading special promotions (floating):', err);
-              showToast.error('Lỗi khi tải khuyến mãi đặc biệt.');
-            }
-          }}
-          title="Khuyến mãi đặc biệt"
-          style={{
-            position: 'fixed',
-            right: 120,
-            top: 14,
-            zIndex: 60,
-            padding: '8px 12px',
-            borderRadius: 8,
-            background: '#fff',
-            border: '1px solid #e5e7eb',
-            boxShadow: '0 1px 6px rgba(0,0,0,0.08)',
-            cursor: 'pointer'
-          }}
-        >
-          🎁
-        </button>
+            }}
+            title="Chiết khấu 2"
+            style={{
+              position: 'fixed',
+              right: 70,
+              top: 14,
+              zIndex: 60,
+              padding: '8px 12px',
+              borderRadius: 8,
+              background: '#fff',
+              border: '1px solid #e5e7eb',
+              boxShadow: '0 1px 6px rgba(0,0,0,0.08)',
+              cursor: 'pointer'
+            }}
+          >
+            💰
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                const orderTotal = orderSummary.total;
+                const productCodes = productList.map(p => p.productCode).filter(Boolean) as string[];
+                const productGroupCodes = productList.map(p => p.productGroupCode).filter(Boolean) as string[];
+                const res = await fetchPromotionOrders(soId, customerCode, orderTotal, productCodes, productGroupCodes, selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan);
+                let specials = Array.isArray(res.specialPromotions) && res.specialPromotions.length > 0
+                  ? res.specialPromotions
+                  : ((res.allPromotions || []).filter((p: PromotionOrderItem) =>
+                      SPECIAL_PROMOTION_KEYWORDS.some(k => !!p.name && p.name.includes(k))
+                    ));
+                specials = specials.filter(p => (p.applicable === true) || (String(p.applicable).toLowerCase() === 'true'));
+                if (!specials || specials.length === 0) {
+                  showToast.info('Không tìm thấy khuyến mãi đặc biệt.');
+                  return;
+                }
+                setSpecialPromotionList(specials);
+                setPromotionOrderList(specials);
+                setSelectedPromotionOrders([]);
+                setSoId(soId);
+                setShowPromotionOrderPopup(true);
+              } catch (err: any) {
+                console.error('Error loading special promotions (floating):', err);
+                showToast.error('Lỗi khi tải khuyến mãi đặc biệt.');
+              }
+            }}
+            title="Khuyến mãi đặc biệt"
+            style={{
+              position: 'fixed',
+              right: 120,
+              top: 14,
+              zIndex: 60,
+              padding: '8px 12px',
+              borderRadius: 8,
+              background: '#fff',
+              border: '1px solid #e5e7eb',
+              boxShadow: '0 1px 6px rgba(0,0,0,0.08)',
+              cursor: 'pointer'
+            }}
+          >
+            🎁
+          </button>
+        </>
       )}
 
       {/* Main Content - 2 Columns Layout */}
@@ -1935,6 +2039,41 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             onRefresh={handleRefresh}
             onInventoryReserved={() => { }} // Callback để trigger reload inventory
             onProductGroupCodeChange={setProductGroupCode} // Callback để cập nhật productGroupCode
+            onOpenDiscount2={async () => {
+              try {
+                const orderTotal = orderSummary.total;
+                const productCodes = productList.map(p => p.productCode).filter(Boolean) as string[];
+                const productGroupCodes = productList.map(p => p.productGroupCode).filter(Boolean) as string[];
+
+                // Fetch promotions even if soId/customerCode are not present; backend will filter accordingly
+                const res = await fetchPromotionOrders(
+                  soId || undefined,
+                  customerCode || undefined,
+                  orderTotal,
+                  productCodes,
+                  productGroupCodes,
+                  selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan
+                );
+
+                // Filter for chiết khấu 2 promotions (chietKhau2 = 191920001)
+                const discount2Promotions = (res.allPromotions || []).filter((p: PromotionOrderItem) =>
+                  p.chietKhau2 === 191920001 && ((p.applicable === true) || (String(p.applicable).toLowerCase() === 'true'))
+                );
+
+                if (!discount2Promotions || discount2Promotions.length === 0) {
+                  showToast.info('Không tìm thấy chiết khấu 2 khả dụng.');
+                  return;
+                }
+                setSpecialPromotionList(discount2Promotions);
+                setPromotionOrderList(discount2Promotions);
+                setSelectedPromotionOrders([]);
+                if (soId) setSoId(soId);
+                setShowPromotionOrderPopup(true);
+              } catch (err: any) {
+                console.error('Error loading chiết khấu 2 from child:', err);
+                showToast.error('Lỗi khi tải chiết khấu 2.');
+              }
+            }}
             onOpenSpecialPromotions={async () => {
               try {
                 if (!soId || !customerCode) {

@@ -496,7 +496,7 @@ export interface PromotionOrderResponse {
  * Lấy danh sách Promotion Order cho một SO
  */
 export const fetchPromotionOrders = async (
-  soId: string,
+  soId?: string,
   customerCode?: string,
   totalAmount?: number,
   productCodes?: string[],
@@ -504,11 +504,13 @@ export const fetchPromotionOrders = async (
   paymentTerms?: string
 ): Promise<PromotionOrderResponse> => {
   try {
-    const params: Record<string, string> = { soId };
+    const params: Record<string, string> = {};
+    if (soId) params.soId = soId;
     if (customerCode) params.customerCode = customerCode;
     if (productCodes && productCodes.length > 0) params.productCodes = productCodes.join(",");
     if (productGroupCodes && productGroupCodes.length > 0) params.productGroupCodes = productGroupCodes.join(",");
     if (paymentTerms) params.paymentTerms = paymentTerms;
+    if (totalAmount !== undefined && totalAmount !== null) params.totalAmount = String(totalAmount);
 
     const response = await axios.get(`${BASE_URL}/promotion-orders`, { params });
     return response.data;
@@ -725,6 +727,7 @@ export interface SaveSOBGDetailsRequest {
   customerIndustry?: number | null;
   customerLoginId?: string;
   customerId?: string;
+  districtLeadtime?: number; // Leadtime theo vùng miền (ca)
   userInfo?: {
     username?: string;
     name?: string;
