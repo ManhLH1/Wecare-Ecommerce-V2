@@ -1037,6 +1037,44 @@ export default async function handler(
                     return d;
                 };
 
+                // Add working days but support fractional days (e.g., districtLeadtime in "ca" where 1 ca = 12 hours)
+                const addWorkingDaysWithFraction = (base: Date, days: number, warehouseCode?: string): Date => {
+                    const d = new Date(base);
+                    const totalHours = Math.round(days * 12);
+                    if (totalHours <= 0) return d;
+
+                    // HCM: skip weekend hours (Mon-Fri only)
+                    if (warehouseCode === 'KHOHCM') {
+                        const baseDay = d.getDay();
+                        if (baseDay === 6) {
+                            d.setDate(d.getDate() + 2);
+                        } else if (baseDay === 0) {
+                            d.setDate(d.getDate() + 1);
+                        }
+
+                        let remainingHours = totalHours;
+                        while (remainingHours > 0) {
+                            d.setHours(d.getHours() + 1);
+                            const dayOfWeek = d.getDay();
+                            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                                remainingHours--;
+                            } else {
+                                if (dayOfWeek === 6) {
+                                    d.setDate(d.getDate() + 2);
+                                } else if (dayOfWeek === 0) {
+                                    d.setDate(d.getDate() + 1);
+                                }
+                            }
+                        }
+
+                        return d;
+                    }
+
+                    // Other warehouses (e.g., KHOBD): count hours continuously including weekends
+                    d.setHours(d.getHours() + totalHours);
+                    return d;
+                };
+
                 const isApolloKimTinPromotion = (product: any): boolean => {
                     if (!product.promotionText) return false;
                     const name = product.promotionText.toLowerCase();
@@ -1052,7 +1090,8 @@ export default async function handler(
                 // NEW LOGIC (2025) - Priority 1: District leadtime
                 // IMPORTANT: District leadtime KHÔNG áp dụng weekend reset
                 if (districtLeadtime && districtLeadtime > 0) {
-                    let result = addWorkingDays(effectiveOrderTime, districtLeadtime);
+                    // districtLeadtime is in "ca" (shift units). Use fractional working-days helper.
+                    let result = addWorkingDaysWithFraction(effectiveOrderTime, districtLeadtime, warehouseCode);
                     result = applySundayAdjustment(result, warehouseCode);
 
                     const hour = result.getHours();
@@ -1083,7 +1122,8 @@ export default async function handler(
                     }
 
                     if (leadtimeCa > 0) {
-                        let result = addWorkingDays(adjustedOrderTime, leadtimeCa);
+                        // leadtimeCa is expressed in "ca" (shift units) - use fractional helper
+                        let result = addWorkingDaysWithFraction(adjustedOrderTime, leadtimeCa, warehouseCode);
                         result = applySundayAdjustment(result, warehouseCode);
 
                         const hour = result.getHours();

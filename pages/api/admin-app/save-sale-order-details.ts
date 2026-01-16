@@ -223,6 +223,7 @@ const KHO_BD_TABLE = "crdfd_kho_binh_dinhs";
 const UNIT_CONVERSION_TABLE = "crdfd_unitconvertions";
 const CUSTOMER_TABLE = "crdfd_customers";
 const PROMOTION_TABLE = "crdfd_promotions";
+const QUOTE_DETAIL_TABLE = "crdfd_baogiachitiets";
 const PROVINCE_TABLE = "crdfd_tinhthanhs"; // Tỉnh/Thành
 const DISTRICT_TABLE = "cr1bb_quanhuyens"; // Quận/Huyện
 
@@ -650,6 +651,70 @@ async function lookupUnitConversionId(
   return null;
 }
 
+// Helper function to lookup quote detail ID from productCode and customerId
+async function lookupQuoteDetailId(
+  productCode: string | undefined,
+  customerId: string | undefined,
+  headers: any
+): Promise<string | null> {
+  if (!productCode) {
+    return null;
+  }
+
+  try {
+    const safeCode = productCode.trim().replace(/'/g, "''");
+
+    // Build filter: match product code and active records
+    let filter = `crdfd_masanpham eq '${safeCode}' and statecode eq 0`;
+
+    // If customerId is provided, try to match by customer group
+    if (customerId) {
+      const safeCustomerId = customerId.trim().replace(/'/g, "''");
+      // Lookup customer to get customer group
+      try {
+        const customerQuery = `$select=_crdfd_nhomoituong_value&$filter=crdfd_customersid eq ${safeCustomerId}`;
+        const customerResponse = await apiClient.get(`${CUSTOMER_TABLE}?${customerQuery}`, { headers });
+        const customers = customerResponse.data.value || [];
+
+        if (customers.length > 0 && customers[0]._crdfd_nhomoituong_value) {
+          const customerGroupId = customers[0]._crdfd_nhomoituong_value;
+          filter += ` and _crdfd_nhomoituong_value eq ${customerGroupId}`;
+        }
+      } catch (customerError) {
+        // Continue without customer group filter if lookup fails
+        console.warn('[Lookup Quote Detail] Could not lookup customer group:', (customerError as Error).message);
+      }
+    }
+
+    const columns = "crdfd_baogiachitietid,crdfd_masanpham,crdfd_gia,crdfd_ngaybaogia,crdfd_hieuluctoingay";
+    const query = `$select=${columns}&$filter=${encodeURIComponent(filter)}&$orderby=crdfd_ngaybaogia desc&$top=1`;
+    const endpoint = `${QUOTE_DETAIL_TABLE}?${query}`;
+
+    const response = await apiClient.get(endpoint, { headers });
+    const results = response.data.value || [];
+
+    if (results.length > 0) {
+      const quoteDetail = results[0];
+
+      // Check if the quote is still valid (not expired)
+      if (quoteDetail.crdfd_hieuluctoingay) {
+        const expiryDate = new Date(quoteDetail.crdfd_hieuluctoingay);
+        const now = new Date();
+        if (expiryDate < now) {
+          console.warn('[Lookup Quote Detail] Quote expired:', quoteDetail.crdfd_baogiachitietid);
+          return null;
+        }
+      }
+
+      return quoteDetail.crdfd_baogiachitietid;
+    }
+  } catch (error: any) {
+    console.warn('[Lookup Quote Detail] Error looking up quote detail:', error.message);
+  }
+
+  return null;
+}
+
 // NEW LOGIC (2025): Calculate delivery date based on updated business rules
 async function calculateDeliveryDateAndShift(
   product: SaleOrderDetailInput,
@@ -674,6 +739,44 @@ async function calculateDeliveryDateAndShift(
           added++;
         }
       }
+      return d;
+    };
+    
+    // Add working days but support fractional days (districtLeadtime in "ca", 1 ca = 12 hours)
+    const addWorkingDaysWithFraction = (base: Date, days: number, warehouseCode?: string): Date => {
+      const d = new Date(base);
+      const totalHours = Math.round(days * 12);
+      if (totalHours <= 0) return d;
+
+      // HCM: skip weekend hours (Mon-Fri only)
+      if (warehouseCode === 'KHOHCM') {
+        const baseDay = d.getDay();
+        if (baseDay === 6) {
+          d.setDate(d.getDate() + 2);
+        } else if (baseDay === 0) {
+          d.setDate(d.getDate() + 1);
+        }
+
+        let remainingHours = totalHours;
+        while (remainingHours > 0) {
+          d.setHours(d.getHours() + 1);
+          const dayOfWeek = d.getDay();
+          if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+            remainingHours--;
+          } else {
+            if (dayOfWeek === 6) {
+              d.setDate(d.getDate() + 2);
+            } else if (dayOfWeek === 0) {
+              d.setDate(d.getDate() + 1);
+            }
+          }
+        }
+
+        return d;
+      }
+
+      // Other warehouses (e.g., KHOBD): count hours continuously including weekends
+      d.setHours(d.getHours() + totalHours);
       return d;
     };
 
@@ -714,7 +817,8 @@ async function calculateDeliveryDateAndShift(
     // NEW LOGIC (2025) - Priority 1: District leadtime
     // IMPORTANT: District leadtime KHÔNG áp dụng weekend reset
     if (districtLeadtime && districtLeadtime > 0) {
-      let result = addWorkingDays(orderTime, districtLeadtime);
+      // districtLeadtime is expressed in "ca" (shift units). Use fractional helper.
+      let result = addWorkingDaysWithFraction(orderTime, districtLeadtime, warehouseCode);
       result = applySundayAdjustment(result, warehouseCode);
 
       const hour = result.getHours();
@@ -743,7 +847,8 @@ async function calculateDeliveryDateAndShift(
       }
 
       if (leadtimeCa > 0) {
-        let result = addWorkingDays(effectiveOrderTime, leadtimeCa);
+        // leadtimeCa is in "ca" -> use fractional helper
+        let result = addWorkingDaysWithFraction(effectiveOrderTime, leadtimeCa, warehouseCode);
         result = applySundayAdjustment(result, warehouseCode);
         const hourRes = result.getHours();
         const shiftRes = (hourRes >= 0 && hourRes <= 12) ? CA_SANG : CA_CHIEU;
@@ -1340,6 +1445,7 @@ export default async function handler(
     // Extract unique product codes and unit combinations for batch lookups
     const productLookupRequests: Array<{productCode?: string, productName?: string, index: number}> = [];
     const unitLookupRequests: Array<{productCode: string, unit: string, index: number}> = [];
+    const quoteLookupRequests: Array<{productCode?: string, index: number}> = [];
 
     products.forEach((product, index) => {
       // Collect product lookup requests
@@ -1356,6 +1462,14 @@ export default async function handler(
         unitLookupRequests.push({
           productCode: product.productCode,
           unit: product.unit,
+          index
+        });
+      }
+
+      // Collect quote detail lookup requests
+      if (product.productCode && !product.quoteDetailId) {
+        quoteLookupRequests.push({
+          productCode: product.productCode,
           index
         });
       }
@@ -1383,15 +1497,28 @@ export default async function handler(
       }
     });
 
+    // Batch lookup all quote details in parallel
+    const quoteLookupPromises = quoteLookupRequests.map(async (req) => {
+      try {
+        const quoteDetailId = await lookupQuoteDetailId(req.productCode, customerIdToStamp || undefined, headers);
+        return { index: req.index, quoteDetailId, success: true };
+      } catch (error) {
+        console.warn(`[Save SOD] Quote detail lookup failed for index ${req.index}:`, error);
+        return { index: req.index, quoteDetailId: null, success: false };
+      }
+    });
+
     // Execute all lookups in parallel
-    const [productLookupResults, unitLookupResults] = await Promise.all([
+    const [productLookupResults, unitLookupResults, quoteLookupResults] = await Promise.all([
       Promise.allSettled(productLookupPromises),
-      Promise.allSettled(unitLookupPromises)
+      Promise.allSettled(unitLookupPromises),
+      Promise.allSettled(quoteLookupPromises)
     ]);
 
     // Build lookup maps
     const productIdMap = new Map<number, string>();
     const unitIdMap = new Map<number, string>();
+    const quoteDetailIdMap = new Map<number, string>();
 
     productLookupResults.forEach((result) => {
       if (result.status === 'fulfilled' && result.value.success && result.value.productId) {
@@ -1405,8 +1532,14 @@ export default async function handler(
       }
     });
 
-    console.log(`[Save SOD] ✅ Pre-fetched ${productIdMap.size} product IDs and ${unitIdMap.size} unit IDs`);
-    progress.addStep(`Pre-fetched ${productIdMap.size} product IDs and ${unitIdMap.size} unit IDs`);
+    quoteLookupResults.forEach((result) => {
+      if (result.status === 'fulfilled' && result.value.success && result.value.quoteDetailId) {
+        quoteDetailIdMap.set(result.value.index, result.value.quoteDetailId);
+      }
+    });
+
+    console.log(`[Save SOD] ✅ Pre-fetched ${productIdMap.size} product IDs, ${unitIdMap.size} unit IDs, and ${quoteDetailIdMap.size} quote detail IDs`);
+    progress.addStep(`Pre-fetched ${productIdMap.size} product IDs, ${unitIdMap.size} unit IDs, and ${quoteDetailIdMap.size} quote detail IDs`);
 
     // ============ VALIDATION - Check required fields before saving ============
     console.log('[Save SOD] 🔍 Validating required fields for all products...');
@@ -1676,9 +1809,20 @@ export default async function handler(
           finalProductId = productIdMap.get(globalIndex);
         }
 
+        // Get pre-fetched quote detail ID (no additional API call needed)
+        let finalQuoteDetailId = (product as any).quoteDetailId;
+        if (!finalQuoteDetailId) {
+          finalQuoteDetailId = quoteDetailIdMap.get(globalIndex);
+        }
+
         // Add product reference if available (using Navigation property)
         if (finalProductId) {
           payload[`crdfd_Sanpham@odata.bind`] = `/crdfd_productses(${finalProductId})`;
+        }
+
+        // Add quote detail reference if available (using Navigation property)
+        if (finalQuoteDetailId) {
+          payload[`crdfd_baogia_chitiet@odata.bind`] = `/${QUOTE_DETAIL_TABLE}(${finalQuoteDetailId})`;
         }
 
         // Add unit reference if available

@@ -50,28 +50,46 @@ function addWorkingDays(base: Date, days: number): Date {
     return d;
 }
 
-// Add working days but support fractional days (e.g., 2.5)
-function addWorkingDaysWithFraction(base: Date, days: number): Date {
+// Add working days but support fractional days (districtLeadtime in "ca", 1 ca = 12 hours)
+// Count only hours that fall on working days (Mon-Fri). Weekend hours are skipped.
+function addWorkingDaysWithFraction(base: Date, days: number, warehouseCode?: string): Date {
     const d = new Date(base);
 
-    // Add whole working days first (skip weekends)
-    // Approach 1: start counting from orderTime.
-    // Convert total ca to hours (1 ca = 12 hours) and add directly from base time.
     const totalHours = Math.round(days * 12);
-    if (totalHours > 0) {
-        d.setHours(d.getHours() + totalHours);
+    if (totalHours <= 0) return d;
 
-        // If result falls on weekend, push to next Monday keeping the time of day
-        let dayOfWeek = d.getDay();
-        if (dayOfWeek === 6) {
-            // Saturday -> add 2 days to Monday
+    // For HCM warehouse: skip weekend hours (Mon-Fri only) — existing behavior
+    if (warehouseCode === 'KHOHCM') {
+        // If base falls on weekend, advance to next Monday keeping the same hour
+        const baseDay = d.getDay();
+        if (baseDay === 6) {
             d.setDate(d.getDate() + 2);
-        } else if (dayOfWeek === 0) {
-            // Sunday -> add 1 day to Monday
+        } else if (baseDay === 0) {
             d.setDate(d.getDate() + 1);
         }
+
+        let remainingHours = totalHours;
+        while (remainingHours > 0) {
+            d.setHours(d.getHours() + 1);
+            const dayOfWeek = d.getDay();
+            // Only count hours that fall on Mon-Fri
+            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                remainingHours--;
+            } else {
+                // If we hit weekend, fast-forward to next Monday at same hour
+                if (dayOfWeek === 6) {
+                    d.setDate(d.getDate() + 2);
+                } else if (dayOfWeek === 0) {
+                    d.setDate(d.getDate() + 1);
+                }
+            }
+        }
+
+        return d;
     }
 
+    // For other warehouses (e.g., KHOBD): count hours continuously, do not skip weekends
+    d.setHours(d.getHours() + totalHours);
     return d;
 }
 
