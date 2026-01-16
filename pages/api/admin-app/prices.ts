@@ -327,6 +327,7 @@ export default async function handler(
         : priceNoVat;
 
       return {
+        crdfd_baogiachitietid: item.crdfd_baogiachitietid || undefined, // Thêm ID báo giá chi tiết
         price: item.crdfd_gia ?? null,
         priceNoVat: priceNoVat,
         finalPrice: finalPrice, // priceNoVat x discountRate
@@ -478,6 +479,7 @@ export default async function handler(
 
     const result = {
       // Object đầu tiên theo ưu tiên (backward compatibility)
+      crdfd_baogiachitietid: first?.crdfd_baogiachitietid || undefined, // Thêm ID báo giá chi tiết
       price: first?.finalPrice ?? first?.price ?? null, // Use finalPrice (giakhongvat - (priceNoVat * discountRate)) if available
       priceNoVat: first?.priceNoVat ?? null,
       finalPrice: first?.finalPrice ?? null, // giakhongvat - (priceNoVat * discountRate)

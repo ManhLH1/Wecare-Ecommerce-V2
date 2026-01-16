@@ -102,17 +102,17 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
 
   // Danh sách người duyệt
   const approversList = [
-    'Bùi Tuấn Dũng',
-    'Lê Sinh Thông',
-    'Lê Thị Ngọc Anh',
-    'Nguyễn Quốc Chinh',
-    'Phạm Quốc Hưng',
+    // 'Bùi Tuấn Dũng',
+    // 'Lê Sinh Thông',
+    // 'Lê Thị Ngọc Anh',
+    // 'Nguyễn Quốc Chinh',
+    // 'Phạm Quốc Hưng',
     'Huỳnh Minh Trung',
-    'Bùi Thị Mỹ Trang',
-    'Hà Bông',
-    'Vũ Thành Minh',
-    'Phạm Thị Mỹ Hương',
-    'Hoàng Thị Mỹ Linh',
+    // 'Bùi Thị Mỹ Trang',
+    // 'Hà Bông',
+    // 'Vũ Thành Minh',
+    // 'Phạm Thị Mỹ Hương',
+    // 'Hoàng Thị Mỹ Linh',
   ];
 
   const discountRates = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '20'];
@@ -390,112 +390,57 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     const discountedPriceCalc = basePrice * (1 - (usedDiscountPercent || 0) / 100) - (usedDiscountAmount || 0);
     const finalPrice = discountedPriceCalc * (1 + invoiceSurchargeRate);
 
-    // Check if product already exists with same productCode/productName, unit, and price
-    // Only combine products that haven't been saved to CRM (isSodCreated = false)
-    const existingProductIndex = productList.findIndex((p) => {
-      const sameProduct = (productCode && p.productCode === productCode) ||
-        (!productCode && p.productName === product);
-      const sameUnit = p.unit === unit;
-      const samePrice = Math.abs(p.price - priceNum) < 0.01; // Compare with small tolerance for floating point
-      const notSaved = !p.isSodCreated; // Only combine unsaved products
-
-      return sameProduct && sameUnit && samePrice && notSaved;
-    });
-
-    if (existingProductIndex !== -1) {
-      // Combine with existing product: add quantities and recalculate
-      const existingProduct = productList[existingProductIndex];
-      const newQuantity = existingProduct.quantity + quantity;
-
-      // Recalculate amounts with new total quantity (round VAT per line)
-      const newSubtotal = Math.round(newQuantity * finalPrice);
-      const newVatAmount = Math.round((newSubtotal * (vatPercent || 0)) / 100);
-      const newTotalAmount = newSubtotal + newVatAmount;
-
-      // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [người duyệt]", ngược lại lấy từ input
-      const formattedNoteForMerge = approvePrice && approver
-        ? `Duyệt giá bởi ${approver}`
-        : note;
-
-      // Update existing product
-      const updatedProduct: ProductItem = {
-        ...existingProduct,
-        quantity: newQuantity,
-        subtotal: newSubtotal,
-        vatAmount: newVatAmount,
-        totalAmount: newTotalAmount,
-        // Update other fields from new input (in case they changed)
-        discount: usedDiscountAmount,
-        discountedPrice: finalPrice,
-        discountPercent: usedDiscountPercent,
-        discountAmount: usedDiscountAmount,
-        vat: vatPercent,
-        invoiceSurcharge: invoiceSurchargeRate,
-        // Merge notes if both have notes
-        note: existingProduct.note && formattedNoteForMerge
-          ? `${existingProduct.note}; ${formattedNoteForMerge}`
-          : existingProduct.note || formattedNoteForMerge,
-        // Đảm bảo isSodCreated = false khi combine (vì chỉ combine với sản phẩm chưa lưu)
-        isSodCreated: false,
-      };
-
-      // Update product list
-      const updatedList = [...productList];
-      updatedList[existingProductIndex] = updatedProduct;
-      setProductList(updatedList);
-    } else {
-      // Add new product
-      // Calculate amounts (round VAT per line)
-      const subtotalCalc = Math.round(quantity * finalPrice);
-      const vatCalc = Math.round((subtotalCalc * (vatPercent || 0)) / 100);
-      const totalCalc = subtotalCalc + vatCalc;
+    // Add new product (always create new line, no merging)
+    // Calculate amounts (round VAT per line)
+    const subtotalCalc = Math.round(quantity * finalPrice);
+    const vatCalc = Math.round((subtotalCalc * (vatPercent || 0)) / 100);
+    const totalCalc = subtotalCalc + vatCalc;
 
     // Auto-increment STT
-      const maxStt = productList.length > 0 ? Math.max(...productList.map((p) => p.stt || 0)) : 0;
-      const newStt = maxStt + 1;
+    const maxStt = productList.length > 0 ? Math.max(...productList.map((p) => p.stt || 0)) : 0;
+    const newStt = maxStt + 1;
 
-      // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [người duyệt]", ngược lại lấy từ input
-      const formattedNote = approvePrice && approver
-        ? `Duyệt giá bởi ${approver}`
-        : note;
+    // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [người duyệt]", ngược lại lấy từ input
+    const formattedNote = approvePrice && approver
+      ? `Duyệt giá bởi ${approver}`
+      : note;
 
-      const promoIdToUse = overrides?.promotionId ?? promotionId;
-      const newProduct: ProductItem = {
-        id: `${Date.now()}-${newStt}`,
-        stt: newStt,
-        productCode: productCode,
-        productName: product,
-        productGroupCode: productGroupCode,
-        unit: unit,
-        quantity,
-        price: priceNum,
-        surcharge: 0,
-        discount: usedDiscountAmount,
-        discountedPrice: finalPrice,
-        discountPercent: usedDiscountPercent,
-        discountAmount: usedDiscountAmount,
-        discountRate: overrides?.discountRate,
-        vat: vatPercent,
-        subtotal: subtotalCalc,
-        vatAmount: vatCalc,
-        totalAmount: totalCalc,
-        approver: approver,
-        deliveryDate: deliveryDate,
-        warehouse: warehouse,
-        note: formattedNote,
-        urgentOrder: urgentOrder,
-        approvePrice: approvePrice,
-        approveSupPrice: approveSupPrice,
-        promotionText: promotionText,
-        promotionId: promoIdToUse,
-        invoiceSurcharge: invoiceSurchargeRate,
-        createdOn: new Date().toISOString(),
-        isSodCreated: false,
-      };
+    const promoIdToUse = overrides?.promotionId ?? promotionId;
+    const newProduct: ProductItem = {
+      id: `${Date.now()}-${newStt}`,
+      stt: newStt,
+      productCode: productCode,
+      productName: product,
+      productGroupCode: productGroupCode,
+      unit: unit,
+      quantity,
+      price: priceNum,
+      surcharge: 0,
+      discount: usedDiscountAmount,
+      discountedPrice: finalPrice,
+      discountPercent: usedDiscountPercent,
+      discountAmount: usedDiscountAmount,
+      discountRate: overrides?.discountRate,
+      vat: vatPercent,
+      subtotal: subtotalCalc,
+      vatAmount: vatCalc,
+      totalAmount: totalCalc,
+      approver: approver,
+      deliveryDate: deliveryDate,
+      warehouse: warehouse,
+      note: formattedNote,
+      urgentOrder: urgentOrder,
+      approvePrice: approvePrice,
+      approveSupPrice: approveSupPrice,
+      promotionText: promotionText,
+      promotionId: promoIdToUse,
+      invoiceSurcharge: invoiceSurchargeRate,
+      createdOn: new Date().toISOString(),
+      isSodCreated: false,
+    };
 
-      console.debug('[SalesOrderForm] Adding product with promotionId:', promoIdToUse);
-      setProductList([...productList, newProduct]);
-    }
+    console.debug('[SalesOrderForm] Adding product with promotionId:', promoIdToUse);
+    setProductList([...productList, newProduct]);
 
     // NOTE: Inventory reservation đã được xử lý trong ProductEntryForm.tsx (handleAddWithInventoryCheck)
     // Không cần reserve lại ở đây để tránh reserve 2 lần

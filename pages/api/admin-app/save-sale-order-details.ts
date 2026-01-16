@@ -1821,7 +1821,17 @@ export default async function handler(
         }
 
         // Add quote detail reference if available (using Navigation property)
-      
+        if (finalQuoteDetailId) {
+          // Save as lookup to Báo giá - chi tiết using SchemaName shown in CRM (case-sensitive)
+          // Schema name on the field is `crdfd_Baogia_chitiet` so use it for @odata.bind
+          payload[`crdfd_Baogia_chitiet@odata.bind`] = `/crdfd_baogiachitiets(${finalQuoteDetailId})`;
+          // Attach to product object so the fast response includes the selected quote detail id
+          try {
+            (product as any).quoteDetailId = finalQuoteDetailId;
+          } catch (e) {
+            // ignore
+          }
+        }
 
         // Add unit reference if available
         // ID_Unit_Sp (crdfd_onvi) là lookup đến crdfd_unitconversions table
