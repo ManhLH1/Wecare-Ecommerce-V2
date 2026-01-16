@@ -29,23 +29,23 @@ const BrandStrip: React.FC = () => {
           </div>
 
           {/* Grid: mobile 2, sm 3, md 4, lg 6 per row */}
-            <div className="overflow-hidden">
-             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 lg:grid-rows-2 gap-0 py-0">
+          <div className="overflow-hidden">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 lg:grid-rows-2 gap-0 py-0">
               {brandImages.map((filename) => {
                 const src = `/thuong-hieu/${encodeURIComponent(filename)}`;
                 const alt = filename.replace(/\.[^.]+$/, "");
                 return (
-                   <div
-                     key={filename}
-                     className="w-full aspect-square flex items-center justify-center bg-white rounded-none p-0 hover:shadow-none transition"
-                   >
-                     <div className="w-full h-full flex items-center justify-center">
+                  <div
+                    key={filename}
+                    className="w-full aspect-[2/1] flex items-center justify-center bg-white rounded-none p-0 hover:shadow-none transition"
+                  >
+                    <div className="w-full h-full flex items-center justify-center">
                       <img
                         src={src}
                         alt={alt}
                         loading="lazy"
                         className="object-contain"
-                        style={{ maxWidth: '95%', maxHeight: '95%' }}
+                        style={{ maxWidth: '90%', maxHeight: '80%' }}
                       />
                     </div>
                   </div>

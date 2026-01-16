@@ -349,7 +349,7 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
           {/* Mobile: horizontal scroll với snap */}
           <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible scrollbar-hide snap-x snap-mandatory lg:snap-none -mx-2 px-2 lg:mx-0 lg:px-0 lg:h-full">
             {/* Tin tức 1 */}
-            <div className="flex-shrink-0 w-[75vw] sm:w-[60vw] lg:w-full h-[140px] sm:h-[160px] lg:h-1/3 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden relative snap-start">
+            <div className="flex-shrink-0 w-[75vw] sm:w-[60vw] lg:w-full h-[140px] sm:h-[160px] lg:flex-1 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden relative snap-start">
               <Link
                 href="/post"
                 className="block w-full h-full no-underline group relative touch-manipulation"
@@ -365,7 +365,7 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
             </div>
 
             {/* Tin tức 2 */}
-            <div className="flex-shrink-0 w-[75vw] sm:w-[60vw] lg:w-full h-[140px] sm:h-[160px] lg:h-1/3 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden relative snap-start">
+            <div className="flex-shrink-0 w-[75vw] sm:w-[60vw] lg:w-full h-[140px] sm:h-[160px] lg:flex-1 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden relative snap-start">
               <Link
                 href="/post"
                 className="block w-full h-full no-underline group relative touch-manipulation"
@@ -381,7 +381,7 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
             </div>
 
             {/* Tin tức 3 */}
-            <div className="flex-shrink-0 w-[75vw] sm:w-[60vw] lg:w-full h-[140px] sm:h-[160px] lg:h-1/3 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden relative snap-start">
+            <div className="flex-shrink-0 w-[75vw] sm:w-[60vw] lg:w-full h-[140px] sm:h-[160px] lg:flex-1 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden relative snap-start">
               <Link
                 href="/post"
                 className="block w-full h-full no-underline group relative touch-manipulation"

@@ -50,7 +50,7 @@ const ProductContent = () => {
   const params = useParams() as { slug: string };
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   // Create a wrapper for addToCart to ensure it always exists and logs errors
   const handleAddToCart = useCallback((product: Products, quantity: number) => {
     try {
@@ -74,19 +74,19 @@ const ProductContent = () => {
       window.location.href = `/san-pham/${slug}`;
     }
   };
-  
+
   const slug = params.slug;
   const displayName = slugToText(slug);
-  
+
   const [productGroupId, setProductGroupId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [breadcrumb, setBreadcrumb] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDesktop, setIsDesktop] = useState(false);
-  
+
   const userId = getItem("id");
-  
-  
+
+
   // Function to check if it's desktop view
   useEffect(() => {
     const handleResize = () => {
@@ -111,7 +111,7 @@ const ProductContent = () => {
         setBreadcrumb([`Kết quả tìm kiếm cho "${term}"`]);
       }
     }
-    
+
     // Check for AI keywords from image search
     try {
       const aiKeywords = localStorage.getItem('imageSearch:aiKeywords');
@@ -122,17 +122,17 @@ const ProductContent = () => {
         console.log('Product Name:', parsedKeywords.productName);
         console.log('Synonyms:', parsedKeywords.synonyms);
         console.log('===========================');
-        
+
         // Use the productName as the main search term for display
         const searchTermFromAI = parsedKeywords.productName || '';
         if (searchTermFromAI) {
           setSearchTerm(searchTermFromAI);
           setProductGroupId(null);
           setBreadcrumb([`Kết quả tìm kiếm cho "${searchTermFromAI}"`]);
-          
+
           // Store the full AI keywords for the API to use
           localStorage.setItem('imageSearch:aiKeywordsForAPI', aiKeywords);
-          
+
           // Clear the original stored keywords after using them
           localStorage.removeItem('imageSearch:aiKeywords');
         }
@@ -144,58 +144,58 @@ const ProductContent = () => {
 
   // Fetch product group ID from slug (only when not searching)
   useEffect(() => {
-    const fetchProductGroupFromSlug = async () => { 
+    const fetchProductGroupFromSlug = async () => {
       // Skip if we're in search mode to avoid unnecessary API calls
       if (searchTerm) {
         setIsLoading(false);
         return;
       }
-      
+
       setIsLoading(true);
       try {
         // Get all product groups
         const response = await axios.get('/api/getProductGroupHierarchy');
         const hierarchyData = response.data;
-        
+
         // Create a flat map of all product groups for easy lookup by name
         const allGroups = new Map<string, ProductGroup>();
         let foundGroup: ProductGroup | null = null;
-        
+
         // Function to extract all groups from the hierarchical structure
         const extractGroups = (groups: ProductGroup[]) => {
           groups.forEach(group => {
             // Create a slug from the group name
             const groupSlug = textToSlug(group.crdfd_productname);
-            
+
             // If this slug matches our URL slug, we found our group
             if (groupSlug === slug) {
               foundGroup = group;
             }
-            
+
             // Add to our map
             allGroups.set(groupSlug, group);
-            
+
             // Process children recursively
             if (group.children && group.children.length > 0) {
               extractGroups(group.children);
             }
           });
         };
-        
+
         // Extract all groups
         if (hierarchyData.hierarchy) {
           extractGroups(hierarchyData.hierarchy);
         }
-        
+
         // If we found the group, set up the product filter
         if (foundGroup && !searchTerm) {
           const typedFoundGroup = foundGroup as ProductGroup;
           setProductGroupId(typedFoundGroup.crdfd_productgroupid);
-          
+
           // Build breadcrumb path
           const breadcrumbPath: string[] = [];
           breadcrumbPath.unshift(typedFoundGroup.crdfd_productname);
-          
+
           // Navigate up the hierarchy adding parent names
           let currentGroup: ProductGroup | null | undefined = typedFoundGroup;
           while (currentGroup && currentGroup._crdfd_nhomsanphamcha_value) {
@@ -203,21 +203,21 @@ const ProductContent = () => {
             currentGroup = Array.from(allGroups.values()).find(
               (g: ProductGroup) => g.crdfd_productgroupid === parentId
             );
-            
+
             if (currentGroup) {
               breadcrumbPath.unshift(currentGroup.crdfd_productname);
             }
           }
-          
+
           setBreadcrumb(breadcrumbPath);
-          
+
           // Dispatch a custom event for product list component
           // This maintains compatibility with the existing product list component
-          const event = new CustomEvent('productGroupSelected', { 
-            detail: { 
+          const event = new CustomEvent('productGroupSelected', {
+            detail: {
               productGroupId: typedFoundGroup.crdfd_productgroupid,
               breadcrumb: breadcrumbPath.join('/')
-            } 
+            }
           });
           window.dispatchEvent(event);
         } else {
@@ -229,11 +229,11 @@ const ProductContent = () => {
             setProductGroupId(null);
             setBreadcrumb([`Kết quả tìm kiếm cho "${termFromSlug}"`]);
             // Phát sự kiện để list hiểu là đang ở chế độ search
-            const event = new CustomEvent('productGroupSelected', { 
-              detail: { 
+            const event = new CustomEvent('productGroupSelected', {
+              detail: {
                 productGroupId: null,
                 breadcrumb: `Tìm kiếm/${termFromSlug}`
-              } 
+              }
             });
             window.dispatchEvent(event);
           }
@@ -244,21 +244,21 @@ const ProductContent = () => {
         setIsLoading(false);
       }
     };
-    
+
     if (slug) {
       fetchProductGroupFromSlug();
     }
   }, [slug, router, searchTerm]);
-  
+
   const cartItemsCount = cartItems.length;
-  
+
   // Check login status
   const check = getItem("temple");
   const Idlogin = getItem("id");
   const chua_login = check === "my" && !Idlogin;
 
   return (
-    <div className="bg-gray-50 min-h-screen flex flex-col overflow-x-hidden">
+    <div className="bg-gray-50 min-h-screen flex flex-col">
       {/* JD Style Layout */}
       <div className="bg-white">
         {/* Header with Search */}
@@ -268,51 +268,51 @@ const ProductContent = () => {
           onCartClick={openCart}
         />
 
-        {/* Main Layout - No Sidebar */}
-        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-10 py-6" style={{ paddingTop: '90px' }}>
+        {/* Main Layout - Full Width */}
+        <div className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 py-6" style={{ paddingTop: '90px' }}>
           <div className="flex flex-col">
             {/* Main Content - Full Width */}
             <div className="w-full">
               <main className="w-full">
-        {chua_login ? (
-          <section className="pb-4 sm:pt-100 bg-slate-100">
-            <div className=" max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden">
-              <div className="p-8 text-center">
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                  Yêu cầu đăng nhập
-                </h2>
-                <p className="text-gray-600">
-                  Vui lòng đăng nhập để truy cập nội dung của trang web.
-                </p>
-                <a
-                  href="/login"
-                  className="mt-6 inline-block bg-customBlue hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300"
-                >
-                  Đến trang đăng nhập
-                </a>
-              </div>
-            </div>
-          </section>
-        ) : (
-          <section className="w-[full] rounded-[16px] shadow-sm px-2 md:px-6 py-0 md:py-2 mx-auto">
-            {/* Breadcrumb + Tiêu đề */}
-            <div className="mb-3">
-              <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-0 mt-8 section-header">{breadcrumb[breadcrumb.length-1]}</h1>
-            </div>
-            {/* Danh sách sản phẩm */}
-            <div className="mt-2">
-              <Suspense fallback={<Loading />}>
-                <ProductGroupList
-                  searchTerm={searchTerm}
-                  productGroupId={productGroupId}
-                  breadcrumb={breadcrumb}
-                  onAddToCart={handleAddToCart}
-                  customerSelectId={userId || ""}
-                />
-              </Suspense>
-            </div>
-          </section>
-        )}
+                {chua_login ? (
+                  <section className="pb-4 sm:pt-100 bg-slate-100">
+                    <div className=" max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden">
+                      <div className="p-8 text-center">
+                        <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                          Yêu cầu đăng nhập
+                        </h2>
+                        <p className="text-gray-600">
+                          Vui lòng đăng nhập để truy cập nội dung của trang web.
+                        </p>
+                        <a
+                          href="/login"
+                          className="mt-6 inline-block bg-customBlue hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300"
+                        >
+                          Đến trang đăng nhập
+                        </a>
+                      </div>
+                    </div>
+                  </section>
+                ) : (
+                  <section className="w-[full] rounded-[16px] shadow-sm px-2 md:px-6 py-0 md:py-2 mx-auto">
+                    {/* Breadcrumb + Tiêu đề */}
+                    <div className="mb-3">
+                      <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-0 mt-8 section-header">{breadcrumb[breadcrumb.length - 1]}</h1>
+                    </div>
+                    {/* Danh sách sản phẩm */}
+                    <div className="mt-2">
+                      <Suspense fallback={<Loading />}>
+                        <ProductGroupList
+                          searchTerm={searchTerm}
+                          productGroupId={productGroupId}
+                          breadcrumb={breadcrumb}
+                          onAddToCart={handleAddToCart}
+                          customerSelectId={userId || ""}
+                        />
+                      </Suspense>
+                    </div>
+                  </section>
+                )}
               </main>
             </div>
           </div>

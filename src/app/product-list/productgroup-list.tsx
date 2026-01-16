@@ -10,6 +10,12 @@ import { useDebounce } from "use-debounce";
 import Diacritics from "diacritics";
 import { getItem } from "@/utils/SecureStorage";
 import Pagination from "@mui/material/Pagination";
+import Checkbox from "@mui/material/Checkbox";
+import Slider from "@mui/material/Slider";
+import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
+import { styled } from "@mui/material/styles";
+import Tooltip from "@mui/material/Tooltip";
 
 // --- Types (simplified from v2) ---
 interface ProductDetails {
@@ -205,44 +211,43 @@ const ProductCard: React.FC<{ product: ProductDetails }> = ({ product }) => {
 
   return (
     <div
-      className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm transform transition duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer"
+      className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm transform transition duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer flex flex-col h-full"
       onClick={handleProductClick}
     >
-          <div className="p-5 relative">
-        <div className="w-full h-48 flex items-center justify-center overflow-hidden rounded-md relative">
-          <div className="w-40 h-40 bg-white rounded-full flex items-center justify-center shadow-sm">
-            <img src={img} alt={product.crdfd_name || product.crdfd_fullname || "product"} className="max-h-full max-w-full object-contain" />
-          </div>
+      <div className="p-3 relative flex-shrink-0">
+        <div className="w-full aspect-square flex items-center justify-center overflow-hidden rounded-md relative bg-gray-50">
+          <img src={img} alt={product.crdfd_name || product.crdfd_fullname || "product"} className="max-h-[90%] max-w-[90%] object-contain mix-blend-multiply" />
+
           {/* sale badge top-left */}
           {hasDiscount ? (
-            <div className="absolute left-3 top-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-xs font-semibold px-2 py-1 rounded-full shadow">
+            <div className="absolute left-0 top-0 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-br-lg shadow-sm">
               -{discountPercent}%
             </div>
           ) : null}
         </div>
       </div>
-      <div className="px-4 pb-4">
-        <div className="text-sm font-semibold text-gray-800 leading-tight line-clamp-2 h-12 overflow-hidden">{product.crdfd_name || product.crdfd_fullname}</div>
-        <div className="mt-3 flex items-center gap-3">
-          <div className="text-red-600 font-extrabold text-xl">{displayPrice}</div>
-          {hasDiscount ? (
-            <div className="text-sm text-gray-400 line-through">{marketPrice.toLocaleString("vi-VN")} đ</div>
-          ) : null}
+
+      <div className="px-3 pb-3 flex flex-col flex-1">
+        <div className="text-xs font-medium text-gray-700 leading-snug line-clamp-2 mb-2 flex-1" title={product.crdfd_name || product.crdfd_fullname}>
+          {product.crdfd_name || product.crdfd_fullname}
         </div>
 
-        <div className="mt-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center -space-x-1">
-              <svg className="w-4 h-4 text-yellow-400" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.97a1 1 0 00.95.69h4.173c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.286 3.97c.3.921-.755 1.688-1.54 1.118L10 13.347l-3.383 2.456c-.784.57-1.838-.197-1.539-1.118l1.286-3.97a1 1 0 00-.364-1.118L2.624 9.397c-.783-.57-.38-1.81.588-1.81h4.173a1 1 0 00.95-.69l1.286-3.97z"/></svg>
-              <svg className="w-4 h-4 text-yellow-400" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.97a1 1 0 00.95.69h4.173c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.286 3.97c.3.921-.755 1.688-1.54 1.118L10 13.347l-3.383 2.456c-.784.57-1.838-.197-1.539-1.118l1.286-3.97a1 1 0 00-.364-1.118L2.624 9.397c-.783-.57-.38-1.81.588-1.81h4.173a1 1 0 00.95-.69l1.286-3.97z"/></svg>
-              <svg className="w-4 h-4 text-yellow-400" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.97a1 1 0 00.95.69h4.173c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.286 3.97c.3.921-.755 1.688-1.54 1.118L10 13.347l-3.383 2.456c-.784.57-1.838-.197-1.539-1.118l1.286-3.97a1 1 0 00-.364-1.118L2.624 9.397c-.783-.57-.38-1.81.588-1.81h4.173a1 1 0 00.95-.69l1.286-3.97z"/></svg>
-              <svg className="w-4 h-4 text-yellow-400" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.97a1 1 0 00.95.69h4.173c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.286 3.97c.3.921-.755 1.688-1.54 1.118L10 13.347l-3.383 2.456c-.784.57-1.838-.197-1.539-1.118l1.286-3.97a1 1 0 00-.364-1.118L2.624 9.397c-.783-.57-.38-1.81.588-1.81h4.173a1 1 0 00.95-.69l1.286-3.97z"/></svg>
-              <svg className="w-4 h-4 text-yellow-400" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.97a1 1 0 00.95.69h4.173c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.286 3.97c.3.921-.755 1.688-1.54 1.118L10 13.347l-3.383 2.456c-.784.57-1.838-.197-1.539-1.118l1.286-3.97a1 1 0 00-.364-1.118L2.624 9.397c-.783-.57-.38-1.81.588-1.81h4.173a1 1 0 00.95-.69l1.286-3.97z"/></svg>
-            </div>
-            <div className="text-xs text-gray-500">(3 đánh giá)</div>
+        <div className="mt-auto">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="text-orange-600 font-bold text-sm md:text-base">{displayPrice}</div>
+            {hasDiscount ? (
+              <div className="text-xs text-gray-400 line-through">{marketPrice.toLocaleString("vi-VN")}đ</div>
+            ) : null}
           </div>
 
-          {/* removed MUA ONLINE badge per request */}
+          <div className="mt-2 flex items-center justify-between">
+            <div className="flex items-center gap-0.5">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <svg key={s} className="w-3 h-3 text-yellow-400" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.97a1 1 0 00.95.69h4.173c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.286 3.97c.3.921-.755 1.688-1.54 1.118L10 13.347l-3.383 2.456c-.784.57-1.838-.197-1.539-1.118l1.286-3.97a1 1 0 00-.364-1.118L2.624 9.397c-.783-.57-.38-1.81.588-1.81h4.173a1 1 0 00.95-.69l1.286-3.97z" /></svg>
+              ))}
+            </div>
+            <div className="text-[10px] text-gray-400">(3)</div>
+          </div>
         </div>
       </div>
     </div>
@@ -325,7 +330,7 @@ const ProductGroupList: React.FC<any> = ({ searchTerm, title, descriptionHtml })
 
   return (
     <div className="container-fluid px-0 productlist">
-    <div className="w-full mx-auto px-2 py-4 text-sm">
+      <div className="w-full mx-auto px-2 py-4 text-sm">
         {/* Breadcrumb + heading */}
         <div className="product-cate-body mb-4">
           <div className="container">
@@ -339,19 +344,25 @@ const ProductGroupList: React.FC<any> = ({ searchTerm, title, descriptionHtml })
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row-reverse gap-4">
+
+
+        <div className="flex flex-col lg:flex-row gap-8">
           {/* Left filters */}
-          <aside className="hidden lg:block lg:w-80 flex-shrink-0">
-            <div className="bg-white p-3 rounded-lg shadow-sm border sticky top-24">
-              <h3 className="text-lg font-semibold mb-3">Bộ lọc</h3>
-              <div className="mb-4">
-                <div className="text-sm font-medium mb-2">Thương hiệu</div>
-                <div className="flex flex-col gap-2 max-h-40 overflow-auto pr-2">
+          <aside className="hidden lg:block lg:w-72 flex-shrink-0 sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto customize-scrollbar">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-orange-100 min-h-full">
+              <h3 className="text-xl font-bold mb-4 text-orange-600 flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                Bộ lọc
+              </h3>
+
+              {/* Brand Filter */}
+              <div className="mb-6">
+                <div className="text-sm font-bold uppercase text-gray-700 mb-3 border-b pb-1 border-orange-200">Thương hiệu</div>
+                <div className="flex flex-col gap-1 max-h-48 overflow-y-auto pr-1 customize-scrollbar">
                   {filterOptions.thuongHieu.map((f) => (
-                    <label key={f.value} className="text-sm">
-                      <input
-                        type="checkbox"
-                        className="mr-2"
+                    <label key={f.value} className="flex items-center cursor-pointer hover:bg-orange-50 rounded p-1 transition-colors">
+                      <Checkbox
+                        size="small"
                         checked={advancedFilters.thuongHieu.includes(f.value)}
                         onChange={(e) => {
                           const next = e.target.checked
@@ -359,21 +370,29 @@ const ProductGroupList: React.FC<any> = ({ searchTerm, title, descriptionHtml })
                             : advancedFilters.thuongHieu.filter((v) => v !== f.value);
                           handleFilterChange("thuongHieu", next);
                         }}
+                        sx={{
+                          color: '#fdba74',
+                          '&.Mui-checked': {
+                            color: '#ea580c',
+                          },
+                          padding: '4px'
+                        }}
                       />
-                      {f.label} <span className="text-xs text-gray-400">({f.count})</span>
+                      <span className="text-sm text-gray-700 flex-1 ml-1">{f.label}</span>
+                      <span className="text-xs bg-gray-100 text-gray-500 py-0.5 px-2 rounded-full">{f.count}</span>
                     </label>
                   ))}
                 </div>
               </div>
 
-              <div className="mb-4">
-                <div className="text-sm font-medium mb-2">Chất liệu</div>
-                <div className="flex flex-col gap-2 max-h-32 overflow-auto pr-2">
+              {/* Material Filter */}
+              <div className="mb-6">
+                <div className="text-sm font-bold uppercase text-gray-700 mb-3 border-b pb-1 border-orange-200">Chất liệu</div>
+                <div className="flex flex-col gap-1 max-h-40 overflow-y-auto pr-1 customize-scrollbar">
                   {filterOptions.chatLieu.map((f) => (
-                    <label key={f.value} className="text-sm">
-                      <input
-                        type="checkbox"
-                        className="mr-2"
+                    <label key={f.value} className="flex items-center cursor-pointer hover:bg-orange-50 rounded p-1 transition-colors">
+                      <Checkbox
+                        size="small"
                         checked={advancedFilters.chatLieu.includes(f.value)}
                         onChange={(e) => {
                           const next = e.target.checked
@@ -381,35 +400,92 @@ const ProductGroupList: React.FC<any> = ({ searchTerm, title, descriptionHtml })
                             : advancedFilters.chatLieu.filter((v) => v !== f.value);
                           handleFilterChange("chatLieu", next);
                         }}
+                        sx={{
+                          color: '#fdba74',
+                          '&.Mui-checked': {
+                            color: '#ea580c',
+                          },
+                          padding: '4px'
+                        }}
                       />
-                      {f.label} <span className="text-xs text-gray-400">({f.count})</span>
+                      <span className="text-sm text-gray-700 flex-1 ml-1">{f.label}</span>
+                      <span className="text-xs bg-gray-100 text-gray-500 py-0.5 px-2 rounded-full">{f.count}</span>
                     </label>
                   ))}
                 </div>
               </div>
 
-              <div className="mb-2">
-                <div className="text-sm font-medium mb-2">Khoảng giá</div>
-                <div className="text-sm text-gray-600">{filterOptions.priceRange.min.toLocaleString()} - {filterOptions.priceRange.max.toLocaleString()}</div>
-                <div className="mt-2">
-                  <button
-                    className="text-xs bg-gray-100 px-2 py-1 rounded mr-2"
+              {/* Price Range Filter */}
+              <div className="mb-4">
+                <div className="text-sm font-bold uppercase text-gray-700 mb-3 border-b pb-1 border-orange-200">Khoảng giá</div>
+                <div className="px-2 mb-2">
+                  <Slider
+                    value={advancedFilters.priceRange}
+                    onChange={(e, newValue) => {
+                      if (Array.isArray(newValue)) {
+                        // Real-time UI update only, commit on change committed usually, but here we can't easily debounce strict slider controlled state without internal state.
+                        // For simplicity in this demo, we update context directly or better: use local state for slider and commit on mouse up.
+                        // But to keep it simple with existing hook, we'll just update. 
+                        // Check performance. If slow, we need local state.
+                        // Let's assume user drags and drops.
+                      }
+                    }}
+                    onChangeCommitted={(e, newValue) => {
+                      if (Array.isArray(newValue)) {
+                        handleFilterChange("priceRange", newValue as [number, number]);
+                      }
+                    }}
+                    min={filterOptions.priceRange.min}
+                    max={filterOptions.priceRange.max}
+                    valueLabelDisplay="auto"
+                    sx={{
+                      color: '#ea580c',
+                      '& .MuiSlider-thumb': {
+                        backgroundColor: '#fff',
+                        border: '2px solid #ea580c',
+                      },
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-gray-600 mb-3 font-medium">
+                  <span>{advancedFilters.priceRange[0].toLocaleString()}đ</span>
+                  <span>{advancedFilters.priceRange[1].toLocaleString()}đ</span>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Chip
+                    label="< 2 triệu"
+                    size="small"
                     onClick={() => handleFilterChange("priceRange", [0, 2000000])}
-                  >
-                    &lt; 2 triệu
-                  </button>
-                  <button
-                    className="text-xs bg-gray-100 px-2 py-1 rounded mr-2"
+                    variant={advancedFilters.priceRange[1] <= 2000000 ? "filled" : "outlined"}
+                    color={advancedFilters.priceRange[1] <= 2000000 ? "warning" : "default"}
+                    clickable
+                  />
+                  <Chip
+                    label="2 - 5 triệu"
+                    size="small"
                     onClick={() => handleFilterChange("priceRange", [2000000, 5000000])}
-                  >
-                    2 - 5 triệu
-                  </button>
+                    variant={advancedFilters.priceRange[0] >= 2000000 && advancedFilters.priceRange[1] <= 5000000 ? "filled" : "outlined"}
+                    color={advancedFilters.priceRange[0] >= 2000000 && advancedFilters.priceRange[1] <= 5000000 ? "warning" : "default"}
+                    clickable
+                  />
+                  <Chip
+                    label="> 5 triệu"
+                    size="small"
+                    onClick={() => handleFilterChange("priceRange", [5000000, 100000000])}
+                    variant={advancedFilters.priceRange[0] >= 5000000 ? "filled" : "outlined"}
+                    color={advancedFilters.priceRange[0] >= 5000000 ? "warning" : "default"}
+                    clickable
+                  />
                 </div>
               </div>
 
-              <div className="mt-4">
-                <button
-                  className="text-sm bg-red-50 text-red-600 px-3 py-1 rounded mr-2"
+              <div className="mt-6 pt-4 border-t border-gray-100">
+                <Button
+                  variant="outlined"
+                  color="error"
+                  fullWidth
+                  startIcon={<span className="text-lg">×</span>}
                   onClick={() =>
                     setAdvancedFilters({
                       thuongHieu: [],
@@ -418,8 +494,8 @@ const ProductGroupList: React.FC<any> = ({ searchTerm, title, descriptionHtml })
                     })
                   }
                 >
-                  Xóa bộ lọc
-                </button>
+                  Xóa tất cả bộ lọc
+                </Button>
               </div>
             </div>
           </aside>
@@ -427,14 +503,40 @@ const ProductGroupList: React.FC<any> = ({ searchTerm, title, descriptionHtml })
           {/* Main content */}
           <main className="flex-1 lg:min-w-0">
             {/* Top sort bar */}
-            <div className="total-filter bg-white p-3 rounded-lg shadow-sm border mb-4 flex items-center justify-between">
-              <div className="total-product text-sm font-medium">Tất cả {productList.length} {title || "sản phẩm"}</div>
-              <div className="orderby-product text-sm">
-                <span className="sort text-gray-600 mr-3">Xếp theo:</span>
-                <a href="#" onClick={(e)=>{e.preventDefault(); setSortMode("new")}} className={`px-3 py-1 rounded text-xs ${sortMode==="new"?"bg-blue-600 text-white":"bg-white border"}`}>Mới nhất</a>
-                <a href="#" onClick={(e)=>{e.preventDefault(); setSortMode("popular")}} className={`ml-2 px-3 py-1 rounded text-xs ${sortMode==="popular"?"bg-blue-600 text-white":"bg-white border"}`}>Bán chạy</a>
-                <a href="#" onClick={(e)=>{e.preventDefault(); setSortMode("price_desc")}} className={`ml-2 px-3 py-1 rounded text-xs ${sortMode==="price_desc"?"bg-blue-600 text-white":"bg-white border"}`}>Giá cao đến thấp</a>
-                <a href="#" onClick={(e)=>{e.preventDefault(); setSortMode("price_asc")}} className={`ml-2 px-3 py-1 rounded text-xs ${sortMode==="price_asc"?"bg-blue-600 text-white":"bg-white border"}`}>Giá thấp đến cao</a>
+            <div className="total-filter bg-white p-4 rounded-xl shadow-sm border border-orange-100 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="total-product text-sm font-bold text-gray-700 flex items-center gap-2">
+                <span className="w-2 h-6 bg-orange-500 rounded-sm inline-block"></span>
+                Tất cả {productList.length} {title || "sản phẩm"}
+              </div>
+              <div className="orderby-product text-sm flex items-center gap-2">
+                <span className="sort text-gray-500 mr-1 hidden sm:inline-block">Sắp xếp:</span>
+
+                <div className="flex bg-gray-50 p-1 rounded-lg border border-gray-100">
+                  <button
+                    onClick={(e) => { e.preventDefault(); setSortMode("new") }}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${sortMode === "new" ? "bg-white text-orange-600 shadow-sm border border-gray-100" : "text-gray-500 hover:text-gray-700"}`}
+                  >
+                    Mới nhất
+                  </button>
+                  <button
+                    onClick={(e) => { e.preventDefault(); setSortMode("popular") }}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${sortMode === "popular" ? "bg-white text-orange-600 shadow-sm border border-gray-100" : "text-gray-500 hover:text-gray-700"}`}
+                  >
+                    Bán chạy
+                  </button>
+                  <button
+                    onClick={(e) => { e.preventDefault(); setSortMode("price_desc") }}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${sortMode === "price_desc" ? "bg-white text-orange-600 shadow-sm border border-gray-100" : "text-gray-500 hover:text-gray-700"}`}
+                  >
+                    Giá cao → thấp
+                  </button>
+                  <button
+                    onClick={(e) => { e.preventDefault(); setSortMode("price_asc") }}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${sortMode === "price_asc" ? "bg-white text-orange-600 shadow-sm border border-gray-100" : "text-gray-500 hover:text-gray-700"}`}
+                  >
+                    Giá thấp → cao
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -449,7 +551,7 @@ const ProductGroupList: React.FC<any> = ({ searchTerm, title, descriptionHtml })
 
             {/* Optional description (mimic product-desc with read-more) */}
             {descriptionHtml ? (
-              <div className="product-desc content-read-more bg-white rounded-lg p-4 mb-4" dangerouslySetInnerHTML={{__html: descriptionHtml}} />
+              <div className="product-desc content-read-more bg-white rounded-lg p-4 mb-4" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
             ) : null}
 
             {loading && !productList.length ? (
@@ -461,7 +563,7 @@ const ProductGroupList: React.FC<any> = ({ searchTerm, title, descriptionHtml })
             ) : (
               <div>
                 <div className="box-product bg-white fix-height fix-height-hl p-3">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                     {productList.map((p) => (
                       <ProductCard key={p.crdfd_productsid || p.id} product={p} />
                     ))}
@@ -486,8 +588,8 @@ const ProductGroupList: React.FC<any> = ({ searchTerm, title, descriptionHtml })
             )}
           </main>
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 

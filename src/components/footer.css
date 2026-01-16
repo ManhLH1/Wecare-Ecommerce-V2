@@ -23,24 +23,23 @@
   /* compact horizontal spacing between columns */
   gap: 24px;
   /* align column tops so titles sit on the same horizontal line */
-  align-items: flex-start;
+  align-items: stretch;
   flex-wrap: wrap;
 }
 .col {
-  /* give columns more room to spread while staying responsive */
-  flex: 1 1 260px;
+  /* give columns equal flex distribution for uniform width */
+  flex: 1 1 0;
   min-width: 220px;
+  display: flex;
+  flex-direction: column;
 }
-/* make left two columns narrower so middle contact column appears larger */
+/* ensure all columns have equal width distribution */
 .row.large-columns-4 > .col:nth-child(1),
-.row.large-columns-4 > .col:nth-child(2) {
-  flex: 0 0 220px;
-  max-width: 220px;
-}
-.row.large-columns-4 > .col:nth-child(3) {
-  /* allow contact column to expand */
-  flex: 1 1 420px;
-  min-width: 240px;
+.row.large-columns-4 > .col:nth-child(2),
+.row.large-columns-4 > .col:nth-child(3),
+.row.large-columns-4 > .col:nth-child(4) {
+  flex: 1 1 0;
+  max-width: none;
 }
 .widget-title {
   display: block;
@@ -77,14 +76,20 @@
   background: #eaeaea;
   margin-bottom: 8px;
 }
+.ux-menu {
+  flex: 1;
+}
 .ux-menu .ux-menu-link {
-  padding: 2px 0;
+  padding: 4px 0;
   border-bottom: 1px solid #efefef;
 }
 .ux-menu-link__text {
   color: #666;
   font-size: var(--footer-body-size);
   line-height: var(--footer-line-height);
+}
+.menu-chinh-sach-container {
+  flex: 1;
 }
 .menu-chinh-sach-container .menu {
   list-style: none;
@@ -109,14 +114,19 @@
   padding: 4px 0;
   color: #666;
 }
+.contact-widget {
+  display: flex;
+  flex-direction: column;
+}
 .contact-info {
   list-style: none;
   padding: 0;
   margin: 0;
   color: #666;
+  flex: 1;
 }
 .contact-info li {
-  padding: 6px 0;
+  padding: 4px 0;
   border-bottom: 1px solid #f6f6f6;
   font-size: var(--footer-body-size);
   line-height: var(--footer-line-height);
@@ -131,7 +141,7 @@
   font-size: var(--footer-body-size);
   line-height: var(--footer-line-height);
   color: #555;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 /* social icons alignment and sizing consistent */

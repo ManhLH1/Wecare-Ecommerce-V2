@@ -22,17 +22,25 @@ const TestimonialCard: React.FC<{
   );
 };
 
-const BenefitsItem: React.FC<{ icon: React.ReactNode; title: string; desc?: string }> = ({
-  icon,
+const BenefitsItem: React.FC<{ iconSrc: string; title: string; desc?: string }> = ({
+  iconSrc,
   title,
   desc,
 }) => {
   return (
-    <div className="flex items-center gap-4">
-      <div className="w-12 h-12 flex items-center justify-center text-2xl">{icon}</div>
+    <div className="flex items-center gap-5 group cursor-default transition-all duration-300 hover:translate-x-1">
+      <div className="w-20 h-20 flex-shrink-0 bg-white/40 rounded-full flex items-center justify-center p-0 transition-all duration-500 group-hover:bg-white/60 group-hover:scale-105">
+        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg p-3 transition-transform duration-500 group-hover:rotate-3">
+          <img
+            src={iconSrc}
+            alt={title}
+            className="w-full h-full object-contain"
+          />
+        </div>
+      </div>
       <div>
-        <div className="font-bold text-gray-900">{title}</div>
-        {desc && <div className="text-sm text-gray-800/80">{desc}</div>}
+        <div className="font-extrabold text-gray-900 text-lg leading-tight uppercase tracking-tight group-hover:text-amber-900 transition-colors">{title}</div>
+        {desc && <div className="text-sm text-gray-800 font-bold opacity-90 mt-0.5">{desc}</div>}
       </div>
     </div>
   );
@@ -42,11 +50,11 @@ const TestimonialsSection: React.FC = () => {
   return (
     <section className="w-full bg-gray-100 py-10">
       <div className="relative px-4 md:px-12">
-          <h3 className="text-center text-2xl font-semibold text-gray-700 mb-8">
-            Khách hàng nói gì về WECARE
-          </h3>
+        <h3 className="text-center text-2xl font-semibold text-gray-700 mb-8">
+          Khách hàng nói gì về WECARE
+        </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <TestimonialCard
             title="Giao hàng rất nhanh"
             text="Đặt hàng buổi sáng, hẹn chiều giao dễ đi công trình. Vừa ăn trưa xong, hàng giao luôn tới công trình. Rất nhanh chóng, tiện lợi cho công việc."
@@ -70,31 +78,31 @@ const TestimonialsSection: React.FC = () => {
           />
         </div>
 
-        <div className="bg-amber-400 rounded p-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-center px-0">
-              <BenefitsItem
-                icon={<span>🚚</span>}
-                title="Giao siêu tốc"
-                desc="Freeship đơn trên 2 triệu"
-              />
-              <BenefitsItem
-                icon={<span>💰</span>}
-                title="Giá siêu tốt"
-                desc="Cam kết tốt nhất thị trường"
-              />
-              <BenefitsItem
-                icon={<span>✅</span>}
-                title="Bảo hành chính hãng"
-                desc="Bảo hành theo chính sách hãng"
-              />
-              <BenefitsItem
-                icon={<span>📦</span>}
-                title="Đa dạng hàng hóa"
-                desc="Hơn 10.000 sản phẩm"
-              />
-            </div>
+        <div className="bg-amber-400 rounded-xl p-8 shadow-md">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-center px-2">
+            <BenefitsItem
+              iconSrc="/images/icon-delivery.png"
+              title="Giao siêu tốc"
+              desc="Freeship đơn trên 2 triệu"
+            />
+            <BenefitsItem
+              iconSrc="/images/icon-price.png"
+              title="Giá siêu tốt"
+              desc="Cam kết tốt nhất thị trường"
+            />
+            <BenefitsItem
+              iconSrc="/images/icon-warranty.png"
+              title="Bảo hành chính hãng"
+              desc="Bảo hành theo chính sách hãng"
+            />
+            <BenefitsItem
+              iconSrc="/images/icon-products.png"
+              title="Đa dạng hàng hóa"
+              desc="Hơn 10.000 sản phẩm"
+            />
           </div>
         </div>
+      </div>
     </section>
   );
 };

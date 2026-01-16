@@ -290,115 +290,115 @@ const FeaturedCategoriesProducts: React.FC<{
           ) : products && products.length > 0 ? (
             <div className="bg-white rounded-md p-3 shadow-sm">
               <Slider {...sliderSettings}>
-              {products.map((p: any, idx: number) => {
-                const title = p.crdfd_tensanphamtext || p.crdfd_name || p.name || "";
-                const imageSrc = p.cr1bb_imageurlproduct || p.cr1bb_imageurl || p.imageUrl || p.image || "";
-                // derive price and original price robustly from common fields
-                const getPriceInfo = (prod: any) => {
-                  let sale = null;
-                  let original = null;
-                  try {
-                    if (Array.isArray(prod.cr1bb_json_gia) && prod.cr1bb_json_gia.length > 0) {
-                      const item = prod.cr1bb_json_gia[0];
-                      sale = parseFloat(item.crdfd_gia ?? item.cr1bb_giakhongvat ?? item.cr1bb_giaban ?? NaN);
-                      // try to find original within the product or item
-                      original = parseFloat(item.originalPrice ?? prod.cr1bb_originalprice ?? prod.originalPrice ?? NaN);
-                    } else if (typeof prod.cr1bb_json_gia === "string") {
-                      try {
-                        const parsed = JSON.parse(prod.cr1bb_json_gia);
-                        if (Array.isArray(parsed) && parsed.length > 0) {
-                          const item = parsed[0];
-                          sale = parseFloat(item.crdfd_gia ?? item.cr1bb_giakhongvat ?? item.cr1bb_giaban ?? NaN);
-                          original = parseFloat(item.originalPrice ?? prod.cr1bb_originalprice ?? prod.originalPrice ?? NaN);
+                {products.map((p: any, idx: number) => {
+                  const title = p.crdfd_tensanphamtext || p.crdfd_name || p.name || "";
+                  const imageSrc = p.cr1bb_imageurlproduct || p.cr1bb_imageurl || p.imageUrl || p.image || "";
+                  // derive price and original price robustly from common fields
+                  const getPriceInfo = (prod: any) => {
+                    let sale = null;
+                    let original = null;
+                    try {
+                      if (Array.isArray(prod.cr1bb_json_gia) && prod.cr1bb_json_gia.length > 0) {
+                        const item = prod.cr1bb_json_gia[0];
+                        sale = parseFloat(item.crdfd_gia ?? item.cr1bb_giakhongvat ?? item.cr1bb_giaban ?? NaN);
+                        // try to find original within the product or item
+                        original = parseFloat(item.originalPrice ?? prod.cr1bb_originalprice ?? prod.originalPrice ?? NaN);
+                      } else if (typeof prod.cr1bb_json_gia === "string") {
+                        try {
+                          const parsed = JSON.parse(prod.cr1bb_json_gia);
+                          if (Array.isArray(parsed) && parsed.length > 0) {
+                            const item = parsed[0];
+                            sale = parseFloat(item.crdfd_gia ?? item.cr1bb_giakhongvat ?? item.cr1bb_giaban ?? NaN);
+                            original = parseFloat(item.originalPrice ?? prod.cr1bb_originalprice ?? prod.originalPrice ?? NaN);
+                          }
+                        } catch (e) {
+                          // ignore parse error
                         }
-                      } catch (e) {
-                        // ignore parse error
                       }
+                    } catch (e) {
+                      // ignore errors
                     }
-                  } catch (e) {
-                    // ignore errors
-                  }
 
-                  // fallback fields
-                  if (!sale || Number.isNaN(sale)) {
-                    sale = parseFloat(prod.cr1bb_giaban ?? prod.price ?? prod.crdfd_giatheovc ?? prod.crdfd_gia ?? NaN);
-                  }
-                  if (!original || Number.isNaN(original)) {
-                    original = parseFloat(prod.cr1bb_giakhuyenmai ?? prod.originalPrice ?? prod.cr1bb_originalprice ?? NaN);
-                  }
+                    // fallback fields
+                    if (!sale || Number.isNaN(sale)) {
+                      sale = parseFloat(prod.cr1bb_giaban ?? prod.price ?? prod.crdfd_giatheovc ?? prod.crdfd_gia ?? NaN);
+                    }
+                    if (!original || Number.isNaN(original)) {
+                      original = parseFloat(prod.cr1bb_giakhuyenmai ?? prod.originalPrice ?? prod.cr1bb_originalprice ?? NaN);
+                    }
 
-                  sale = Number.isFinite(sale) ? sale : null;
-                  original = Number.isFinite(original) ? original : null;
-                  const discount = original && sale && original > sale ? Math.round(((original - sale) / original) * 100) : null;
-                  return { sale, original, discount };
-                };
+                    sale = Number.isFinite(sale) ? sale : null;
+                    original = Number.isFinite(original) ? original : null;
+                    const discount = original && sale && original > sale ? Math.round(((original - sale) / original) * 100) : null;
+                    return { sale, original, discount };
+                  };
 
-                const { sale: priceVal, original: originalVal, discount: discountPerc } = getPriceInfo(p);
-                const productId = p.crdfd_productsid || p.productId || p.id || `${category.id}-${idx}`;
-                const key = productId;
+                  const { sale: priceVal, original: originalVal, discount: discountPerc } = getPriceInfo(p);
+                  const productId = p.crdfd_productsid || p.productId || p.id || `${category.id}-${idx}`;
+                  const key = productId;
 
-                return (
-                  <div key={key} className="px-2">
-                    <div
-                      className="relative rounded-lg bg-white p-2 flex flex-col justify-between text-center shadow-sm hover:shadow-md transition-transform transition-colors transform-gpu hover:-translate-y-1"
-                      style={{ height: 300, border: '1px solid #049dbf' }}
-                    >
-                      {/* Discount ribbon */}
-                      {discountPerc ? (
-                        <div
-                          className="absolute -top-1 -left-1 text-white font-semibold"
-                          style={{
-                            background: "linear-gradient(90deg,#ef4444,#dc2626)",
-                            padding: "6px 10px",
-                            borderTopLeftRadius: 8,
-                            borderBottomRightRadius: 10,
-                            boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
-                            fontSize: 12,
-                          }}
-                          aria-hidden
-                        >
-                          -{discountPerc}%
-                        </div>
-                      ) : null}
-
-                      {/* Compare control removed for cleaner layout */}
-
-            <div className="flex-1 flex flex-col items-center justify-start pt-1">
-                        <div className="w-full max-w-[220px] p-2 flex items-center justify-center h-[140px]">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={imageSrc || ""}
-                            alt={title || category.name}
-                            className="object-contain max-w-full max-h-[120px] block"
-                            onError={(e: any) => {
-                              e.currentTarget.onerror = null;
-                              e.currentTarget.src =
-                                "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='400'><rect width='100%' height='100%' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='14'>No image</text></svg>";
+                  return (
+                    <div key={key} className="px-2 py-2">
+                      <div
+                        className="relative rounded-lg bg-white p-2 flex flex-col justify-between text-center shadow-sm hover:shadow-md transition-transform transition-colors transform-gpu hover:-translate-y-1"
+                        style={{ height: 300, border: '1px solid #049dbf' }}
+                      >
+                        {/* Discount ribbon */}
+                        {discountPerc ? (
+                          <div
+                            className="absolute -top-1 -left-1 text-white font-semibold"
+                            style={{
+                              background: "linear-gradient(90deg,#ef4444,#dc2626)",
+                              padding: "6px 10px",
+                              borderTopLeftRadius: 8,
+                              borderBottomRightRadius: 10,
+                              boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
+                              fontSize: 12,
                             }}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="mt-2 flex flex-col items-center" style={{ minHeight: 72 }}>
-                        <h3 className="text-base md:text-lg font-semibold text-gray-800 leading-snug mb-2 line-clamp-3 min-h-[54px] flex items-center justify-center text-center">
-                          <Link href={p.href || category.href || "/san-pham"} className="text-gray-800 no-underline" style={{ textDecoration: "none" }}>
-                            {title}
-                          </Link>
-                        </h3>
-
-                        <div className="text-base text-red-600 font-bold">
-                          {priceVal ? `${priceVal.toLocaleString("vi-VN")}₫` : ""}
-                        </div>
-                        {originalVal ? (
-                          <div className="text-xs text-gray-400 line-through mt-1">
-                            {originalVal ? `${originalVal.toLocaleString("vi-VN")}₫` : ""}
+                            aria-hidden
+                          >
+                            -{discountPerc}%
                           </div>
                         ) : null}
+
+                        {/* Compare control removed for cleaner layout */}
+
+                        <div className="flex-1 flex flex-col items-center justify-start pt-1">
+                          <div className="w-full max-w-[220px] p-2 flex items-center justify-center h-[140px]">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={imageSrc || ""}
+                              alt={title || category.name}
+                              className="object-contain max-w-full max-h-[120px] block"
+                              onError={(e: any) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src =
+                                  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='400'><rect width='100%' height='100%' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='14'>No image</text></svg>";
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mt-2 flex flex-col items-center" style={{ minHeight: 72 }}>
+                          <h3 className="text-base md:text-lg font-semibold text-gray-800 leading-snug mb-2 line-clamp-3 min-h-[54px] flex items-center justify-center text-center">
+                            <Link href={p.href || category.href || "/san-pham"} className="text-gray-800 no-underline" style={{ textDecoration: "none" }}>
+                              {title}
+                            </Link>
+                          </h3>
+
+                          <div className="text-base text-red-600 font-bold">
+                            {priceVal ? `${priceVal.toLocaleString("vi-VN")}₫` : ""}
+                          </div>
+                          {originalVal ? (
+                            <div className="text-xs text-gray-400 line-through mt-1">
+                              {originalVal ? `${originalVal.toLocaleString("vi-VN")}₫` : ""}
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
               </Slider>
             </div>
           ) : (
