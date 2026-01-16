@@ -521,6 +521,7 @@ function ProductEntryForm({
   const [apiPrice, setApiPrice] = useState<number | null>(null); // Giá từ API để check warning
   const [shouldReloadPrice, setShouldReloadPrice] = useState<number>(0); // Counter to trigger reload
   const [isProcessingAdd, setIsProcessingAdd] = useState<boolean>(false); // Flag để ngăn bấm liên tục
+  const [isEditingPrice, setIsEditingPrice] = useState<boolean>(false); // Track if user is actively editing price input
   const hasSetUnitFromApiRef = useRef<boolean>(false); // Track nếu đã set đơn vị từ API để không reset lại
   const userSelectedUnitRef = useRef<boolean>(false); // Track nếu người dùng đã chọn đơn vị thủ công
   const userHasManuallySelectedUnitRef = useRef<boolean>(false); // Persistent until product changes
@@ -2131,7 +2132,7 @@ function ProductEntryForm({
       discountRate
     });
 
-    if (approvePrice && priceEntryMethod === 'Theo chiết khấu' && basePriceForDiscount > 0) {
+    if (!approvePrice && priceEntryMethod === 'Theo chiết khấu' && basePriceForDiscount > 0) {
       const pct = Number(discountPercent) || 0;
       const discountedPrice = basePriceForDiscount - (basePriceForDiscount * pct / 100);
       const roundedPrice = Math.round(discountedPrice * 100) / 100;
@@ -2960,7 +2961,7 @@ function ProductEntryForm({
               />
             </div>
 
-            {priceEntryMethod === 'Theo chiết khấu' && (
+            {priceEntryMethod === 'Theo chiết khấu' && !approvePrice && (
               <div className="admin-app-field-compact admin-app-field-discount-group">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -3314,7 +3315,7 @@ function ProductEntryForm({
                   {priceGroupText}{(priceGroupDiscountPct && normalizeText(priceGroupText) !== 'shop') ? ` (-${(Number.isInteger(priceGroupDiscountPct) ? priceGroupDiscountPct : priceGroupDiscountPct.toFixed(1))}%)` : ''}
                 </span>
               )}
-              {customerWecareRewards && (
+              {customerWecareRewards && !approvePrice && (
                 <span className="admin-app-rewards-badge" style={{
                   marginLeft: '8px',
                   fontSize: '10px',
@@ -3340,8 +3341,10 @@ function ProductEntryForm({
                 inputMode="numeric"
                 pattern="[0-9.,]*"
                 className={`admin-app-input admin-app-input-compact admin-app-input-money admin-app-input-small${priceLoading || !approvePrice || (approvePrice && priceEntryMethod === 'Theo chiết khấu') ? ' admin-app-input-readonly' : ''}`}
-                value={formatPriceForDisplay(String(price)) || price}
+                value={isEditingPrice ? price : (formatPriceForDisplay(String(price)) || price)}
                 onChange={(e) => handlePriceChange(e.target.value)}
+                onFocus={() => setIsEditingPrice(true)}
+                onBlur={() => setIsEditingPrice(false)}
                 placeholder={priceLoading ? "Đang tải..." : "Giá"}
                 readOnly={priceLoading || !approvePrice || (approvePrice && priceEntryMethod === 'Theo chiết khấu')}
                 disabled={isFormDisabled || !approvePrice}
