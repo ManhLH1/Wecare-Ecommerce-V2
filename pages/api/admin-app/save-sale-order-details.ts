@@ -1821,9 +1821,7 @@ export default async function handler(
         }
 
         // Add quote detail reference if available (using Navigation property)
-        if (finalQuoteDetailId) {
-          payload[`crdfd_baogia_chitiet@odata.bind`] = `/${QUOTE_DETAIL_TABLE}(${finalQuoteDetailId})`;
-        }
+      
 
         // Add unit reference if available
         // ID_Unit_Sp (crdfd_onvi) là lookup đến crdfd_unitconversions table
