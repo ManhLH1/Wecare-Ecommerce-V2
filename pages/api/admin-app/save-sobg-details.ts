@@ -14,6 +14,8 @@ const EMPLOYEE_TABLE = "crdfd_employees";
 const SYSTEMUSER_TABLE = "systemusers";
 const PROMOTION_TABLE = "crdfd_promotions";
 const KHO_BD_TABLE = "crdfd_kho_binh_dinhs";
+const QUOTE_DETAIL_TABLE = "crdfd_baogiachitiets";
+const CUSTOMER_TABLE = "crdfd_customers";
 
 // Batch lookup Product IDs and Names
 async function batchLookupProductIds(productCodes: string[], headers: any): Promise<Map<string, { id: string | null; name: string | null }>> {
@@ -190,6 +192,70 @@ async function lookupEmployeeByEmail(
     } catch (error: any) {
         console.error('[Save SOBG] Error looking up employee by email:', error.message);
         console.error('[Save SOBG] Full error:', error.response?.data || error);
+    }
+
+    return null;
+}
+
+// Helper function to lookup quote detail ID from productCode and customerId
+async function lookupQuoteDetailId(
+    productCode: string | undefined,
+    customerId: string | undefined,
+    headers: any
+): Promise<string | null> {
+    if (!productCode) {
+        return null;
+    }
+
+    try {
+        const safeCode = productCode.trim().replace(/'/g, "''");
+
+        // Build filter: match product code and active records
+        let filter = `crdfd_masanpham eq '${safeCode}' and statecode eq 0`;
+
+        // If customerId is provided, try to match by customer group
+        if (customerId) {
+            const safeCustomerId = customerId.trim().replace(/'/g, "''");
+            // Lookup customer to get customer group
+            try {
+                const customerQuery = `$select=_crdfd_nhomoituong_value&$filter=crdfd_customersid eq ${safeCustomerId}`;
+                const customerResponse = await axios.get(`${BASE_URL}${CUSTOMER_TABLE}?${customerQuery}`, { headers });
+                const customers = customerResponse.data.value || [];
+
+                if (customers.length > 0 && customers[0]._crdfd_nhomoituong_value) {
+                    const customerGroupId = customers[0]._crdfd_nhomoituong_value;
+                    filter += ` and _crdfd_nhomoituong_value eq ${customerGroupId}`;
+                }
+            } catch (customerError) {
+                // Continue without customer group filter if lookup fails
+                console.warn('[Lookup Quote Detail] Could not lookup customer group:', (customerError as Error).message);
+            }
+        }
+
+        const columns = "crdfd_baogiachitietid,crdfd_masanpham,crdfd_gia,crdfd_ngaybaogia,crdfd_hieuluctoingay";
+        const query = `$select=${columns}&$filter=${encodeURIComponent(filter)}&$orderby=crdfd_ngaybaogia desc&$top=1`;
+        const endpoint = `${QUOTE_DETAIL_TABLE}?${query}`;
+
+        const response = await axios.get(`${BASE_URL}${endpoint}`, { headers });
+        const results = response.data.value || [];
+
+        if (results.length > 0) {
+            const quoteDetail = results[0];
+
+            // Check if the quote is still valid (not expired)
+            if (quoteDetail.crdfd_hieuluctoingay) {
+                const expiryDate = new Date(quoteDetail.crdfd_hieuluctoingay);
+                const now = new Date();
+                if (expiryDate < now) {
+                    console.warn('[Lookup Quote Detail] Quote expired:', quoteDetail.crdfd_baogiachitietid);
+                    return null;
+                }
+            }
+
+            return quoteDetail.crdfd_baogiachitietid;
+        }
+    } catch (error: any) {
+        console.warn('[Lookup Quote Detail] Error looking up quote detail:', error.message);
     }
 
     return null;
@@ -587,23 +653,49 @@ export default async function handler(
         // Collect all unique product codes and unit conversion pairs for batch processing
         const uniqueProductCodes = new Set<string>();
         const productUnitPairs: Array<{ productCode: string; unitName: string }> = [];
+        const quoteLookupRequests: Array<{ productCode?: string, index: number }> = [];
 
-        products.forEach(product => {
+        products.forEach((product, index) => {
             if (product.productCode) {
                 uniqueProductCodes.add(product.productCode);
                 if (product.unit) {
                     productUnitPairs.push({ productCode: product.productCode, unitName: product.unit });
                 }
+                // Collect quote detail lookup requests
+                if (!product.quoteDetailId) {
+                    quoteLookupRequests.push({
+                        productCode: product.productCode,
+                        index
+                    });
+                }
             }
         });
 
-        // Batch lookup product IDs and unit conversions concurrently
-        const [productIdMap, unitConversionMap] = await Promise.all([
+        // Batch lookup product IDs, unit conversions, and quote details concurrently
+        const [productIdMap, unitConversionMap, quoteLookupResults] = await Promise.all([
             batchLookupProductIds(Array.from(uniqueProductCodes), headers),
-            batchLookupUnitConversionIds(productUnitPairs, headers)
+            batchLookupUnitConversionIds(productUnitPairs, headers),
+            // Batch lookup quote details
+            Promise.all(quoteLookupRequests.map(async (req) => {
+                try {
+                    const quoteDetailId = await lookupQuoteDetailId(req.productCode, undefined, headers); // customerId not available in SOBG
+                    return { index: req.index, quoteDetailId, success: true };
+                } catch (error) {
+                    console.warn(`[Save SOBG] Quote detail lookup failed for index ${req.index}:`, error);
+                    return { index: req.index, quoteDetailId: null, success: false };
+                }
+            }))
         ]);
 
-        console.log(`[Save SOBG] Completed batch lookups - products: ${productIdMap.size}, units: ${unitConversionMap.size}`);
+        // Build quote detail ID map
+        const quoteDetailIdMap = new Map<number, string>();
+        quoteLookupResults.forEach((result) => {
+            if (result.success && result.quoteDetailId) {
+                quoteDetailIdMap.set(result.index, result.quoteDetailId);
+            }
+        });
+
+        console.log(`[Save SOBG] Completed batch lookups - products: ${productIdMap.size}, units: ${unitConversionMap.size}, quote details: ${quoteDetailIdMap.size}`);
 
         // ============ STEP 3: VALIDATION - Check required fields before saving ============
         for (const product of products) {
@@ -886,6 +978,12 @@ export default async function handler(
                 unitConvId = String(product.unitId).trim() || undefined;
             }
 
+            // Get pre-fetched quote detail ID (no additional API call needed)
+            let finalQuoteDetailId = (product as any).quoteDetailId;
+            if (!finalQuoteDetailId) {
+                finalQuoteDetailId = quoteDetailIdMap.get(i);
+            }
+
             // Compute canonical subtotal/vat/total to match UI 'Tổng' (subtotal + VAT)
             const computedSubtotalRaw = product.subtotal ?? ((product.discountedPrice ?? product.price) * (product.quantity || 0));
             const computedSubtotal = Math.round(computedSubtotalRaw * 100) / 100;
@@ -912,6 +1010,7 @@ export default async function handler(
                 "crdfd_Maonhang@odata.bind": `/crdfd_sobaogias(${sobgId})`,
                 ...(normalizedProductId ? { "crdfd_Sanpham@odata.bind": `/crdfd_productses(${normalizedProductId})` } : {}),
                 ...(unitConvId ? { "crdfd_onvi@odata.bind": `/crdfd_unitconvertions(${unitConvId})` } : {}),
+                ...(finalQuoteDetailId ? { "crdfd_Baogia_chitiet@odata.bind": `/crdfd_baogiachitiets(${finalQuoteDetailId})` } : {}),
                 "crdfd_soluong": product.quantity,
                 "crdfd_ongia": product.discountedPrice ?? product.price,
                 "crdfd_ieuchinhgtgt": mapVatPercentToChoice(product.vat),
@@ -942,6 +1041,15 @@ export default async function handler(
             // If SUP approver ID is provided, set lookup binding property
             if (product.approveSupPrice && product.approveSupPriceId) {
                 entity[`cr1bb_duyetgiasup@odata.bind`] = `/crdfd_duyetgias(${product.approveSupPriceId})`;
+            }
+
+            // Attach to product object so the fast response includes the selected quote detail id
+            if (finalQuoteDetailId) {
+                try {
+                    (product as any).quoteDetailId = finalQuoteDetailId;
+                } catch (e) {
+                    // ignore
+                }
             }
 
             productProcessingTasks.push({

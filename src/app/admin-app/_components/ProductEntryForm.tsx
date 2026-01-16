@@ -17,6 +17,179 @@ import {
 import { showToast } from '../../../components/ToastManager';
 import axios from 'axios';
 
+// Simple in-memory cache with TTL for product data
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+  ttl: number; // Time to live in milliseconds
+}
+
+interface InventoryCacheData {
+  inventoryResult: any;
+  khoBinhDinhResult: any;
+  theoretical: number;
+  reserved: number;
+  available: number;
+  bypassWarning: string;
+}
+
+interface PriceCacheData {
+  allPrices: any[];
+  selectedPrice: any;
+  apiUnitName?: string;
+  apiPriceGroupText?: string;
+  priceWithVat: number | null;
+  priceNoVat: number | null;
+  finalPrice: number | null;
+  discountRate: number | null;
+}
+
+class ProductDataCache {
+  private cache = new Map<string, CacheEntry<any>>();
+  private readonly DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes
+
+  set<T>(key: string, data: T, ttl: number = this.DEFAULT_TTL): void {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      ttl
+    });
+  }
+
+  get<T>(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+
+    const now = Date.now();
+    if (now - entry.timestamp > entry.ttl) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    return entry.data;
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+
+  // Clean expired entries
+  cleanup(): void {
+    const now = Date.now();
+    for (const [key, entry] of this.cache.entries()) {
+      if (now - entry.timestamp > entry.ttl) {
+        this.cache.delete(key);
+      }
+    }
+  }
+}
+
+// Global cache instance
+const productDataCache = new ProductDataCache();
+
+// Background sync for cache invalidation
+let cacheSyncInterval: NodeJS.Timeout | null = null;
+
+const startCacheSync = () => {
+  if (cacheSyncInterval) return; // Already running
+
+  // Clean expired cache entries every 30 seconds
+  cacheSyncInterval = setInterval(() => {
+    productDataCache.cleanup();
+  }, 30000);
+};
+
+const stopCacheSync = () => {
+  if (cacheSyncInterval) {
+    clearInterval(cacheSyncInterval);
+    cacheSyncInterval = null;
+  }
+};
+
+// Expose cache management functions globally for debugging
+if (typeof window !== 'undefined') {
+  (window as any).productDataCache = {
+    clear: () => productDataCache.clear(),
+    cleanup: () => productDataCache.cleanup(),
+    getStats: () => {
+      // This would need to be added to the cache class
+      console.log('Cache stats not implemented yet');
+    }
+  };
+}
+
+// Preload common product data for better performance
+const preloadCommonProductData = async (customerCode?: string, vatText?: string, vatPercent?: number) => {
+  if (!customerCode) return;
+
+  try {
+    // Get top 10 most used products from localStorage or API
+    const topProducts = JSON.parse(localStorage.getItem('wecare_top_products') || '[]');
+
+    if (topProducts.length === 0) return;
+
+    // Preload data for top products in background
+    const preloadPromises = topProducts.slice(0, 5).map(async (productCode: string) => {
+      try {
+        // Preload inventory for default warehouse (will be cached)
+        const warehouses = JSON.parse(localStorage.getItem('wecare_warehouses') || '[]');
+        const defaultWarehouse = warehouses.find((w: any) => w.crdfd_name?.toLowerCase().includes('hồ chí minh'))?.crdfd_khowecareid;
+
+        if (defaultWarehouse) {
+          // Preload inventory data
+          const [inventoryResult, khoBinhDinhResult] = await Promise.all([
+            fetchInventory(productCode, defaultWarehouse, false),
+            fetchInventory(productCode, defaultWarehouse, true)
+          ]);
+
+          const cacheKey = `inventory-${productCode}-${defaultWarehouse}-${vatText || ''}-${false}`;
+          productDataCache.set(cacheKey, {
+            inventoryResult,
+            khoBinhDinhResult,
+            theoretical: (vatText?.toLowerCase().includes('có vat') ? khoBinhDinhResult?.theoreticalStock : inventoryResult?.theoreticalStock) || 0,
+            reserved: (vatText?.toLowerCase().includes('có vat') ? khoBinhDinhResult?.reservedQuantity : inventoryResult?.reservedQuantity) || 0,
+            available: (vatText?.toLowerCase().includes('có vat') ? khoBinhDinhResult?.availableToSell : inventoryResult?.availableToSell) ||
+                     ((vatText?.toLowerCase().includes('có vat') ? khoBinhDinhResult?.theoreticalStock : inventoryResult?.theoreticalStock) || 0) -
+                     ((vatText?.toLowerCase().includes('có vat') ? khoBinhDinhResult?.reservedQuantity : inventoryResult?.reservedQuantity) || 0),
+            bypassWarning: ''
+          });
+        }
+
+        // Preload price data
+        const priceResult = await fetchProductPrice(productCode, customerCode, undefined, undefined, undefined);
+        const priceCacheKey = `price-${productCode}::${customerCode}::${vatPercent || 0}::${vatText || ''}::0::`;
+        const priceResultAny = priceResult as any;
+        if (priceResultAny?.prices) {
+          const priceData: PriceCacheData = {
+            allPrices: priceResultAny.prices,
+            selectedPrice: priceResultAny.prices[0],
+            apiUnitName: priceResultAny.prices[0]?.unitName,
+            apiPriceGroupText: priceResultAny.prices[0]?.priceGroupText,
+            priceWithVat: priceResultAny.prices[0]?.price,
+            priceNoVat: priceResultAny.prices[0]?.priceNoVat,
+            finalPrice: priceResultAny.prices[0]?.finalPrice,
+            discountRate: priceResultAny.prices[0]?.discountRate
+          };
+          productDataCache.set(priceCacheKey, priceData);
+        }
+
+      } catch (e) {
+        // Silent fail for preloading
+        console.debug('[Preload] Failed to preload data for', productCode, e);
+      }
+    });
+
+    // Run preloading in background
+    Promise.all(preloadPromises).catch(() => {
+      // Silent fail
+    });
+
+  } catch (e) {
+    // Silent fail for preloading
+    console.debug('[Preload] Failed to preload common products', e);
+  }
+};
+
 // Map option set value of crdfd_gtgt/crdfd_gtgtnew to VAT percentage
 const VAT_OPTION_MAP: Record<number, number> = {
   191920000: 0,  // 0%
@@ -130,7 +303,9 @@ interface ProductEntryFormProps {
   disableInventoryReserve?: boolean; // Tắt tính năng giữ hàng tự động (dùng cho SOBG)
   orderTotal?: number; // Tổng tiền toàn đơn (dùng để check Promotion Order & phân bổ chiết khấu VNĐ)
   onOpenSpecialPromotions?: () => Promise<void> | void;
+  onOpenDiscount2?: () => Promise<void> | void;
   enablePromotionAutoFetch?: boolean;
+  onDistrictLeadtimeChange?: (leadtime: number) => void; // Callback khi district leadtime thay đổi
 }
 
 function ProductEntryForm({
@@ -204,6 +379,7 @@ function ProductEntryForm({
   disableInventoryReserve = false,
   orderTotal,
   onOpenSpecialPromotions,
+  onOpenDiscount2,
   enablePromotionAutoFetch = false,
 }: ProductEntryFormProps) {
 
@@ -241,6 +417,19 @@ function ProductEntryForm({
       console.debug('[UnitDebug] state unitId/unit changed', { unitId, unit, userSelectedUnit: userSelectedUnitRef.current, availableUnitsFromPricesCount: availableUnitsFromPrices.length, pricesFromApiCount: pricesFromApi.length });
     } catch (e) {}
   }, [unitId, unit, availableUnitsFromPrices.length, pricesFromApi.length]);
+
+  // Preload common product data on component mount
+  useEffect(() => {
+    if (customerCode) {
+      // Delay preload to avoid blocking initial render
+      const timeoutId = setTimeout(() => {
+        preloadCommonProductData(customerCode, vatText, vatPercent);
+      }, 1000);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [customerCode, vatText, vatPercent]);
+
   const [warehouseId, setWarehouseId] = useState('');
   const [selectedProductCode, setSelectedProductCode] = useState<string | undefined>();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -263,6 +452,11 @@ function ProductEntryForm({
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [promotionLoading, setPromotionLoading] = useState(false);
   const [promotionError, setPromotionError] = useState<string | null>(null);
+
+  // Combined loading state for critical data that affects product addition
+  const isCriticalDataLoading = useMemo(() => {
+    return priceLoading || inventoryLoading || (promotionLoading && enablePromotionAutoFetch);
+  }, [priceLoading, inventoryLoading, promotionLoading, enablePromotionAutoFetch]);
   const [selectedPromotionId, setSelectedPromotionId] = useState<string>('');
   /**
    * Kiểm tra promotions cho sản phẩm hiện tại bằng API server-side
@@ -329,9 +523,19 @@ function ProductEntryForm({
   const [apiPrice, setApiPrice] = useState<number | null>(null); // Giá từ API để check warning
   const [shouldReloadPrice, setShouldReloadPrice] = useState<number>(0); // Counter to trigger reload
   const [isProcessingAdd, setIsProcessingAdd] = useState<boolean>(false); // Flag để ngăn bấm liên tục
+  const [isEditingPrice, setIsEditingPrice] = useState<boolean>(false); // Track if user is actively editing price input
   const hasSetUnitFromApiRef = useRef<boolean>(false); // Track nếu đã set đơn vị từ API để không reset lại
   const userSelectedUnitRef = useRef<boolean>(false); // Track nếu người dùng đã chọn đơn vị thủ công
   const userHasManuallySelectedUnitRef = useRef<boolean>(false); // Persistent until product changes
+  const lastProductSelectionTimeRef = useRef<number>(0); // Track last product selection time for debouncing
+
+  // Start background cache sync on mount
+  useEffect(() => {
+    startCacheSync();
+    return () => {
+      stopCacheSync();
+    };
+  }, []);
   const lastPriceFetchKeyRef = useRef<string | null>(null); // Dedupe key for price fetches
 
   const isVatSo = useMemo(() => {
@@ -507,23 +711,7 @@ function ProductEntryForm({
 
   // Danh sách người duyệt
   const approversList = [
-    'Bùi Tuấn Dũng',
-    'Lê Sinh Thông',
-    'Lê Thị Ngọc Anh',
-    'Nguyễn Quốc Chinh',
-    'Phạm Quốc Hưng',
     'Huỳnh Minh Trung',
-    'Bùi Thị Mỹ Trang',
-    'Hà Bông',
-    'Vũ Thành Minh',
-    'Phạm Thị Mỹ Hương',
-    'La Hoài Phương',
-    'Trần Thái Huy',
-    'Phạm Thị Ngọc Nữ',
-    'Trần Thanh Phong',
-    'Nguyễn Quốc Hào',
-    'Đỗ Nguyễn Hoàng Nhân',
-    'Hoàng Thị Mỹ Linh',
   ];
 
   // Tỉ lệ chiết khấu
@@ -828,6 +1016,11 @@ function ProductEntryForm({
       return true;
     }
 
+    // Prevent adding products when critical data is still loading
+    if (isCriticalDataLoading) {
+      return true;
+    }
+
     // Duyệt giá => bắt buộc chọn Người duyệt
     if (approvePrice && !approver) {
       return true;
@@ -928,6 +1121,7 @@ function ProductEntryForm({
     inventoryTheoretical,
     getRequestedBaseQuantity,
     priceLoading, // Thêm priceLoading vào dependency để đảm bảo buttonsDisabled được tính lại khi đang load giá
+    isCriticalDataLoading, // Thêm isCriticalDataLoading để disable button khi data đang load
   ]);
 
   const addButtonDisabledReason = useMemo(() => {
@@ -937,6 +1131,12 @@ function ProductEntryForm({
 
     if (isFormDisabled) {
       const reason = 'Chọn KH và SO trước';
+      return reason;
+    }
+
+    // Prevent adding products when critical data is still loading
+    if (isCriticalDataLoading) {
+      const reason = 'Đang tải dữ liệu sản phẩm...';
       return reason;
     }
 
@@ -1020,6 +1220,7 @@ function ProductEntryForm({
   }, [
     buttonsDisabled,
     isFormDisabled,
+    isCriticalDataLoading,
     approvePrice,
     approver,
     selectedProductCode,
@@ -1048,8 +1249,21 @@ function ProductEntryForm({
     return `Tồn LT kế toán: ${formatted} ${baseUnitText}`;
   }, [accountingStock, selectedProduct, selectedProductCode, products, units, unitId]);
 
-  // Function to load inventory
+  // Function to load inventory with caching
   const loadInventory = async () => {
+    // Inventory functionality disabled — short-circuit and clear inventory state.
+    setInventoryLoading(false);
+    setInventoryLoaded(false);
+    setInventoryTheoretical(0);
+    setReservedQuantity(0);
+    setAvailableToSell(0);
+    setStockQuantity(0);
+    setBypassWarningMessage('');
+    setInventoryInventoryMessage('');
+    setKhoBinhDinhMessage('');
+    setInventoryMessage('');
+    setInventoryColor(undefined);
+    return;
     // Xác định nguồn tồn kho:
     // - Case đặc biệt (shouldBypassInventoryCheck) → luôn lấy từ "Kho Bình Định" (isVatOrder = true)
     // - Case thường: theo VAT của Sales Order:
@@ -1084,13 +1298,46 @@ function ProductEntryForm({
       return;
     }
 
+    // Check cache first
+    const cacheKey = `inventory-${selectedProductCode}-${warehouse}-${vatText || ''}-${shouldBypassInventoryCheck}`;
+    const cachedData = productDataCache.get<InventoryCacheData>(cacheKey);
+    if (cachedData) {
+      console.debug('[Inventory Cache] Using cached data for', cacheKey);
+      // Apply cached data directly
+      const { inventoryResult, khoBinhDinhResult, theoretical, reserved, available, bypassWarning: cachedBypassWarning } = cachedData;
+
+      const inventoryTheoretical = inventoryResult?.theoreticalStock ?? 0;
+      const inventoryReserved = inventoryResult?.reservedQuantity ?? 0;
+      const inventoryAvailable = inventoryResult?.availableToSell ?? (inventoryTheoretical - inventoryReserved);
+
+      const khoBinhDinhTheoretical = khoBinhDinhResult?.theoreticalStock ?? 0;
+      const khoBinhDinhReserved = khoBinhDinhResult?.reservedQuantity ?? 0;
+      const khoBinhDinhAvailable = khoBinhDinhResult?.availableToSell ?? (khoBinhDinhTheoretical - khoBinhDinhReserved);
+
+      setInventoryTheoretical(theoretical);
+      setReservedQuantity(reserved);
+      setAvailableToSell(available);
+      setInventoryLoaded(true);
+      setStockQuantity(available);
+      setBypassWarningMessage(cachedBypassWarning);
+      setInventoryInventoryMessage(`Tồn kho (Inventory): ${inventoryTheoretical.toLocaleString('vi-VN')} | Đang giữ: ${inventoryReserved.toLocaleString('vi-VN')} | Khả dụng: ${inventoryAvailable.toLocaleString('vi-VN')}`);
+      setKhoBinhDinhMessage(`Tồn kho (Kho Bình Định): ${khoBinhDinhTheoretical.toLocaleString('vi-VN')} | Đang giữ: ${khoBinhDinhReserved.toLocaleString('vi-VN')} | Khả dụng: ${khoBinhDinhAvailable.toLocaleString('vi-VN')}`);
+      setIsUsingInventory(!isVatOrder);
+      setInventoryMessage(`${`Tồn kho (Inventory): ${inventoryTheoretical.toLocaleString('vi-VN')} | Đang giữ: ${inventoryReserved.toLocaleString('vi-VN')} | Khả dụng: ${inventoryAvailable.toLocaleString('vi-VN')}`}\n${`Tồn kho (Kho Bình Định): ${khoBinhDinhTheoretical.toLocaleString('vi-VN')} | Đang giữ: ${khoBinhDinhReserved.toLocaleString('vi-VN')} | Khả dụng: ${khoBinhDinhAvailable.toLocaleString('vi-VN')}`}`);
+      setInventoryColor(available > 0 ? undefined : 'red');
+      return;
+    }
+
     try {
       setInventoryLoading(true);
 
-      // Load cả hai tồn kho: Inventory và Kho Bình Định
+      // Load cả hai tồn kho: Inventory và Kho Bình Định với timeout để tránh chờ quá lâu
+      const inventoryPromise = fetchInventory(selectedProductCode, warehouse, false); // Inventory (không VAT)
+      const khoBinhDinhPromise = fetchInventory(selectedProductCode, warehouse, true);  // Kho Bình Định (có VAT)
+
       const [inventoryResult, khoBinhDinhResult] = await Promise.all([
-        fetchInventory(selectedProductCode, warehouse, false), // Inventory (không VAT)
-        fetchInventory(selectedProductCode, warehouse, true),  // Kho Bình Định (có VAT)
+        inventoryPromise,
+        khoBinhDinhPromise
       ]);
 
       // Xử lý tồn kho Inventory
@@ -1136,6 +1383,16 @@ function ProductEntryForm({
       setIsUsingInventory(usingInventory);
       // Giữ inventoryMessage cho backward compatibility
       setInventoryMessage(`${inventoryInfo}\n${khoBinhDinhInfo}`);
+
+      // Cache the results for future use
+      productDataCache.set(cacheKey, {
+        inventoryResult,
+        khoBinhDinhResult,
+        theoretical,
+        reserved,
+        available,
+        bypassWarning
+      });
 
       // Màu sắc: đỏ nếu không có tồn kho hoặc không đủ khả dụng
       const hasStock = stockToUse > 0;
@@ -1301,6 +1558,74 @@ function ProductEntryForm({
       // Do NOT include unitId here — changing unit should NOT trigger a network call.
       // Keep customerRegion so region changes still refetch prices.
       const fetchKey = `${selectedProductCode}::${customerCode || ''}::${vatPercent || 0}::${vatText || ''}::${shouldReloadPrice || 0}::${customerRegion || ''}`;
+
+      // Check cache first
+      const cacheKey = `price-${fetchKey}`;
+      const cachedPriceData = productDataCache.get<PriceCacheData>(cacheKey);
+      if (cachedPriceData && !shouldReloadPrice) {
+        console.debug('[Price Cache] Using cached data for', cacheKey);
+        // Apply cached data directly
+        const { allPrices, selectedPrice, apiUnitName, apiPriceGroupText, priceWithVat, priceNoVat, finalPrice, discountRate } = cachedPriceData;
+
+        setPricesFromApi(allPrices);
+        setSelectedPriceFromApi(selectedPrice);
+        setApiPrice(priceWithVat || finalPrice || null);
+
+        // Set price if not in manual mode
+        if (!(approvePrice && priceEntryMethod === 'Nhập thủ công')) {
+          const priceToSet = priceWithVat || finalPrice;
+          if (priceToSet) {
+            handlePriceChange(priceToSet.toString());
+            setBasePriceForDiscount(priceToSet);
+          }
+        }
+
+        // Set unit automatically if not manually selected
+        if (!userHasManuallySelectedUnitRef.current && allPrices.length > 0) {
+          const preferredRaw = (selectedPrice && (selectedPrice.unitName || selectedPrice.crdfd_onvichuan)) ||
+                              apiUnitName ||
+                              (allPrices[0] as any)?.crdfd_onvichuan ||
+                              '';
+          const prefNorm = normalizeText(preferredRaw || '');
+
+          let found = null;
+          const unitsFromPrices: any[] = [];
+          const seenUnitNames = new Set<string>();
+          for (const p of allPrices) {
+            const rawName = (p.crdfd_onvichuan || p.unitName || '').trim();
+            if (!rawName) continue;
+            const normName = normalizeText(rawName);
+            if (seenUnitNames.has(normName)) continue;
+            seenUnitNames.add(normName);
+
+            unitsFromPrices.push({
+              crdfd_unitsid: `price-unit-${normName}`,
+              crdfd_name: rawName,
+              crdfd_onvichuan: rawName,
+            });
+          }
+          setAvailableUnitsFromPrices(unitsFromPrices);
+
+          if (prefNorm) {
+            found = unitsFromPrices.find((u) => {
+              const n1 = normalizeText((u as any)?.crdfd_onvichuan || '');
+              const n2 = normalizeText((u as any)?.crdfd_onvichuantext || '');
+              const n3 = normalizeText((u as any)?.crdfd_name || '');
+              return n1 === prefNorm || n2 === prefNorm || n3 === prefNorm;
+            });
+          }
+
+          if (found) {
+            setUnitId(found.crdfd_unitsid);
+            setUnit(found.crdfd_name);
+            hasSetUnitFromApiRef.current = true;
+          }
+        }
+
+        setPriceLoading(false);
+        return;
+      }
+
       if (lastPriceFetchKeyRef.current === fetchKey) {
         // Skip duplicate fetch
         // console.debug('[Price] Skipping duplicate fetch for', fetchKey);
@@ -1339,6 +1664,10 @@ function ProductEntryForm({
 
         // API trả về TẤT CẢ giá cho tất cả đơn vị
         const allPrices = (result as any)?.prices || [];
+
+        // Declare variables that will be used later
+        let apiUnitName: string | undefined = result?.unitName;
+        let apiPriceGroupText: string | undefined = result?.priceGroupText;
 
         // Lấy đơn vị hiện tại để lọc giá.
         // Nếu unit được tạo từ API prices (synthetic unit), ưu tiên dùng `availableUnitsFromPrices`.
@@ -1436,13 +1765,28 @@ function ProductEntryForm({
         }
         setSelectedPriceFromApi(selectedPrice || null);
 
+        // Cache the price data for future use
+        const priceData = {
+          allPrices,
+          selectedPrice,
+          apiUnitName,
+          apiPriceGroupText,
+          priceWithVat: selectedPrice?.price ?? result?.price ?? null,
+          priceNoVat: selectedPrice?.priceNoVat ?? (result as any)?.priceNoVat ?? null,
+          finalPrice: selectedPrice?.finalPrice ?? (result as any)?.finalPrice ?? null,
+          discountRate: selectedPrice?.discountRate ?? (result as any)?.discountRate ?? null
+        };
+        productDataCache.set(cacheKey, priceData);
+
         // Fallback về format cũ nếu API chưa có prices array
         const priceWithVat = selectedPrice?.price ?? result?.price ?? null;
         const priceNoVat = selectedPrice?.priceNoVat ?? (result as any)?.priceNoVat ?? null;
         const finalPrice = selectedPrice?.finalPrice ?? (result as any)?.finalPrice ?? null;
         const discountRate = selectedPrice?.discountRate ?? (result as any)?.discountRate ?? null;
-        const apiUnitName = selectedPrice?.unitName ?? result?.unitName ?? undefined;
-        const apiPriceGroupText = selectedPrice?.priceGroupText ?? result?.priceGroupText ?? undefined;
+
+        // Update unit name variables
+        apiUnitName = selectedPrice?.unitName ?? result?.unitName ?? apiUnitName;
+        apiPriceGroupText = selectedPrice?.priceGroupText ?? result?.priceGroupText ?? apiPriceGroupText;
 
         // After building the units list from prices, automatically select the unit
         // based on the canonical `crdfd_onvichuan` value returned in the API if the
@@ -1686,6 +2030,21 @@ function ProductEntryForm({
         return;
       }
 
+      // Check cache first
+      const cacheKey = `promotions-${selectedProductCode}-${customerCode}-${vatText || ''}-${vatPercent || 0}`;
+      const cachedPromotions = productDataCache.get<Promotion[]>(cacheKey);
+      if (cachedPromotions) {
+        console.debug('[Promotions Cache] Using cached data for', cacheKey);
+        setPromotions(cachedPromotions);
+        // Auto-select first promotion if available
+        if (cachedPromotions.length > 0) {
+          const firstPromotionId = normalizePromotionId(cachedPromotions[0].id);
+          setSelectedPromotionId(firstPromotionId);
+          setPromotionText(cachedPromotions[0].name || '');
+        }
+        return;
+      }
+
       setPromotionLoading(true);
       setPromotionError(null);
       try {
@@ -1723,6 +2082,8 @@ function ProductEntryForm({
         });
 
         setPromotions(filteredPromotions);
+        // Cache the promotions data
+        productDataCache.set(cacheKey, filteredPromotions);
         // Auto-select the first promotion returned (PowerApps First(ListPromotion))
         const firstId = normalizePromotionId(filteredPromotions[0]?.id);
         setSelectedPromotionId(firstId);
@@ -1786,7 +2147,7 @@ function ProductEntryForm({
       discountRate
     });
 
-    if (approvePrice && priceEntryMethod === 'Theo chiết khấu' && basePriceForDiscount > 0) {
+    if (!approvePrice && priceEntryMethod === 'Theo chiết khấu' && basePriceForDiscount > 0) {
       const pct = Number(discountPercent) || 0;
       const discountedPrice = basePriceForDiscount - (basePriceForDiscount * pct / 100);
       const roundedPrice = Math.round(discountedPrice * 100) / 100;
@@ -2564,6 +2925,22 @@ function ProductEntryForm({
                     type="button"
                     className="admin-app-mini-btn admin-app-mini-btn-ghost"
                     onClick={() => {
+                      if (typeof onOpenDiscount2 === 'function') {
+                        onOpenDiscount2();
+                      } else {
+                        showToast.info('Chức năng chiết khấu 2 chưa sẵn sàng.');
+                      }
+                    }}
+                    disabled={!onOpenDiscount2}
+                    title="Chiết khấu 2"
+                    style={{ marginLeft: 6 }}
+                  >
+                    💰
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-app-mini-btn admin-app-mini-btn-ghost"
+                    onClick={() => {
                       if (typeof onOpenSpecialPromotions === 'function') {
                         onOpenSpecialPromotions();
                       } else {
@@ -2615,7 +2992,7 @@ function ProductEntryForm({
               />
             </div>
 
-            {priceEntryMethod === 'Theo chiết khấu' && (
+            {priceEntryMethod === 'Theo chiết khấu' && !approvePrice && (
               <div className="admin-app-field-compact admin-app-field-discount-group">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -2705,6 +3082,15 @@ function ProductEntryForm({
               })}
               value={productId}
               onChange={(value, option) => {
+                // Debounce rapid product selections to prevent race conditions
+                const now = Date.now();
+                const timeSinceLastSelection = now - lastProductSelectionTimeRef.current;
+                if (timeSinceLastSelection < 300) { // 300ms debounce
+                  console.debug('[ProductSelection] Debounced rapid selection');
+                  return;
+                }
+                lastProductSelectionTimeRef.current = now;
+
                 setProductId(value);
                 setProduct(option?.label || '');
                 const selectedProductData = products.find((p) => p.crdfd_productsid === value);
@@ -2728,50 +3114,21 @@ function ProductEntryForm({
               onSearch={setProductSearch}
               disabled={isFormDisabled}
             />
-            {/* Inventory: place directly under product select - Always visible */}
-            <div
-              className="admin-app-inventory-under-product"
-              style={inventoryColor ? { color: inventoryColor } : undefined}
-            >
-              {inventoryLoading && (
-                <div className="admin-app-spinner admin-app-spinner-small" style={{ marginRight: '6px' }}></div>
-              )}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {bypassWarningMessage && (
-                  <span className="admin-app-inventory-text" style={{ color: '#f59e0b' }}>
-                    {bypassWarningMessage}
-                  </span>
-                )}
-                {inventoryLoading ? (
-                  <div className="admin-app-inventory-text">Đang tải tồn kho...</div>
-                ) : inventoryInventoryMessage || khoBinhDinhMessage ? (
-                  <>
-                    <div className="admin-app-inventory-text" style={{ fontStyle: isUsingInventory ? 'normal' : 'italic' }}>
-                      {inventoryInventoryMessage}
-                    </div>
-                    <div className="admin-app-inventory-text" style={{ fontStyle: isUsingInventory ? 'italic' : 'normal' }}>
-                      {khoBinhDinhMessage}
-                    </div>
-                  </>
-                ) : (
-                  <div className="admin-app-inventory-text">Chọn sản phẩm và kho để xem tồn kho</div>
-                )}
+            {/* Loading indicator for critical data */}
+            {isCriticalDataLoading && selectedProductCode && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginTop: '4px',
+                fontSize: '12px',
+                color: '#6b7280'
+              }}>
+                <div className="admin-app-spinner admin-app-spinner-small"></div>
+                <span>Đang tải dữ liệu sản phẩm...</span>
               </div>
-              {!shouldBypassInventoryCheck &&
-                selectedProductCode &&
-                warehouse &&
-                (inventoryTheoretical === 0 || inventoryTheoretical === null) &&
-                !inventoryLoading && (
-                  <button
-                    type="button"
-                    onClick={handleReloadInventory}
-                    className="admin-app-reload-btn"
-                    title="Tải lại tồn kho"
-                  >
-                    ↻
-                  </button>
-                )}
-            </div>
+            )}
+            {/* Inventory UI removed */}
             {priceWarningMessage && priceWarningMessage !== 'Giá bình thường' && (
               <span className="admin-app-badge-error">{priceWarningMessage}</span>
             )}
@@ -2946,7 +3303,7 @@ function ProductEntryForm({
                   {priceGroupText}{(priceGroupDiscountPct && normalizeText(priceGroupText) !== 'shop') ? ` (-${(Number.isInteger(priceGroupDiscountPct) ? priceGroupDiscountPct : priceGroupDiscountPct.toFixed(1))}%)` : ''}
                 </span>
               )}
-              {customerWecareRewards && (
+              {customerWecareRewards && !approvePrice && (
                 <span className="admin-app-rewards-badge" style={{
                   marginLeft: '8px',
                   fontSize: '10px',
@@ -2972,8 +3329,10 @@ function ProductEntryForm({
                 inputMode="numeric"
                 pattern="[0-9.,]*"
                 className={`admin-app-input admin-app-input-compact admin-app-input-money admin-app-input-small${priceLoading || !approvePrice || (approvePrice && priceEntryMethod === 'Theo chiết khấu') ? ' admin-app-input-readonly' : ''}`}
-                value={formatPriceForDisplay(String(price)) || price}
+                value={isEditingPrice ? price : (formatPriceForDisplay(String(price)) || price)}
                 onChange={(e) => handlePriceChange(e.target.value)}
+                onFocus={() => setIsEditingPrice(true)}
+                onBlur={() => setIsEditingPrice(false)}
                 placeholder={priceLoading ? "Đang tải..." : "Giá"}
                 readOnly={priceLoading || !approvePrice || (approvePrice && priceEntryMethod === 'Theo chiết khấu')}
                 disabled={isFormDisabled || !approvePrice}
@@ -3005,8 +3364,8 @@ function ProductEntryForm({
                 className="admin-app-mini-btn admin-app-mini-btn-add"
                 onClick={handleAddWithInventoryCheck}
                 disabled={buttonsDisabled || isAdding || isProcessingAdd || priceLoading}
-                title={priceLoading ? "Đang tải giá..." : "Thêm sản phẩm"}
-                aria-label={priceLoading ? "Đang tải giá..." : "Thêm sản phẩm"}
+                title={isCriticalDataLoading ? "Đang tải dữ liệu sản phẩm..." : "Thêm sản phẩm"}
+                aria-label={isCriticalDataLoading ? "Đang tải dữ liệu sản phẩm..." : "Thêm sản phẩm"}
                 style={{
                   width: '100%',
                   height: '36px',
@@ -3038,26 +3397,7 @@ function ProductEntryForm({
               )}
             </div>
 
-            <div style={{ width: '140px' }}>
-              <button
-                type="button"
-                className="admin-app-mini-btn admin-app-mini-btn-secondary"
-                onClick={handleCheckPromotion}
-                disabled={promotionLoading}
-                title="Kiểm tra promotion"
-                style={{
-                  width: '100%',
-                  height: '36px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '13px',
-                  fontWeight: '600'
-                }}
-              >
-                {promotionLoading ? 'Đang kiểm tra...' : 'Kiểm tra Promotion'}
-              </button>
-            </div>
+            {/* Promotion and Discount2 buttons removed as requested */}
           </div>
         </div>
 

@@ -62,6 +62,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   const [customerCode, setCustomerCode] = useState('');
   const [customerSearch, setCustomerSearch] = useState('');
   const [customerWecareRewards, setCustomerWecareRewards] = useState<string | null>(null);
+  const [customerRegion, setCustomerRegion] = useState<string>('');
   const [so, setSo] = useState('');
   const [soId, setSoId] = useState('');
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
@@ -103,17 +104,17 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
 
   // Danh sách người duyệt
   const approversList = [
-    'Bùi Tuấn Dũng',
-    'Lê Sinh Thông',
-    'Lê Thị Ngọc Anh',
-    'Nguyễn Quốc Chinh',
-    'Phạm Quốc Hưng',
+    // 'Bùi Tuấn Dũng',
+    // 'Lê Sinh Thông',
+    // 'Lê Thị Ngọc Anh',
+    // 'Nguyễn Quốc Chinh',
+    // 'Phạm Quốc Hưng',
     'Huỳnh Minh Trung',
-    'Bùi Thị Mỹ Trang',
-    'Hà Bông',
-    'Vũ Thành Minh',
-    'Phạm Thị Mỹ Hương',
-    'Hoàng Thị Mỹ Linh',
+    // 'Bùi Thị Mỹ Trang',
+    // 'Hà Bông',
+    // 'Vũ Thành Minh',
+    // 'Phạm Thị Mỹ Hương',
+    // 'Hoàng Thị Mỹ Linh',
   ];
 
   const discountRates = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '20'];
@@ -412,63 +413,6 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     // Determine promotionId to use for this add (child may pass overrides)
     const promoIdToUse = overrides?.promotionId ?? promotionId;
 
-    // Check if product already exists with same productCode/productName, unit, and price
-    // Only combine products that haven't been saved to CRM (isSodCreated = false)
-    const existingProductIndex = productList.findIndex((p) => {
-      const sameProduct = (productCode && p.productCode === productCode) ||
-        (!productCode && p.productName === product);
-      const sameUnit = p.unit === unit;
-      const samePrice = Math.abs(p.price - priceNum) < 0.01; // Compare with small tolerance for floating point
-      const notSaved = !p.isSodCreated; // Only combine unsaved products
-
-      return sameProduct && sameUnit && samePrice && notSaved;
-    });
-
-    if (existingProductIndex !== -1) {
-      // Combine with existing product: add quantities and recalculate
-      const existingProduct = productList[existingProductIndex];
-      const newQuantity = existingProduct.quantity + quantity;
-
-      // Recalculate amounts with new total quantity
-      const newSubtotal = newQuantity * finalPrice;
-      const newVatAmount = (newSubtotal * vatPercent) / 100;
-      const newTotalAmount = newSubtotal + newVatAmount;
-
-      // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [người duyệt]", ngược lại lấy từ input
-      const formattedNoteForMerge = approvePrice && approver
-        ? `Duyệt giá bởi ${approver}`
-        : note;
-
-      // Update existing product
-      const updatedProduct: ProductItem = {
-        ...existingProduct,
-        quantity: newQuantity,
-        subtotal: newSubtotal,
-        vatAmount: newVatAmount,
-        totalAmount: newTotalAmount,
-        // Update other fields from new input (in case they changed)
-        discount: discountAmount,
-        discountedPrice: finalPrice,
-        discountPercent: discountPercent,
-        discountAmount: discountAmount,
-        vat: vatPercent,
-        invoiceSurcharge: invoiceSurchargeRate,
-        promotionId: promoIdToUse,
-        // Merge notes if both have notes
-        note: existingProduct.note && formattedNoteForMerge
-          ? `${existingProduct.note}; ${formattedNoteForMerge}`
-          : existingProduct.note || formattedNoteForMerge,
-        // Đảm bảo isSodCreated = false khi combine (vì chỉ combine với sản phẩm chưa lưu)
-        isSodCreated: false,
-      };
-
-      // Update product list
-      const updatedList = [...productList];
-      updatedList[existingProductIndex] = updatedProduct;
-      setProductList(updatedList);
-      // Clear parent's promotionId to avoid stale promotion being re-used for next product
-      try { setPromotionId(''); } catch (e) { /* ignore */ }
-    } else {
       // Add new product
       // Calculate amounts
       const subtotalCalc = quantity * finalPrice;
@@ -520,7 +464,6 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       setProductList([...productList, newProduct]);
       // Clear parent's promotionId to avoid stale promotion being re-used for next product
       try { setPromotionId(''); } catch (e) { /* ignore */ }
-    }
 
     // Reset form fields (mimic PowerApps Reset())
     setProduct('');
@@ -883,6 +826,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     setCustomer('');
     setCustomerId('');
     setCustomerCode('');
+    setCustomerRegion('');
     setSo('');
     setSoId('');
     setProduct('');
@@ -918,6 +862,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     setCustomer('');
     setCustomerId('');
     setCustomerCode('');
+    setCustomerRegion('');
     setSo('');
     setSoId('');
     setProduct('');
@@ -1563,6 +1508,8 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
                     setCustomerIndustry(option?.crdfd_nganhnghe ?? null);
                     // Capture wecare rewards
                     setCustomerWecareRewards((option as any)?.crdfd_wecare_rewards || null);
+                    // Capture customer region for pricing
+                    setCustomerRegion(option?.cr1bb_vungmien_text || option?.cr1bb_vungmien || '');
                     // Clear SOBG và các selected khi đổi customer
                     setSo('');
                     setSoId(''); // Clear soId trước để tránh trigger load details với soId cũ
@@ -1676,6 +1623,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             customerId={customerId}
             customerCode={customerCode}
             customerName={customer}
+            customerRegion={customerRegion}
             customerWecareRewards={customerWecareRewards}
             vatText={selectedVatText}
             paymentTerms={selectedSo?.dieuKhoanThanhToan || selectedSo?.crdfd_ieukhoanthanhtoan}
