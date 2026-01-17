@@ -17,7 +17,7 @@ const brandImages = [
 
 const BrandStrip: React.FC = () => {
   return (
-    <section className="w-full py-4 bg-white">
+    <section className="w-full pt-4 pb-0 bg-white">
       <div className="relative px-[5px] md:px-[50px]">
         <div className="p-0">
           <div className="flex items-center justify-between mb-3">
@@ -37,15 +37,15 @@ const BrandStrip: React.FC = () => {
                 return (
                   <div
                     key={filename}
-                    className="w-full aspect-[2/1] flex items-center justify-center bg-white rounded-none p-0 hover:shadow-none transition"
+                    className="w-full aspect-[3/2] flex items-center justify-center bg-white rounded-none p-0 hover:shadow-none transition"
                   >
                     <div className="w-full h-full flex items-center justify-center">
                       <img
                         src={src}
                         alt={alt}
                         loading="lazy"
-                        className="object-contain"
-                        style={{ maxWidth: '90%', maxHeight: '80%' }}
+                        className="object-contain w-full h-full"
+                        style={{ maxWidth: '100%', maxHeight: '100%' }}
                       />
                     </div>
                   </div>
