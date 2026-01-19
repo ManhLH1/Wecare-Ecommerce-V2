@@ -41,7 +41,7 @@ function SalesOrderFormWrapper() {
             <div className="admin-app-title">
               {activeForm === 'SO' ? 'Tạo đơn bán chi tiết' : 'Tạo đơn báo giá chi tiết'}
             </div>
-            <span className="admin-app-badge admin-app-badge-version">V1.18</span>
+            <span className="admin-app-badge admin-app-badge-version">V1.19</span>
           </div>
           <div className="admin-app-subtitle">
             {activeForm === 'SO' ? 'Đơn hàng bán hàng' : 'Đơn hàng báo giá'}
