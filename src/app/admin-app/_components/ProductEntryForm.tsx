@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { computeDeliveryDate } from '../../../utils/computeDeliveryDate';
@@ -1251,166 +1251,91 @@ function ProductEntryForm({
 
   // Function to load inventory with caching
   const loadInventory = async () => {
-    // Inventory functionality disabled — short-circuit and clear inventory state.
-    setInventoryLoading(false);
-    setInventoryLoaded(false);
-    setInventoryTheoretical(0);
-    setReservedQuantity(0);
-    setAvailableToSell(0);
-    setStockQuantity(0);
-    setBypassWarningMessage('');
-    setInventoryInventoryMessage('');
-    setKhoBinhDinhMessage('');
-    setInventoryMessage('');
-    setInventoryColor(undefined);
-    return;
-    // Xác định nguồn tồn kho:
-    // - Case đặc biệt (shouldBypassInventoryCheck) → luôn lấy từ "Kho Bình Định" (isVatOrder = true)
-    // - Case thường: theo VAT của Sales Order:
-    //   - "Có VAT"  → Kho Bình Định
-    //   - "Không VAT" (hoặc còn lại) → Inventory Weshops
-    const vatTextLower = (vatText || '').toLowerCase();
-    // Case đặc biệt: luôn lấy từ Kho Bình Định
-    const isVatOrder = shouldBypassInventoryCheck ? true : vatTextLower.includes('có vat');
-    const sourceText = getInventorySourceText(isVatOrder);
-    const labelPrefix = `Tồn kho (${sourceText}):`;
-
-    // Vẫn load tồn kho cho các case đặc biệt, nhưng hiển thị cảnh báo
-    const bypassWarning = shouldBypassInventoryCheck
-      ? `⚠️ Bỏ qua kiểm tra tồn kho (nhóm SP: ${selectedProductGroupCode || '—'})`
-      : '';
-
-    if (!selectedProductCode || !warehouse) {
-      const message = selectedProductCode && !warehouse
-        ? 'Chọn kho để xem tồn kho'
-        : !selectedProductCode && warehouse
-          ? 'Chọn sản phẩm để xem tồn kho'
-          : `${labelPrefix} 0`;
-      setInventoryTheoretical(0);
-      setInventoryLoaded(false); // Reset inventory loaded flag
-      setStockQuantity(0);
-      setBypassWarningMessage(''); // Reset cảnh báo
-      setInventoryInventoryMessage(''); // Reset
-      setKhoBinhDinhMessage(''); // Reset
-      setIsUsingInventory(false); // Reset
-      setInventoryMessage(message);
-      setInventoryColor(undefined);
-      return;
-    }
-
-    // Check cache first
-    const cacheKey = `inventory-${selectedProductCode}-${warehouse}-${vatText || ''}-${shouldBypassInventoryCheck}`;
-    const cachedData = productDataCache.get<InventoryCacheData>(cacheKey);
-    if (cachedData) {
-      console.debug('[Inventory Cache] Using cached data for', cacheKey);
-      // Apply cached data directly
-      const { inventoryResult, khoBinhDinhResult, theoretical, reserved, available, bypassWarning: cachedBypassWarning } = cachedData;
-
-      const inventoryTheoretical = inventoryResult?.theoreticalStock ?? 0;
-      const inventoryReserved = inventoryResult?.reservedQuantity ?? 0;
-      const inventoryAvailable = inventoryResult?.availableToSell ?? (inventoryTheoretical - inventoryReserved);
-
-      const khoBinhDinhTheoretical = khoBinhDinhResult?.theoreticalStock ?? 0;
-      const khoBinhDinhReserved = khoBinhDinhResult?.reservedQuantity ?? 0;
-      const khoBinhDinhAvailable = khoBinhDinhResult?.availableToSell ?? (khoBinhDinhTheoretical - khoBinhDinhReserved);
-
-      setInventoryTheoretical(theoretical);
-      setReservedQuantity(reserved);
-      setAvailableToSell(available);
-      setInventoryLoaded(true);
-      setStockQuantity(available);
-      setBypassWarningMessage(cachedBypassWarning);
-      setInventoryInventoryMessage(`Tồn kho (Inventory): ${inventoryTheoretical.toLocaleString('vi-VN')} | Đang giữ: ${inventoryReserved.toLocaleString('vi-VN')} | Khả dụng: ${inventoryAvailable.toLocaleString('vi-VN')}`);
-      setKhoBinhDinhMessage(`Tồn kho (Kho Bình Định): ${khoBinhDinhTheoretical.toLocaleString('vi-VN')} | Đang giữ: ${khoBinhDinhReserved.toLocaleString('vi-VN')} | Khả dụng: ${khoBinhDinhAvailable.toLocaleString('vi-VN')}`);
-      setIsUsingInventory(!isVatOrder);
-      setInventoryMessage(`${`Tồn kho (Inventory): ${inventoryTheoretical.toLocaleString('vi-VN')} | Đang giữ: ${inventoryReserved.toLocaleString('vi-VN')} | Khả dụng: ${inventoryAvailable.toLocaleString('vi-VN')}`}\n${`Tồn kho (Kho Bình Định): ${khoBinhDinhTheoretical.toLocaleString('vi-VN')} | Đang giữ: ${khoBinhDinhReserved.toLocaleString('vi-VN')} | Khả dụng: ${khoBinhDinhAvailable.toLocaleString('vi-VN')}`}`);
-      setInventoryColor(available > 0 ? undefined : 'red');
-      return;
-    }
-
+    // Load inventory for selected product & warehouse.
     try {
       setInventoryLoading(true);
+      setInventoryLoaded(false);
+      setKhoBinhDinhMessage('');
+      setInventoryInventoryMessage('');
+      setBypassWarningMessage('');
+      setInventoryMessage('');
 
-      // Load cả hai tồn kho: Inventory và Kho Bình Định với timeout để tránh chờ quá lâu
-      const inventoryPromise = fetchInventory(selectedProductCode, warehouse, false); // Inventory (không VAT)
-      const khoBinhDinhPromise = fetchInventory(selectedProductCode, warehouse, true);  // Kho Bình Định (có VAT)
+      if (!selectedProductCode || !warehouseId) {
+        // Nothing to load
+        setInventoryTheoretical(0);
+        setReservedQuantity(0);
+        setAvailableToSell(0);
+        setStockQuantity(0);
+        setInventoryColor(undefined);
+        return;
+      }
 
+      // Determine VAT context for inventory (used as fallback). We'll prefer the selected warehouse
+      // inventory when available; only use "Kho Bình Định" when the selected warehouse is actually Bình Định
+      const vatTextLower = (vatText || '').toLowerCase();
+      const isVatOrderForInventory = vatTextLower.includes('có vat') || vatPercent > 0;
+
+      // Fetch both inventory sources in parallel (Inventory service and Kho Bình Định variant)
       const [inventoryResult, khoBinhDinhResult] = await Promise.all([
-        inventoryPromise,
-        khoBinhDinhPromise
+        fetchInventory(selectedProductCode, warehouseId, false),
+        fetchInventory(selectedProductCode, warehouseId, true)
       ]);
 
-      // Xử lý tồn kho Inventory
-      const inventoryTheoretical = inventoryResult?.theoreticalStock ?? 0;
-      const inventoryReserved = inventoryResult?.reservedQuantity ?? 0;
-      const inventoryAvailable = inventoryResult?.availableToSell ?? (inventoryTheoretical - inventoryReserved);
+      // Normalize results
+      const inv = inventoryResult || { theoreticalStock: 0, reservedQuantity: 0, availableToSell: 0 };
+      const kho = khoBinhDinhResult || { theoreticalStock: 0, reservedQuantity: 0, availableToSell: 0 };
 
-      // Xử lý tồn kho Kho Bình Định
-      const khoBinhDinhTheoretical = khoBinhDinhResult?.theoreticalStock ?? 0;
-      const khoBinhDinhReserved = khoBinhDinhResult?.reservedQuantity ?? 0;
-      const khoBinhDinhAvailable = khoBinhDinhResult?.availableToSell ?? (khoBinhDinhTheoretical - khoBinhDinhReserved);
+      // Determine selected warehouse name (may come from warehouses list or `warehouse` prop)
+      const selectedWarehouse = warehouses.find(w => w.crdfd_khowecareid === warehouseId);
+      const selectedWarehouseName = selectedWarehouse?.crdfd_name || warehouse || '';
+      // If the selected warehouse is Bình Định (name includes 'bình định'), use kho result.
+      const useKho = selectedWarehouseName.toLowerCase().includes('bình định') || selectedWarehouseName.toLowerCase().includes('binh dinh');
 
-      // Cập nhật state với tồn kho chính (theo logic hiện tại)
-      const theoretical = isVatOrder ? khoBinhDinhTheoretical : inventoryTheoretical;
-      const reserved = isVatOrder ? khoBinhDinhReserved : inventoryReserved;
-      const available = isVatOrder ? khoBinhDinhAvailable : inventoryAvailable;
+      // Choose which source to use for displayed available/reserved based on selected warehouse preference.
+      const theoretical = useKho ? (kho.theoreticalStock ?? 0) : (inv.theoreticalStock ?? 0);
+      const reserved = useKho ? (kho.reservedQuantity ?? 0) : (inv.reservedQuantity ?? 0);
+      const available = useKho
+        ? (kho.availableToSell ?? ( (kho.theoreticalStock ?? 0) - (kho.reservedQuantity ?? 0) ))
+        : (inv.availableToSell ?? ( (inv.theoreticalStock ?? 0) - (inv.reservedQuantity ?? 0) ));
 
-      setInventoryTheoretical(theoretical);
-      setReservedQuantity(reserved);
-      setAvailableToSell(available);
-      setInventoryLoaded(true); // Mark inventory as loaded with real data
+      // Update state
+      setInventoryTheoretical(theoretical || 0);
+      setReservedQuantity(reserved || 0);
+      setAvailableToSell(typeof available === 'number' ? available : 0);
+      setStockQuantity(theoretical || 0);
 
-      // Tách cảnh báo và thông tin tồn kho thành 2 dòng riêng
-      const bypassWarning = shouldBypassInventoryCheck
-        ? `⚠️ Bỏ qua kiểm tra tồn kho (nhóm SP: ${selectedProductGroupCode || '—'})`
-        : '';
+      // Determine warehouse label to display. For VAT orders we still show "Kho Bình Định",
+      // otherwise show the selected warehouse name (if available) or fallback to "Inventory".
+      const warehouseDisplayLabel = useKho ? 'Kho Bình Định' : (selectedWarehouseName || 'Inventory');
 
-      // Tách thành 2 message riêng cho 2 dòng tồn kho
-      const inventoryInfo = `Tồn kho (Inventory): ${inventoryTheoretical.toLocaleString('vi-VN')} | Đang giữ: ${inventoryReserved.toLocaleString('vi-VN')} | Khả dụng: ${inventoryAvailable.toLocaleString('vi-VN')}`;
-      const khoBinhDinhInfo = `Tồn kho (Kho Bình Định): ${khoBinhDinhTheoretical.toLocaleString('vi-VN')} | Đang giữ: ${khoBinhDinhReserved.toLocaleString('vi-VN')} | Khả dụng: ${khoBinhDinhAvailable.toLocaleString('vi-VN')}`;
+      // Set human-readable messages for both sources (for debugging / UI)
+      setInventoryInventoryMessage(`Tồn kho ${selectedWarehouseName || 'Inventory'}: ${(inv.theoreticalStock ?? 0).toLocaleString('vi-VN')}`);
+      setKhoBinhDinhMessage(`Tồn kho Kho Bình Định: ${(kho.theoreticalStock ?? 0).toLocaleString('vi-VN')}`);
 
-      // Xác định dòng nào đang được tính (dựa vào isVatOrder)
-      // isVatOrder = false → dùng Inventory (bình thường), Kho Bình Định (nghiêng)
-      // isVatOrder = true → dùng Kho Bình Định (bình thường), Inventory (nghiêng)
-      const usingInventory = !isVatOrder;
+      // Combined inventory message (preferred source shown)
+      setInventoryMessage(`${warehouseDisplayLabel}: ${(isVatOrderForInventory ? (kho.theoreticalStock ?? 0) : (inv.theoreticalStock ?? 0)).toLocaleString('vi-VN')}`);
 
-      // Sử dụng availableToSell nếu có, nếu không thì dùng theoretical
-      const stockToUse = available;
-      setStockQuantity(stockToUse);
-      setBypassWarningMessage(bypassWarning);
-      setInventoryInventoryMessage(inventoryInfo);
-      setKhoBinhDinhMessage(khoBinhDinhInfo);
-      setIsUsingInventory(usingInventory);
-      // Giữ inventoryMessage cho backward compatibility
-      setInventoryMessage(`${inventoryInfo}\n${khoBinhDinhInfo}`);
+      // Color: green if available >= requested base quantity, red otherwise
+      const requestedBase = getRequestedBaseQuantity();
+      if (typeof available === 'number' && typeof requestedBase === 'number') {
+        setInventoryColor(available >= requestedBase ? '#065f46' : '#b91c1c');
+      } else {
+        setInventoryColor(undefined);
+      }
 
-      // Cache the results for future use
-      productDataCache.set(cacheKey, {
-        inventoryResult,
-        khoBinhDinhResult,
-        theoretical,
-        reserved,
-        available,
-        bypassWarning
-      });
-
-      // Màu sắc: đỏ nếu không có tồn kho hoặc không đủ khả dụng
-      const hasStock = stockToUse > 0;
-      setInventoryColor(hasStock ? undefined : 'red');
-    } catch (e) {
-      console.error('❌ [Load Inventory] Error:', e);
-      const message = `Lỗi khi tải tồn kho: ${e instanceof Error ? e.message : 'Unknown error'}`;
+      setInventoryLoaded(true);
+    } catch (err) {
+      console.error('Error loading inventory:', err);
+      // Reset to safe defaults on error
       setInventoryTheoretical(0);
-      setInventoryLoaded(false); // Reset inventory loaded flag on error
+      setReservedQuantity(0);
+      setAvailableToSell(0);
       setStockQuantity(0);
-      setBypassWarningMessage(''); // Reset cảnh báo
-      setInventoryInventoryMessage(''); // Reset
-      setKhoBinhDinhMessage(''); // Reset
-      setIsUsingInventory(false); // Reset
-      setInventoryMessage(message);
-      setInventoryColor('red');
+      setInventoryInventoryMessage('');
+      setKhoBinhDinhMessage('');
+      setInventoryMessage('');
+      setInventoryColor(undefined);
     } finally {
-      // Use state variables (safe outside try) instead of local try-scoped variables
       setInventoryLoading(false);
     }
   };
@@ -2290,47 +2215,66 @@ function ProductEntryForm({
         }
       }
 
-      // Ensure parent has current promotionId before adding product
+      // If selected promotion's payment terms do not match the order, still allow adding
+      // the product but do not apply the promotion (add at full price). We show a warning.
+      let skipApplyingSelectedPromotion = false;
       try {
-        const currentPromoId = normalizePromotionId(selectedPromotionId || normalizePromotionId(promotions[0]?.id));
-        if (currentPromoId) {
-          console.debug('[ProductEntryForm] syncing promotionId to parent before add:', currentPromoId);
-          if (setPromotionId) setPromotionId(currentPromoId);
+        const selForCheck = selectedPromotion || promotions[0];
+        if (selForCheck && (selForCheck as any).paymentTermsMismatch) {
+          showToast.warning('Chú ý: điều khoản thanh toán không khớp với chương trình khuyến mãi đã chọn — sản phẩm sẽ được thêm nhưng không áp dụng promotion.');
+          skipApplyingSelectedPromotion = true;
+        }
+      } catch (err) { /* ignore */ }
+
+      // Ensure parent has current promotionId before adding product (only if not skipping)
+      try {
+        const currentPromoIdForSync = normalizePromotionId(selectedPromotionId || normalizePromotionId(promotions[0]?.id));
+        if (currentPromoIdForSync && !skipApplyingSelectedPromotion) {
+          console.debug('[ProductEntryForm] syncing promotionId to parent before add:', currentPromoIdForSync);
+          if (setPromotionId) setPromotionId(currentPromoIdForSync);
         } else {
-          console.debug('[ProductEntryForm] no promotionId to sync before add');
+          console.debug('[ProductEntryForm] no promotionId to sync before add or skipped due to mismatch');
         }
       } catch (err) { /* ignore */ }
 
       // Compute promotion discount values directly from the selected promotion to avoid stale state.
-      const currentPromoId = normalizePromotionId(selectedPromotionId || normalizePromotionId(promotions[0]?.id));
+      const currentPromoId = skipApplyingSelectedPromotion ? '' : normalizePromotionId(selectedPromotionId || normalizePromotionId(promotions[0]?.id));
       let computedDiscountPercent = 0;
       let computedDiscountAmount = 0;
       try {
-        const sel = selectedPromotion || promotions[0];
-        if (sel) {
-          computedDiscountPercent = derivePromotionPercent(sel);
-          // If promotion is VND-based, compute money value based on VAT context
-          const vatTextLower = (vatText || '').toLowerCase();
-          const isVatOrderForPromo = vatTextLower.includes('có vat') || vatPercent > 0;
-          const moneyCandidates = isVatOrderForPromo
-            ? [sel.valueWithVat, sel.value, sel.value2, sel.value3, sel.valueBuyTogether]
-            : [sel.valueNoVat, sel.valueWithVat, sel.value, sel.value2, sel.value3, sel.valueBuyTogether];
-          for (const c of moneyCandidates) {
-            const num = Number(c);
-            if (!isNaN(num) && num > 0) {
-              computedDiscountAmount = num;
-              break;
+        // If we decided to skip applying the selected promotion (payment terms mismatch),
+        // keep computed discounts at 0 so the product is added at full price.
+        if (!skipApplyingSelectedPromotion) {
+          const sel = selectedPromotion || promotions[0];
+          if (sel) {
+            computedDiscountPercent = derivePromotionPercent(sel);
+            // If promotion is VND-based, compute money value based on VAT context
+            const vatTextLower = (vatText || '').toLowerCase();
+            const isVatOrderForPromo = vatTextLower.includes('có vat') || vatPercent > 0;
+            const moneyCandidates = isVatOrderForPromo
+              ? [sel.valueWithVat, sel.value, sel.value2, sel.value3, sel.valueBuyTogether]
+              : [sel.valueNoVat, sel.valueWithVat, sel.value, sel.value2, sel.value3, sel.valueBuyTogether];
+            for (const c of moneyCandidates) {
+              const num = Number(c);
+              if (!isNaN(num) && num > 0) {
+                computedDiscountAmount = num;
+                break;
+              }
+            }
+            // If percent was derived (non-zero), zero out money value to avoid double-applying
+            if (computedDiscountPercent > 0) {
+              computedDiscountAmount = 0;
             }
           }
-          // If percent was derived (non-zero), zero out money value to avoid double-applying
-          if (computedDiscountPercent > 0) {
-            computedDiscountAmount = 0;
-          }
+        } else {
+          // explicitly leave computedDiscountPercent/Amount at zero
+          computedDiscountPercent = 0;
+          computedDiscountAmount = 0;
         }
       } catch (err) {
         // fallback to existing local state if any error
-        computedDiscountPercent = promotionDiscountPercent;
-        computedDiscountAmount = discountAmount;
+        computedDiscountPercent = skipApplyingSelectedPromotion ? 0 : promotionDiscountPercent;
+        computedDiscountAmount = skipApplyingSelectedPromotion ? 0 : discountAmount;
       }
 
       console.debug('[ProductEntryForm] calling onAdd with promotionId:', currentPromoId, 'computedPct:', computedDiscountPercent, 'computedAmt:', computedDiscountAmount);
@@ -3114,6 +3058,13 @@ function ProductEntryForm({
               onSearch={setProductSearch}
               disabled={isFormDisabled}
             />
+            {/* Show inventory message for selected warehouse (preferred source) */}
+            {inventoryLoaded && inventoryMessage && (
+              <div className="admin-app-inventory-under-product admin-app-inventory-text" style={{ marginTop: '6px', fontSize: '12px', color: '#6B7280' }}>
+                {inventoryMessage}
+              </div>
+            )}
+
             {/* Loading indicator for critical data */}
             {isCriticalDataLoading && selectedProductCode && (
               <div style={{
@@ -3132,6 +3083,7 @@ function ProductEntryForm({
             {priceWarningMessage && priceWarningMessage !== 'Giá bình thường' && (
               <span className="admin-app-badge-error">{priceWarningMessage}</span>
             )}
+            {/* Show Kho Bình Định inventory (moved above quantity) */}
           </div>
 
           <div className="admin-app-field-compact">

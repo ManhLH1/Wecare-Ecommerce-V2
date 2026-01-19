@@ -58,6 +58,28 @@ interface SalesOrderFormProps {
 
 export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormProps) {
 
+  // Helpers
+  const normalizePromoKey = (p: any) => String(p.promotionId || p.id || p.name || '');
+  const uniquePromotions = (promos: PromotionOrderItem[]) => {
+    const seen = new Set<string>();
+    const out: PromotionOrderItem[] = [];
+    for (const p of promos || []) {
+      const k = normalizePromoKey(p);
+      if (!seen.has(k)) {
+        seen.add(k);
+        out.push(p);
+      }
+    }
+    return out;
+  };
+  const vndCodeEquals = (p: any, code: number) => {
+    if (p === null || p === undefined) return false;
+    const v = p.vndOrPercent ?? p.crdfd_vn ?? p.vndOrPercent;
+    if (v === undefined || v === null) return false;
+    const vs = String(v).trim();
+    return vs === String(code);
+  };
+
   const [customer, setCustomer] = useState('');
   const [customerId, setCustomerId] = useState('');
   const [customerCode, setCustomerCode] = useState('');
@@ -706,28 +728,30 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             const isApplicable = (p.applicable === true) || (String(p.applicable).toLowerCase() === 'true');
             return isApplicable && meetsTotal;
           });
-          const chietKhau2Promotions = allPromos.filter(p => {
+          let chietKhau2Promotions = allPromos.filter(p => {
             const cond = Number(p.totalAmountCondition || 0);
             const meetsTotal = isNaN(cond) || cond === 0 || Number(savedTotalAmount) >= cond;
             const isApplicable = (p.applicable === true) || (String(p.applicable).toLowerCase() === 'true');
-            return p.chietKhau2 && isApplicable && meetsTotal;
+            return isApplicable && meetsTotal && vndCodeEquals(p, 191920000);
           }) || [];
+          chietKhau2Promotions = uniquePromotions(chietKhau2Promotions);
 
-          // Determine special promotions (prefer API-provided specialPromotions)
-          let special: PromotionOrderItem[] = [];
-          if (Array.isArray(promotionOrderResult.specialPromotions) && promotionOrderResult.specialPromotions.length > 0) {
-            special = promotionOrderResult.specialPromotions;
-          } else {
-            special = (promotionOrderResult.allPromotions || []).filter((p: PromotionOrderItem) =>
-              SPECIAL_PROMOTION_KEYWORDS.some(k => !!p.name && p.name.includes(k))
-            );
-          }
-          // Only surface special promotions that are applicable
-          special = special.filter(p => (p.applicable === true) || (String(p.applicable).toLowerCase() === 'true'));
-          if (special.length > 0) setSpecialPromotionList(special);
+          // Determine special promotions as those with crdfd_vn = 191920001
+          let special: PromotionOrderItem[] = (promotionOrderResult.specialPromotions && promotionOrderResult.specialPromotions.length > 0)
+            ? promotionOrderResult.specialPromotions
+            : (promotionOrderResult.allPromotions || []);
+          special = (special || []).filter((p: PromotionOrderItem) =>
+            vndCodeEquals(p, 191920001) && ((p.applicable === true) || (String(p.applicable).toLowerCase() === 'true'))
+          );
+          special = uniquePromotions(special);
 
           // Populate top list with filtered allPromotions (already removed non-applicable items)
-          setPromotionOrderList(available.length > 0 ? available : chietKhau2Promotions);
+          const topList = uniquePromotions(available.length > 0 ? available : chietKhau2Promotions);
+          setPromotionOrderList(topList);
+          // Ensure special list does not contain items already in topList
+          const topKeys = new Set(topList.map(p => normalizePromoKey(p)));
+          const filteredSpecials = special.filter(p => !topKeys.has(normalizePromoKey(p)));
+          if (filteredSpecials.length > 0) setSpecialPromotionList(filteredSpecials);
 
           // Pre-select chietKhau2 promotions if present, otherwise none
           if (chietKhau2Promotions.length > 0) {
@@ -1523,33 +1547,39 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                   })}
 
                   {/* Special promotions area (moved below regular promotions) */}
-                  {specialPromotionList && specialPromotionList.length > 0 && (
-                    <div style={{ marginTop: 8, padding: 8, borderRadius: 6, background: '#fff7ed', border: '1px dashed #f59e0b' }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 6 }}>Khuyến mãi đặc biệt</div>
-                      {specialPromotionList.map((promo) => {
-                        const isSelected = selectedPromotionOrders.some(p => p.id === promo.id);
-                        return (
-                          <label key={promo.id} style={{ display: 'flex', alignItems: 'center', padding: '6px 0' }}>
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedPromotionOrders([...selectedPromotionOrders, promo]);
-                                } else {
-                                  setSelectedPromotionOrders(selectedPromotionOrders.filter(p => p.id !== promo.id));
-                                }
-                              }}
-                              style={{ marginRight: '8px', cursor: 'pointer' }}
-                            />
-                            <span style={{ fontSize: 13 }}>
-                              {promo.name} ({promo.vndOrPercent === '%' ? `${promo.value}%` : `${promo.value?.toLocaleString('vi-VN')} VNĐ`})
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
+                  {specialPromotionList && specialPromotionList.length > 0 && (() => {
+                    // remove any special promos that are already present in promotionOrderList
+                    const promotionKeys = new Set((promotionOrderList || []).map(p => normalizePromoKey(p)));
+                    const filteredSpecialsRender = (specialPromotionList || []).filter(p => !promotionKeys.has(normalizePromoKey(p)));
+                    if (filteredSpecialsRender.length === 0) return null;
+                    return (
+                      <div style={{ marginTop: 8, padding: 8, borderRadius: 6, background: '#fff7ed', border: '1px dashed #f59e0b' }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 6 }}>Khuyến mãi đặc biệt</div>
+                        {filteredSpecialsRender.map((promo) => {
+                          const isSelected = selectedPromotionOrders.some(p => p.id === promo.id);
+                          return (
+                            <label key={promo.id} style={{ display: 'flex', alignItems: 'center', padding: '6px 0' }}>
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedPromotionOrders([...selectedPromotionOrders, promo]);
+                                  } else {
+                                    setSelectedPromotionOrders(selectedPromotionOrders.filter(p => p.id !== promo.id));
+                                  }
+                                }}
+                                style={{ marginRight: '8px', cursor: 'pointer' }}
+                              />
+                              <span style={{ fontSize: 13 }}>
+                                {promo.name} ({promo.vndOrPercent === '%' ? `${promo.value}%` : `${promo.value?.toLocaleString('vi-VN')} VNĐ`})
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -1613,28 +1643,49 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                   const productGroupCodes = productList.map(p => p.productGroupCode).filter(Boolean) as string[];
                   const res = await fetchPromotionOrders(soId, customerCode, orderTotal, productCodes, productGroupCodes, selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan);
 
-                  // Filter for chiết khấu 2 promotions (chietKhau2 = 191920001)
-                  const discount2Promotions = (res.allPromotions || []).filter((p: PromotionOrderItem) =>
-                    p.chietKhau2 === 191920001 && ((p.applicable === true) || (String(p.applicable).toLowerCase() === 'true'))
+                  console.log('🔍 Chiết khấu 2 - Raw API response:', res);
+
+                  // Get available promotions from API (already filtered)
+                  // Try availablePromotions first, fallback to allPromotions if needed
+                  let availablePromotions: PromotionOrderItem[] = res.availablePromotions || res.allPromotions || [];
+
+                  // If availablePromotions is empty but allPromotions has data, filter it
+                  if (availablePromotions.length === 0 && res.allPromotions && res.allPromotions.length > 0) {
+                    availablePromotions = res.allPromotions.filter(p => {
+                      const cond = Number(p.totalAmountCondition || 0);
+                      const meetsTotal = isNaN(cond) || cond === 0 || Number(orderTotal) >= cond;
+                      const isApplicable = (p.applicable === true) || (String(p.applicable).toLowerCase() === 'true');
+                      return isApplicable && meetsTotal;
+                    });
+                  }
+
+                  console.log('🔍 Chiết khấu 2 - Available promotions array:', availablePromotions);
+
+                  // Filter chiết khấu 2 by vnd code = 191920000 (crdfd_vn)
+                  let discount2Promotions = (availablePromotions || []).filter((p: PromotionOrderItem) =>
+                    vndCodeEquals(p, 191920000)
                   );
+                  discount2Promotions = uniquePromotions(discount2Promotions);
 
                   console.log('🔍 Chiết khấu 2 debug:', {
                     soId,
                     customerCode,
                     orderTotal,
-                    allPromotionsCount: res.allPromotions?.length || 0,
+                    availablePromotionsCount: availablePromotions.length,
                     discount2PromotionsCount: discount2Promotions.length,
                     discount2Promotions: discount2Promotions.map(p => ({ name: p.name, chietKhau2: p.chietKhau2, applicable: p.applicable }))
                   });
 
-                  if (!discount2Promotions || discount2Promotions.length === 0) {
-                    showToast.info('Không tìm thấy chiết khấu 2 khả dụng.');
+                  if (!availablePromotions || availablePromotions.length === 0) {
+                    showToast.info('Không tìm thấy chương trình khuyến mãi khả dụng.');
                     return;
                   }
-                  setSpecialPromotionList(discount2Promotions);
-                  // Show only chiết khấu 2 promotions in the popup for selection
+
+                  // Show only chiết khấu 2 promotions in popup (no duplicates)
                   setPromotionOrderList(discount2Promotions);
-                  setSelectedPromotionOrders([]);
+                  setSpecialPromotionList([]);
+                  // Pre-select chiết khấu 2 promotions
+                  setSelectedPromotionOrders(discount2Promotions);
                   setSoId(soId);
                   setShowPromotionOrderPopup(true);
                 } catch (err: any) {
@@ -1659,21 +1710,22 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                   const productCodes = productList.map(p => p.productCode).filter(Boolean) as string[];
                   const productGroupCodes = productList.map(p => p.productGroupCode).filter(Boolean) as string[];
                   const res = await fetchPromotionOrders(soId, customerCode, orderTotal, productCodes, productGroupCodes, selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan);
-                  // Prefer server-provided specialPromotions
+                  // Show only special promotions where crdfd_vn = 191920001
                   let specials = Array.isArray(res.specialPromotions) && res.specialPromotions.length > 0
                     ? res.specialPromotions
-                    : ((res.allPromotions || []).filter((p: PromotionOrderItem) =>
-                        SPECIAL_PROMOTION_KEYWORDS.some(k => !!p.name && p.name.includes(k))
-                      ));
-                  specials = specials.filter(p => (p.applicable === true) || (String(p.applicable).toLowerCase() === 'true'));
+                    : (res.allPromotions || []);
+                  specials = (specials || []).filter((p: PromotionOrderItem) =>
+                    vndCodeEquals(p, 191920001) && ((p.applicable === true) || (String(p.applicable).toLowerCase() === 'true'))
+                  );
+                  specials = uniquePromotions(specials);
 
                   if (!specials || specials.length === 0) {
                     showToast.info('Không tìm thấy khuyến mãi đặc biệt.');
                     return;
                   }
-                  setSpecialPromotionList(specials);
-                  // Show only special promotions in the popup for selection
+                  // Avoid duplicates: ensure specials are not already in promotionOrderList
                   setPromotionOrderList(specials);
+                  setSpecialPromotionList([]);
                   setSelectedPromotionOrders([]);
                   setSoId(soId);
                   setShowPromotionOrderPopup(true);
@@ -1718,17 +1770,29 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                 const productGroupCodes = productList.map(p => p.productGroupCode).filter(Boolean) as string[];
                 const res = await fetchPromotionOrders(soId, customerCode, orderTotal, productCodes, productGroupCodes, selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan);
 
-                // Filter for chiết khấu 2 promotions (chietKhau2 = 191920001)
-                const discount2Promotions = (res.allPromotions || []).filter((p: PromotionOrderItem) =>
-                  p.chietKhau2 === 191920001 && ((p.applicable === true) || (String(p.applicable).toLowerCase() === 'true'))
+                // Prefer server-filtered availablePromotions, fallback to allPromotions and filter locally
+                let availablePromotions: PromotionOrderItem[] = res.availablePromotions || res.allPromotions || [];
+                if (availablePromotions.length === 0 && res.allPromotions && res.allPromotions.length > 0) {
+                  availablePromotions = res.allPromotions.filter((p: PromotionOrderItem) => {
+                    const cond = Number(p.totalAmountCondition || 0);
+                    const meetsTotal = isNaN(cond) || cond === 0 || Number(orderTotal) >= cond;
+                    const isApplicable = (p.applicable === true) || (String(p.applicable).toLowerCase() === 'true');
+                    return isApplicable && meetsTotal;
+                  });
+                }
+
+                // Filter chiết khấu 2 by vnd code = 191920000 (crdfd_vn)
+                let discount2Promotions = (availablePromotions || []).filter((p: PromotionOrderItem) =>
+                  vndCodeEquals(p, 191920000) && ((p.applicable === true) || (String(p.applicable).toLowerCase() === 'true'))
                 );
+                discount2Promotions = uniquePromotions(discount2Promotions);
 
                 if (!discount2Promotions || discount2Promotions.length === 0) {
                   showToast.info('Không tìm thấy chiết khấu 2 khả dụng.');
                   return;
                 }
-                setSpecialPromotionList(discount2Promotions);
                 setPromotionOrderList(discount2Promotions);
+                setSpecialPromotionList([]);
                 setSelectedPromotionOrders([]);
                 setSoId(soId);
                 setShowPromotionOrderPopup(true);
@@ -1762,16 +1826,17 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                 const res = await fetchPromotionOrders(soId, customerCode, orderTotal, productCodes, productGroupCodes, selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan);
                 let specials = Array.isArray(res.specialPromotions) && res.specialPromotions.length > 0
                   ? res.specialPromotions
-                  : ((res.allPromotions || []).filter((p: PromotionOrderItem) =>
-                      SPECIAL_PROMOTION_KEYWORDS.some(k => !!p.name && p.name.includes(k))
-                    ));
-                specials = specials.filter(p => (p.applicable === true) || (String(p.applicable).toLowerCase() === 'true'));
+                  : (res.allPromotions || []);
+                specials = (specials || []).filter((p: PromotionOrderItem) =>
+                  vndCodeEquals(p, 191920001) && ((p.applicable === true) || (String(p.applicable).toLowerCase() === 'true'))
+                );
+                specials = uniquePromotions(specials);
                 if (!specials || specials.length === 0) {
                   showToast.info('Không tìm thấy khuyến mãi đặc biệt.');
                   return;
                 }
-                setSpecialPromotionList(specials);
                 setPromotionOrderList(specials);
+                setSpecialPromotionList([]);
                 setSelectedPromotionOrders([]);
                 setSoId(soId);
                 setShowPromotionOrderPopup(true);
@@ -2055,9 +2120,21 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                   selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan
                 );
 
-                // Filter for chiết khấu 2 promotions (chietKhau2 = 191920001)
-                const discount2Promotions = (res.allPromotions || []).filter((p: PromotionOrderItem) =>
-                  p.chietKhau2 === 191920001 && ((p.applicable === true) || (String(p.applicable).toLowerCase() === 'true'))
+                // Prefer server-filtered availablePromotions, fallback to allPromotions and filter locally
+                let availablePromotions: PromotionOrderItem[] = res.availablePromotions || res.allPromotions || [];
+                if (availablePromotions.length === 0 && res.allPromotions && res.allPromotions.length > 0) {
+                  availablePromotions = res.allPromotions.filter((p: PromotionOrderItem) => {
+                    const cond = Number(p.totalAmountCondition || 0);
+                    const meetsTotal = isNaN(cond) || cond === 0 || Number(orderTotal) >= cond;
+                    const isApplicable = (p.applicable === true) || (String(p.applicable).toLowerCase() === 'true');
+                    return isApplicable && meetsTotal;
+                  });
+                }
+
+                // Filter for chiết khấu 2 promotions (support both numeric code and boolean)
+                const discount2Promotions = (availablePromotions || []).filter((p: PromotionOrderItem) =>
+                  (p.chietKhau2 === 191920001 || String(p.chietKhau2).toLowerCase() === 'true')
+                  && ((p.applicable === true) || (String(p.applicable).toLowerCase() === 'true'))
                 );
 
                 if (!discount2Promotions || discount2Promotions.length === 0) {

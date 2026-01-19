@@ -171,20 +171,22 @@ const fetchSpecialPromotions = async (
   headers: any
 ): Promise<SpecialPromotion[]> => {
   try {
-    // Promotions identified as "special" by name (case-insensitive contains)
-    const SPECIAL_PROMOTION_NAMES = [
-      "[ALL] GIẢM GIÁ ĐẶC BIỆT _ V1",
-      "[ALL] VOUCHER ĐẶT HÀNG TRÊN ZALO OA (New customer)",
-      "[ALL] VOUCHER SINH NHẬT - 50.000Đ"
-    ];
-
-    // CRM-side filters: active promotions only, active flag, type = Order, and VNĐ currency text
-    const filters = [
+    // CRM-side filters: active promotions only, active flag, type = Order.
+    // For special promotions we want to only load promotions targeted to the customer
+    // (cr3b9_ma_khachhang_apdung contains customerCode) and with crdfd_vn = 191920001.
+    const filters: string[] = [
       "statecode eq 0",
       "crdfd_promotion_deactive eq 'Active'",
       "crdfd_type eq 'Order'",
-      "crdfd_vndtext eq 'VNĐ'"
+      // ensure correct vnd code (191920001 for special promotions)
+      "crdfd_vn eq 191920001"
     ];
+    // If a customerCode is provided, request CRM to only return promotions that include that customer code
+    // in cr3b9_ma_khachhang_apdung. Use contains() for substring match.
+    if (customerCode && String(customerCode).trim() !== "") {
+      const safe = escapeODataValue(String(customerCode).trim());
+      filters.push(`contains(cr3b9_ma_khachhang_apdung,'${safe}')`);
+    }
 
     const selectFields = [
       "crdfd_promotionid",
@@ -212,7 +214,8 @@ const fetchSpecialPromotions = async (
     const rawItems = (response.data?.value || []);
     console.log(`[SpecialPromotions] CRM returned ${Array.isArray(rawItems) ? rawItems.length : 0} records`);
 
-    // Map raw items and include the customer codes and currencyText for post-filtering
+    // Map raw items; because we already asked CRM to return only crdfd_vn = 191920001 and optionally
+    // promotions that contain the customer code, we can map and return the list directly.
     const mapped = rawItems.map((promo: any) => ({
       id: promo.crdfd_promotionid,
       name: promo.crdfd_name,
@@ -229,37 +232,9 @@ const fetchSpecialPromotions = async (
       startDate: promo.crdfd_start_date,
       endDate: promo.crdfd_end_date,
     }));
-    // Additionally ensure only VNĐ promotions are returned (safety net if CRM filter missing)
-    const vnFiltered = mapped.filter((p: any) => String(p.currencyText || "").trim() === "VNĐ");
-    console.log(`[SpecialPromotions] After currency filter (VNĐ): ${mapped.length} -> ${vnFiltered.length}`);
 
-    // Keep only promotions whose names match the special promotion names
-    const specialByName = vnFiltered.filter((p: any) => {
-      const name = String(p.name || "").trim().toLowerCase();
-      return SPECIAL_PROMOTION_NAMES.some(sp => name.includes(String(sp).trim().toLowerCase()));
-    });
-    console.log(`[SpecialPromotions] After special-name filter: ${vnFiltered.length} -> ${specialByName.length}`);
-
-    // If customerCode provided, further filter special promotions by cr3b9_ma_khachhang_apdung
-    if (customerCode && typeof customerCode === "string" && customerCode.trim()) {
-      const safeCode = customerCode.trim();
-      const matchesCustomer = (listField: string | undefined, code: string) => {
-        if (!listField || String(listField).trim() === "") return false;
-        const field = String(listField).trim();
-        if (field === code) return true;
-        if (field.startsWith(`${code},`)) return true;
-        if (field.endsWith(`,${code}`)) return true;
-        if (field.indexOf(`,${code},`) !== -1) return true;
-        return false;
-      };
-
-      const beforeCount = specialByName.length;
-      const filteredByCustomer = specialByName.filter((p: any) => matchesCustomer(p.customerCodes, safeCode));
-      console.log(`[SpecialPromotions] After customerCode filter (${safeCode}): ${beforeCount} -> ${filteredByCustomer.length}`);
-      return filteredByCustomer;
-    }
-
-    return specialByName;
+    console.log(`[SpecialPromotions] Mapped special promotions count: ${mapped.length}`);
+    return mapped;
   } catch (error) {
     console.warn("Error fetching special promotions:", error);
     return [];
