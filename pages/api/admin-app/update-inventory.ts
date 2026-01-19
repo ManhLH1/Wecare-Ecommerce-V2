@@ -303,10 +303,44 @@ export default async function handler(
     // ============ 2. Update crdfd_kho_binh_dinhs (for VAT orders) ============
     if (isVatOrder) {
       try {
-        let khoBDFilter = `crdfd_masp eq '${safeCode}' and statecode eq 0`;
+        const conditions: Array<{
+          field: string;
+          operator: 'eq' | 'ne' | 'gt' | 'ge' | 'lt' | 'le' | 'contains' | 'startswith' | 'endswith';
+          value: any;
+        }> = [
+          { field: 'crdfd_masp', operator: 'eq', value: safeCode },
+          { field: 'statecode', operator: 'eq', value: 0 }
+        ];
         if (safeWarehouse) {
-          khoBDFilter += ` and crdfd_vitrikhofx eq '${safeWarehouse}'`;
+          conditions.push({ field: 'crdfd_vitrikhofx', operator: 'eq', value: safeWarehouse });
         }
+          const khoBDFilter = conditions.map(({ field, operator, value }, index) => {
+            let filterValue: string;
+            if (typeof value === 'string') {
+              filterValue = `'${value.replace(/'/g, "''")}'`;
+            } else if (typeof value === 'boolean') {
+              filterValue = value ? 'true' : 'false';
+            } else {
+              filterValue = String(value);
+            }
+
+            let conditionStr: string;
+            switch (operator) {
+              case 'contains':
+                conditionStr = `contains(${field},${filterValue})`;
+                break;
+              case 'startswith':
+                conditionStr = `startswith(${field},${filterValue})`;
+                break;
+              case 'endswith':
+                conditionStr = `endswith(${field},${filterValue})`;
+                break;
+              default:
+                conditionStr = `${field} ${operator} ${filterValue}`;
+            }
+
+            return conditionStr;
+          }).join(' and ');
         // CurrentInventory = cr1bb_tonkholythuyetbomua (hoặc crdfd_tonkholythuyet)
         // ReservedQuantity = cr1bb_soluonganggiuathang (cột giữ hàng ở Kho Bình Định)
         // AvailableToSell = CurrentInventory - ReservedQuantity
@@ -319,7 +353,41 @@ export default async function handler(
         
         // Fallback: nếu không tìm thấy với warehouse filter, thử lại không có warehouse filter
         if (khoBDResults.length === 0 && safeWarehouse) {
-          const fallbackFilter = `crdfd_masp eq '${safeCode}' and statecode eq 0`;
+          const fallbackConditions: Array<{
+            field: string;
+            operator: 'eq' | 'ne' | 'gt' | 'ge' | 'lt' | 'le' | 'contains' | 'startswith' | 'endswith';
+            value: any;
+          }> = [
+            { field: 'crdfd_masp', operator: 'eq', value: safeCode },
+            { field: 'statecode', operator: 'eq', value: 0 }
+          ];
+          const fallbackFilter = fallbackConditions.map(({ field, operator, value }, index) => {
+            let filterValue: string;
+            if (typeof value === 'string') {
+              filterValue = `'${value.replace(/'/g, "''")}'`;
+            } else if (typeof value === 'boolean') {
+              filterValue = value ? 'true' : 'false';
+            } else {
+              filterValue = String(value);
+            }
+
+            let conditionStr: string;
+            switch (operator) {
+              case 'contains':
+                conditionStr = `contains(${field},${filterValue})`;
+                break;
+              case 'startswith':
+                conditionStr = `startswith(${field},${filterValue})`;
+                break;
+              case 'endswith':
+                conditionStr = `endswith(${field},${filterValue})`;
+                break;
+              default:
+                conditionStr = `${field} ${operator} ${filterValue}`;
+            }
+
+            return conditionStr;
+          }).join(' and ');
           const fallbackQuery = `$select=${khoBDColumns}&$filter=${encodeURIComponent(fallbackFilter)}&$top=1`;
           const fallbackEndpoint = `${BASE_URL}${KHO_BD_TABLE}?${fallbackQuery}`;
           console.log('[Update Inventory] Fallback query (no warehouse filter):', fallbackEndpoint);

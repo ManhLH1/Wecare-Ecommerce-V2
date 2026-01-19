@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import axiosClient from "./_utils/axiosClient";
 import { getCacheKey, getCachedResponse, setCachedResponse } from "./_utils/cache";
 import { deduplicateRequest, getDedupKey } from "./_utils/requestDeduplication";
+import { buildOptimizedInventoryQuery } from "./_utils/dynamicsQueryOptimizer";
 
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
 const INVENTORY_TABLE = "cr44a_inventoryweshops";
@@ -50,33 +51,77 @@ export default async function handler(
         : !!isVatOrder;
 
     if (useKhoBinhDinh) {
-      // Query Kho Bình Định
-      // CurrentInventory = cr1bb_tonkholythuyetbomua (hoặc crdfd_tonkholythuyet)
-      // ReservedQuantity = cr1bb_soluonganggiuathang (cột giữ hàng ở Kho Bình Định)
-      // AvailableToSell = CurrentInventory - ReservedQuantity
-      let filter = `crdfd_masp eq '${productCode.trim()}' and statecode eq 0`;
-      if (
-        warehouseName &&
-        typeof warehouseName === "string" &&
-        warehouseName.trim()
-      ) {
-        const safeName = warehouseName.trim().replace(/'/g, "''");
-        filter += ` and crdfd_vitrikhofx eq '${safeName}'`;
-      }
-      // Query với cr1bb_tonkholythuyetbomua (CurrentInventory) và cr1bb_soluonganggiuathang (ReservedQuantity)
-      const columns =
-        "crdfd_kho_binh_dinhid,crdfd_masp,cr1bb_tonkholythuyetbomua,crdfd_tonkholythuyet,cr1bb_soluonganggiuathang,crdfd_vitrikhofx";
-      const query = `$select=${columns}&$filter=${encodeURIComponent(
-        filter
-      )}&$top=1`;
-      const endpoint = `${BASE_URL}${KHO_BD_TABLE}?${query}`;
-      
-      // Use deduplication
-      const dedupKey = getDedupKey(KHO_BD_TABLE, { productCode, warehouseName });
-      const response = await deduplicateRequest(dedupKey, () =>
-        axiosClient.get(endpoint, { headers })
+      // Use optimized query for Kho Bình Định with better filtering
+      const { endpoint, headers: optimizedHeaders } = buildOptimizedInventoryQuery(
+        productCode.trim(),
+        warehouseName && typeof warehouseName === "string" ? warehouseName.trim() : undefined,
+        true
       );
-      const first = (response.data.value || [])[0];
+
+      // Use deduplication (try optimized query, fallback to legacy query on error)
+      let first: any = null;
+      try {
+        const dedupKey = getDedupKey(KHO_BD_TABLE, { productCode, warehouseName });
+        const response = await deduplicateRequest(dedupKey, () =>
+          axiosClient.get(endpoint, { headers: { ...headers, ...optimizedHeaders } })
+        );
+        first = (response.data.value || [])[0];
+      } catch (optErr) {
+        console.warn('Optimized KHO_BD query failed, falling back to legacy query', optErr);
+        // Legacy KHO_BD query (safer fallback)
+        const conditions: Array<{
+          field: string;
+          operator: 'eq' | 'ne' | 'gt' | 'ge' | 'lt' | 'le' | 'contains' | 'startswith' | 'endswith';
+          value: any;
+        }> = [
+          { field: 'crdfd_masp', operator: 'eq', value: productCode.trim() },
+          { field: 'statecode', operator: 'eq', value: 0 }
+        ];
+        if (
+          warehouseName &&
+          typeof warehouseName === "string" &&
+          warehouseName.trim()
+        ) {
+          conditions.push({ field: 'crdfd_vitrikhofx', operator: 'eq', value: warehouseName.trim() });
+        }
+        const filter = conditions.map(({ field, operator, value }, index) => {
+          let filterValue: string;
+          if (typeof value === 'string') {
+            filterValue = `'${value.replace(/'/g, "''")}'`;
+          } else if (typeof value === 'boolean') {
+            filterValue = value ? 'true' : 'false';
+          } else {
+            filterValue = String(value);
+          }
+
+          let conditionStr: string;
+          switch (operator) {
+            case 'contains':
+              conditionStr = `contains(${field},${filterValue})`;
+              break;
+            case 'startswith':
+              conditionStr = `startswith(${field},${filterValue})`;
+              break;
+            case 'endswith':
+              conditionStr = `endswith(${field},${filterValue})`;
+              break;
+            default:
+              conditionStr = `${field} ${operator} ${filterValue}`;
+          }
+
+          return conditionStr;
+        }).join(' and ');
+        const columns =
+          "crdfd_kho_binh_dinhid,crdfd_masp,cr1bb_tonkholythuyetbomua,crdfd_tonkholythuyet,cr1bb_soluonganggiuathang,crdfd_vitrikhofx";
+        const legacyQuery = `$select=${columns}&$filter=${encodeURIComponent(filter)}&$top=1`;
+        const legacyEndpoint = `${BASE_URL}${KHO_BD_TABLE}?${legacyQuery}`;
+
+        const dedupKeyLegacy = getDedupKey(KHO_BD_TABLE, { productCode, warehouseName, legacy: true });
+        const legacyResponse = await deduplicateRequest(dedupKeyLegacy, () =>
+          axiosClient.get(legacyEndpoint, { headers })
+        );
+        first = (legacyResponse.data.value || [])[0];
+      }
       
       // CurrentInventory = cr1bb_tonkholythuyetbomua (ưu tiên), fallback về crdfd_tonkholythuyet
       let currentInventory = first?.cr1bb_tonkholythuyetbomua ?? 0;

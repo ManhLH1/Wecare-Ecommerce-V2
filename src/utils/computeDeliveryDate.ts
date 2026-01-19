@@ -142,15 +142,6 @@ export function computeDeliveryDate(params: {
     now?: Date; // optional override for testing; used for Now()
     today?: Date; // optional override for testing; used for Today()
 }): Date {
-    console.log('🧮 [computeDeliveryDate] Starting calculation with params:', {
-        warehouseCode: params.warehouseCode,
-        districtLeadtime: params.districtLeadtime,
-        orderCreatedOn: params.orderCreatedOn,
-        var_input_soluong: params.var_input_soluong,
-        var_selected_SP_tonkho: params.var_selected_SP_tonkho,
-        promotion: params.promotion?.name,
-        varNganhNghe: params.varNganhNghe
-    });
     const {
         // New params
         warehouseCode,
@@ -180,12 +171,6 @@ export function computeDeliveryDate(params: {
             : orderCreatedOn;
     }
 
-    console.log('📅 [computeDeliveryDate] Order time parsed:', {
-        orderTime: orderTime.toISOString(),
-        orderDayOfWeek: orderTime.getDay(),
-        orderHours: orderTime.getHours()
-    });
-
     // Pre-calc stock info (used by both district and out-of-stock logic)
     const requestedQty = var_input_soluong * var_selected_donvi_conversion;
     const theoreticalStock = var_selected_SP_tonkho ?? 0;
@@ -204,17 +189,9 @@ export function computeDeliveryDate(params: {
         isOutOfStock = requestedQty > theoreticalStock;
     }
 
-    console.log('📦 [computeDeliveryDate] Stock check (pre):', {
-        requestedQty,
-        theoreticalStock,
-        isOutOfStock,
-        warehouseCode
-    });
-
     // NEW LOGIC (2025) - Priority 1: District leadtime
     // Behavior changed: if out-of-stock, add warehouse/promotion extra ca on top of districtLeadtime.
     if (districtLeadtime && districtLeadtime > 0) {
-        console.log('🎯 [computeDeliveryDate] Using DISTRICT LEADTIME logic (priority highest):', districtLeadtime);
 
         if (isOutOfStock && warehouseCode) {
             // Determine extra ca for out-of-stock (respect promotion override for Apollo/Kim Tín)
@@ -231,68 +208,21 @@ export function computeDeliveryDate(params: {
 
             // For out-of-stock items, weekend reset IS applied before adding extra ca
             const effectiveOrderTime = getWeekendResetTime(orderTime);
-            console.log('⏰ [computeDeliveryDate] District + Out-of-stock -> After weekend reset:', {
-                originalTime: orderTime.toISOString(),
-                effectiveTime: effectiveOrderTime.toISOString(),
-                wasReset: effectiveOrderTime.getTime() !== orderTime.getTime()
-            });
 
             const totalCa = districtLeadtime + extraCaForOutOfStock;
             let result = addWorkingDaysWithFraction(effectiveOrderTime, totalCa);
-            console.log('📅 [computeDeliveryDate] After addWorkingDays (district + extra):', {
-                totalCa,
-                result: result.toISOString(),
-                resultDayOfWeek: result.getDay()
-            });
 
             // Apply Sunday adjustment for HCM warehouse
             result = applySundayAdjustment(result, warehouseCode);
-            console.log('📅 [computeDeliveryDate] After Sunday adjustment (district + extra):', {
-                result: result.toISOString(),
-                resultDayOfWeek: result.getDay()
-            });
-
-            console.log('✅ [computeDeliveryDate] DISTRICT LEADTIME + OUT-OF-STOCK result:', result.toISOString());
-
-            // LOG FINAL FORMULA AND REASON
-            logFinalFormulaAndReason(params, result, {
-                districtLeadtime,
-                isOutOfStock: true,
-                warehouseCode,
-                leadtimeCa: extraCaForOutOfStock,
-                isApolloKimTin: isApolloKimTinPromotion(promotion),
-                weekendResetApplied: effectiveOrderTime.getTime() !== orderTime.getTime(),
-                sundayAdjustmentApplied: applySundayAdjustment(new Date(result), warehouseCode).getTime() !== result.getTime()
-            });
 
             return result;
         } else {
             // Not out-of-stock: original district leadtime behavior (no weekend reset)
             let result = addWorkingDaysWithFraction(orderTime, districtLeadtime);
-            console.log('📅 [computeDeliveryDate] After addWorkingDays (district):', {
-                result: result.toISOString(),
-                resultDayOfWeek: result.getDay()
-            });
 
             // Apply Sunday adjustment for HCM warehouse (district result may still fall on Sunday)
             result = applySundayAdjustment(result, warehouseCode);
-            console.log('📅 [computeDeliveryDate] After Sunday adjustment (district):', {
-                result: result.toISOString(),
-                resultDayOfWeek: result.getDay(),
-                warehouseCode
-            });
-
-            console.log('✅ [computeDeliveryDate] DISTRICT LEADTIME result (no extension):', result.toISOString());
-
-            // LOG FINAL FORMULA AND REASON
-            logFinalFormulaAndReason(params, result, {
-                districtLeadtime,
-                isOutOfStock: isOutOfStock,
-                warehouseCode,
-                weekendResetApplied: false,
-                sundayAdjustmentApplied: applySundayAdjustment(new Date(result), warehouseCode).getTime() !== result.getTime()
-            });
-
+                        
             return result;
         }
     }
@@ -300,62 +230,22 @@ export function computeDeliveryDate(params: {
     // NEW LOGIC (2025) - Priority 2: Out of stock rules by warehouse
     // IMPORTANT: Weekend reset CHỈ áp dụng cho out-of-stock items
     if (isOutOfStock && warehouseCode) {
-        console.log('🚨 [computeDeliveryDate] OUT OF STOCK detected, applying rules for:', warehouseCode);
-
         // Apply weekend reset for out-of-stock items only
         let effectiveOrderTime = getWeekendResetTime(orderTime);
-        console.log('⏰ [computeDeliveryDate] After weekend reset:', {
-            originalTime: orderTime.toISOString(),
-            effectiveTime: effectiveOrderTime.toISOString(),
-            wasReset: effectiveOrderTime.getTime() !== orderTime.getTime()
-        });
-
         let leadtimeCa = 0;
 
         if (warehouseCode === 'KHOHCM') {
             // Kho HCM: +2 ca (bình thường), +6 ca (promotion Apollo, Kim Tín)
             leadtimeCa = isApolloKimTinPromotion(promotion) ? 6 : 2;
-            console.log('🏭 [computeDeliveryDate] HCM warehouse - leadtime:', {
-                leadtimeCa,
-                isApolloKimTin: isApolloKimTinPromotion(promotion),
-                promotion: promotion?.name
-            });
         } else if (warehouseCode === 'KHOBD') {
             // Kho Bình Định: +4 ca (bình thường), +6 ca (promotion Apollo, Kim Tín)
             leadtimeCa = isApolloKimTinPromotion(promotion) ? 6 : 4;
-            console.log('🏭 [computeDeliveryDate] Bình Định warehouse - leadtime:', {
-                leadtimeCa,
-                isApolloKimTin: isApolloKimTinPromotion(promotion),
-                promotion: promotion?.name
-            });
         }
 
         if (leadtimeCa > 0) {
             let result = addWorkingDaysWithFraction(effectiveOrderTime, leadtimeCa);
-            console.log('📅 [computeDeliveryDate] After addWorkingDays:', {
-                result: result.toISOString(),
-                resultDayOfWeek: result.getDay()
-            });
-
             // Apply Sunday adjustment for HCM warehouse
             result = applySundayAdjustment(result, warehouseCode);
-            console.log('📅 [computeDeliveryDate] After Sunday adjustment:', {
-                result: result.toISOString(),
-                resultDayOfWeek: result.getDay()
-            });
-
-            console.log('✅ [computeDeliveryDate] OUT OF STOCK result:', result.toISOString());
-
-            // LOG FINAL FORMULA AND REASON
-            logFinalFormulaAndReason(params, result, {
-                districtLeadtime: 0,
-                isOutOfStock: true,
-                warehouseCode,
-                leadtimeCa,
-                isApolloKimTin: isApolloKimTinPromotion(promotion),
-                weekendResetApplied: effectiveOrderTime.getTime() !== orderTime.getTime(),
-                sundayAdjustmentApplied: applySundayAdjustment(new Date(result), warehouseCode).getTime() !== result.getTime()
-            });
 
             return result;
         }
@@ -406,12 +296,7 @@ export function computeDeliveryDate(params: {
     }
 
     // 4) Default: Today + 1 working day (no weekend reset for in-stock items)
-    console.log('📅 [computeDeliveryDate] Using DEFAULT logic (+1 working day)');
     const result = addWorkingDays(orderTime, 1);
-    console.log('📅 [computeDeliveryDate] After addWorkingDays (default):', {
-        result: result.toISOString(),
-        resultDayOfWeek: result.getDay()
-    });
 
     // FINAL STEP: Apply Sunday adjustment for HCM warehouse (always, regardless of stock status)
     const finalResult = applySundayAdjustment(result, warehouseCode);

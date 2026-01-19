@@ -209,10 +209,8 @@ const fetchSpecialPromotions = async (
     const query = `$select=${selectFields.join(",")}${filterExpr}&$orderby=crdfd_value desc`;
 
     const endpoint = `${BASE_URL}${PROMOTION_TABLE}?${query}`;
-    console.log(`[SpecialPromotions] CRM endpoint: ${endpoint}`);
     const response = await axios.get(endpoint, { headers });
     const rawItems = (response.data?.value || []);
-    console.log(`[SpecialPromotions] CRM returned ${Array.isArray(rawItems) ? rawItems.length : 0} records`);
 
     // Map raw items; because we already asked CRM to return only crdfd_vn = 191920001 and optionally
     // promotions that contain the customer code, we can map and return the list directly.
@@ -273,7 +271,6 @@ const fetchSpecialPromotionsRaw = async (customerCode: string, headers: any) => 
     const query = `$select=${selectFields.join(",")}${filterExprRaw}&$orderby=crdfd_value desc`;
 
     const endpoint = `${BASE_URL}${PROMOTION_TABLE}?${query}`;
-    console.log(`[SpecialPromotionsRaw] CRM endpoint: ${endpoint}`);
     const response = await axios.get(endpoint, { headers });
     return response.data;
   } catch (error) {
@@ -399,10 +396,6 @@ export default async function handler(
       existingSpecialPromotionOrders = await fetchExistingSpecialPromotionOrders(soId, specialPromotionIds, headers);
       hasExistingSpecialPromotionOrder = existingSpecialPromotionOrders.length > 0;
     }
-
-    // Debug logging
-    console.log(`Special promotions for customer ${customerCode}: ${applicablePromotions.length}`);
-    applicablePromotions.forEach(p => console.log(`- ${p.name} (ID: ${p.id})`));
 
     // Step 7: Return response
     res.status(200).json({

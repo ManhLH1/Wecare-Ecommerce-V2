@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import axiosClient from "./_utils/axiosClient";
-import { getCacheKey, getCachedResponse, setCachedResponse } from "./_utils/cache";
+import { getMetadataCacheKey, getCachedMetadata, setCachedMetadata } from "./_utils/metadataCache";
 import { deduplicateRequest, getDedupKey } from "./_utils/requestDeduplication";
 
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
@@ -22,9 +22,9 @@ export default async function handler(
       return res.status(400).json({ error: "customerId or customerCode is required" });
     }
 
-    // Check cache first
-    const cacheKey = getCacheKey("warehouses", { customerId, customerCode });
-    const cachedResponse = getCachedResponse(cacheKey);
+    // Check metadata cache first (longer TTL for warehouses)
+    const cacheKey = getMetadataCacheKey("warehouses", { customerId, customerCode });
+    const cachedResponse = getCachedMetadata(cacheKey);
     if (cachedResponse !== undefined) {
       return res.status(200).json(cachedResponse);
     }
@@ -143,8 +143,8 @@ export default async function handler(
       crdfd_makho: item.crdfd_makho || "",
     }));
 
-    // Cache the result
-    setCachedResponse(cacheKey, warehouses);
+    // Cache the result in metadata cache (longer TTL)
+    setCachedMetadata(cacheKey, warehouses);
 
     res.status(200).json(warehouses);
   } catch (error: any) {

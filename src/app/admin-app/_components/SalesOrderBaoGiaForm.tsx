@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import ProductEntryForm from './ProductEntryForm';
 import ProductTable from './ProductTable';
 import Dropdown from './Dropdown';
-import ImportModal from './ImportModal';
+
+// Lazy load ImportModal - only loaded when needed
+const ImportModal = lazy(() => import('./ImportModal'));
 import { useCustomers, useSaleOrderBaoGia } from '../_hooks/useDropdownData';
 import { saveSOBGDetails, fetchSOBGDetails, SaleOrderDetail, fetchPromotionOrders, fetchPromotionOrdersSOBG, fetchSpecialPromotionOrders, applySOBGPromotionOrder, PromotionOrderItem, SOBaoGia } from '../_api/adminApi';
 import { showToast } from '../../../components/ToastManager';
@@ -1732,13 +1734,20 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         </div>
       )}
 
-      {/* Import Modal */}
-      <ImportModal
-        isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
-        onImportSuccess={handleImportSuccess}
-        sobgId={soId}
-      />
+      {/* Import Modal - Lazy loaded */}
+      <Suspense fallback={
+        <div className="admin-app-modal-loading">
+          <div className="admin-app-spinner admin-app-spinner-medium"></div>
+          <div>Đang tải...</div>
+        </div>
+      }>
+        <ImportModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          onImportSuccess={handleImportSuccess}
+          sobgId={soId}
+        />
+      </Suspense>
     </div>
   );
 }

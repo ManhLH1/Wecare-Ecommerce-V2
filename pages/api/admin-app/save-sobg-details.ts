@@ -1738,8 +1738,44 @@ async function updateInventoryAfterSaleSOBG(
         }
 
         if (isVatOrder) {
-            let khoBDFilter = `crdfd_masp eq '${safeCode}' and statecode eq 0`;
-            if (safeWarehouse) khoBDFilter += ` and crdfd_vitrikhofx eq '${safeWarehouse}'`;
+            const conditions: Array<{
+                field: string;
+                operator: 'eq' | 'ne' | 'gt' | 'ge' | 'lt' | 'le' | 'contains' | 'startswith' | 'endswith';
+                value: any;
+            }> = [
+                { field: 'crdfd_masp', operator: 'eq', value: safeCode },
+                { field: 'statecode', operator: 'eq', value: 0 }
+            ];
+            if (safeWarehouse) {
+                conditions.push({ field: 'crdfd_vitrikhofx', operator: 'eq', value: safeWarehouse });
+            }
+            const khoBDFilter = conditions.map(({ field, operator, value }, index) => {
+                let filterValue: string;
+                if (typeof value === 'string') {
+                    filterValue = `'${value.replace(/'/g, "''")}'`;
+                } else if (typeof value === 'boolean') {
+                    filterValue = value ? 'true' : 'false';
+                } else {
+                    filterValue = String(value);
+                }
+
+                let conditionStr: string;
+                switch (operator) {
+                    case 'contains':
+                        conditionStr = `contains(${field},${filterValue})`;
+                        break;
+                    case 'startswith':
+                        conditionStr = `startswith(${field},${filterValue})`;
+                        break;
+                    case 'endswith':
+                        conditionStr = `endswith(${field},${filterValue})`;
+                        break;
+                    default:
+                        conditionStr = `${field} ${operator} ${filterValue}`;
+                }
+
+                return conditionStr;
+            }).join(' and ');
             const khoBDColumns = "crdfd_kho_binh_dinhid,cr1bb_soluonganggiuathang,crdfd_vitrikhofx";
             const khoBDQuery = `$select=${khoBDColumns}&$filter=${encodeURIComponent(khoBDFilter)}&$top=1`;
             const khoBDEndpoint = `${BASE_URL}${KHO_BD_TABLE}?${khoBDQuery}`;

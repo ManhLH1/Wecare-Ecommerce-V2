@@ -1,0 +1,196 @@
+/* Core Admin App Styles - Always loaded */
+
+/* Layout */
+.admin-app-container {
+  min-height: 100vh;
+  background-color: #f7fafc;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.admin-app-main {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Form Sections */
+.admin-app-form-section {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.admin-app-form-row {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.admin-app-form-row:last-child {
+  border-bottom: none;
+}
+
+/* Field Styles */
+.admin-app-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-app-field-compact {
+  flex: 0 0 auto;
+}
+
+.admin-app-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.admin-app-label-inline {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #4b5563;
+  margin-right: 8px;
+  min-width: 60px;
+}
+
+/* Input Styles */
+.admin-app-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.admin-app-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.admin-app-input-compact {
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+.admin-app-input-small {
+  width: auto;
+  min-width: 80px;
+}
+
+.admin-app-input-money {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-app-input-readonly {
+  background-color: #f9fafb;
+  cursor: not-allowed;
+}
+
+/* Button Styles */
+.admin-app-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.admin-app-btn-primary {
+  background-color: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.admin-app-btn-primary:hover {
+  background-color: #2563eb;
+  border-color: #2563eb;
+}
+
+.admin-app-btn-secondary {
+  background-color: white;
+  color: #374151;
+  border-color: #d1d5db;
+}
+
+.admin-app-btn-secondary:hover {
+  background-color: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.admin-app-btn-small {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.admin-app-btn-icon {
+  padding: 6px;
+  width: auto;
+}
+
+.admin-app-btn-danger {
+  background-color: #ef4444;
+  color: white;
+  border-color: #ef4444;
+}
+
+.admin-app-btn-danger:hover {
+  background-color: #dc2626;
+  border-color: #dc2626;
+}
+
+/* Loading States */
+.admin-app-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e5e7eb;
+  border-top: 2px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.admin-app-spinner-medium {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Status Colors */
+.admin-app-text-success { color: #10b981; }
+.admin-app-text-warning { color: #f59e0b; }
+.admin-app-text-error { color: #ef4444; }
+.admin-app-text-info { color: #3b82f6; }
+
+/* Utilities */
+.admin-app-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

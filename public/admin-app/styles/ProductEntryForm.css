@@ -1,0 +1,130 @@
+/* ProductEntryForm Component Styles */
+
+/* Product Selection */
+.admin-app-field-product {
+  min-width: 300px;
+}
+
+.admin-app-field-unit {
+  min-width: 120px;
+}
+
+.admin-app-field-warehouse {
+  min-width: 200px;
+}
+
+/* Inventory Status */
+.admin-app-field-inventory {
+  min-width: 180px;
+}
+
+.admin-app-inventory-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-app-inventory-value {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.admin-app-inventory-good {
+  color: #10b981;
+}
+
+.admin-app-inventory-low {
+  color: #f59e0b;
+}
+
+.admin-app-inventory-out {
+  color: #ef4444;
+}
+
+.admin-app-inventory-status {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* Pricing Section */
+.admin-app-field-price,
+.admin-app-field-quantity {
+  min-width: 120px;
+}
+
+.admin-app-field-discount-rate,
+.admin-app-field-discount-percent,
+.admin-app-field-vat {
+  min-width: 100px;
+}
+
+.admin-app-field-subtotal,
+.admin-app-field-total {
+  min-width: 140px;
+}
+
+.admin-app-price-info {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.admin-app-price-group {
+  font-weight: 500;
+  color: #374151;
+}
+
+.admin-app-price-vat,
+.admin-app-price-novat {
+  margin-top: 2px;
+}
+
+/* Promotion Section */
+.admin-app-field-promotion {
+  min-width: 250px;
+}
+
+.admin-app-promotion-buttons {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.admin-app-field-promotion-details {
+  margin-top: 8px;
+}
+
+.admin-app-promotion-info {
+  background: #f8fafc;
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.admin-app-promotion-type,
+.admin-app-promotion-discount {
+  margin-bottom: 4px;
+}
+
+/* Loading Overlay */
+.admin-app-form-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.admin-app-form-loading-text {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #374151;
+  font-weight: 500;
+}

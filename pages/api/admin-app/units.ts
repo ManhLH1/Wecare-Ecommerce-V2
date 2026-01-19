@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import axiosClient from "./_utils/axiosClient";
-import { getCacheKey, getCachedResponse, setCachedResponse } from "./_utils/cache";
+import { getMetadataCacheKey, getCachedMetadata, setCachedMetadata, withMetadataCache } from "./_utils/metadataCache";
 import { deduplicateRequest, getDedupKey } from "./_utils/requestDeduplication";
 
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
@@ -17,9 +17,9 @@ export default async function handler(
   try {
     const { productCode } = req.query; // Mã sản phẩm (Mã SP)
     
-    // Check cache first
-    const cacheKey = getCacheKey("units", { productCode });
-    const cachedResponse = getCachedResponse(cacheKey);
+    // Check metadata cache first (longer TTL for units)
+    const cacheKey = getMetadataCacheKey("units", { productCode });
+    const cachedResponse = getCachedMetadata(cacheKey);
     if (cachedResponse !== undefined) {
       return res.status(200).json(cachedResponse);
     }
@@ -75,8 +75,8 @@ export default async function handler(
         return acc;
       }, []);
 
-    // Cache the result
-    setCachedResponse(cacheKey, units);
+    // Cache the result in metadata cache (longer TTL)
+    setCachedMetadata(cacheKey, units);
 
     res.status(200).json(units);
   } catch (error: any) {

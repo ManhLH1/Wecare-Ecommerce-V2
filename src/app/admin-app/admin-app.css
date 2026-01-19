@@ -3548,6 +3548,25 @@ html, body, #__next {
   vertical-align: middle;
 }
 
+/* Row unsaved style */
+.admin-app-row-unsaved {
+  background-color: #fef2f2 !important;
+  border-left: 3px solid #ef4444;
+}
+
+.admin-app-row-unsaved:hover {
+  background-color: #fee2e2 !important;
+}
+
+/* Unsaved badge */
+.admin-app-unsaved-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 12px;
+  vertical-align: middle;
+  color: #dc2626;
+}
+
 /* Quantity input */
 .admin-app-quantity-input {
   font-size: 11px;
@@ -4066,6 +4085,318 @@ html, body, #__next {
   .admin-app-user-name {
     font-size: 13px !important;
   }
+
+/* Background Job Status */
+.admin-app-background-job-status {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e1e5e9;
+  min-width: 300px;
+  max-width: 400px;
+  z-index: 1000;
+  animation: slideInFromRight 0.3s ease-out;
+}
+
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.admin-app-job-header {
+  padding: 16px;
+  border-bottom: 1px solid #e1e5e9;
+}
+
+.admin-app-job-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.admin-app-job-type {
+  font-weight: 600;
+  color: #1a202c;
+}
+
+.admin-app-job-id {
+  font-size: 12px;
+  color: #718096;
+  font-family: monospace;
+}
+
+.admin-app-job-status-text {
+  font-size: 14px;
+  color: #4a5568;
+}
+
+.admin-app-job-pending .admin-app-job-status-text {
+  color: #d69e2e;
+}
+
+.admin-app-job-running .admin-app-job-status-text {
+  color: #3182ce;
+}
+
+.admin-app-job-completed .admin-app-job-status-text {
+  color: #38a169;
+}
+
+.admin-app-job-failed .admin-app-job-status-text {
+  color: #e53e3e;
+}
+
+.admin-app-job-progress {
+  padding: 16px;
+}
+
+.admin-app-progress-bar {
+  width: 100%;
+  height: 8px;
+  background-color: #e2e8f0;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.admin-app-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3182ce, #63b3ed);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.admin-app-job-running .admin-app-progress-fill {
+  background: linear-gradient(90deg, #3182ce, #63b3ed);
+}
+
+.admin-app-progress-text {
+  font-size: 12px;
+  color: #718096;
+  text-align: center;
+}
+
+.admin-app-progress-step {
+  display: block;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.admin-app-job-error {
+  padding: 16px;
+  background-color: #fed7d7;
+  border-top: 1px solid #e53e3e;
+}
+
+.admin-app-error-message {
+  color: #c53030;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.admin-app-job-success {
+  padding: 16px;
+  background-color: #c6f6d5;
+  border-top: 1px solid #38a169;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-app-success-icon {
+  width: 24px;
+  height: 24px;
+  background-color: #38a169;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.admin-app-success-message {
+  color: #22543d;
+  font-weight: 600;
+}
+
+/* Modal loading fallback */
+.admin-app-modal-loading {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+/* Virtualized Product Table */
+.admin-app-virtual-header {
+  background: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.admin-app-virtual-header-content {
+  display: flex;
+  padding: 12px 16px;
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 13px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.admin-app-virtual-header-content > div {
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+}
+
+.admin-app-virtual-list {
+  border: 1px solid #e2e8f0;
+  border-top: none;
+}
+
+.admin-app-virtual-row {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.admin-app-virtual-row:hover {
+  background-color: #f8fafc;
+}
+
+.admin-app-virtual-row-content {
+  display: flex;
+  padding: 8px 16px;
+  align-items: center;
+  font-size: 13px;
+  min-height: 50px;
+}
+
+.admin-app-virtual-row-content > div {
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  word-break: break-word;
+}
+
+.admin-app-cell-center {
+  justify-content: center;
+  text-align: center;
+}
+
+.admin-app-cell-right {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.admin-app-cell-product-name {
+  font-weight: 500;
+  color: #2d3748;
+}
+
+.admin-app-cell-clickable {
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: background-color 0.2s;
+}
+
+.admin-app-cell-clickable:hover {
+  background-color: #edf2f7;
+}
+
+.admin-app-cell-total {
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.admin-app-status-saved {
+  color: #38a169;
+  font-weight: bold;
+}
+
+.admin-app-status-pending {
+  color: #d69e2e;
+}
+
+.admin-app-action-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.admin-app-btn-icon {
+  padding: 4px 6px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.admin-app-row-modified {
+  background-color: #fef5e7 !important;
+}
+
+.admin-app-row-modified .admin-app-virtual-row-content {
+  border-left: 3px solid #f6ad55;
+}
+
+.admin-app-modified-badge {
+  margin-left: 6px;
+  font-size: 12px;
+}
+
+.admin-app-input-inline {
+  border: 1px solid #cbd5e0;
+  border-radius: 3px;
+  padding: 2px 4px;
+  font-size: 12px;
+  background: white;
+}
+
+.admin-app-input-inline:focus {
+  outline: none;
+  border-color: #3182ce;
+  box-shadow: 0 0 0 1px #3182ce;
+}
+
+.admin-app-table-summary {
+  background: #f8fafc;
+  border-top: 2px solid #e2e8f0;
+  padding: 12px 16px;
+}
+
+.admin-app-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.admin-app-summary-label {
+  font-size: 14px;
+}
+
+.admin-app-summary-value {
+  font-size: 14px;
+  color: #4a5568;
+}
 
   .admin-app-user-email {
     font-size: 11px !important;

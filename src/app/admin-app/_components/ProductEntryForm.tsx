@@ -111,10 +111,10 @@ if (typeof window !== 'undefined') {
   (window as any).productDataCache = {
     clear: () => productDataCache.clear(),
     cleanup: () => productDataCache.cleanup(),
-    getStats: () => {
-      // This would need to be added to the cache class
-      console.log('Cache stats not implemented yet');
-    }
+  getStats: () => {
+    // This would need to be added to the cache class
+    // Cache stats not implemented yet
+  }
   };
 }
 
@@ -175,7 +175,6 @@ const preloadCommonProductData = async (customerCode?: string, vatText?: string,
 
       } catch (e) {
         // Silent fail for preloading
-        console.debug('[Preload] Failed to preload data for', productCode, e);
       }
     });
 
@@ -186,7 +185,6 @@ const preloadCommonProductData = async (customerCode?: string, vatText?: string,
 
   } catch (e) {
     // Silent fail for preloading
-    console.debug('[Preload] Failed to preload common products', e);
   }
 };
 
@@ -414,7 +412,7 @@ function ProductEntryForm({
   // Debug: monitor unit changes
   useEffect(() => {
     try {
-      console.debug('[UnitDebug] state unitId/unit changed', { unitId, unit, userSelectedUnit: userSelectedUnitRef.current, availableUnitsFromPricesCount: availableUnitsFromPrices.length, pricesFromApiCount: pricesFromApi.length });
+      // Removed debug logging for unit changes
     } catch (e) {}
   }, [unitId, unit, availableUnitsFromPrices.length, pricesFromApi.length]);
 
@@ -1412,14 +1410,11 @@ function ProductEntryForm({
       // CHỈ chạy nếu người dùng chưa chọn đơn vị thủ công
       const found = units.find((u) => u.crdfd_name === unit);
       if (found) {
-        try { console.debug('[UnitDebug] auto-mapping unit from parent unit name ->', unit, 'found id', found.crdfd_unitsid); } catch(e) {}
         setUnitId(found.crdfd_unitsid);
       } else if ((availableUnitsFromPrices && availableUnitsFromPrices.length > 0)) {
-        try { console.debug('[UnitDebug] auto-select first availableUnitsFromPrices ->', availableUnitsFromPrices[0].crdfd_name); } catch(e) {}
         setUnitId(availableUnitsFromPrices[0].crdfd_unitsid);
         setUnit(availableUnitsFromPrices[0].crdfd_name);
       } else if (units.length > 0) {
-        try { console.debug('[UnitDebug] fallback select first CRM unit ->', units[0].crdfd_name); } catch(e) {}
         setUnitId(units[0].crdfd_unitsid);
         setUnit(units[0].crdfd_name);
       }
@@ -1428,7 +1423,6 @@ function ProductEntryForm({
 
     if (!unit && unitIdIsEmpty && (availableUnitsFromPrices && availableUnitsFromPrices.length > 0) && !userHasManuallySelectedUnitRef.current) {
       // Auto-select first unit from availableUnitsFromPrices when available (prefers price-derived units)
-      try { console.debug('[UnitDebug] auto-select unitsFromPrices first ->', availableUnitsFromPrices[0].crdfd_name); } catch(e) {}
       setUnitId(availableUnitsFromPrices[0].crdfd_unitsid);
       setUnit(availableUnitsFromPrices[0].crdfd_name);
       return;
@@ -1436,12 +1430,10 @@ function ProductEntryForm({
 
     if (!unitIdIsEmpty && !currentUnitExists && (availableUnitsFromPrices && availableUnitsFromPrices.length > 0)) {
       // If current unitId is no longer in list, fallback to first availableUnitsFromPrices
-      try { console.debug('[UnitDebug] current unitId not exists -> fallback to availableUnitsFromPrices[0]'); } catch(e) {}
       setUnitId(availableUnitsFromPrices[0].crdfd_unitsid);
       setUnit(availableUnitsFromPrices[0].crdfd_name);
     } else if (!unitIdIsEmpty && !currentUnitExists && units.length > 0) {
       // Fallback to real units list
-      try { console.debug('[UnitDebug] current unitId not exists -> fallback to CRM units[0]'); } catch(e) {}
       setUnitId(units[0].crdfd_unitsid);
       setUnit(units[0].crdfd_name);
     }
@@ -1491,7 +1483,6 @@ function ProductEntryForm({
       const cacheKey = `price-${fetchKey}`;
       const cachedPriceData = productDataCache.get<PriceCacheData>(cacheKey);
       if (cachedPriceData && !shouldReloadPrice) {
-        console.debug('[Price Cache] Using cached data for', cacheKey);
         // Apply cached data directly
         const { allPrices, selectedPrice, apiUnitName, apiPriceGroupText, priceWithVat, priceNoVat, finalPrice, discountRate } = cachedPriceData;
 
@@ -1556,7 +1547,6 @@ function ProductEntryForm({
 
       if (lastPriceFetchKeyRef.current === fetchKey) {
         // Skip duplicate fetch
-        // console.debug('[Price] Skipping duplicate fetch for', fetchKey);
         return;
       }
       // Mark this key as in-flight / last fetched
@@ -1759,7 +1749,6 @@ function ProductEntryForm({
           }
 
           if (found) {
-            try { console.debug('[UnitDebug] setUnitId from unitsFromPrices found ->', found.crdfd_name, found.crdfd_unitsid); } catch(e) {}
             setUnitId(found.crdfd_unitsid);
             setUnit(found.crdfd_name);
             hasSetUnitFromApiRef.current = true;
@@ -1843,7 +1832,6 @@ function ProductEntryForm({
           // after a reload even when finalPrice was available.
           const baseForDiscount = (finalPrice ?? priceNoVat ?? priceWithVat ?? roundedBase);
           const roundedBasePrice = Math.round(Number(baseForDiscount) * 100) / 100;
-          console.log('💵 Setting basePriceForDiscount:', roundedBasePrice);
           setBasePriceForDiscount(roundedBasePrice);
           // Set giá từ API, trừ khi đang ở chế độ "Theo chiết khấu" và đã bật "Duyệt giá"
           // (trong trường hợp đó, giá sẽ được tính từ chiết khấu)
@@ -1962,7 +1950,6 @@ function ProductEntryForm({
       const cacheKey = `promotions-${selectedProductCode}-${customerCode}-${vatText || ''}-${vatPercent || 0}`;
       const cachedPromotions = productDataCache.get<Promotion[]>(cacheKey);
       if (cachedPromotions) {
-        console.debug('[Promotions Cache] Using cached data for', cacheKey);
         setPromotions(cachedPromotions);
         // Auto-select first promotion if available
         if (cachedPromotions.length > 0) {
@@ -2067,30 +2054,11 @@ function ProductEntryForm({
   // Use `discountPercent` prop (numeric) as source of truth for discount value,
   // allowing parent to provide either selected preset or a custom "Khác" value.
   useEffect(() => {
-    console.log('🔄 Discount calculation useEffect triggered:', {
-      approvePrice,
-      priceEntryMethod,
-      discountPercent,
-      basePriceForDiscount,
-      discountRate
-    });
-
     if (!approvePrice && priceEntryMethod === 'Theo chiết khấu' && basePriceForDiscount > 0) {
       const pct = Number(discountPercent) || 0;
       const discountedPrice = basePriceForDiscount - (basePriceForDiscount * pct / 100);
       const roundedPrice = Math.round(discountedPrice * 100) / 100;
-      console.log('💰 Calculating discounted price:', {
-        basePrice: basePriceForDiscount,
-        discountPercent: pct,
-        discountedPrice: roundedPrice
-      });
       handlePriceChange(String(roundedPrice));
-    } else {
-      console.log('❌ Discount calculation skipped:', {
-        approvePrice,
-        priceEntryMethod,
-        hasBasePrice: basePriceForDiscount > 0
-      });
     }
   }, [approvePrice, priceEntryMethod, discountPercent, basePriceForDiscount, discountRate]);
 
@@ -2233,10 +2201,7 @@ function ProductEntryForm({
       try {
         const currentPromoIdForSync = normalizePromotionId(selectedPromotionId || normalizePromotionId(promotions[0]?.id));
         if (currentPromoIdForSync && !skipApplyingSelectedPromotion) {
-          console.debug('[ProductEntryForm] syncing promotionId to parent before add:', currentPromoIdForSync);
           if (setPromotionId) setPromotionId(currentPromoIdForSync);
-        } else {
-          console.debug('[ProductEntryForm] no promotionId to sync before add or skipped due to mismatch');
         }
       } catch (err) { /* ignore */ }
 
@@ -2280,7 +2245,6 @@ function ProductEntryForm({
         computedDiscountAmount = skipApplyingSelectedPromotion ? 0 : discountAmount;
       }
 
-      console.debug('[ProductEntryForm] calling onAdd with promotionId:', currentPromoId, 'computedPct:', computedDiscountPercent, 'computedAmt:', computedDiscountAmount);
       onAdd({
         promotionId: currentPromoId,
         discountPercent: computedDiscountPercent,
@@ -2514,35 +2478,10 @@ function ProductEntryForm({
 
   // Auto-calculate deliveryDate similar to ngay_giao logic (simplified)
   useEffect(() => {
-    console.log('🔄 [DeliveryDate] useEffect triggered', {
-      selectedProduct: selectedProduct?.crdfd_masanpham,
-      customerId,
-      inventoryLoading,
-      inventoryLoaded,
-      inventoryTheoretical,
-      quantity,
-      districtLeadtime,
-      warehouseCode
-    });
-
     // Only calculate if we have essential data: selected product, basic customer info, and inventory is loaded with real data
     if (!selectedProduct || !customerId || inventoryLoading || !inventoryLoaded) {
-      console.log('⏸️ [DeliveryDate] Skipping calculation - missing prerequisites', {
-        hasSelectedProduct: !!selectedProduct,
-        hasCustomerId: !!customerId,
-        isInventoryLoading: inventoryLoading,
-        isInventoryLoaded: inventoryLoaded
-      });
       return;
     }
-
-    console.log('🚀 [DeliveryDate] Starting calculation with params:', {
-      productCode: selectedProduct.crdfd_masanpham,
-      quantity,
-      inventoryTheoretical,
-      districtLeadtime,
-      warehouseCode
-    });
 
     // Compute delivery date following canvas logic:
     // 1) Promotion lead time (promotion lead * 12 hours) when applicable
@@ -2610,23 +2549,12 @@ function ProductEntryForm({
         var_selected_SP_leadtime: productLeadTime || 0,
       };
 
-      console.log('📊 [DeliveryDate] Calling computeDeliveryDate with:', computeParams);
-
       const computed = computeDeliveryDate(computeParams);
-
-      console.log('📅 [DeliveryDate] Computed result:', {
-        computedDate: computed.toISOString(),
-        computedDayOfWeek: computed.getDay(),
-        computedHours: computed.getHours()
-      });
 
       const formattedDate = formatDate(computed);
 
-      console.log('✅ [DeliveryDate] Final formatted date:', formattedDate);
-
       setDeliveryDate(formattedDate);
     } catch (e) {
-      console.error('❌ [ProductEntryForm] Error calculating delivery date, using fallback:', e);
       // fallback: simple logic
       const today = new Date();
       const daysToAdd = (quantity || 0) > (stockQuantity || 0) ? 2 : 1;
@@ -2655,8 +2583,6 @@ function ProductEntryForm({
         // Examples: "CT - CH Huyền (Cờ Đỏ)" -> "Cờ Đỏ"
         //           "Công ty ABC - Quận 1" -> "Quận 1"
         let districtNameFromCustomer = undefined;
-
-        console.log('🔍 [District Leadtime] Attempting to extract district name from:', customerName);
 
         if (customerName) {
           const customerNameStr = String(customerName).trim();
@@ -2687,8 +2613,7 @@ function ProductEntryForm({
       }
 
       setDistrictLeadtime(result.leadtimeTheoCa);
-    } catch (error) {
-      console.error('❌ [District Leadtime] Error fetching:', error);
+    } catch (error) { 
       setDistrictLeadtime(0); // Fallback to 0 on error
     }
     };
@@ -2950,15 +2875,12 @@ function ProductEntryForm({
                       ]}
                       value={discountRate}
                       onChange={(value) => {
-                        console.log('📊 Dropdown onChange:', { value, discountRate: value });
                         setDiscountRate(value);
                         if (value === 'Khác') {
-                          console.log('📊 Setting discountPercent to 0 (Khác selected)');
                           setDiscountPercent(0);
                         } else {
                           const num = Number(value);
                           const finalPercent = isNaN(num) ? 0 : num;
-                          console.log('📊 Setting discountPercent to:', finalPercent);
                           setDiscountPercent(finalPercent);
                         }
                       }}
@@ -3033,7 +2955,6 @@ function ProductEntryForm({
                 const now = Date.now();
                 const timeSinceLastSelection = now - lastProductSelectionTimeRef.current;
                 if (timeSinceLastSelection < 300) { // 300ms debounce
-                  console.debug('[ProductSelection] Debounced rapid selection');
                   return;
                 }
                 lastProductSelectionTimeRef.current = now;
@@ -3099,9 +3020,6 @@ function ProductEntryForm({
               }))}
               value={unitId}
               onChange={(value, option) => {
-                try {
-                  console.debug('[ProductEntryForm] Unit change requested', { value, label: option?.label });
-                } catch (e) { /* ignore */ }
                 setUnit(option?.label || '');
                 setUnitId(value);
                 setUnitChangeTrigger(prev => prev + 1); // Force warehouse quantity recalculation

@@ -1,8 +1,10 @@
 'use client';
 
-import React from 'react';
-import './admin-app.css';
+import React, { useEffect } from 'react';
+import './admin-app.css'; // Restore critical styles synchronously to avoid FOUC / broken UI
 import AdminAuthGuard from './_components/AdminAuthGuard';
+import QueryProvider from './_components/QueryProvider';
+import { preloadCriticalStyles } from './_utils/lazyStyles';
 import { usePathname } from 'next/navigation';
 
 export default function AdminAppLayout({
@@ -13,21 +15,32 @@ export default function AdminAppLayout({
   const pathname = usePathname();
   const isLoginPage = pathname === '/admin-app/login' || pathname === '/admin-app/oauth-callback';
 
+  // Preload critical styles on mount
+  useEffect(() => {
+    if (!isLoginPage) {
+      preloadCriticalStyles();
+    }
+  }, [isLoginPage]);
+
   // Không wrap login page và oauth-callback với AuthGuard
   if (isLoginPage) {
     return (
-      <div className="admin-app-container">
-        {children}
-      </div>
+      <QueryProvider>
+        <div className="admin-app-container">
+          {children}
+        </div>
+      </QueryProvider>
     );
   }
 
   return (
-    <div className="admin-app-container">
-      <AdminAuthGuard>
-        {children}
-      </AdminAuthGuard>
-    </div>
+    <QueryProvider>
+      <div className="admin-app-container">
+        <AdminAuthGuard>
+          {children}
+        </AdminAuthGuard>
+      </div>
+    </QueryProvider>
   );
 }
 

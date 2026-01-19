@@ -1154,10 +1154,44 @@ async function updateInventoryAfterSale(
     // ReservedQuantity = cr1bb_soluonganggiuathang (cột giữ hàng ở Kho Bình Định)
     if (isVatOrder) {
       // RE-CHECK: Query fresh data right before update (atomic operation)
-      let khoBDFilter = `crdfd_masp eq '${safeCode}' and statecode eq 0`;
+      const conditions: Array<{
+        field: string;
+        operator: 'eq' | 'ne' | 'gt' | 'ge' | 'lt' | 'le' | 'contains' | 'startswith' | 'endswith';
+        value: any;
+      }> = [
+        { field: 'crdfd_masp', operator: 'eq', value: safeCode },
+        { field: 'statecode', operator: 'eq', value: 0 }
+      ];
       if (safeWarehouse) {
-        khoBDFilter += ` and crdfd_vitrikhofx eq '${safeWarehouse}'`;
+        conditions.push({ field: 'crdfd_vitrikhofx', operator: 'eq', value: safeWarehouse });
       }
+      const khoBDFilter = conditions.map(({ field, operator, value }, index) => {
+        let filterValue: string;
+        if (typeof value === 'string') {
+          filterValue = `'${value.replace(/'/g, "''")}'`;
+        } else if (typeof value === 'boolean') {
+          filterValue = value ? 'true' : 'false';
+        } else {
+          filterValue = String(value);
+        }
+
+        let conditionStr: string;
+        switch (operator) {
+          case 'contains':
+            conditionStr = `contains(${field},${filterValue})`;
+            break;
+          case 'startswith':
+            conditionStr = `startswith(${field},${filterValue})`;
+            break;
+          case 'endswith':
+            conditionStr = `endswith(${field},${filterValue})`;
+            break;
+          default:
+            conditionStr = `${field} ${operator} ${filterValue}`;
+        }
+
+        return conditionStr;
+      }).join(' and ');
       // CHỈ query các cột cần thiết: ID, số lượng đang giữ hàng, vị trí kho
       // KHÔNG query tồn kho lý thuyết bỏ mua vì đơn VAT không cập nhật các cột này
       const khoBDColumns = "crdfd_kho_binh_dinhid,cr1bb_soluonganggiuathang,crdfd_vitrikhofx";
