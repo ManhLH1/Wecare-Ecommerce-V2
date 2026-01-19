@@ -28,6 +28,7 @@ interface PricingEngineProps {
 
   // Quantity and calculated values
   quantity: number;
+  setQuantity: (value: number) => void;
   subtotal: number;
   setSubtotal: (value: number) => void;
   totalAmount: number;
@@ -74,6 +75,7 @@ export default function PricingEngine({
   vatAmount,
   setVatAmount,
   quantity,
+  setQuantity,
   subtotal,
   setSubtotal,
   totalAmount,

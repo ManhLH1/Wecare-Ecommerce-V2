@@ -82,8 +82,8 @@ export function useOptimisticUpdates<T>() {
         }));
 
         // Start polling job status
-        pollJobStatus(response.jobId, {
-          onSuccess: (result) => {
+        pollJobStatus<T>(response.jobId, {
+          onSuccess: (result: T) => {
             setState(prev => ({
               ...prev,
               data: result,

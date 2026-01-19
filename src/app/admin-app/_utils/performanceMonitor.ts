@@ -31,7 +31,7 @@ export const performanceMonitor = {
                 metadata,
             };
 
-            this?.log(log);
+            performanceMonitor.log(log);
             return duration;
         };
     },

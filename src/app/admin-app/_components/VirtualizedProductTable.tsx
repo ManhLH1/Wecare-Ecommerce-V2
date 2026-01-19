@@ -59,7 +59,7 @@ interface VirtualizedProductTableProps {
 }
 
 // Table row component for virtual scrolling
-const ProductTableRow: React.FC<{
+const ProductTableRow = ({ index, style, data }: {
   index: number;
   style: React.CSSProperties;
   data: {
@@ -78,7 +78,7 @@ const ProductTableRow: React.FC<{
     onEditProduct?: (product: ProductItem) => void;
     onSaveProduct?: (productId: string) => void;
   };
-}> = ({ index, style, data }) => {
+}): JSX.Element => {
   const {
     sortedProducts,
     showSurchargeColumn,
@@ -347,6 +347,7 @@ export default function VirtualizedProductTable({
 
       {/* Virtualized Body */}
       <List
+        width="100%"
         height={height}
         itemCount={sortedProducts.length}
         itemSize={itemHeight}
