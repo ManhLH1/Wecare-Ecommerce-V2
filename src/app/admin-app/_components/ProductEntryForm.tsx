@@ -1275,19 +1275,22 @@ function ProductEntryForm({
       const vatTextLower = (vatText || '').toLowerCase();
       const isVatOrderForInventory = vatTextLower.includes('có vat') || vatPercent > 0;
 
+      // Determine selected warehouse name (may come from warehouses list or `warehouse` prop)
+      const selectedWarehouse = warehouses.find(w => w.crdfd_khowecareid === warehouseId);
+      const selectedWarehouseName = selectedWarehouse?.crdfd_name || warehouse || '';
+
       // Fetch both inventory sources in parallel (Inventory service and Kho Bình Định variant)
+      // Note: API expects warehouseName (text), not warehouseId. Use `warehouse`/selectedWarehouseName here.
+      const warehouseNameForApi = warehouse || selectedWarehouseName || undefined;
       const [inventoryResult, khoBinhDinhResult] = await Promise.all([
-        fetchInventory(selectedProductCode, warehouseId, false),
-        fetchInventory(selectedProductCode, warehouseId, true)
+        fetchInventory(selectedProductCode, warehouseNameForApi, false),
+        fetchInventory(selectedProductCode, warehouseNameForApi, true)
       ]);
 
       // Normalize results
       const inv = inventoryResult || { theoreticalStock: 0, reservedQuantity: 0, availableToSell: 0 };
       const kho = khoBinhDinhResult || { theoreticalStock: 0, reservedQuantity: 0, availableToSell: 0 };
 
-      // Determine selected warehouse name (may come from warehouses list or `warehouse` prop)
-      const selectedWarehouse = warehouses.find(w => w.crdfd_khowecareid === warehouseId);
-      const selectedWarehouseName = selectedWarehouse?.crdfd_name || warehouse || '';
       // If the selected warehouse is Bình Định (name includes 'bình định'), use kho result.
       const useKho = selectedWarehouseName.toLowerCase().includes('bình định') || selectedWarehouseName.toLowerCase().includes('binh dinh');
 
