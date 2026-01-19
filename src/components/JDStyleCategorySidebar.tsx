@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { productsCache } from '@/utils/cache';
 
 // Add CSS animations
 const dropdownStyles = `
@@ -197,8 +198,6 @@ const JDStyleCategorySidebar: React.FC<JDStyleCategorySidebarProps> = ({
   const [products, setProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   
-  // Product cache để tránh fetch lại
-  const productCache = useRef<Map<string, any[]>>(new Map());
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
   
   // Navigate to product detail page
@@ -256,7 +255,7 @@ const JDStyleCategorySidebar: React.FC<JDStyleCategorySidebarProps> = ({
       }
       
       // Cache the results
-      productCache.current.set(subcategory.crdfd_productgroupid, extractedProducts);
+      productsCache.set(subcategory.crdfd_productgroupid, extractedProducts);
       console.log(`Preloaded ${extractedProducts.length} products for ${subcategory.crdfd_productname}`);
     } catch (error) {
       console.error('Error preloading products:', error);
@@ -296,7 +295,7 @@ const JDStyleCategorySidebar: React.FC<JDStyleCategorySidebarProps> = ({
       const cacheKey = firstSubcategory.crdfd_productgroupid;
       
       // Only preload if not already cached
-      if (!productCache.current.has(cacheKey)) {
+      if (!productsCache.has(cacheKey)) {
         // Preload in background without showing loading state
         preloadProducts(firstSubcategory);
       }
@@ -358,9 +357,10 @@ const JDStyleCategorySidebar: React.FC<JDStyleCategorySidebarProps> = ({
     
     // Check cache first
     const cacheKey = subcategory.crdfd_productgroupid;
-    if (productCache.current.has(cacheKey)) {
+    const cached = productsCache.get(cacheKey);
+    if (cached && Array.isArray(cached) && cached.length > 0) {
       console.log(`Using cached products for ${subcategory.crdfd_productname}`);
-      setProducts(productCache.current.get(cacheKey) || []);
+      setProducts(cached);
       setLoadingProducts(false);
       return;
     }
@@ -407,7 +407,7 @@ const JDStyleCategorySidebar: React.FC<JDStyleCategorySidebarProps> = ({
       console.log(`Received ${extractedProducts.length} products for ${subcategory.crdfd_productname}`);
       
       // Cache the results
-      productCache.current.set(cacheKey, extractedProducts);
+      productsCache.set(cacheKey, extractedProducts);
       setProducts(extractedProducts);
     } catch (error) {
       console.error('Error fetching products:', error);

@@ -3,6 +3,7 @@ import Slider from "react-slick";
 import axios from "axios";
 import Link from "next/link";
 import { FaChevronLeft, FaChevronRight, FaSearch } from "react-icons/fa";
+import { productsCache } from "@/utils/cache";
 
 interface CategoryItem {
   id: string;
@@ -63,8 +64,6 @@ const FeaturedCategoriesProducts: React.FC<{
   const [groupsWithProducts, setGroupsWithProducts] = useState<GroupState[]>(
     []
   );
-  // simple in-memory cache to avoid refetching groups repeatedly
-  const productsCacheRef = React.useRef<Map<string, any[]>>(new Map());
   // modal state for promotion details
   const [promoModal, setPromoModal] = useState<{ open: boolean; promo: any | null }>({
     open: false,
@@ -132,7 +131,7 @@ const FeaturedCategoriesProducts: React.FC<{
           if (cancelled) return;
 
           // if cached, use it immediately and skip network call
-          const cached = productsCacheRef.current.get(cat.id);
+          const cached = productsCache.get(cat.id);
           if (cached && Array.isArray(cached) && cached.length > 0) {
             setGroupsWithProducts((prev) =>
               prev.map((g) =>
@@ -198,7 +197,7 @@ const FeaturedCategoriesProducts: React.FC<{
           })();
           // store in cache
           try {
-            productsCacheRef.current.set(cat.id, products || []);
+            productsCache.set(cat.id, products || []);
           } catch (e) {
             // ignore cache set errors
           }
