@@ -1029,9 +1029,9 @@ function ProductEntryForm({
       return true;
     }
 
-    // Kiểm tra giá: phải có giá > 0 (bắt buộc, kể cả khi bật "Duyệt giá")
+    // Kiểm tra giá: khi duyệt giá thì cho phép giá = 0, khi không duyệt thì bắt buộc > 0
     const priceNum = parseFloat(price || '0') || 0;
-    if (priceNum <= 0) {
+    if (!approvePrice && priceNum <= 0) {
       return true;
     }
 
@@ -1150,9 +1150,9 @@ function ProductEntryForm({
       return reason;
     }
 
-    // Kiểm tra giá: phải có giá > 0 (bắt buộc, kể cả khi bật "Duyệt giá")
+    // Kiểm tra giá: khi duyệt giá thì cho phép giá = 0, khi không duyệt thì bắt buộc > 0
     const priceNum = parseFloat(price || '0') || 0;
-    if (priceNum <= 0) {
+    if (!approvePrice && priceNum <= 0) {
       const reason = 'Vui lòng nhập giá';
       return reason;
     }
@@ -2239,6 +2239,11 @@ function ProductEntryForm({
           computedDiscountPercent = 0;
           computedDiscountAmount = 0;
         }
+        // If approval mode is on, force discounts to zero (chiết khấu 1 = 0)
+        if (approvePrice) {
+          computedDiscountPercent = 0;
+          computedDiscountAmount = 0;
+        }
       } catch (err) {
         // fallback to existing local state if any error
         computedDiscountPercent = skipApplyingSelectedPromotion ? 0 : promotionDiscountPercent;
@@ -2349,9 +2354,10 @@ function ProductEntryForm({
 
   // Sync discount percent from promotion selection
   useEffect(() => {
-    // KHI DUYỆT GIÁ: Không áp dụng chiết khấu từ promotion (chiết khấu 1 = 0)
-    // Nhưng vẫn cho phép chiết khấu thủ công nếu đang dùng phương thức "Theo chiết khấu"
-    if (approvePrice && priceEntryMethod !== 'Theo chiết khấu') {
+    // KHI BẬT "DUYỆT GIÁ": KHÔNG áp dụng chiết khấu từ promotion (chiết khấu 1 = 0)
+    // Trước đây chúng ta cho phép chiết khấu thủ công khi `priceEntryMethod === 'Theo chiết khấu'`.
+    // Yêu cầu hiện tại: khi duyệt giá bật, chiết khấu 1 phải = 0 luôn.
+    if (approvePrice) {
       setPromotionDiscountPercent(0);
       setDiscountPercent(0);
       setPromotionText('');
@@ -2864,7 +2870,7 @@ function ProductEntryForm({
               />
             </div>
 
-            {priceEntryMethod === 'Theo chiết khấu' && !approvePrice && (
+            {priceEntryMethod === 'Theo chiết khấu' && (
               <div className="admin-app-field-compact admin-app-field-discount-group">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>

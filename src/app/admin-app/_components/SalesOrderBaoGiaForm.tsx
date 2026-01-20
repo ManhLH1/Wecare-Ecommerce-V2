@@ -366,9 +366,9 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       price,
       quantity,
     });
-    // Validation: product, unit, quantity, price (bắt buộc phải có giá > 0)
+    // Validation: product, unit, quantity, price (giá >= 0, khi duyệt giá cho phép giá = 0)
     const priceNum = parseFloat(price || '0') || 0;
-    const hasValidPrice = priceNum > 0;
+    const hasValidPrice = approvePrice ? priceNum >= 0 : priceNum > 0;
 
     if (!product || !unit || quantity <= 0 || !hasValidPrice) {
       console.warn('❌ Add Product Failed: Missing required fields', {
@@ -388,7 +388,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       } else if (quantity <= 0) {
         showToast.error('Số lượng phải lớn hơn 0');
       } else if (!hasValidPrice) {
-        showToast.error('Vui lòng nhập giá');
+        showToast.error(approvePrice ? 'Giá không được âm' : 'Vui lòng nhập giá');
       }
       return;
     }
@@ -1630,7 +1630,6 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             vatText={selectedVatText}
             paymentTerms={selectedSo?.dieuKhoanThanhToan || selectedSo?.crdfd_ieukhoanthanhtoan}
             soId={soId}
-            orderTotal={orderSummary.total}
             quantity={quantity}
             setQuantity={setQuantity}
             price={price}

@@ -160,6 +160,17 @@ export function computeDeliveryDate(params: {
         today,
     } = params;
 
+    // 🎯 INPUT ANALYSIS
+    console.log('🎯 ===== TÍNH NGÀY GIAO HÀNG =====');
+    console.log('📊 THÔNG TIN ĐẶT HÀNG:');
+    console.log(`   📍 Kho: ${warehouseCode || 'Không xác định'}`);
+    console.log(`   ⏰ Thời gian đặt: ${orderCreatedOn ? (typeof orderCreatedOn === 'string' ? orderCreatedOn : orderCreatedOn.toISOString()) : 'Bây giờ'}`);
+    console.log(`   🏘️  Leadtime quận: ${districtLeadtime ? districtLeadtime + ' ca' : 'Không có'}`);
+    console.log(`   👤 Loại khách: ${varNganhNghe || 'Không xác định'}`);
+    console.log(`   📦 Số lượng: ${var_input_soluong} x ${var_selected_donvi_conversion} = ${var_input_soluong * var_selected_donvi_conversion}`);
+    console.log(`   📈 Tồn kho: ${var_selected_SP_tonkho || 0}`);
+    console.log(`   🎁 Khuyến mãi: ${promotion?.name || 'Không có'} ${promotion?.cr1bb_leadtimepromotion ? `(+${promotion.cr1bb_leadtimepromotion} ca)` : ''}`);
+
     const effectiveNow = now;
     const effectiveToday = today ?? new Date(new Date(effectiveNow).setHours(0, 0, 0, 0));
 
@@ -189,40 +200,63 @@ export function computeDeliveryDate(params: {
         isOutOfStock = requestedQty > theoreticalStock;
     }
 
+    console.log('\n📊 PHÂN TÍCH TỒN KHO:');
+    console.log(`   📦 Cần: ${requestedQty} | Có: ${theoreticalStock}`);
+    console.log(`   ⚠️  Trạng thái: ${isOutOfStock ? 'HẾT HÀNG' : 'CÒN HÀNG'}`);
+    console.log(`   🏭 Quy tắc kho: ${warehouseCode === 'KHOHCM' ? 'HCM (≤0 = hết)' : warehouseCode === 'KHOBD' ? 'BD (≤0 hoặc thiếu = hết)' : 'Khác (> cần = hết)'}`);
+
     // NEW LOGIC (2025) - Priority 1: District leadtime
     // Behavior changed: if out-of-stock, add warehouse/promotion extra ca on top of districtLeadtime.
     if (districtLeadtime && districtLeadtime > 0) {
+        console.log('\n🚀 LOGIC MỚI 2025 - ƯU TIÊN 1: LEADTIME QUẬN/HUYỆN');
+        console.log(`   🏘️  Leadtime quận: ${districtLeadtime} ca`);
 
         if (isOutOfStock && warehouseCode) {
+            console.log('   📦 Tình huống: HẾT HÀNG + Leadtime quận');
+            console.log('   ➕ Thêm ca bổ sung cho hàng hết tồn...');
+
             // Determine extra ca for out-of-stock (respect promotion override for Apollo/Kim Tín)
             let extraCaForOutOfStock = 0;
             if (isApolloKimTinPromotion(promotion)) {
                 const promoLeadRaw = promotion?.cr1bb_leadtimepromotion;
                 const promoLeadNum = promoLeadRaw !== undefined && promoLeadRaw !== null ? Number(promoLeadRaw) : NaN;
                 extraCaForOutOfStock = Number.isFinite(promoLeadNum) && promoLeadNum > 0 ? Math.round(promoLeadNum) : 6;
+                console.log(`   🎯 Khuyến mãi Apollo/Kim Tín: +${extraCaForOutOfStock} ca`);
             } else if (warehouseCode === 'KHOHCM') {
                 extraCaForOutOfStock = 2;
+                console.log(`   🏭 Kho HCM: +${extraCaForOutOfStock} ca`);
             } else if (warehouseCode === 'KHOBD') {
                 extraCaForOutOfStock = 4;
+                console.log(`   🏭 Kho Bình Định: +${extraCaForOutOfStock} ca`);
             }
 
             // For out-of-stock items, weekend reset IS applied before adding extra ca
             const effectiveOrderTime = getWeekendResetTime(orderTime);
+            console.log(`   ⏰ Áp dụng Weekend Reset: ${orderTime.toISOString()} → ${effectiveOrderTime.toISOString()}`);
 
             const totalCa = districtLeadtime + extraCaForOutOfStock;
+            console.log(`   📅 Tổng leadtime: ${totalCa} ca = ${districtLeadtime} (quận) + ${extraCaForOutOfStock} (bổ sung)`);
+
             let result = addWorkingDaysWithFraction(effectiveOrderTime, totalCa);
 
             // Apply Sunday adjustment for HCM warehouse
             result = applySundayAdjustment(result, warehouseCode);
+            console.log(`   📆 NGÀY GIAO CUỐI CÙNG: ${result.toISOString().split('T')[0]} ${result.toLocaleTimeString('vi-VN')}`);
+            console.log('   ✅ Hoàn thành tính toán');
 
             return result;
         } else {
+            console.log('   📦 Tình huống: CÒN HÀNG + Leadtime quận');
+            console.log('   ➖ Không áp dụng Weekend Reset');
+
             // Not out-of-stock: original district leadtime behavior (no weekend reset)
             let result = addWorkingDaysWithFraction(orderTime, districtLeadtime);
 
             // Apply Sunday adjustment for HCM warehouse (district result may still fall on Sunday)
             result = applySundayAdjustment(result, warehouseCode);
-                        
+            console.log(`   📆 NGÀY GIAO CUỐI CÙNG: ${result.toISOString().split('T')[0]} ${result.toLocaleTimeString('vi-VN')}`);
+            console.log('   ✅ Hoàn thành tính toán');
+
             return result;
         }
     }
@@ -230,28 +264,38 @@ export function computeDeliveryDate(params: {
     // NEW LOGIC (2025) - Priority 2: Out of stock rules by warehouse
     // IMPORTANT: Weekend reset CHỈ áp dụng cho out-of-stock items
     if (isOutOfStock && warehouseCode) {
+        console.log('\n🚀 LOGIC MỚI 2025 - ƯU TIÊN 2: QUY TẮC HẾT HÀNG THEO KHO');
+        console.log('   ⚠️  Áp dụng Weekend Reset cho hàng hết tồn');
+
         // Apply weekend reset for out-of-stock items only
         let effectiveOrderTime = getWeekendResetTime(orderTime);
+        console.log(`   ⏰ Weekend Reset: ${orderTime.toISOString()} → ${effectiveOrderTime.toISOString()}`);
+
         let leadtimeCa = 0;
 
         if (warehouseCode === 'KHOHCM') {
             // Kho HCM: +2 ca (bình thường), +6 ca (promotion Apollo, Kim Tín)
             leadtimeCa = isApolloKimTinPromotion(promotion) ? 6 : 2;
+            console.log(`   🏭 Kho HCM: ${leadtimeCa} ca ${isApolloKimTinPromotion(promotion) ? '(Khuyến mãi Apollo/Kim Tín)' : '(Bình thường)'}`);
         } else if (warehouseCode === 'KHOBD') {
             // Kho Bình Định: +4 ca (bình thường), +6 ca (promotion Apollo, Kim Tín)
             leadtimeCa = isApolloKimTinPromotion(promotion) ? 6 : 4;
+            console.log(`   🏭 Kho Bình Định: ${leadtimeCa} ca ${isApolloKimTinPromotion(promotion) ? '(Khuyến mãi Apollo/Kim Tín)' : '(Bình thường)'}`);
         }
 
         if (leadtimeCa > 0) {
             let result = addWorkingDaysWithFraction(effectiveOrderTime, leadtimeCa);
             // Apply Sunday adjustment for HCM warehouse
             result = applySundayAdjustment(result, warehouseCode);
+            console.log(`   📆 NGÀY GIAO CUỐI CÙNG: ${result.toISOString().split('T')[0]} ${result.toLocaleTimeString('vi-VN')}`);
+            console.log('   ✅ Hoàn thành tính toán');
 
             return result;
         }
     }
 
     // LEGACY LOGIC (before 2025) - Keep for backward compatibility
+    console.log('\n🏗️  LOGIC CŨ (TRƯỚC 2025) - TƯƠNG THÍCH NGƯỢC');
 
     // Helper: parse promotion lead time to number if present and non-blank
     const promoLeadRaw = promotion?.cr1bb_leadtimepromotion;
@@ -273,180 +317,66 @@ export function computeDeliveryDate(params: {
             promoPhanLoai === 'Hãng'
         )
     ) {
+        console.log('   🎯 Ưu tiên 1: Leadtime khuyến mãi');
+        console.log(`   📅 Leadtime: ${promoLead} ca = ${promoLead * 12} giờ`);
+
         let result = addHours(effectiveNow, promoLead * 12);
         // Apply Sunday adjustment for HCM warehouse
         result = applySundayAdjustment(result, warehouseCode);
+        console.log(`   📆 NGÀY GIAO CUỐI CÙNG: ${result.toISOString().split('T')[0]} ${result.toLocaleTimeString('vi-VN')}`);
+        console.log('   ✅ Hoàn thành tính toán');
+
         return result;
     }
 
     // 2) If customer is "Shop" -> use district leadtime * 12 hours
     if (varNganhNghe === 'Shop') {
+        console.log('   🏪 Ưu tiên 2: Khách hàng Shop');
+        console.log(`   📅 Leadtime quận: ${var_leadtime_quanhuyen} ca = ${var_leadtime_quanhuyen * 12} giờ`);
+
         let result = addHours(effectiveNow, var_leadtime_quanhuyen * 12);
         // Apply Sunday adjustment for HCM warehouse
         result = applySundayAdjustment(result, warehouseCode);
+        console.log(`   📆 NGÀY GIAO CUỐI CÙNG: ${result.toISOString().split('T')[0]} ${result.toLocaleTimeString('vi-VN')}`);
+        console.log('   ✅ Hoàn thành tính toán');
+
         return result;
     }
 
     // 3) Inventory check: requestedQty * conversion > theoreticalStock -> Today + product lead time (days)
     if (isOutOfStock) {
+        console.log('   📦 Ưu tiên 3: Hết hàng - Leadtime sản phẩm');
+        console.log(`   📅 Leadtime sản phẩm: ${var_selected_SP_leadtime} ngày`);
+
         // Apply weekend reset for legacy out-of-stock logic
         let effectiveOrderTime = getWeekendResetTime(orderTime);
+        console.log(`   ⏰ Áp dụng Weekend Reset: ${orderTime.toISOString()} → ${effectiveOrderTime.toISOString()}`);
+
         const result = addDays(effectiveToday, var_selected_SP_leadtime);
+        console.log(`   📆 NGÀY GIAO CUỐI CÙNG: ${result.toISOString().split('T')[0]}`);
+        console.log('   ✅ Hoàn thành tính toán');
+
         return result;
     }
 
     // 4) Default: Today + 1 working day (no weekend reset for in-stock items)
+    console.log('   📦 Ưu tiên 4: Trường hợp mặc định');
+    console.log('   📅 +1 ngày làm việc');
+
     const result = addWorkingDays(orderTime, 1);
+    console.log(`   📆 Ngày giao trước điều chỉnh: ${result.toISOString().split('T')[0]} ${result.toLocaleTimeString('vi-VN')}`);
 
     // FINAL STEP: Apply Sunday adjustment for HCM warehouse (always, regardless of stock status)
     const finalResult = applySundayAdjustment(result, warehouseCode);
-    console.log('📅 [computeDeliveryDate] After Sunday adjustment (final):', {
-        finalResult: finalResult.toISOString(),
-        finalResultDayOfWeek: finalResult.getDay(),
-        warehouseCode
-    });
-
-    console.log('✅ [computeDeliveryDate] FINAL RESULT:', finalResult.toISOString());
-
-    // LOG FINAL FORMULA AND REASON
-    logFinalFormulaAndReason(params, finalResult, {
-        districtLeadtime: 0,
-        isOutOfStock: false,
-        warehouseCode,
-        leadtimeCa: 1, // Default +1 working day
-        isApolloKimTin: false,
-        weekendResetApplied: false,
-        sundayAdjustmentApplied: applySundayAdjustment(new Date(finalResult), warehouseCode).getTime() !== finalResult.getTime()
-    });
+    console.log(`   📆 NGÀY GIAO CUỐI CÙNG: ${finalResult.toISOString().split('T')[0]} ${finalResult.toLocaleTimeString('vi-VN')}`);
+    console.log('   ✅ Hoàn thành tính toán');
 
     return finalResult;
 }
 
-// Log final formula and reason for delivery date calculation
-function logFinalFormulaAndReason(
-    params: any,
-    finalResult: Date,
-    calculationDetails: {
-        districtLeadtime?: number;
-        isOutOfStock?: boolean;
-        warehouseCode?: string;
-        leadtimeCa?: number;
-        isApolloKimTin?: boolean;
-        weekendResetApplied?: boolean;
-        sundayAdjustmentApplied?: boolean;
-    }
-) {
-    const {
-        districtLeadtime,
-        isOutOfStock,
-        warehouseCode,
-        leadtimeCa,
-        isApolloKimTin,
-        weekendResetApplied,
-        sundayAdjustmentApplied
-    } = calculationDetails;
-
-    console.log('\n' + '='.repeat(80));
-    console.log('📊 CÔNG THỨC TÍNH NGÀY GIAO CUỐI CÙNG');
-    console.log('='.repeat(80));
-
-    // Determine which logic was applied
-    let appliedLogic = '';
-    let formula = '';
-    let reason = '';
-
-    if (districtLeadtime && districtLeadtime > 0) {
-        appliedLogic = '🎯 DISTRICT LEADTIME (Ưu tiên cao nhất)';
-        formula = `Ngày tạo đơn + ${districtLeadtime} ca làm việc`;
-        reason = `Có leadtime quận/huyện = ${districtLeadtime} ca. Luôn ưu tiên district leadtime trước.`;
-    } else if (isOutOfStock && warehouseCode) {
-        appliedLogic = '🚨 OUT OF STOCK RULES';
-        const warehouseName = warehouseCode === 'KHOHCM' ? 'HCM' : 'Bình Định';
-        const promotionText = isApolloKimTin ? ' (có promotion Apollo/Kim Tín)' : ' (bình thường)';
-        formula = `Ngày tạo đơn ${weekendResetApplied ? '(đã reset weekend)' : ''} + ${leadtimeCa} ca làm việc`;
-        reason = `Hết hàng tại kho ${warehouseName}${promotionText}. Áp dụng rules đặc biệt cho hàng thiếu tồn kho.`;
-    } else {
-        appliedLogic = '📅 DEFAULT CASE';
-        formula = `Ngày tạo đơn + 1 ca làm việc`;
-        reason = `Không có district leadtime và còn hàng trong kho. Áp dụng rule mặc định.`;
-    }
-
-    console.log(`🔍 LOGIC ÁP DỤNG: ${appliedLogic}`);
-    console.log(`📐 CÔNG THỨC: ${formula}`);
-    console.log(`💡 LÝ DO: ${reason}`);
-
-    // Input parameters
-    console.log('\n📥 THAM SỐ ĐẦU VÀO:');
-    console.log(`   - Kho: ${warehouseCode || 'N/A'}`);
-    console.log(`   - District Leadtime: ${districtLeadtime || 0} ca`);
-    console.log(`   - Số lượng yêu cầu: ${params.var_input_soluong || 0}`);
-    console.log(`   - Tồn kho: ${params.var_selected_SP_tonkho || 0}`);
-    console.log(`   - Hết hàng: ${isOutOfStock ? 'Có' : 'Không'}`);
-    if (params.promotion?.name) {
-        console.log(`   - Promotion: ${params.promotion.name}`);
-    }
-
-    // Applied rules
-    console.log('\n⚙️  RULES ĐƯỢC ÁP DỤNG:');
-    if (weekendResetApplied) {
-        console.log(`   ✅ Weekend Reset: Thứ 7 sau 12:00 hoặc Chủ nhật → Reset sang sáng Thứ 2`);
-    } else {
-        console.log(`   ❌ Weekend Reset: Không áp dụng (không phải out-of-stock)`);
-    }
-
-    if (sundayAdjustmentApplied) {
-        console.log(`   ✅ Sunday Adjustment: Kết quả rơi vào Chủ nhật → Dời sang Thứ 2 (chỉ HCM)`);
-    } else {
-        console.log(`   ❌ Sunday Adjustment: Không áp dụng (không phải Chủ nhật hoặc không phải HCM)`);
-    }
-
-    // Final result
-    const dayNames = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
-    const finalDayName = dayNames[finalResult.getDay()];
-    const finalDateStr = finalResult.toLocaleDateString('vi-VN');
-
-    // Calculate total working days (ca)
-    // When out-of-stock, add warehouse-specific extra ca:
-    //  - KHOHCM: +2 ca (or +6 ca if Apollo/Kim Tín promotion)
-    //  - KHOBD:  +4 ca (or +6 ca if Apollo/Kim Tín promotion)
-    let totalWorkingDays = 0;
-    let extraCa = 0;
-    if (isOutOfStock && warehouseCode) {
-        if (isApolloKimTin) {
-            // If promotion defines a leadtime (cr1bb_leadtimepromotion), use it (units = ca).
-            // Fallback to 6 ca if promotion value is missing/invalid.
-            const promoLeadRaw = params.promotion?.cr1bb_leadtimepromotion;
-            const promoLeadNum = promoLeadRaw !== undefined && promoLeadRaw !== null ? Number(promoLeadRaw) : NaN;
-            extraCa = Number.isFinite(promoLeadNum) && promoLeadNum > 0 ? Math.round(promoLeadNum) : 6;
-        } else if (warehouseCode === 'KHOHCM') {
-            extraCa = 2;
-        } else if (warehouseCode === 'KHOBD') {
-            extraCa = 4;
-        }
-    }
-
-    if (districtLeadtime && districtLeadtime > 0) {
-        // Include district leadtime and, if out-of-stock, add warehouse extra ca
-        totalWorkingDays = districtLeadtime + (isOutOfStock ? extraCa : 0);
-    } else if (isOutOfStock) {
-        // Prefer explicit leadtimeCa when provided; otherwise derive from extraCa
-        totalWorkingDays = (typeof leadtimeCa === 'number' && leadtimeCa > 0) ? leadtimeCa : (extraCa > 0 ? extraCa : 2);
-    } else {
-        totalWorkingDays = 2; // Default case (kept as current default)
-    }
-
-    console.log('\n🎯 KẾT QUẢ CUỐI CÙNG:');
-    console.log(`   📅 Ngày giao: ${finalDateStr} (${finalDayName})`);
-    console.log(`   ⏰ Thời gian: ${finalResult.toLocaleTimeString('vi-VN')}`);
-    console.log(`   📊 ISO String: ${finalResult.toISOString()}`);
-    console.log(`   🔢 Tổng số ca: ${totalWorkingDays} ca`);
-
-    console.log('='.repeat(80) + '\n');
-}
 
 // Test function for delivery date calculations
 export function testDeliveryDateCalculations() {
-    console.log('🧪 Testing Delivery Date Calculations...');
 
     const testCases = [
         {
@@ -579,20 +509,15 @@ export function testDeliveryDateCalculations() {
             const resultDate = result.toISOString().split('T')[0];
 
             if (resultDate === testCase.expected) {
-                console.log(`✅ Test ${index + 1}: ${testCase.name} - PASSED`);
                 passed++;
             } else {
-                console.log(`❌ Test ${index + 1}: ${testCase.name} - FAILED`);
-                console.log(`   Expected: ${testCase.expected}, Got: ${resultDate}`);
                 failed++;
             }
         } catch (error) {
-            console.log(`❌ Test ${index + 1}: ${testCase.name} - ERROR: ${error}`);
             failed++;
         }
     });
 
-    console.log(`\n📊 Test Results: ${passed} passed, ${failed} failed`);
     return { passed, failed, total: testCases.length };
 }
 

@@ -366,9 +366,10 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       price,
       quantity,
     });
-    // Validation: product, unit, quantity, price (bắt buộc phải có giá > 0)
+    // Validation: product, unit, quantity, price
+    // Khi bật "Duyệt giá" cho phép giá = 0, khi không bật thì bắt buộc > 0
     const priceNum = parseFloat(price || '0') || 0;
-    const hasValidPrice = priceNum > 0;
+    const hasValidPrice = approvePrice ? priceNum >= 0 : priceNum > 0;
 
     if (!product || !unit || quantity <= 0 || !hasValidPrice) {
       console.warn('❌ Add Product Failed: Missing required fields', {

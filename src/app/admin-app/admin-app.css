@@ -1354,7 +1354,7 @@
   cursor: pointer;
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   font-size: 15px;
   color: #2c3e50;
   transition: all 0.2s ease;
@@ -2735,7 +2735,7 @@ html, body, #__next {
   padding: 4px 8px;
   font-size: 12px;
   border-radius: 4px;
-  align-items: flex-start;
+  align-items: center;
 }
 
 /* Input wrapper ở giữa - sau label */
