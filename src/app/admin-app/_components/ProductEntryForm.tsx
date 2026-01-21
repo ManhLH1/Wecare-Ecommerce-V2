@@ -1490,14 +1490,21 @@ function ProductEntryForm({
 
         setPricesFromApi(allPrices);
         setSelectedPriceFromApi(selectedPrice);
-        setApiPrice(priceWithVat || finalPrice || null);
+
+        // Choose displayed/api price according to approval mode:
+        // - If approvePrice === true => prefer priceNoVat
+        // - If approvePrice === false => prefer finalPrice
+        const chosenForDisplay = approvePrice
+          ? (priceNoVat ?? priceWithVat ?? finalPrice ?? null)
+          : (finalPrice ?? priceWithVat ?? priceNoVat ?? null);
+
+        setApiPrice(chosenForDisplay);
 
         // Set price if not in manual mode
         if (!(approvePrice && priceEntryMethod === 'Nhập thủ công')) {
-          const priceToSet = priceWithVat || finalPrice;
-          if (priceToSet) {
-            handlePriceChange(priceToSet.toString());
-            setBasePriceForDiscount(priceToSet);
+          if (chosenForDisplay) {
+            handlePriceChange(String(chosenForDisplay));
+            setBasePriceForDiscount(chosenForDisplay);
           }
         }
 
@@ -1691,7 +1698,7 @@ function ProductEntryForm({
           selectedPrice,
           apiUnitName,
           apiPriceGroupText,
-          priceWithVat: selectedPrice?.price ?? result?.price ?? null,
+          priceWithVat: selectedPrice?.price ?? result?.finalPrice ?? null,
           priceNoVat: selectedPrice?.priceNoVat ?? (result as any)?.priceNoVat ?? null,
           finalPrice: selectedPrice?.finalPrice ?? (result as any)?.finalPrice ?? null,
           discountRate: selectedPrice?.discountRate ?? (result as any)?.discountRate ?? null
@@ -1699,7 +1706,7 @@ function ProductEntryForm({
         productDataCache.set(cacheKey, priceData);
 
         // Fallback về format cũ nếu API chưa có prices array
-        const priceWithVat = selectedPrice?.price ?? result?.price ?? null;
+        const priceWithVat = selectedPrice?.price ?? result?.finalPrice ?? null;
         const priceNoVat = selectedPrice?.priceNoVat ?? (result as any)?.priceNoVat ?? null;
         const finalPrice = selectedPrice?.finalPrice ?? (result as any)?.finalPrice ?? null;
         const discountRate = selectedPrice?.discountRate ?? (result as any)?.discountRate ?? null;
@@ -1762,8 +1769,8 @@ function ProductEntryForm({
 
         // Determine basePrice to use for display/discount calculations.
         // Requirement: when user enables "Duyệt giá" (approvePrice === true),
-        // prefer the raw price without VAT (priceNoVat) so approver sees original price,
-        // even if API returned a finalPrice (which may include customer-specific discounts).
+        // use the regular price so approver sees the base price,
+        // instead of priceNoVat or finalPrice (which may include customer-specific discounts).
         let basePrice: number | null = null;
 
         const vatTextLower = (vatText || '').toLowerCase();
@@ -1774,25 +1781,15 @@ function ProductEntryForm({
         const productIsVat = productVatPercent !== undefined && productVatPercent > 0;
 
         if (approvePrice) {
-          // Approval mode: prefer priceNoVat when available, otherwise fallback to finalPrice or priceWithVat
-          if (priceNoVat !== null && priceNoVat !== undefined) {
-            basePrice = priceNoVat;
-          } else if (finalPrice !== null && finalPrice !== undefined) {
-            basePrice = finalPrice;
-          } else {
-            basePrice = priceWithVat ?? result?.price ?? null;
-          }
+          // Approval mode: use priceNoVat
+          basePrice = priceNoVat ?? null;
         } else {
-          // Normal behavior: prefer finalPrice (API-applied customer discount) if present,
-          // otherwise use priceNoVat for SO+SP VAT case or priceWithVat for others.
+          // Normal behavior: use finalPrice (API-applied customer discount) if present,
+          // otherwise fallback to priceWithVat or result?.finalPrice
           if (finalPrice !== null && finalPrice !== undefined) {
             basePrice = finalPrice;
           } else {
-            if (soIsVat && productIsVat) {
-              basePrice = priceNoVat ?? null;
-            } else {
-              basePrice = priceWithVat ?? result?.price ?? null;
-            }
+            basePrice = priceWithVat ?? result?.finalPrice ?? null;
           }
         }
 
@@ -1906,23 +1903,29 @@ function ProductEntryForm({
     if (!userSelectedUnitRef.current) return;
 
     try {
-      // Prefer finalPrice from API (already applied customer-specific discounts) when available.
+      // Determine chosen price according to approval flag.
       const finalVal = selectedPriceFromApi.finalPrice ?? selectedPriceFromApi.final_price ?? null;
       const priceVal = selectedPriceFromApi.price ?? selectedPriceFromApi.crdfd_gia ?? selectedPriceFromApi.crdfd_giatheovc ?? null;
       const priceNoVatVal = selectedPriceFromApi.priceNoVat ?? selectedPriceFromApi.cr1bb_giakhongvat ?? null;
 
       let chosen: number | null = null;
-      if (finalVal !== null && finalVal !== undefined) {
-        chosen = Number(finalVal);
+      if (approvePrice) {
+        // Approval mode: prefer priceNoVat
+        if (priceNoVatVal !== null && priceNoVatVal !== undefined) chosen = Number(priceNoVatVal);
+        else if (finalVal !== null && finalVal !== undefined) chosen = Number(finalVal);
+        else if (priceVal !== null && priceVal !== undefined) chosen = Number(priceVal);
       } else {
-        // Determine which price to use based on SO VAT (fallback behavior)
-        const useNoVat = isVatSo; // if SO has VAT, prefer priceNoVat when available
-        if (useNoVat && priceNoVatVal !== null && priceNoVatVal !== undefined) {
-          chosen = Number(priceNoVatVal);
-        } else if (priceVal !== null && priceVal !== undefined) {
-          chosen = Number(priceVal);
-        } else if (priceNoVatVal !== null && priceNoVatVal !== undefined) {
-          chosen = Number(priceNoVatVal);
+        // Normal mode: prefer finalPrice
+        if (finalVal !== null && finalVal !== undefined) chosen = Number(finalVal);
+        else {
+          const useNoVat = isVatSo; // if SO has VAT, prefer priceNoVat when available
+          if (useNoVat && priceNoVatVal !== null && priceNoVatVal !== undefined) {
+            chosen = Number(priceNoVatVal);
+          } else if (priceVal !== null && priceVal !== undefined) {
+            chosen = Number(priceVal);
+          } else if (priceNoVatVal !== null && priceNoVatVal !== undefined) {
+            chosen = Number(priceNoVatVal);
+          }
         }
       }
 
@@ -2068,9 +2071,12 @@ function ProductEntryForm({
   const recomputeTotals = (priceValue: string | number, qty: number, promoDiscountPct: number, vatPct: number) => {
     // Use basePriceForDiscount (price from API before API discountRate) when available,
     // so "Giá đã giảm" = basePriceForDiscount × (1 - promoDiscountPct/100).
-    const rawPriceNum = (basePriceForDiscount && basePriceForDiscount > 0)
-      ? basePriceForDiscount
-      : parseFloat(String(priceValue).replace(/,/g, '')) || 0;
+    // Prefer the value currently shown in the price input (priceValue) when computing
+    // the discounted price, falling back to basePriceForDiscount only if the input is empty/zero.
+    const parsedPriceValue = parseFloat(String(priceValue).replace(/,/g, '')) || 0;
+    const rawPriceNum = parsedPriceValue > 0
+      ? parsedPriceValue
+      : ((basePriceForDiscount && basePriceForDiscount > 0) ? basePriceForDiscount : 0);
 
     const discountFactor = 1 - (promoDiscountPct > 0 ? promoDiscountPct / 100 : 0);
     let effectivePrice = rawPriceNum * discountFactor;
@@ -2783,7 +2789,7 @@ function ProductEntryForm({
       setPromotionDiscountPercent(0);
       // Recompute totals với chiết khấu = 0
       recomputeTotals(price, quantity, 0, vatPercent);
-      // When enabling approval, load full price dataset from API and prefer priceNoVat for display
+      // When enabling approval, load full price dataset from API and use regular price for display
       (async () => {
         try {
           const code = selectedProductCode || productCode || (selectedProduct ? selectedProduct.crdfd_masanpham : '');
@@ -2799,17 +2805,21 @@ function ProductEntryForm({
           // update local price states so UI can react
           setPricesFromApi(allPrices);
           setSelectedPriceFromApi(selectedPrice);
-          setApiPrice(priceWithVat || finalPrice || null);
-          setBasePriceForDiscount(finalPrice ?? priceWithVat ?? 0);
 
-          // Notify parent and set displayed price to priceNoVat when available
-          onPriceNoVatChange?.(priceNoVatVal ?? null);
-          if (priceNoVatVal !== null && priceNoVatVal !== undefined) {
-            handlePriceChange(String(priceNoVatVal));
-          } else if (finalPrice !== null && finalPrice !== undefined) {
-            handlePriceChange(String(finalPrice));
-          } else if (priceWithVat !== null && priceWithVat !== undefined) {
-            handlePriceChange(String(priceWithVat));
+          // Choose displayed/api price according to approval mode:
+          const chosenForDisplay = approvePrice
+            ? (priceNoVatVal ?? priceWithVat ?? finalPrice ?? null)
+            : (finalPrice ?? priceWithVat ?? priceNoVatVal ?? null);
+
+          setApiPrice(chosenForDisplay);
+          setBasePriceForDiscount(priceWithVat ?? 0);
+
+          // Notify parent and set displayed price according to approval flag
+          onPriceNoVatChange?.(null);
+          if (chosenForDisplay !== null && chosenForDisplay !== undefined) {
+            handlePriceChange(String(chosenForDisplay));
+          } else {
+            handlePriceChange('');
           }
         } catch (err) {
           // ignore
@@ -2865,7 +2875,9 @@ function ProductEntryForm({
                       if (typeof onOpenDiscount2 === 'function') {
                         try {
                           // Compute current line total (subtotal + VAT) to include in promotion eligibility check
-                          const priceNumForLine = (basePriceForDiscount && basePriceForDiscount > 0) ? basePriceForDiscount : (parseFloat(String(price)) || 0);
+                          // Prefer the current price input value when computing line totals for promotions.
+                          const parsedPriceForLine = parseFloat(String(price)) || 0;
+                          const priceNumForLine = parsedPriceForLine > 0 ? parsedPriceForLine : ((basePriceForDiscount && basePriceForDiscount > 0) ? basePriceForDiscount : 0);
                           const promoPctForLine = discountPercent || promotionDiscountPercent || 0;
                           const discountedUnitForLine = priceNumForLine * (1 - (promoPctForLine > 0 ? promoPctForLine / 100 : 0));
                           const lineSubtotalForPromo = Math.round(discountedUnitForLine * (quantity || 0));
@@ -3138,21 +3150,25 @@ function ProductEntryForm({
                   }
 
                   if (candidate) {
-                    // Prefer finalPrice from API (already applied customer-specific discounts)
-                    // when mapping unit -> price on user unit change. Fallback to previous
-                    // behavior (priceNoVat or price) only when finalPrice is not available.
                     const finalVal = candidate.finalPrice ?? candidate.final_price ?? null;
                     const priceVal = candidate.price ?? candidate.crdfd_gia ?? candidate.crdfd_giatheovc ?? null;
                     const priceNoVatVal = candidate.priceNoVat ?? candidate.cr1bb_giakhongvat ?? null;
 
                     let chosenPrice: number | null = null;
-                    if (finalVal !== null && finalVal !== undefined) {
-                      chosenPrice = Number(finalVal);
-                    } else {
-                      const useNoVat = isVatSo;
-                      if (useNoVat && priceNoVatVal !== null && priceNoVatVal !== undefined) chosenPrice = Number(priceNoVatVal);
+                    if (approvePrice) {
+                      // Approval mode: prefer priceNoVat
+                      if (priceNoVatVal !== null && priceNoVatVal !== undefined) chosenPrice = Number(priceNoVatVal);
+                      else if (finalVal !== null && finalVal !== undefined) chosenPrice = Number(finalVal);
                       else if (priceVal !== null && priceVal !== undefined) chosenPrice = Number(priceVal);
-                      else if (priceNoVatVal !== null && priceNoVatVal !== undefined) chosenPrice = Number(priceNoVatVal);
+                    } else {
+                      // Normal behavior: prefer finalPrice
+                      if (finalVal !== null && finalVal !== undefined) chosenPrice = Number(finalVal);
+                      else {
+                        const useNoVat = isVatSo;
+                        if (useNoVat && priceNoVatVal !== null && priceNoVatVal !== undefined) chosenPrice = Number(priceNoVatVal);
+                        else if (priceVal !== null && priceVal !== undefined) chosenPrice = Number(priceVal);
+                        else if (priceNoVatVal !== null && priceNoVatVal !== undefined) chosenPrice = Number(priceNoVatVal);
+                      }
                     }
 
                     if (chosenPrice !== null && !isNaN(chosenPrice)) {
@@ -3457,7 +3473,9 @@ function ProductEntryForm({
             // Tính giá đã giảm (giá đơn vị sau khi áp dụng chiết khấu, KHÔNG bao gồm VAT)
             // Sử dụng ưu tiên: nếu API trả về discountRate thì dùng discountRate này,
             // ngược lại fallback sang promotion/discountPercent client-side.
-            const priceNum = (basePriceForDiscount && basePriceForDiscount > 0) ? basePriceForDiscount : (parseFloat(String(price)) || 0);
+            // Prefer the current price input value when showing "Giá đã giảm".
+            const parsedPriceDisplayed = parseFloat(String(price)) || 0;
+            const priceNum = parsedPriceDisplayed > 0 ? parsedPriceDisplayed : ((basePriceForDiscount && basePriceForDiscount > 0) ? basePriceForDiscount : 0);
 
             const promoDiscountPct = discountPercent || promotionDiscountPercent || 0;
 

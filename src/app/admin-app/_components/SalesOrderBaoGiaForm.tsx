@@ -25,6 +25,7 @@ interface ProductItem {
   unitId?: string;
   quantity: number;
   price: number;
+  priceNoVat: number | null;
   surcharge: number;
   discount: number;
   discountedPrice: number;
@@ -305,6 +306,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             unit: detail.unit,
             quantity: detail.quantity,
             price: detail.price,
+            priceNoVat: (detail as any).priceNoVat ?? (detail as any).cr1bb_giakhongvat ?? null,
             surcharge: detail.surcharge || 0,
             discount: detail.discount || 0,
             discountedPrice: detail.discountedPrice || detail.price,
@@ -439,6 +441,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         unit: unit,
         quantity,
         price: priceNum,
+        priceNoVat: null,
         surcharge: 0,
         discount: discountAmount,
         discountedPrice: finalPrice,
@@ -516,6 +519,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           unit: detail.unit,
           quantity: detail.quantity,
           price: detail.price,
+            priceNoVat: (detail as any).priceNoVat ?? (detail as any).cr1bb_giakhongvat ?? null,
           surcharge: detail.surcharge || 0,
           discount: detail.discount || 0,
           discountedPrice: detail.discountedPrice || detail.price,
