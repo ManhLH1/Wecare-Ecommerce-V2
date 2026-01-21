@@ -421,7 +421,7 @@ function ProductTable({
                   )}
                   <td className="admin-app-cell-right">
                     {product.discountPercent !== undefined && product.discountPercent !== null && product.discountPercent > 0
-                      ? `${product.discountPercent}%`
+                      ? `${(Number.isInteger(product.discountPercent) ? product.discountPercent : Number(product.discountPercent).toFixed(1))}%`
                       : product.discountAmount !== undefined && product.discountAmount !== null && product.discountAmount > 0
                       ? product.discountAmount.toLocaleString('vi-VN')
                       : product.discount !== undefined && product.discount !== null && product.discount > 0

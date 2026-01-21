@@ -831,6 +831,13 @@ export default async function handler(
                 let promotionId: string | null = null;
 
                 try {
+                    // SOBG: Khi duyệt giá thì KHÔNG áp dụng promotion
+                    const isApproved = mapApprovalToChoice(product.approvePrice, product.approverChoiceValue || product.approverChoice) !== null || product.approvePrice;
+                    if (isApproved) {
+                        // Skip promotion processing for approved products
+                        return { index, promotionId: null };
+                    }
+
                     // Step 0: If frontend provided a promotionId, prefer it (frontend overrides server inference)
                     if (product.promotionId) {
                         promotionId = String(product.promotionId).replace(/^{|}$/g, '').trim();
@@ -959,6 +966,8 @@ export default async function handler(
         // Prepare all product entities for concurrent creation
         for (let i = 0; i < products.length; i++) {
             const product = products[i];
+
+            // Get promotionId from pre-computed results (already filtered for approval)
             const promotionResult = promotionResults.find(r => r.index === i);
             const promotionId = promotionResult?.promotionId || null;
 
@@ -984,8 +993,16 @@ export default async function handler(
                 finalQuoteDetailId = quoteDetailIdMap.get(i);
             }
 
+            // Map and set approval choice if provided/derivable.
+            const mappedApproval = mapApprovalToChoice(product.approvePrice, product.approverChoiceValue || product.approverChoice);
+
             // Compute canonical subtotal/vat/total to match UI 'Tổng' (subtotal + VAT)
-            const computedSubtotalRaw = product.subtotal ?? ((product.discountedPrice ?? product.price) * (product.quantity || 0));
+            // Khi duyệt giá, luôn dùng originalPrice làm giá chính thức
+            const approvedPrice = mappedApproval !== null || product.approvePrice ? (product.originalPrice ?? product.price ?? 0) : 0;
+            const computedSubtotalRaw = (mappedApproval !== null || product.approvePrice)
+                ? (approvedPrice * (product.quantity || 0))  // Duyệt giá: luôn tính từ originalPrice
+                : (product.subtotal ?? ((product.discountedPrice ?? product.price) * (product.quantity || 0))); // Không duyệt: dùng giá từ product
+
             const computedSubtotal = Math.round(computedSubtotalRaw * 100) / 100;
             const computedVatAmount = product.vatAmount ?? (Math.round(((computedSubtotal * (product.vat || 0)) / 100) * 100) / 100);
             const computedTotal = product.totalAmount ?? (Math.round(((computedSubtotal + computedVatAmount) * 100) / 1) / 100);
@@ -1032,8 +1049,7 @@ export default async function handler(
                 ...(promotionId ? { "crdfd_Promotion@odata.bind": `/crdfd_promotions(${promotionId})` } : {}),
             };
 
-            // Map and set approval choice if provided/derivable.
-            const mappedApproval = mapApprovalToChoice(product.approvePrice, product.approverChoiceValue || product.approverChoice);
+            // Set approval choice in entity
             if (mappedApproval !== null) {
                 entity["crdfd_duyetgia"] = mappedApproval;
             }
@@ -1041,6 +1057,18 @@ export default async function handler(
             // If SUP approver ID is provided, set lookup binding property
             if (product.approveSupPrice && product.approveSupPriceId) {
                 entity[`cr1bb_duyetgiasup@odata.bind`] = `/crdfd_duyetgias(${product.approveSupPriceId})`;
+            }
+
+            // IMPORTANT: Khi duyệt giá, crdfd_ongia và crdfd_giagoc phải bằng originalPrice
+            // Override các trường giá nếu có duyệt giá
+            if (mappedApproval !== null || product.approvePrice) {
+                // Khi duyệt giá, luôn dùng originalPrice làm giá chính thức
+                entity["crdfd_ongia"] = approvedPrice;
+                entity["crdfd_giagoc"] = approvedPrice;
+                entity["crdfd_giack1"] = approvedPrice; // Giá gốc cũng bằng giá duyệt
+                entity["crdfd_giack2"] = approvedPrice; // Giá check 2 cũng bằng giá duyệt
+
+                console.log(`[Save SOBG] Duyệt giá cho sản phẩm ${product.productCode}: ongia=${approvedPrice}, giagoc=${approvedPrice} (originalPrice)`);
             }
 
             // Attach to product object so the fast response includes the selected quote detail id

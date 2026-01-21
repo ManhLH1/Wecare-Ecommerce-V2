@@ -1754,12 +1754,47 @@ export default async function handler(
                   statecode: 0,
                   crdfd_name: `SO ${soId} - Promo ${promotionIdClean}`
                 };
-                // If product-level secondary discount exists, store it on Orders x Promotion as decimal (e.g., 0.05)
-                if (product.discount2) {
-                  createPayload.crdfd_chieckhau2 = product.discount2 ? product.discount2 / 100 : 0;
+                // Prefer using product.discountPercent for crdfd_chieckhau2 when available
+                if (product.discountPercent !== undefined && product.discountPercent !== null) {
+                  // product.discountPercent is expected as percentage (e.g., 5 -> 5%)
+                  createPayload.crdfd_chieckhau2 = Number(product.discountPercent) ? Number(product.discountPercent) / 100 : 0;
+                  createPayload.crdfd_loaical = 'Phần trăm';
+                } else {
+                  // Otherwise fetch promotion details (value + vnd/percent) if available to persist correct fields.
+                  try {
+                    let promoDetails = promoCache[promotionIdClean];
+                    if (!promoDetails) {
+                      const promoRespDetail = await apiClient.get(`${PROMOTION_TABLE}(${promotionIdClean})?$select=crdfd_value,crdfd_vn,cr1bb_chietkhau2`, { headers });
+                      promoDetails = promoRespDetail.data;
+                      promoCache[promotionIdClean] = promoDetails;
+                    }
+
+                    // Normalize promotion value and type
+                    const rawVal = Number(promoDetails?.crdfd_value ?? product.discount2 ?? 0) || 0;
+                    const vndOrPercent = String(promoDetails?.crdfd_vn ?? '%').trim();
+
+                    // crdfd_chieckhau2 on Orders x Promotion expects the numeric discount value:
+                    // - If percent type, store decimal (e.g., 5% -> 0.05)
+                    // - If VNĐ type, store absolute number
+                    if (vndOrPercent.toUpperCase() === 'VNĐ' || vndOrPercent.toUpperCase() === 'VND') {
+                      createPayload.crdfd_chieckhau2 = rawVal;
+                      createPayload.crdfd_loaical = 'Tiền';
+                    } else {
+                      createPayload.crdfd_chieckhau2 = rawVal / 100;
+                      createPayload.crdfd_loaical = 'Phần trăm';
+                    }
+                  } catch (err) {
+                    // Fallback: if we can't fetch promo details, persist provided product.discount2 as percent decimal
+                    if (product.discount2) {
+                      createPayload.crdfd_chieckhau2 = product.discount2 ? product.discount2 / 100 : 0;
+                      createPayload.crdfd_loaical = 'Phần trăm';
+                    }
+                  }
                 }
+                console.log('[Save SOD] Creating Orders x Promotion - payload:', JSON.stringify(createPayload));
                 const createResp = await apiClient.post(`${BASE_URL}${ORDERS_X_PROMOTION_TABLE}`, createPayload, { headers });
-                const createdId = createResp.data?.crdfd_ordersxpromotionid || null;
+                console.log('[Save SOD] Orders x Promotion create response status:', createResp.status, 'data:', createResp.data, 'headers:', createResp.headers);
+                const createdId = createResp.data?.crdfd_ordersxpromotionid || createResp.headers?.['odata-entityid']?.match?.(/\(([^)]+)\)/)?.[1] || null;
                 if (createdId) {
                   payload[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${promotionIdClean})`;
                   payload.crdfd_promotiontext = product.promotionText || "";
