@@ -1020,7 +1020,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           promotionName: promo.name,
           promotionValue: promo.value || 0,
           vndOrPercent: String(promo.vndOrPercent ?? '%'),
-          chietKhau2: promo.chietKhau2 === 191920001,
+          chietKhau2: String(promo.chietKhau2) === '191920001' || String(promo.chietKhau2).toLowerCase() === 'true',
           productCodes: promo.productCodes,
           productGroupCodes: promo.productGroupCodes,
         }))
@@ -1180,7 +1180,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             promotionName: promo.name,
             promotionValue: promo.value || 0,
             vndOrPercent: normalizedVndOrPercent,
-            chietKhau2: promo.chietKhau2 === 191920001, // 191920001 = Yes
+            chietKhau2: String(promo.chietKhau2) === '191920001' || String(promo.chietKhau2).toLowerCase() === 'true', // 191920001 = Yes
             productCodes: promo.productCodes,
             productGroupCodes: promo.productGroupCodes,
             orderTotal: currentOrderTotal, // Pass the UI-calculated order total for validation
@@ -1195,6 +1195,85 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             // Chỉ thêm success: true nếu result không có success field
             const resultWithSuccess = result ? { ...result, success: true } : { success: true };
             results.push(resultWithSuccess);
+          }
+          // After applying promotion on server, attempt to persist the effective promotion value
+          // into detail field `crdfd_chieckhau2` (discount2) so SOD reflects applied CK2 value.
+          // Use promo.value (effective value chosen) as the value to save.
+          if ((result && result.success) && typeof promo.value === 'number') {
+            try {
+              const sodDetails = await fetchSaleOrderDetails(soId);
+              if (Array.isArray(sodDetails) && sodDetails.length > 0) {
+                const productsToSave = sodDetails
+                  .filter((d: any) => {
+                    // Update details that were affected by this promotion.
+                    // Heuristic: match by promotionId or productCodes/productGroupCodes inclusion.
+                    const detailPromoId = (d as any).promotionId ?? (d as any).promotion?.id ?? null;
+                    if (detailPromoId && String(detailPromoId) === String(promo.id)) return true;
+                    const prodCode = (d as any).productCode ?? '';
+                    if (promo.productCodes && String(promo.productCodes).split(',').map(s => s.trim()).includes(String(prodCode))) return true;
+                    const pg = (d as any).productGroupCode ?? '';
+                    if (promo.productGroupCodes && String(promo.productGroupCodes).split(',').map(s => s.trim()).includes(String(pg))) return true;
+                    return false;
+                  })
+                  .map((d: any, idx: number) => {
+                    return {
+                      id: d.id,
+                      productId: d.productId,
+                      productCode: d.productCode,
+                      productName: d.productName,
+                      productGroupCode: d.productGroupCode,
+                      productCategoryLevel4: d.productCategoryLevel4,
+                      unitId: d.unitId,
+                      unit: d.unit,
+                      quantity: d.quantity,
+                      price: d.price,
+                      priceNoVat: d.priceNoVat ?? null,
+                      discountedPrice: d.discountedPrice ?? d.price,
+                      originalPrice: d.originalPrice ?? d.price,
+                      vat: d.vat,
+                      vatAmount: d.vatAmount ?? Math.round(((d.discountedPrice ?? d.price) * d.quantity) * (d.vat || 0) / 100),
+                      subtotal: d.subtotal ?? Math.round((d.discountedPrice ?? d.price) * d.quantity),
+                      totalAmount: d.totalAmount ?? Math.round((d.subtotal ?? ((d.discountedPrice ?? d.price) * d.quantity)) + (d.vatAmount ?? 0)),
+                      stt: d.stt ?? (idx + 1),
+                      deliveryDate: d.deliveryDate,
+                      note: d.note,
+                      urgentOrder: d.urgentOrder,
+                      approvePrice: d.approvePrice,
+                      approveSupPrice: d.approveSupPrice,
+                      approveSupPriceId: d.approveSupPriceId,
+                      approver: d.approver,
+                      discountPercent: d.discountPercent ?? 0,
+                      discountAmount: d.discountAmount ?? 0,
+                      discountRate: d.discountRate ?? undefined,
+                      promotionText: d.promotionText ?? '',
+                      promotionId: d.promotionId ?? null,
+                      invoiceSurcharge: d.invoiceSurcharge ?? 0,
+                      // Persist discount2 (crdfd_chieckhau2) as numeric percent value
+                      discount2: promo.value,
+                      discount2Enabled: true,
+                    } as any;
+                  });
+
+                if (productsToSave.length > 0) {
+                  // call saveSaleOrderDetails to persist the change
+                  try {
+                    await saveSaleOrderDetails({
+                      soId: soId,
+                      warehouseName: warehouse,
+                      isVatOrder: !isNonVatSelected,
+                      customerLoginId: getItem('id') as string | undefined,
+                      customerId: customerId,
+                      userInfo: undefined,
+                      products: productsToSave,
+                    });
+                  } catch (err) {
+                    console.warn('[Promotion Order] Could not persist discount2 to SOD details:', err);
+                  }
+                }
+              }
+            } catch (err) {
+              console.warn('[Promotion Order] Error fetching SOD details for persisting discount2:', err);
+            }
           }
         } catch (error: any) {
           console.error(`[Promotion Order] Error applying promotion ${promo.name}:`, error);
