@@ -142,6 +142,7 @@ export interface SaleOrderDetail {
   approveSupPrice?: boolean; // Duyệt giá sup
   discountPercent?: number; // Chiết khấu %
   discountAmount?: number; // Chiết khấu VNĐ
+  discountRate?: number; // Chiết khấu theo rate từ prices array
   promotionText?: string; // Promotion text
   promotionId?: string; // Promotion ID
   invoiceSurcharge?: number; // Phụ phí hoá đơn
@@ -363,6 +364,7 @@ export interface SaveSaleOrderDetailsRequest {
     unit: string;
     quantity: number;
     price: number;
+    priceNoVat?: number | null;
     discountedPrice?: number;
     originalPrice?: number;
     vat: number;
@@ -744,6 +746,7 @@ export interface SaveSOBGDetailsRequest {
     unit: string;
     quantity: number;
     price: number;
+    priceNoVat?: number | null;
     discountedPrice?: number;
     originalPrice?: number;
     vat: number;

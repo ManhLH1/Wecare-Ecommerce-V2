@@ -301,8 +301,9 @@ interface ProductEntryFormProps {
   disableInventoryReserve?: boolean; // Tắt tính năng giữ hàng tự động (dùng cho SOBG)
   orderTotal?: number; // Tổng tiền toàn đơn (dùng để check Promotion Order & phân bổ chiết khấu VNĐ)
   onOpenSpecialPromotions?: () => Promise<void> | void;
-  onOpenDiscount2?: () => Promise<void> | void;
+  onOpenDiscount2?: (orderTotalOverride?: number) => Promise<void> | void;
   enablePromotionAutoFetch?: boolean;
+  onPriceNoVatChange?: (priceNoVat: number | null) => void; // Callback khi priceNoVat thay đổi
   onDistrictLeadtimeChange?: (leadtime: number) => void; // Callback khi district leadtime thay đổi
 }
 
@@ -378,6 +379,7 @@ function ProductEntryForm({
   orderTotal,
   onOpenSpecialPromotions,
   onOpenDiscount2,
+  onPriceNoVatChange,
   enablePromotionAutoFetch = false,
 }: ProductEntryFormProps) {
 
@@ -1702,6 +1704,9 @@ function ProductEntryForm({
         const finalPrice = selectedPrice?.finalPrice ?? (result as any)?.finalPrice ?? null;
         const discountRate = selectedPrice?.discountRate ?? (result as any)?.discountRate ?? null;
 
+        // Notify parent component about priceNoVat change
+        onPriceNoVatChange?.(priceNoVat);
+
         // Update unit name variables
         apiUnitName = selectedPrice?.unitName ?? result?.unitName ?? apiUnitName;
         apiPriceGroupText = selectedPrice?.priceGroupText ?? result?.priceGroupText ?? apiPriceGroupText;
@@ -1755,42 +1760,39 @@ function ProductEntryForm({
           }
         }
 
-        // Ưu tiên dùng finalPrice (đã áp dụng discount rate) nếu có
-        // Nếu không có finalPrice, fallback về logic cũ
+        // Determine basePrice to use for display/discount calculations.
+        // Requirement: when user enables "Duyệt giá" (approvePrice === true),
+        // prefer the raw price without VAT (priceNoVat) so approver sees original price,
+        // even if API returned a finalPrice (which may include customer-specific discounts).
         let basePrice: number | null = null;
 
-        if (finalPrice !== null && finalPrice !== undefined) {
-          // Có finalPrice từ API (priceNoVat x discountRate) - ưu tiên dùng
-          basePrice = finalPrice;
-        } else {
-          // Fallback về logic cũ nếu không có finalPrice
-          // Chọn giá dựa vào VAT của SO và SẢN PHẨM
-          // Logic:
-          // 1. SO có VAT + Sản phẩm có VAT → dùng priceNoVat
-          // 2. SO có VAT + Sản phẩm không VAT → dùng price
-          // 3. SO không VAT + Sản phẩm có VAT → dùng price
-          // 4. SO không VAT + Sản phẩm không VAT → dùng price
+        const vatTextLower = (vatText || '').toLowerCase();
+        const soIsVat = vatTextLower.includes('có vat') || vatPercent > 0;
+        const currentProduct = selectedProduct || (selectedProductCode ? products.find((p) => p.crdfd_masanpham === selectedProductCode) : null);
+        const productVatOptionValue = currentProduct?.crdfd_gtgt_option ?? currentProduct?.crdfd_gtgt;
+        const productVatPercent = productVatOptionValue !== undefined ? VAT_OPTION_MAP[Number(productVatOptionValue)] : undefined;
+        const productIsVat = productVatPercent !== undefined && productVatPercent > 0;
 
-        // Xác định SO có VAT hay không
-          const vatTextLower = (vatText || '').toLowerCase();
-          const soIsVat = vatTextLower.includes('có vat') || vatPercent > 0;
-
-          // Xác định sản phẩm có VAT hay không (dựa vào crdfd_gtgt)
-          // Tìm sản phẩm từ selectedProduct hoặc từ products list
-          const currentProduct = selectedProduct || (selectedProductCode ? products.find((p) => p.crdfd_masanpham === selectedProductCode) : null);
-          const productVatOptionValue = currentProduct?.crdfd_gtgt_option ?? currentProduct?.crdfd_gtgt;
-          const productVatPercent = productVatOptionValue !== undefined ? VAT_OPTION_MAP[Number(productVatOptionValue)] : undefined;
-          const productIsVat = productVatPercent !== undefined && productVatPercent > 0;
-
-          // Áp dụng logic chọn giá (đơn giản hoá để tránh mapping nhầm giữa giá có VAT / không VAT)
-          // - Nếu SO có VAT và SP có VAT => dùng priceNoVat (giá chưa VAT)
-          // - Các trường hợp khác => dùng priceWithVat (giá từ API hoặc fallback)
-          if (soIsVat && productIsVat) {
-            // SO có VAT + SP có VAT: ưu tiên dùng giá chưa VAT (priceNoVat)
-            basePrice = priceNoVat ?? null;
+        if (approvePrice) {
+          // Approval mode: prefer priceNoVat when available, otherwise fallback to finalPrice or priceWithVat
+          if (priceNoVat !== null && priceNoVat !== undefined) {
+            basePrice = priceNoVat;
+          } else if (finalPrice !== null && finalPrice !== undefined) {
+            basePrice = finalPrice;
           } else {
-            // Các trường hợp khác dùng priceWithVat (fallback sang result.price nếu cần)
             basePrice = priceWithVat ?? result?.price ?? null;
+          }
+        } else {
+          // Normal behavior: prefer finalPrice (API-applied customer discount) if present,
+          // otherwise use priceNoVat for SO+SP VAT case or priceWithVat for others.
+          if (finalPrice !== null && finalPrice !== undefined) {
+            basePrice = finalPrice;
+          } else {
+            if (soIsVat && productIsVat) {
+              basePrice = priceNoVat ?? null;
+            } else {
+              basePrice = priceWithVat ?? result?.price ?? null;
+            }
           }
         }
 
@@ -2239,22 +2241,26 @@ function ProductEntryForm({
           computedDiscountPercent = 0;
           computedDiscountAmount = 0;
         }
-        // If approval mode is on, force discounts to zero (chiết khấu 1 = 0)
-        if (approvePrice) {
-          computedDiscountPercent = 0;
-          computedDiscountAmount = 0;
-        }
+        // Note: When approval mode is on, we still save the discount percentage
+        // The approved price will be the manually entered price, but discount info is preserved
       } catch (err) {
         // fallback to existing local state if any error
         computedDiscountPercent = skipApplyingSelectedPromotion ? 0 : promotionDiscountPercent;
         computedDiscountAmount = skipApplyingSelectedPromotion ? 0 : discountAmount;
       }
 
+      // Prioritize user-input discountPercent over computed promotion discount
+      // This ensures manually entered discount percentages (like 22.5%) are preserved
+      const finalDiscountPercent = discountPercent > 0 ? discountPercent : computedDiscountPercent;
+
+      // Use manually selected discount rate if available, otherwise use API discount rate
+      const finalDiscountRate = discountRate !== '1' ? Number(discountRate) : selectedPriceFromApi?.discountRate;
+
       onAdd({
         promotionId: currentPromoId,
-        discountPercent: computedDiscountPercent,
+        discountPercent: finalDiscountPercent,
         discountAmount: computedDiscountAmount,
-        discountRate: selectedPriceFromApi?.discountRate,
+        discountRate: finalDiscountRate,
       });
 
       // After add, if product is still selected (selectedProductCode not reset), reload price
@@ -2747,10 +2753,29 @@ function ProductEntryForm({
       // Reset price to API-provided data (apiPrice) when user turns off approval.
       // If apiPrice is not available, clear price input.
       if (apiPrice !== null && apiPrice !== undefined && apiPrice > 0) {
-        // Use handlePriceChange to ensure formatting/behavior is consistent
-        handlePriceChange(String(apiPrice));
+        // Trigger an immediate fetch to ensure priceNoVat is available then set input
+        (async () => {
+          try {
+            const code = selectedProductCode || productCode || (selectedProduct ? selectedProduct.crdfd_masanpham : '');
+            if (code) {
+              const res = await fetchProductPrice(code, customerCode, undefined, customerRegion || undefined, undefined);
+              const priceNoVatVal = (res as any)?.prices?.[0]?.priceNoVat ?? (res as any)?.priceNoVat ?? null;
+              onPriceNoVatChange?.(priceNoVatVal ?? null);
+            } else {
+              // fallback: still notify parent to clear
+              onPriceNoVatChange?.(null);
+            }
+          } catch (err) {
+            // ignore fetch error but notify parent null
+            onPriceNoVatChange?.(null);
+          } finally {
+            handlePriceChange(String(apiPrice));
+          }
+        })();
       } else {
         handlePriceChange('');
+        // Notify parent priceNoVat cleared
+        onPriceNoVatChange?.(null);
       }
     } else {
       // KHI BẬT "DUYỆT GIÁ": Chiết khấu 1 = 0 (không tính chiết khấu từ promotion)
@@ -2758,6 +2783,40 @@ function ProductEntryForm({
       setPromotionDiscountPercent(0);
       // Recompute totals với chiết khấu = 0
       recomputeTotals(price, quantity, 0, vatPercent);
+      // When enabling approval, load full price dataset from API and prefer priceNoVat for display
+      (async () => {
+        try {
+          const code = selectedProductCode || productCode || (selectedProduct ? selectedProduct.crdfd_masanpham : '');
+          if (!code) return;
+          setPriceLoading(true);
+          const res = await fetchProductPrice(code, customerCode, undefined, customerRegion || undefined, undefined);
+          const allPrices = (res as any)?.prices || [];
+          const selectedPrice = allPrices[0] ?? null;
+          const priceWithVat = selectedPrice?.price ?? (res as any)?.price ?? null;
+          const priceNoVatVal = selectedPrice?.priceNoVat ?? (res as any)?.priceNoVat ?? null;
+          const finalPrice = selectedPrice?.finalPrice ?? (res as any)?.finalPrice ?? null;
+
+          // update local price states so UI can react
+          setPricesFromApi(allPrices);
+          setSelectedPriceFromApi(selectedPrice);
+          setApiPrice(priceWithVat || finalPrice || null);
+          setBasePriceForDiscount(finalPrice ?? priceWithVat ?? 0);
+
+          // Notify parent and set displayed price to priceNoVat when available
+          onPriceNoVatChange?.(priceNoVatVal ?? null);
+          if (priceNoVatVal !== null && priceNoVatVal !== undefined) {
+            handlePriceChange(String(priceNoVatVal));
+          } else if (finalPrice !== null && finalPrice !== undefined) {
+            handlePriceChange(String(finalPrice));
+          } else if (priceWithVat !== null && priceWithVat !== undefined) {
+            handlePriceChange(String(priceWithVat));
+          }
+        } catch (err) {
+          // ignore
+        } finally {
+          setPriceLoading(false);
+        }
+      })();
     }
   }, [approvePrice, setApprover, apiPrice]);
 
@@ -2802,9 +2861,22 @@ function ProductEntryForm({
                   <button
                     type="button"
                     className="admin-app-mini-btn admin-app-mini-btn-ghost"
-                    onClick={() => {
+                  onClick={() => {
                       if (typeof onOpenDiscount2 === 'function') {
-                        onOpenDiscount2();
+                        try {
+                          // Compute current line total (subtotal + VAT) to include in promotion eligibility check
+                          const priceNumForLine = (basePriceForDiscount && basePriceForDiscount > 0) ? basePriceForDiscount : (parseFloat(String(price)) || 0);
+                          const promoPctForLine = discountPercent || promotionDiscountPercent || 0;
+                          const discountedUnitForLine = priceNumForLine * (1 - (promoPctForLine > 0 ? promoPctForLine / 100 : 0));
+                          const lineSubtotalForPromo = Math.round(discountedUnitForLine * (quantity || 0));
+                          const lineVatForPromo = Math.round((lineSubtotalForPromo * (vatPercent || 0)) / 100);
+                          const lineTotalForPromo = lineSubtotalForPromo + lineVatForPromo;
+                          const parentOrderTotal = (orderTotal || 0) + lineTotalForPromo;
+                          onOpenDiscount2(parentOrderTotal);
+                        } catch (err) {
+                          // Fallback to calling without override
+                          onOpenDiscount2();
+                        }
                       } else {
                         showToast.info('Chức năng chiết khấu 2 chưa sẵn sàng.');
                       }

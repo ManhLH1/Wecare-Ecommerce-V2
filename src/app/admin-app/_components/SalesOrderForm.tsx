@@ -10,7 +10,7 @@ import { showToast } from '../../../components/ToastManager';
 import { getItem } from '../../../utils/SecureStorage';
 import { getStoredUser } from '../_utils/implicitAuthService';
 
-interface ProductItem {
+interface ProductTableItem {
   id: string;
   stt?: number;
   productCode?: string;
@@ -22,6 +22,7 @@ interface ProductItem {
   unitId?: string;
   quantity: number;
   price: number;
+  priceNoVat: number | null;
   surcharge: number;
   discount: number;
   discountedPrice: number;
@@ -103,6 +104,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const [warehouse, setWarehouse] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [price, setPrice] = useState('');
+  const [priceNoVat, setPriceNoVat] = useState<number | null>(null);
   const [subtotal, setSubtotal] = useState(0);
   const [vatPercent, setVatPercent] = useState(0);
   const [vatAmount, setVatAmount] = useState(0);
@@ -141,7 +143,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const [discountAmount, setDiscountAmount] = useState(0);
   const [promotionText, setPromotionText] = useState('');
   const [promotionId, setPromotionId] = useState('');
-  const [productList, setProductList] = useState<ProductItem[]>([]);
+  const [productList, setProductList] = useState<ProductTableItem[]>([]);
 
   // Payment terms OptionSet mapping (value -> label)
   const PAYMENT_TERMS_MAP: Record<string, string> = {
@@ -172,6 +174,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const [specialPromotionList, setSpecialPromotionList] = useState<PromotionOrderItem[]>([]);
   const [selectedPromotionOrders, setSelectedPromotionOrders] = useState<PromotionOrderItem[]>([]); // Multi-select
   const [isApplyingPromotion, setIsApplyingPromotion] = useState(false);
+  const [promotionPopupOrderTotal, setPromotionPopupOrderTotal] = useState<number | null>(null);
   const SPECIAL_PROMOTION_KEYWORDS = [
     '[ALL] GIẢM GIÁ ĐẶC BIỆT',
     '[ALL] VOUCHER ĐẶT HÀNG TRÊN ZALO OA',
@@ -289,8 +292,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       setIsLoadingDetails(true);
       try {
         const details = await fetchSaleOrderDetails(soId);
-        // Map SaleOrderDetail to ProductItem
-        const mappedProducts: ProductItem[] = details.map((detail: SaleOrderDetail) => {
+        // Map SaleOrderDetail to ProductTableItem
+        const mappedProducts: ProductTableItem[] = details.map((detail: SaleOrderDetail) => {
           const subtotal = (detail.discountedPrice || detail.price) * detail.quantity;
           const vatAmount = (subtotal * detail.vat) / 100;
           return {
@@ -316,6 +319,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             unit: detail.unit,
             quantity: detail.quantity,
             price: detail.price,
+            priceNoVat: null,
             surcharge: detail.surcharge,
             discount: detail.discount,
             discountedPrice: detail.discountedPrice,
@@ -327,6 +331,15 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             approver: detail.approver,
             deliveryDate: detail.deliveryDate || '',
             warehouse: warehouse, // Lấy từ state warehouse
+            note: detail.note,
+            approvePrice: detail.approvePrice,
+            approveSupPrice: detail.approveSupPrice,
+            discountPercent: detail.discountPercent,
+            discountAmount: detail.discountAmount,
+            discountRate: detail.discountRate,
+            promotionText: detail.promotionText,
+            promotionId: detail.promotionId,
+            invoiceSurcharge: detail.invoiceSurcharge,
             isSodCreated: true,
             isModified: false, // Mặc định chưa sửa
             originalQuantity: detail.quantity, // Lưu số lượng gốc
@@ -366,6 +379,10 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       price,
       quantity,
     });
+    // Debug: log when called to help trace missing discountPercent issues reported by users
+    try {
+      console.debug('[SalesOrderForm][DEBUG] Before compute - overrides.discountPercent:', overrides?.discountPercent, 'parent discountPercent:', discountPercent);
+    } catch (err) { /* ignore logging errors */ }
     // Validation: product, unit, quantity, price
     // Khi bật "Duyệt giá" cho phép giá = 0, khi không bật thì bắt buộc > 0
     const priceNum = parseFloat(price || '0') || 0;
@@ -408,7 +425,35 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     // Calculate discounted price using the same method as ProductEntryForm:
     // Prefer overrides from child to avoid React state propagation timing issues.
     const basePrice = priceNum;
-    const usedDiscountPercent = overrides?.discountPercent ?? discountPercent ?? 0;
+
+    // If child passed explicit override, use it. Otherwise attempt to infer discountPercent
+    // from currently applied Promotion Orders on the server (soId) for this product.
+    let inferredDiscountPercent: number | null = null;
+    if (!overrides?.discountPercent && soId) {
+      try {
+        // Ask server for promotions for this SO restricted to this product
+        const res = await fetchPromotionOrders(soId, customerCode || undefined, undefined, productCode ? [productCode] : [], productGroupCode ? [productGroupCode] : [], selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan);
+        // Prefer existingPromotionOrders presence or availablePromotions that apply to this product
+        const candidates = (res.availablePromotions || res.allPromotions || []).filter(p => {
+          // Only percent-based CK2 promotions
+          return vndCodeEquals(p, 191920000) && (
+            p.chietKhau2 === 191920001 ||
+            String(p.chietKhau2).toLowerCase() === 'true' ||
+            String(p.chietKhau2) === '1'
+          );
+        });
+        if (candidates && candidates.length > 0) {
+          // Choose first matching (server already filters by productCodes when provided)
+          const pick = candidates[0];
+          const num = Number(pick.value) || 0;
+          if (!isNaN(num) && num > 0) inferredDiscountPercent = num;
+        }
+      } catch (err) {
+        console.warn('[SalesOrderForm] Could not fetch promotions to infer discountPercent:', err);
+      }
+    }
+
+    const usedDiscountPercent = overrides?.discountPercent ?? (inferredDiscountPercent ?? discountPercent ?? 0);
     const usedDiscountAmount = overrides?.discountAmount ?? discountAmount ?? 0;
     const discountedPriceCalc = basePrice * (1 - (usedDiscountPercent || 0) / 100) - (usedDiscountAmount || 0);
     const finalPrice = discountedPriceCalc * (1 + invoiceSurchargeRate);
@@ -429,7 +474,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       : note;
 
     const promoIdToUse = overrides?.promotionId ?? promotionId;
-    const newProduct: ProductItem = {
+    const newProduct: ProductTableItem = {
       id: `${Date.now()}-${newStt}`,
       stt: newStt,
       productCode: productCode,
@@ -438,9 +483,10 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       unit: unit,
       quantity,
       price: priceNum,
+      priceNoVat: priceNoVat,
       surcharge: 0,
       discount: usedDiscountAmount,
-      discountedPrice: finalPrice,
+      discountedPrice: approvePrice ? (priceNoVat ?? finalPrice) : finalPrice,
       discountPercent: usedDiscountPercent,
       discountAmount: usedDiscountAmount,
       discountRate: overrides?.discountRate,
@@ -461,6 +507,15 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       createdOn: new Date().toISOString(),
       isSodCreated: false,
     };
+    // Debug: log constructed product to verify discount fields
+    try {
+      console.debug('[SalesOrderForm][DEBUG] New product prepared', {
+        discountPercent: newProduct.discountPercent,
+        discountAmount: newProduct.discountAmount,
+        discountedPrice: newProduct.discountedPrice,
+        subtotal: newProduct.subtotal,
+      });
+    } catch (err) { /* ignore logging errors */ }
 
     console.debug('[SalesOrderForm] Adding product with promotionId:', promoIdToUse);
     setProductList([...productList, newProduct]);
@@ -552,6 +607,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           unit: item.unit,
           quantity: item.quantity,
           price: item.price,
+          priceNoVat: item.priceNoVat ?? null,
           discountedPrice: item.discountedPrice ?? item.price,
           originalPrice: item.price,
           vat: item.vat,
@@ -627,7 +683,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       if (!result.partialSuccess && result.totalFailed === 0) {
         try {
           const updatedDetails = await fetchSaleOrderDetails(soId);
-          const mappedProducts: ProductItem[] = updatedDetails.map((detail: SaleOrderDetail) => {
+          const mappedProducts: ProductTableItem[] = updatedDetails.map((detail: SaleOrderDetail) => {
             const subtotal = (detail.discountedPrice || detail.price) * detail.quantity;
             const vatAmount = (subtotal * detail.vat) / 100;
             return {
@@ -637,6 +693,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
               unit: detail.unit,
               quantity: detail.quantity,
               price: detail.price,
+              priceNoVat: null,
               surcharge: detail.surcharge,
               discount: detail.discount,
               discountedPrice: detail.discountedPrice,
@@ -932,6 +989,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             unitId: item.unitId,
             quantity: item.quantity,
             price: item.price,
+            priceNoVat: item.priceNoVat ?? null,
             discountedPrice: item.discountedPrice,
             originalPrice: item.price,
             surcharge: item.surcharge,
@@ -1043,7 +1101,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setIsApplyingPromotion(true);
     try {
       // Validate promotions against current order total before applying
-      const currentOrderTotal = totalAmount || orderSummary?.total || productList.reduce((s, p) => s + (p.totalAmount || ((p.discountedPrice ?? p.price) * (p.quantity || 0) + ((p.vat || 0) ? Math.round(((p.discountedPrice ?? p.price) * (p.quantity || 0) * (p.vat || 0)) / 100) : 0))), 0);
+      const computedOrderTotal = totalAmount || orderSummary?.total || productList.reduce((s, p) => s + (p.totalAmount || ((p.discountedPrice ?? p.price) * (p.quantity || 0) + ((p.vat || 0) ? Math.round(((p.discountedPrice ?? p.price) * (p.quantity || 0) * (p.vat || 0)) / 100) : 0))), 0);
+      const currentOrderTotal = (promotionPopupOrderTotal ?? computedOrderTotal);
       const promosToApply = Array.from(new Map(selectedPromotionOrders.map(p => [p.id, p])).values());
       const invalid = promosToApply.filter(p => {
         const cond = (p as any).totalAmountCondition;
@@ -1185,10 +1244,11 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setSpecialPromotionList([]);
     // Clear entire form when closing promotion popup
     clearEverything();
+    setPromotionPopupOrderTotal(null);
   };
 
   // Handler để update một sản phẩm đơn lẻ (đã sửa)
-  const handleUpdateProduct = async (product: ProductItem) => {
+  const handleUpdateProduct = async (product: ProductTableItem) => {
     if (!soId) {
       showToast.error('Vui lòng chọn Sales Order trước khi cập nhật.');
       return;
@@ -1396,6 +1456,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           unit: product.unit,
           quantity: product.quantity,
           price: product.price,
+          priceNoVat: product.priceNoVat ?? null,
           discountedPrice: product.discountedPrice ?? product.price,
           originalPrice: product.price,
           vat: product.vat,
@@ -1468,7 +1529,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                   color: '#0369a1',
                   boxShadow: '0 1px 3px rgba(3,105,161,0.08)'
                 }}>
-                  Tổng tiền đơn: {currentOrderTotal ? `${currentOrderTotal.toLocaleString('vi-VN')} VNĐ` : '0 VNĐ'}
+                  Tổng tiền đơn: {(promotionPopupOrderTotal ?? currentOrderTotal) ? `${(promotionPopupOrderTotal ?? currentOrderTotal).toLocaleString('vi-VN')} VNĐ` : '0 VNĐ'}
                 </div>
                 <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '4px', padding: '8px' }}>
                   {promotionOrderList.map((promo) => {
@@ -1476,7 +1537,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                     const conditionNum = (promo && promo.totalAmountCondition !== null && promo.totalAmountCondition !== undefined)
                       ? Number(promo.totalAmountCondition)
                       : null;
-                    const meetsCondition = conditionNum === null || (!isNaN(conditionNum) && currentOrderTotal >= conditionNum);
+                    const effectiveOrderTotalForCheck = (promotionPopupOrderTotal ?? currentOrderTotal);
+                    const meetsCondition = conditionNum === null || (!isNaN(conditionNum) && effectiveOrderTotalForCheck >= conditionNum);
 
                     return (
                       <label
@@ -2105,9 +2167,12 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             onRefresh={handleRefresh}
             onInventoryReserved={() => { }} // Callback để trigger reload inventory
             onProductGroupCodeChange={setProductGroupCode} // Callback để cập nhật productGroupCode
-            onOpenDiscount2={async () => {
+            onOpenDiscount2={async (orderTotalOverride?: number) => {
               try {
-                const orderTotal = orderSummary.total;
+                // Allow child to pass an override including the current line (unsaved) product total
+                const orderTotal = (typeof orderTotalOverride === 'number') ? orderTotalOverride : orderSummary.total;
+                // Save override so modal shows correct "Tổng tiền đơn"
+                setPromotionPopupOrderTotal(orderTotal);
                 const productCodes = productList.map(p => p.productCode).filter(Boolean) as string[];
                 const productGroupCodes = productList.map(p => p.productGroupCode).filter(Boolean) as string[];
 
@@ -2181,6 +2246,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                 showToast.error('Lỗi khi tải khuyến mãi đặc biệt.');
               }
             }}
+            onPriceNoVatChange={setPriceNoVat}
           />
         </div>
       </div>

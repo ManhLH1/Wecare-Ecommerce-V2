@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { FaTimes, FaChevronRight, FaChevronDown, FaSpinner, FaBox, FaHome } from "react-icons/fa";
+import Link from "next/link";
 
 interface MobileCategoryMenuProps {
   isOpen: boolean;
@@ -8,6 +9,7 @@ interface MobileCategoryMenuProps {
   categoryGroups: any[];
   loadingCategory: boolean;
   onCategorySelect: (item: any) => void;
+  navigationItems?: Array<{ href: string; label: string; icon?: any }>;
 }
 
 const MobileCategoryMenu: React.FC<MobileCategoryMenuProps> = ({
@@ -17,6 +19,7 @@ const MobileCategoryMenu: React.FC<MobileCategoryMenuProps> = ({
   categoryGroups,
   loadingCategory,
   onCategorySelect,
+  navigationItems = [],
 }) => {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
@@ -97,7 +100,7 @@ const MobileCategoryMenu: React.FC<MobileCategoryMenuProps> = ({
               onCategorySelect(item);
             }
           }}
-          className="flex items-center justify-between w-full p-3 sm:p-4 text-left active:bg-amber-50 transition-colors touch-manipulation"
+          className="flex items-center justify-between w-full p-4 text-left active:bg-amber-50 hover:bg-amber-25 transition-all duration-150 touch-manipulation min-h-[48px]"
         >
           <div className="flex items-center gap-3 flex-1 min-w-0">
             {item.crdfd_image_url ? (
@@ -140,7 +143,7 @@ const MobileCategoryMenu: React.FC<MobileCategoryMenuProps> = ({
                 onCategorySelect(item);
                 // DON'T close menu - only X button closes
               }}
-              className="flex items-center gap-3 w-full p-3 text-left active:bg-amber-100 transition-colors touch-manipulation text-sm text-gray-700"
+              className="flex items-center gap-3 w-full p-4 text-left active:bg-amber-100 hover:bg-amber-50 transition-all duration-150 touch-manipulation text-sm text-gray-700 min-h-[44px]"
             >
               <div className="w-6 h-6 rounded bg-amber-200 flex items-center justify-center flex-shrink-0">
                 <FaBox className="w-3 h-3 text-amber-600" />
@@ -161,7 +164,7 @@ const MobileCategoryMenu: React.FC<MobileCategoryMenuProps> = ({
                     onCategorySelect(subItem);
                     // DON'T close menu - only X button closes
                   }}
-                  className="flex items-center gap-3 w-full p-3 text-left active:bg-amber-100 transition-colors touch-manipulation"
+                  className="flex items-center gap-3 w-full p-4 text-left active:bg-amber-100 hover:bg-amber-50 transition-all duration-150 touch-manipulation min-h-[44px]"
                 >
                   <div className="w-6 h-6 rounded bg-amber-100 flex items-center justify-center flex-shrink-0">
                     <FaBox className="w-3 h-3 text-amber-500" />
@@ -189,7 +192,7 @@ const MobileCategoryMenu: React.FC<MobileCategoryMenuProps> = ({
                           e.stopPropagation();
                           toggleExpand(subItem.crdfd_productgroupid);
                         }}
-                        className="flex items-center gap-2 w-full pl-8 pr-3 py-2 text-left active:bg-amber-100 transition-colors touch-manipulation text-xs text-gray-600"
+                        className="flex items-center gap-2 w-full pl-8 pr-3 py-3 text-left active:bg-amber-100 hover:bg-amber-50 transition-all duration-150 touch-manipulation text-xs text-gray-600 min-h-[40px]"
                       >
                         {isLevel3Expanded ? (
                           <FaChevronDown className="w-3 h-3 text-amber-500" />
@@ -210,7 +213,7 @@ const MobileCategoryMenu: React.FC<MobileCategoryMenuProps> = ({
                                 onCategorySelect(level3Item);
                                 // DON'T close menu - only X button closes
                               }}
-                              className="flex items-center gap-2 w-full p-2 text-left active:bg-amber-50 transition-colors touch-manipulation text-xs text-gray-600 border-t border-gray-100"
+                              className="flex items-center gap-2 w-full p-3 text-left active:bg-amber-50 hover:bg-amber-25 transition-all duration-150 touch-manipulation text-xs text-gray-600 border-t border-gray-100 min-h-[40px]"
                             >
                               <span className="w-1.5 h-1.5 rounded-full bg-amber-300 flex-shrink-0"></span>
                               <span className="truncate">{level3Item.crdfd_productname}</span>
@@ -274,8 +277,8 @@ const MobileCategoryMenu: React.FC<MobileCategoryMenuProps> = ({
         </div>
 
         {/* Enhanced Content - Scrollable với safe area bottom */}
-        <div 
-          className="flex-1 overflow-y-auto min-h-0 safe-area-bottom" 
+        <div
+          className="flex-1 overflow-y-auto min-h-0 safe-area-bottom"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {loadingCategory ? (
@@ -283,10 +286,39 @@ const MobileCategoryMenu: React.FC<MobileCategoryMenuProps> = ({
               <FaSpinner className="w-6 h-6 text-amber-500 animate-spin" />
               <span className="ml-3 text-gray-600 font-medium">Đang tải danh mục...</span>
             </div>
-          ) : categoryGroups && categoryGroups.length > 0 ? (
+          ) : (
             <div className="p-3 sm:p-4">
-              {/* All Products Option */}
-              <div className="border-b border-gray-200 mb-3">
+              {/* Navigation Items Section */}
+              {navigationItems.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-semibold text-gray-800 mb-3 px-1">Menu chính</h3>
+                  <div className="space-y-1">
+                    {navigationItems.map((item, index) => (
+                      <Link
+                        key={index}
+                        href={item.href}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onClose(); // Close menu when navigation item is clicked
+                        }}
+                        className="flex items-center gap-3 w-full p-4 text-left active:bg-cyan-50 hover:bg-cyan-25 transition-all duration-150 rounded-lg touch-manipulation no-underline min-h-[48px]"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-cyan-100 flex items-center justify-center flex-shrink-0">
+                          {item.icon || <FaBox className="w-4 h-4 text-cyan-600" />}
+                        </div>
+                        <span className="text-gray-800 font-medium">{item.label}</span>
+                      </Link>
+                    ))}
+                  </div>
+                  <div className="border-t border-gray-200 my-4"></div>
+                </div>
+              )}
+
+              {/* Category Section */}
+              {categoryGroups && categoryGroups.length > 0 ? (
+                <>
+                  {/* All Products Option */}
+                  <div className="border-b border-gray-200 mb-3">
                 <button
                   type="button"
                   onClick={(e) => {
@@ -294,7 +326,7 @@ const MobileCategoryMenu: React.FC<MobileCategoryMenuProps> = ({
                     onCategorySelect({ crdfd_productgroupid: 'all', crdfd_productname: 'Tất cả sản phẩm' });
                     // DON'T close menu - only X button closes
                   }}
-                  className="flex items-center justify-between w-full p-3 sm:p-4 text-left active:bg-amber-50 transition-colors rounded-lg touch-manipulation"
+                  className="flex items-center justify-between w-full p-4 text-left active:bg-amber-50 hover:bg-amber-25 transition-all duration-150 rounded-lg touch-manipulation min-h-[48px]"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
@@ -305,30 +337,32 @@ const MobileCategoryMenu: React.FC<MobileCategoryMenuProps> = ({
                 </button>
               </div>
 
-              {/* Category Items */}
-              <div className="space-y-1">
-                {categoryGroups.map((item) => renderCategoryItem(item, 0))}
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center p-8">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FaBox className="w-8 h-8 text-gray-400" />
+                  {/* Category Items */}
+                  <div className="space-y-1">
+                    {categoryGroups.map((item) => renderCategoryItem(item, 0))}
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-center p-8">
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <FaBox className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <p className="text-gray-600 font-medium mb-2">Không có danh mục nào</p>
+                    <p className="text-gray-500 text-sm mb-4">Vui lòng thử lại sau</p>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onClose();
+                      }}
+                      className="px-4 py-2 bg-amber-500 text-white rounded-lg active:bg-amber-600 transition-colors touch-manipulation"
+                    >
+                      Đóng
+                    </button>
+                  </div>
                 </div>
-                <p className="text-gray-600 font-medium mb-2">Không có danh mục nào</p>
-                <p className="text-gray-500 text-sm mb-4">Vui lòng thử lại sau</p>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onClose();
-                  }}
-                  className="px-4 py-2 bg-amber-500 text-white rounded-lg active:bg-amber-600 transition-colors touch-manipulation"
-                >
-                  Đóng
-                </button>
-              </div>
+              )}
             </div>
           )}
         </div>

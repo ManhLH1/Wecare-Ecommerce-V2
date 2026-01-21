@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaSearch, FaShoppingCart, FaCamera, FaChevronDown, FaTag, FaBoxOpen, FaFire, FaGem, FaClock, FaMoneyBillWave, FaNewspaper, FaUserCircle, FaQuestionCircle, FaBars, FaTh } from 'react-icons/fa';
+import { FaSearch, FaShoppingCart, FaCamera, FaChevronDown, FaTag, FaBoxOpen, FaFire, FaGem, FaClock, FaMoneyBillWave, FaNewspaper, FaUserCircle, FaQuestionCircle, FaBars, FaTh, FaHome, FaPercent, FaBullhorn } from 'react-icons/fa';
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
@@ -561,9 +561,24 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
     ];
   };
 
+  // Function to get mobile navigation items with icons
+  const getMobileNavigationItems = () => {
+    const menuItems = getMenuItems();
+    return menuItems.map(item => ({
+      href: item.href,
+      label: item.label,
+      icon: item.label === "Tất cả sản phẩm" ? <FaHome className="w-4 h-4 text-cyan-600" /> :
+            item.label === "Sản phẩm bán chạy" ? <FaFire className="w-4 h-4 text-cyan-600" /> :
+            item.label === "Khuyến mãi" ? <FaPercent className="w-4 h-4 text-cyan-600" /> :
+            item.label === "Tin tức" ? <FaBullhorn className="w-4 h-4 text-cyan-600" /> :
+            <FaBoxOpen className="w-4 h-4 text-cyan-600" />
+    }));
+  };
+
   return (
     <>
-      <header className="w-full fixed top-0 left-0 z-50 bg-white shadow-sm">
+      {/* Desktop Header - Keep unchanged */}
+      <header className={`w-full fixed top-0 left-0 z-50 bg-white shadow-sm ${!isDesktop ? 'hidden' : ''}`}>
         {/* Top Navigation Bar - Tạm thời ẩn */}
         <div className="hidden w-full bg-gray-50 border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 py-2">
@@ -881,6 +896,151 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
           </div>
         </div>
       </header>
+
+      {/* Mobile Header - New Design */}
+      <header className={`w-full fixed top-0 left-0 z-50 bg-white shadow-sm ${isDesktop ? 'hidden' : ''}`}>
+        {/* Mobile Top Bar */}
+        <div className="w-full bg-white border-b border-gray-200">
+          <div className="flex items-center justify-between px-4 py-3 relative">
+            {/* Left - Hamburger (fixed) */}
+            <div className="w-12 flex items-center justify-start">
+              <button
+                type="button"
+                onClick={() => setShowCategoryMenu(true)}
+                className="p-2 -m-2 text-gray-600 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors touch-manipulation"
+                aria-label="Menu"
+              >
+                <FaBars className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Center - Logo (centered) */}
+            <div className="flex-1 flex items-center justify-center pointer-events-none">
+              <Link
+                href="/"
+                className="flex items-center gap-2 no-underline group"
+                prefetch={false}
+              >
+                <span className="rounded-full bg-white p-1 flex items-center justify-center w-9 h-9 shadow-sm border border-gray-100 group-hover:shadow-md transition-all duration-200 pointer-events-auto">
+                  <Image
+                    src={LogoSvg}
+                    alt="Wecare Logo"
+                    width={30}
+                    height={30}
+                    className="object-contain rounded-full"
+                  />
+                </span>
+                <span
+                  className="text-lg font-bold tracking-tight select-none no-underline group-hover:text-cyan-600 transition-colors duration-200 pointer-events-auto"
+                  style={{
+                    color: '#3492ab',
+                    fontWeight: 700,
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                    textShadow: '0 1px 2px rgba(0,0,0,0.06)'
+                  }}
+                >
+                  WECARE
+                </span>
+              </Link>
+            </div>
+
+            {/* Right - Utility Icons (fixed) */}
+            <div className="w-28 flex items-center justify-end gap-2">
+              {/* Search Button */}
+              <button
+                type="button"
+                onClick={handleOpenImageModal}
+                className="p-2 text-gray-600 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors touch-manipulation"
+                aria-label="Tìm kiếm bằng hình ảnh"
+              >
+                <FaCamera className="w-5 h-5" />
+              </button>
+
+              {/* Cart */}
+              {typeof window !== "undefined" && (
+                <button
+                  type="button"
+                  onClick={onCartClick}
+                  className="relative p-2 text-gray-600 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors touch-manipulation"
+                  aria-label="Giỏ hàng"
+                >
+                  <FaShoppingCart className="w-5 h-5" />
+                  {cartItemsCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold px-1 border-2 border-white shadow-lg z-10">
+                      {cartItemsCount}
+                    </span>
+                  )}
+                </button>
+              )}
+
+              {/* Login/Account */}
+              {isLoggedIn === null ? (
+                <div className="w-8 h-8 bg-gray-200 animate-pulse rounded-full"></div>
+              ) : isLoggedIn ? (
+                <div className="p-2">
+                  <UserIconWithMenu />
+                </div>
+              ) : (
+                <button
+                  className="p-2 text-gray-600 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors touch-manipulation"
+                  onClick={() => (window.location.href = "/login")}
+                  aria-label="Đăng nhập"
+                >
+                  <FaUserCircle className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Search Bar - Full Width */}
+        {!hideSearch && (
+          <div className="w-full bg-gray-50 border-b border-gray-200">
+            <div className="px-4 py-3">
+              <form onSubmit={handleSearchSubmit} className="w-full">
+                <div className="relative flex items-center bg-white rounded-full shadow-md border border-gray-200 overflow-hidden focus-within:ring-2 focus-within:ring-cyan-400 focus-within:border-cyan-400 transition-all duration-200">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#FF9D00' }}>
+                    <FaSearch className="h-4 w-4" />
+                  </span>
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Bạn cần tìm gì hôm nay ?"
+                    className="flex-1 pl-12 pr-3 py-2.5 text-gray-800 placeholder-gray-400 focus:outline-none bg-transparent text-sm"
+                    aria-label="Tìm kiếm"
+                  />
+                  <button
+                    type="submit"
+                    className="w-12 h-10 bg-amber-600 hover:bg-amber-700 text-white font-semibold transition-all duration-200 flex items-center justify-center hover:shadow-md active:scale-95 touch-manipulation"
+                    aria-label="Tìm kiếm"
+                  >
+                    <FaSearch className="h-4 w-4" />
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Mobile Category Menu Bar */}
+        <div className="w-full border-b" style={{ backgroundColor: '#3492ab' }}>
+          <div className="px-4">
+            <div className="flex items-center">
+              <button
+                onClick={() => setShowCategoryMenu(true)}
+                className="flex items-center gap-3 bg-amber-600 text-white px-4 py-2 rounded-lg font-medium text-sm shadow-md w-full text-left active:bg-amber-700 transition-colors touch-manipulation"
+                style={{ boxShadow: '0 6px 18px rgba(52,146,171,0.12)' }}
+              >
+                <FaBars className="text-base" />
+                <span className="whitespace-nowrap">Danh mục sản phẩm</span>
+                <FaChevronDown className={`text-sm transition-transform duration-200 ml-auto ${showCategoryMenu ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
       {showImageModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-4">
@@ -1068,6 +1228,7 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
           categoryGroups={categoryGroups}
           loadingCategory={loadingCategory}
           onCategorySelect={handleCategorySelect}
+          navigationItems={getMobileNavigationItems()}
         />
       )}
     </>

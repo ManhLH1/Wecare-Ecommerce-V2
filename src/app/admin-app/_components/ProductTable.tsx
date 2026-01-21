@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { showToast } from '../../../components/ToastManager';
 
-interface ProductItem {
+interface ProductTableItem {
   id: string;
   stt?: number;
   productCode?: string;
@@ -15,6 +15,7 @@ interface ProductItem {
   unitId?: string;
   quantity: number;
   price: number;
+  priceNoVat: number | null;
   surcharge: number;
   discount: number;
   discountedPrice: number;
@@ -43,21 +44,21 @@ interface ProductItem {
 }
 
 interface ProductTableProps {
-  products: ProductItem[];
-  setProducts: (products: ProductItem[]) => void;
+  products: ProductTableItem[];
+  setProducts: (products: ProductTableItem[]) => void;
   invoiceType?: number | null;
   vatChoice?: number | null;
   customerIndustry?: number | null;
-  onDelete?: (product: ProductItem) => void; // Callback khi xóa sản phẩm
-  onUpdate?: (product: ProductItem) => Promise<void>; // Callback khi update sản phẩm đã lưu
+  onDelete?: (product: ProductTableItem) => void; // Callback khi xóa sản phẩm
+  onUpdate?: (product: ProductTableItem) => Promise<void>; // Callback khi update sản phẩm đã lưu
   soId?: string; // SO ID để update
   warehouseName?: string; // Warehouse name
   isVatOrder?: boolean; // Is VAT order
   isSOBG?: boolean; // nếu true gọi API deactivate SOBG detail thay vì SOD
 }
 
-function ProductTable({ 
-  products, 
+function ProductTable({
+  products,
   setProducts,
   invoiceType,
   vatChoice,
@@ -73,7 +74,7 @@ function ProductTable({
   const [editingQuantityValue, setEditingQuantityValue] = useState<string>('');
   const [updatingProductId, setUpdatingProductId] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [confirmingProduct, setConfirmingProduct] = useState<ProductItem | null>(null);
+  const [confirmingProduct, setConfirmingProduct] = useState<ProductTableItem | null>(null);
   const [deactivating, setDeactivating] = useState(false);
 
   const handleDelete = (id: string) => {
@@ -84,7 +85,7 @@ function ProductTable({
       const GUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const isSaved = productToDelete.isSodCreated === true && GUID_PATTERN.test(String(productToDelete.id));
 
-      const performRemoval = async (prod?: ProductItem) => {
+      const performRemoval = async (prod?: ProductTableItem) => {
         try {
           // Call parent onDelete to handle inventory adjustments (if provided)
           if (onDelete) {
@@ -109,7 +110,7 @@ function ProductTable({
     }
   };
 
-  const handleQuantityChange = (product: ProductItem, newQuantity: number) => {
+  const handleQuantityChange = (product: ProductTableItem, newQuantity: number) => {
     if (newQuantity <= 0) {
       return; // Không cho phép số lượng <= 0
     }
@@ -146,12 +147,12 @@ function ProductTable({
     setProducts(updatedProducts);
   };
 
-  const handleQuantityEditStart = (product: ProductItem) => {
+  const handleQuantityEditStart = (product: ProductTableItem) => {
     setEditingQuantityId(product.id);
     setEditingQuantityValue(product.quantity.toString());
   };
 
-  const handleQuantityEditEnd = (product: ProductItem) => {
+  const handleQuantityEditEnd = (product: ProductTableItem) => {
     const newQuantity = parseFloat(editingQuantityValue) || product.quantity;
 
     if (newQuantity > 0 && newQuantity !== product.quantity) {
@@ -161,7 +162,7 @@ function ProductTable({
     setEditingQuantityValue('');
   };
 
-  const handleQuantityKeyDown = (e: React.KeyboardEvent, product: ProductItem) => {
+  const handleQuantityKeyDown = (e: React.KeyboardEvent, product: ProductTableItem) => {
     if (e.key === 'Enter') {
       handleQuantityEditEnd(product);
     } else if (e.key === 'Escape') {
@@ -170,7 +171,7 @@ function ProductTable({
     }
   };
 
-  const handleConfirmUpdate = async (product: ProductItem) => {
+  const handleConfirmUpdate = async (product: ProductTableItem) => {
     if (!onUpdate || !product.isSodCreated) {
       return;
     }
@@ -300,7 +301,7 @@ function ProductTable({
     }
   };
 
-  const getStatusBadge = (product: ProductItem) => {
+  const getStatusBadge = (product: ProductTableItem) => {
     const crmGuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const sodCreated = product.isSodCreated
       ?? crmGuidPattern.test(product.id || '')
