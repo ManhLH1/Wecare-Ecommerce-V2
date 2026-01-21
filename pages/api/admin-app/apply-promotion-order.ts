@@ -197,9 +197,9 @@ export default async function handler(
       // ignore
     }
 
-    // Determine loai (Tiền / Phần trăm)
+    // Determine loai (VNĐ / %)
     const isVnd = effectiveVndOrPercent === "VNĐ" || (typeof effectiveVndOrPercent === 'string' && effectiveVndOrPercent.toUpperCase() === "VND") || effectiveVndOrPercent === OPTION_VND;
-    const loai = isVnd ? "Tiền" : "Phần trăm";
+    const loai = isVnd ? "VNĐ" : "%";
 
     console.log('[ApplyPromotion] Effective values:', {
       promotionId,
@@ -239,8 +239,8 @@ export default async function handler(
       statecode: 0, // Active
     };
 
-    // Only include crdfd_chieckhau2 when it's a non-zero value
-    if (chietKhau2ValueToStore !== undefined && chietKhau2ValueToStore !== null && Number(chietKhau2ValueToStore) !== 0) {
+    // Include crdfd_chieckhau2 when it's defined (including 0 values)
+    if (chietKhau2ValueToStore !== undefined && chietKhau2ValueToStore !== null) {
       ordersXPromotionPayload.crdfd_chieckhau2 = chietKhau2ValueToStore;
     }
 
