@@ -628,6 +628,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             // Secondary discount (Chiết khấu 2) - percent value (e.g., 5 = 5%)
             discount2: item.discount2 ?? 0,
             discount2Enabled: item.discount2Enabled ?? false,
+            crdfd_chietkhau2: item.discount2 ?? 0, // Send to backend as crdfd_chietkhau2
           promotionText: item.promotionText,
           promotionId: item.promotionId,
           invoiceSurcharge: item.invoiceSurcharge,
@@ -1012,6 +1013,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             promotionId: item.promotionId,
             invoiceSurcharge: item.invoiceSurcharge,
             stockQuantity: item.stockQuantity,
+            discount2: item.discount2 ?? 0,
+            discount2Enabled: item.discount2Enabled ?? false,
+            crdfd_chietkhau2: item.discount2 ?? 0, // Send to backend as crdfd_chietkhau2
           };
         }),
         // Only include unique selected promotions (dedupe by id)
@@ -1251,6 +1255,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                       // Persist discount2 (crdfd_chieckhau2) as numeric percent value
                       discount2: promo.value,
                       discount2Enabled: true,
+                      crdfd_chietkhau2: promo.value, // Send to backend as crdfd_chietkhau2
                     } as any;
                   });
 
@@ -1555,6 +1560,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           promotionText: product.promotionText,
           promotionId: product.promotionId,
           invoiceSurcharge: product.invoiceSurcharge,
+          discount2: product.discount2 ?? 0,
+          discount2Enabled: product.discount2Enabled ?? false,
+          crdfd_chietkhau2: product.discount2 ?? 0, // Send to backend as crdfd_chietkhau2
         }],
       });
 

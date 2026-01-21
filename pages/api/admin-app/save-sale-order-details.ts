@@ -1677,7 +1677,7 @@ export default async function handler(
           crdfd_thue: computedVatAmount, // Thuế (GTGT amount)
           crdfd_tongtienchuavat: computedSubtotal,
           crdfd_tongtiencovat: computedTotal,
-          crdfd_chieckhau: product.discountPercent ? product.discountPercent / 100 : 0, // Chuyển từ phần trăm (4%) sang thập phân (0.04)
+          crdfd_chieckhau: product.discountPercent ? product.discountPercent / 100 : undefined, // Chuyển từ phần trăm (4%) sang thập phân (0.04)
           crdfd_chieckhauvn: product.discountAmount ?? 0,
           // Secondary discount (Chiết khấu 2) stored as decimal (e.g., 0.05 for 5%)
           crdfd_chieckhau2 : product.discount2 ? product.discount2 / 100 : 0,

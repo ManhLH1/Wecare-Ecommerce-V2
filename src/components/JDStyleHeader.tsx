@@ -899,39 +899,27 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
 
       {/* Mobile Header - New Design */}
       <header className={`w-full fixed top-0 left-0 z-50 bg-white shadow-sm ${isDesktop ? 'hidden' : ''}`}>
-        {/* Mobile Top Bar */}
-        <div className="w-full bg-white border-b border-gray-200">
-          <div className="flex items-center justify-between px-4 py-3 relative">
-            {/* Left - Hamburger (fixed) */}
-            <div className="w-12 flex items-center justify-start">
-              <button
-                type="button"
-                onClick={() => setShowCategoryMenu(true)}
-                className="p-2 -m-2 text-gray-600 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors touch-manipulation"
-                aria-label="Menu"
-              >
-                <FaBars className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Center - Logo (centered) */}
-            <div className="flex-1 flex items-center justify-center pointer-events-none">
+        {/* Mobile Top Bar - Optimized for mobile UX */}
+        <div className="w-full bg-white border-b border-gray-200" style={{ height: '56px' }}>
+          <div className="flex items-center justify-between px-4 h-full">
+            {/* Left - Logo */}
+            <div className="flex items-center">
               <Link
                 href="/"
                 className="flex items-center gap-2 no-underline group"
                 prefetch={false}
               >
-                <span className="rounded-full bg-white p-1 flex items-center justify-center w-9 h-9 shadow-sm border border-gray-100 group-hover:shadow-md transition-all duration-200 pointer-events-auto">
+                <span className="rounded-full bg-white p-1 flex items-center justify-center w-8 h-8 shadow-sm border border-gray-100 group-hover:shadow-md transition-all duration-200">
                   <Image
                     src={LogoSvg}
                     alt="Wecare Logo"
-                    width={30}
-                    height={30}
+                    width={24}
+                    height={24}
                     className="object-contain rounded-full"
                   />
                 </span>
                 <span
-                  className="text-lg font-bold tracking-tight select-none no-underline group-hover:text-cyan-600 transition-colors duration-200 pointer-events-auto"
+                  className="text-base font-bold tracking-tight select-none no-underline group-hover:text-cyan-600 transition-colors duration-200"
                   style={{
                     color: '#3492ab',
                     fontWeight: 700,
@@ -945,16 +933,26 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
               </Link>
             </div>
 
-            {/* Right - Utility Icons (fixed) */}
-            <div className="w-28 flex items-center justify-end gap-2">
-              {/* Search Button */}
+            {/* Right - Utility Icons */}
+            <div className="flex items-center gap-1">
+              {/* Menu */}
+              <button
+                type="button"
+                onClick={() => setShowCategoryMenu(true)}
+                className="p-2 text-gray-600 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors touch-manipulation"
+                aria-label="Menu"
+              >
+                <FaBars className="w-5 h-5" />
+              </button>
+
+              {/* Search */}
               <button
                 type="button"
                 onClick={handleOpenImageModal}
                 className="p-2 text-gray-600 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors touch-manipulation"
-                aria-label="Tìm kiếm bằng hình ảnh"
+                aria-label="Tìm kiếm"
               >
-                <FaCamera className="w-5 h-5" />
+                <FaSearch className="w-5 h-5" />
               </button>
 
               {/* Cart */}
@@ -990,53 +988,6 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
                   <FaUserCircle className="w-5 h-5" />
                 </button>
               )}
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile Search Bar - Full Width */}
-        {!hideSearch && (
-          <div className="w-full bg-gray-50 border-b border-gray-200">
-            <div className="px-4 py-3">
-              <form onSubmit={handleSearchSubmit} className="w-full">
-                <div className="relative flex items-center bg-white rounded-full shadow-md border border-gray-200 overflow-hidden focus-within:ring-2 focus-within:ring-cyan-400 focus-within:border-cyan-400 transition-all duration-200">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#FF9D00' }}>
-                    <FaSearch className="h-4 w-4" />
-                  </span>
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Bạn cần tìm gì hôm nay ?"
-                    className="flex-1 pl-12 pr-3 py-2.5 text-gray-800 placeholder-gray-400 focus:outline-none bg-transparent text-sm"
-                    aria-label="Tìm kiếm"
-                  />
-                  <button
-                    type="submit"
-                    className="w-12 h-10 bg-amber-600 hover:bg-amber-700 text-white font-semibold transition-all duration-200 flex items-center justify-center hover:shadow-md active:scale-95 touch-manipulation"
-                    aria-label="Tìm kiếm"
-                  >
-                    <FaSearch className="h-4 w-4" />
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Mobile Category Menu Bar */}
-        <div className="w-full border-b" style={{ backgroundColor: '#3492ab' }}>
-          <div className="px-4">
-            <div className="flex items-center">
-              <button
-                onClick={() => setShowCategoryMenu(true)}
-                className="flex items-center gap-3 bg-amber-600 text-white px-4 py-2 rounded-lg font-medium text-sm shadow-md w-full text-left active:bg-amber-700 transition-colors touch-manipulation"
-                style={{ boxShadow: '0 6px 18px rgba(52,146,171,0.12)' }}
-              >
-                <FaBars className="text-base" />
-                <span className="whitespace-nowrap">Danh mục sản phẩm</span>
-                <FaChevronDown className={`text-sm transition-transform duration-200 ml-auto ${showCategoryMenu ? 'rotate-180' : ''}`} />
-              </button>
             </div>
           </div>
         </div>

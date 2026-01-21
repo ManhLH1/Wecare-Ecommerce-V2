@@ -385,6 +385,9 @@ export interface SaveSaleOrderDetailsRequest {
     promotionText?: string;
     promotionId?: string;
     invoiceSurcharge?: number;
+    discount2?: number; // Chiết khấu 2 (secondary discount) - percent value
+    discount2Enabled?: boolean; // Whether discount2 is enabled
+    crdfd_chietkhau2?: number; // Chiết khấu 2 (secondary discount) - backend field
   }>;
 }
 
