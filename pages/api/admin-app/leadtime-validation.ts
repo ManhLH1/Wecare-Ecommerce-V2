@@ -113,9 +113,9 @@ async function validateSOLeadtime(
 ): Promise<LeadtimeValidationResult[]> {
   try {
     // Query SO records first
-    const soFilter = `statecode eq 0 and crdfd_createdon ge ${startDate} and crdfd_createdon le ${endDate}T23:59:59Z`;
-    const soSelect = `crdfd_sale_orderid,crdfd_name,crdfd_so_code,crdfd_so_auto,crdfd_createdon,crdfd_ngaygiaodukientonghop,crdfd_exdeliverrydate,_crdfd_khachhang_value,_crdfd_kho_value`;
-    const soQuery = `$select=${soSelect}&$filter=${encodeURIComponent(soFilter)}&$orderby=crdfd_createdon desc&$top=${limit}`;
+    const soFilter = `statecode eq 0 and createdon ge ${startDate} and createdon le ${endDate}T23:59:59Z`;
+    const soSelect = `crdfd_sale_orderid,crdfd_name,crdfd_so_code,crdfd_so_auto,createdon,crdfd_ngaygiaodukientonghop,crdfd_exdeliverrydate,_crdfd_khachhang_value,_crdfd_kho_value`;
+    const soQuery = `$select=${soSelect}&$filter=${encodeURIComponent(soFilter)}&$orderby=createdon desc&$top=${limit}`;
 
     const soResponse = await axios.get(`${BASE_URL}${SO_TABLE}?${soQuery}`, { headers });
     const soRecords = soResponse.data.value || [];
@@ -209,7 +209,7 @@ async function validateSOLeadtime(
             customerCode: (customerInfo as any).cr44a_makhachang || (customerInfo as any).cr44a_st || '',
             industry: (customerInfo as any).crdfd_nganhnghe_text || '',
             warehouse: (warehouseInfo as any).crdfd_makho || (warehouseInfo as any).crdfd_tenkho || '',
-            createdOn: so.crdfd_createdon,
+            createdOn: so.createdon,
             details,
             hasIssues: true,
             issueCount: details.reduce((sum: number, d: any) => sum + d.priceIssues.length + d.leadtimeIssues.length, 0)
@@ -236,9 +236,9 @@ async function validateSOBGLeadtime(
 ): Promise<LeadtimeValidationResult[]> {
   try {
     // Query SOBG records first
-    const sobgFilter = `statecode eq 0 and crdfd_createdon ge ${startDate} and crdfd_createdon le ${endDate}T23:59:59Z`;
-    const sobgSelect = `crdfd_sobaogiaid,crdfd_name,crdfd_so_code,crdfd_createdon,crdfd_ngaygiaodukien,_crdfd_khachhang_value,_crdfd_kho_value`;
-    const sobgQuery = `$select=${sobgSelect}&$filter=${encodeURIComponent(sobgFilter)}&$orderby=crdfd_createdon desc&$top=${limit}`;
+    const sobgFilter = `statecode eq 0 and createdon ge ${startDate} and createdon le ${endDate}T23:59:59Z`;
+    const sobgSelect = `crdfd_sobaogiaid,crdfd_name,crdfd_so_code,createdon,crdfd_ngaygiaodukien,_crdfd_khachhang_value,_crdfd_kho_value`;
+    const sobgQuery = `$select=${sobgSelect}&$filter=${encodeURIComponent(sobgFilter)}&$orderby=createdon desc&$top=${limit}`;
 
     const sobgResponse = await axios.get(`${BASE_URL}${SOBG_TABLE}?${sobgQuery}`, { headers });
     const sobgRecords = sobgResponse.data.value || [];
@@ -332,7 +332,7 @@ async function validateSOBGLeadtime(
             customerCode: (customerInfo as any).cr44a_makhachang || (customerInfo as any).cr44a_st || '',
             industry: (customerInfo as any).crdfd_nganhnghe_text || '',
             warehouse: (warehouseInfo as any).crdfd_makho || (warehouseInfo as any).crdfd_tenkho || '',
-            createdOn: sobg.crdfd_createdon,
+            createdOn: sobg.createdon,
             details,
             hasIssues: true,
             issueCount: details.reduce((sum: number, d: any) => sum + d.priceIssues.length + d.leadtimeIssues.length, 0)
@@ -355,7 +355,7 @@ function calculateExpectedDeliveryDate(order: any, detail: any): string {
   // Use the same logic as computeDeliveryDate.ts
   // Simplified version for audit purposes
   try {
-    const orderTime = new Date(order.crdfd_createdon);
+    const orderTime = new Date(order.createdon);
     const warehouseCode = extractWarehouseCode(order.crdfd_makho || order.crdfd_tenkho);
 
     // Apply weekend reset logic (same as computeDeliveryDate)

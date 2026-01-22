@@ -1634,6 +1634,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             vatText={selectedVatText}
             paymentTerms={selectedSo?.dieuKhoanThanhToan || selectedSo?.crdfd_ieukhoanthanhtoan}
             soId={soId}
+            soCreatedOn={selectedSo?.createdon || selectedSo?.createdon || selectedSo?.createdon}
             quantity={quantity}
             setQuantity={setQuantity}
             price={price}

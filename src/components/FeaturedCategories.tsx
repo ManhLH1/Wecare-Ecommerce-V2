@@ -1,6 +1,6 @@
-'use client';
-
-import React from 'react';
+ 'use client';
+ 
+ import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 
 interface Category {
@@ -39,6 +39,33 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
     name: cat.productGroupName || cat.name || `Danh mục ${cat.productGroupCode || cat.code || ''}`
   }));
 
+  // scroll indicator state for mobile scroller
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const [scrollProgress, setScrollProgress] = useState<number>(0);
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    let rafId = 0;
+
+    const onScroll = () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const max = el.scrollWidth - el.clientWidth;
+        const progress = max > 0 ? el.scrollLeft / max : 0;
+        setScrollProgress(progress);
+      });
+    };
+
+    el.addEventListener('scroll', onScroll, { passive: true });
+    // initialize
+    onScroll();
+
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [validCategories]);
   // debug: valid categories computed (logging removed)
 
   // Show loading skeleton when loading
@@ -93,51 +120,57 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
     <section className="w-full py-4 bg-white md:py-3 md:bg-gradient-to-r md:from-cyan-500 md:to-cyan-600">
       <div className="relative px-4 md:px-[5px] md:px-[50px]">
         <div className="p-0 md:p-1">
-          {/* Mobile: Clean design */}
+          {/* Mobile: horizontal scroller with 2 rows */}
           <div className="block md:hidden">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Danh mục sản phẩm</h3>
-              <a href="/san-pham" className="text-sm text-cyan-600 hover:text-cyan-700 font-medium">Xem tất cả</a>
+            <div className="flex items-center justify-between mb-3 px-1">
+              <h3 className="text-lg font-semibold text-gray-900">Danh mục nổi bật</h3>
             </div>
 
-            {/* Grid 2 columns for mobile */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              {validCategories.slice(0, 6).map(cat => (
-                <Link
-                  key={cat.id || cat.productGroupId || cat.productGroupCode || String(Math.random())}
-                  href={cat.href || `/san-pham?group=${encodeURIComponent(cat.productGroupCode || '')}`}
-                  className="block text-center no-underline group"
-                >
-                  <div className="bg-gray-50 rounded-xl p-4 hover:bg-gray-100 transition-all duration-200 touch-manipulation">
-                    <div className="w-full flex items-center justify-center mb-3">
-                      <img
-                        src={cat.image}
-                        alt={cat.name}
-                        className={`h-12 w-12 object-contain ${cat.hasPlaceholderImage ? 'opacity-60' : ''}`}
-                      />
+            <div className="overflow-x-auto scrollbar-hide -mx-4 px-4" ref={scrollerRef}>
+              <div
+                className="grid grid-flow-col gap-3 grid-rows-2 py-2"
+                style={{ gridAutoColumns: '140px' }}
+              >
+                {validCategories.slice(0, 12).map(cat => (
+                  <Link
+                    key={cat.id || cat.productGroupId || cat.productGroupCode || String(Math.random())}
+                    href={cat.href || `/san-pham?group=${encodeURIComponent(cat.productGroupCode || '')}`}
+                    className="block text-center no-underline group snap-start"
+                  >
+                    <div className="bg-gray-50 rounded-lg p-2 hover:bg-gray-100 transition-all duration-200 touch-manipulation h-full flex flex-col items-center justify-center">
+                      <div className="w-12 h-12 mb-2 flex items-center justify-center">
+                        <img
+                          src={cat.image}
+                          alt={cat.name}
+                          className={`h-10 w-10 object-contain ${cat.hasPlaceholderImage ? 'opacity-60' : ''}`}
+                        />
+                      </div>
+                      <div className="text-xs font-medium text-gray-700 group-hover:text-cyan-600 line-clamp-2 leading-tight">
+                        {cat.name}
+                      </div>
                     </div>
-                    <div className="text-sm font-medium text-gray-700 group-hover:text-cyan-600 line-clamp-2 leading-tight">
-                      {cat.name}
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-
-            {/* Xem thêm button */}
-            {validCategories.length > 6 && (
-              <div className="text-center">
-                <a
-                  href="/san-pham"
-                  className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-cyan-600 font-medium"
-                >
-                  Xem thêm danh mục
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </a>
+                  </Link>
+                ))}
               </div>
-            )}
+            </div>
+
+            {/* Scroll indicator - movable thumb */}
+            <div className="flex justify-center mt-2">
+              <div className="relative w-20 h-1 bg-gray-200/40 rounded-full">
+                <div
+                  className="absolute top-0 h-1 bg-cyan-500 rounded-full"
+                  style={{
+                    width: '20%',
+                    left: `${Math.min(100, Math.max(0, scrollProgress * 100))}%`,
+                    transform: 'translateX(-50%)',
+                    transition: 'left 140ms ease-out',
+                    boxShadow: '0 1px 6px rgba(3,105,161,0.12)',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* no more 'Xem thêm' on mobile - list is horizontally scrollable */}
           </div>
 
           {/* Desktop: Original design */}

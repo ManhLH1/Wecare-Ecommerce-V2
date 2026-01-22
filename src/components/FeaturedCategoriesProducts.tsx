@@ -228,7 +228,7 @@ const FeaturedCategoriesProducts: React.FC<{
 
   if (loading) {
     return (
-      <div className="relative px-2 md:px-6 my-3 my-lg-5">
+      <div className="relative px-2 md:px-6 my-1 my-lg-2">
         {Array.from({ length: 3 }).map((_, groupIndex) => (
           <section key={`loading-group-${groupIndex}`} className="mb-6">
             {/* Category header skeleton */}
@@ -268,7 +268,7 @@ const FeaturedCategoriesProducts: React.FC<{
   if (!groupsWithProducts || groupsWithProducts.length === 0) return null;
 
   return (
-    <div className="relative px-2 md:px-6 my-3 my-lg-5">
+    <div className="relative px-2 md:px-6 my-1 my-lg-2">
       {groupsWithProducts.map(({ category, products, loading: groupLoading }) => (
         <section key={category.id} className="mb-6">
           <div className="flex items-center justify-between mb-3">

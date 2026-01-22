@@ -1047,7 +1047,7 @@ const HomeContent = () => {
         />
 
         {/* Main Layout */}
-        <div className="w-full max-w-[2560px] mx-auto pt-[115px] px-4">
+        <div className="w-full max-w-[2560px] mx-auto pt-16 px-4">
           <div className="flex flex-col lg:flex-row">
             {/* Spacer for CategoryMenu dropdown on Desktop */}
             <div className="hidden lg:block w-[280px] flex-shrink-0" />

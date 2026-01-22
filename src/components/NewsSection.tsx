@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import axios from 'axios';
@@ -22,6 +22,8 @@ const NewsSection = () => {
   const [news, setNews] = useState<News[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const [progress, setProgress] = useState<number>(0);
 
   useEffect(() => {
     const fetchNews = async () => {
@@ -47,6 +49,28 @@ const NewsSection = () => {
 
     fetchNews();
   }, []);
+  // Lấy 5 item: 1 hero đầu + 2 item hàng 2 + 2 item hàng 3 (bố cục 1 - 2 - 2)
+  const items = news.slice(0, 5);
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    let rafId = 0;
+    const onScroll = () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const max = el.scrollWidth - el.clientWidth;
+        const p = max > 0 ? el.scrollLeft / max : 0;
+        setProgress(p);
+      });
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [items]);
 
   if (loading) {
     return (
@@ -72,9 +96,7 @@ const NewsSection = () => {
     );
   }
 
-  // Lấy 5 item: 1 hero đầu + 2 item hàng 2 + 2 item hàng 3 (bố cục 1 - 2 - 2)
-  const items = news.slice(0, 5);
-
+  
   const renderImageCard = (item: News, index: number) => {
     return (
       <div
@@ -206,7 +228,7 @@ const NewsSection = () => {
 
         {/* Mobile Layout: Horizontal scrollable cards */}
         <div className="md:hidden">
-          <div className="flex overflow-x-auto gap-3 pb-2 -mx-3 px-3 snap-x snap-mandatory scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div ref={scrollerRef} className="flex overflow-x-auto gap-3 pb-2 -mx-3 px-3 snap-x snap-mandatory scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
             {items.map((item, index) => (
               <div key={(item.cr1bb_data_website_ecommerceid || index)} className="flex-shrink-0 w-[80vw] snap-start">
                 <div className="group relative h-[200px] bg-white rounded-2xl overflow-hidden shadow-md ring-1 ring-stone-200">
@@ -249,11 +271,20 @@ const NewsSection = () => {
             ))}
           </div>
           
-          {/* Mobile scroll indicator */}
-          <div className="flex justify-center gap-1.5 mt-2">
-            {items.slice(0, 5).map((_, idx) => (
-              <div key={idx} className={`h-1 rounded-full transition-all ${idx === 0 ? 'w-4 bg-amber-500' : 'w-1.5 bg-gray-300'}`} />
-            ))}
+          {/* Mobile scroll indicator - subtle moving thumb */}
+          <div className="flex justify-center mt-2">
+            <div className="relative w-28 h-1 bg-gray-200/40 rounded-full">
+              <div
+                className="absolute top-0 h-1 bg-amber-500 rounded-full"
+                style={{
+                  width: `${Math.max(12, Math.round(28 * (1 / Math.max(1, items.length)) ))}px`,
+                  left: `${Math.min(100, Math.max(0, progress * 100))}%`,
+                  transform: 'translateX(-50%)',
+                  transition: 'left 120ms linear',
+                  boxShadow: '0 1px 6px rgba(0,0,0,0.08)',
+                }}
+              />
+            </div>
           </div>
         </div>
 

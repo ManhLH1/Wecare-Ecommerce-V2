@@ -86,7 +86,7 @@ export default async function handler(
     filter += ` and crdfd_activedata eq false`;
 
     // Select payment term field - prefer `crdfd_dieu_khoan_thanh_toan`
-    const columns = "crdfd_sale_orderid,crdfd_name,crdfd_so_code,crdfd_so_auto,cr1bb_vattext,cr1bb_loaihoaon,crdfd_dieu_khoan_thanh_toan,crdfd_tongtien";
+    const columns = "crdfd_sale_orderid,crdfd_name,crdfd_so_code,crdfd_so_auto,cr1bb_vattext,cr1bb_loaihoaon,crdfd_loai_don_hang,crdfd_dieu_khoan_thanh_toan,crdfd_tongtien,createdon";
     // Sort by Created On (createdon) descending as per Power BI logic
     const query = `$select=${columns}&$filter=${encodeURIComponent(
       filter
@@ -103,6 +103,7 @@ export default async function handler(
     const saleOrders = (response.data.value || []).map((item: any) => {
       // Try different possible field names for ID
       const id = item.crdfd_sale_orderid || item.crdfd_sale_orderid || item.crdfd_sale_order_id || '';
+
 
       // Prefer raw numeric option set value on the preferred field only.
       let rawPaymentTerm: any = item.crdfd_dieu_khoan_thanh_toan ?? null;
@@ -125,6 +126,7 @@ export default async function handler(
         crdfd_so_auto: item.crdfd_so_auto || "",
         cr1bb_vattext: item.cr1bb_vattext || "",
         cr1bb_loaihoaon: item.cr1bb_loaihoaon ?? null,
+        crdfd_loai_don_hang: item.crdfd_loai_don_hang ?? null, // Order type (VAT/Non-VAT)
         // Provide both fields used by frontend: raw/normalized key in either property
         // Provide both properties that frontend may read; normalize to choice value where possible
         // Normalized payment term key (preferred field only)
@@ -135,6 +137,7 @@ export default async function handler(
           item["crdfd_dieu_khoan_thanh_toan@OData.Community.Display.V1.FormattedValue"] ||
           null,
         crdfd_tongtien: item.crdfd_tongtien || 0, // Raw total amount field
+        createdon: item.createdon || item.createdon || item.CreatedOn || item.created_on, // Creation date for business logic
       };
     });
 

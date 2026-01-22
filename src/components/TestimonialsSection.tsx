@@ -78,28 +78,59 @@ const TestimonialsSection: React.FC = () => {
           />
         </div>
 
-        <div className="bg-amber-400 rounded-xl p-8 shadow-md">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-center px-2">
-            <BenefitsItem
-              iconSrc="/images/icon-delivery.png"
-              title="Giao siêu tốc"
-              desc="Freeship đơn trên 2 triệu"
-            />
-            <BenefitsItem
-              iconSrc="/images/icon-price.png"
-              title="Giá siêu tốt"
-              desc="Cam kết tốt nhất thị trường"
-            />
-            <BenefitsItem
-              iconSrc="/images/icon-warranty.png"
-              title="Bảo hành chính hãng"
-              desc="Bảo hành theo chính sách hãng"
-            />
-            <BenefitsItem
-              iconSrc="/images/icon-products.png"
-              title="Đa dạng hàng hóa"
-              desc="Hơn 10.000 sản phẩm"
-            />
+        {/*
+          Mobile: compact horizontal 2-row scroller for benefits
+        */}
+        <div className="block md:hidden mb-4">
+          <div className="overflow-x-auto scrollbar-hide px-2">
+            <div className="grid grid-flow-col gap-3 grid-rows-2 py-2" style={{ gridAutoColumns: '120px' }}>
+              {[
+                { icon: "/images/icon-delivery.png", title: "Giao siêu tốc", desc: "Freeship > 2 triệu" },
+                { icon: "/images/icon-price.png", title: "Giá siêu tốt", desc: "Cam kết tốt nhất" },
+                { icon: "/images/icon-warranty.png", title: "Bảo hành", desc: "Chính hãng" },
+                { icon: "/images/icon-products.png", title: "Đa dạng", desc: "Hơn 10.000 sp" },
+              ].map((b, i) => (
+                <div key={i} className="snap-start flex-shrink-0">
+                  <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 h-full flex flex-col items-center justify-center" style={{ width: 112 }}>
+                    <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mb-2">
+                      <img src={b.icon} alt={b.title} className="w-8 h-8 object-contain" />
+                    </div>
+                    <div className="text-sm font-semibold text-gray-800 text-center">{b.title}</div>
+                    <div className="text-xs text-gray-500 mt-1 text-center">{b.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/*
+          Desktop/tablet: original benefits grid with richer styles
+        */}
+        <div className="hidden md:block">
+          <div className="bg-amber-400 rounded-xl p-8 shadow-md">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-center px-2">
+              <BenefitsItem
+                iconSrc="/images/icon-delivery.png"
+                title="Giao siêu tốc"
+                desc="Freeship đơn trên 2 triệu"
+              />
+              <BenefitsItem
+                iconSrc="/images/icon-price.png"
+                title="Giá siêu tốt"
+                desc="Cam kết tốt nhất thị trường"
+              />
+              <BenefitsItem
+                iconSrc="/images/icon-warranty.png"
+                title="Bảo hành chính hãng"
+                desc="Bảo hành theo chính sách hãng"
+              />
+              <BenefitsItem
+                iconSrc="/images/icon-products.png"
+                title="Đa dạng hàng hóa"
+                desc="Hơn 10.000 sản phẩm"
+              />
+            </div>
           </div>
         </div>
       </div>

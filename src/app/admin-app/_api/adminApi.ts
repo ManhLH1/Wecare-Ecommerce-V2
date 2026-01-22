@@ -57,6 +57,7 @@ export interface SaleOrder {
   crdfd_dieu_khoan_thanh_toan?: string;
   crdfd_ieukhoanthanhtoan?: string;
   crdfd_tongtien?: number; // Tổng tiền (raw field)
+  createdon?: string;
 }
 
 export interface Warehouse {

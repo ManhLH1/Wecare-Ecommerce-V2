@@ -253,6 +253,7 @@ interface ProductEntryFormProps {
   customerWecareRewards?: string | null;
   paymentTerms?: string | number | null;
   soId?: string;
+  soCreatedOn?: string; // Ngày tạo SO
   orderType?: number | null; // Loại đơn hàng OptionSet value (optional)
   vatText?: string; // VAT text từ SO ("Có VAT" hoặc "Không VAT")
   quantity: number;
@@ -330,6 +331,7 @@ function ProductEntryForm({
   customerWecareRewards,
   paymentTerms,
   soId,
+  soCreatedOn,
   orderType,
   vatText,
   quantity,
@@ -1037,6 +1039,35 @@ function ProductEntryForm({
       return true;
     }
 
+    // Kiểm tra hạn thêm sản phẩm: nếu hiện tại >= (createdOn + 7 ngày) thì không cho thêm sản phẩm
+    if (soCreatedOn) {
+      const createdDate = new Date(soCreatedOn);
+      if (!isNaN(createdDate.getTime())) {
+        const sevenHoursAfter = new Date(createdDate);
+        sevenHoursAfter.setHours(sevenHoursAfter.getHours() + 7);
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        // Compare using local date string (YYYY-MM-DD) to avoid timezone issues
+        const sevenHoursAfterDateStr = sevenHoursAfter.toLocaleDateString('en-CA');
+        const yesterdayDateStr = yesterday.toLocaleDateString('en-CA');
+
+        // Debug log to help trace why button may still be enabled
+        // (will appear in browser console)
+        // eslint-disable-next-line no-console
+        console.log('[ProductEntryForm] soCreatedOn:', soCreatedOn, 'sevenHoursAfter:', sevenHoursAfter.toISOString(), 'sevenHoursAfterDate:', sevenHoursAfterDateStr, 'yesterdayDate:', yesterdayDateStr);
+
+        // If (createdOn + 7h) is on or before yesterday (local date), disable adding today
+        const sevenDateOnly = new Date(sevenHoursAfter.getFullYear(), sevenHoursAfter.getMonth(), sevenHoursAfter.getDate()).getTime();
+        const yesterdayOnly = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate()).getTime();
+
+        if (sevenDateOnly <= yesterdayOnly) {
+          const reason = 'không bổ sung sản phẩm vào SO cũ';
+          return true;
+        }
+      }
+    }
+
     // Kiểm tra đơn VAT trước - đơn VAT không cho thêm sản phẩm không VAT
     const vatTextLower = (vatText || '').toLowerCase();
     const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
@@ -1157,6 +1188,22 @@ function ProductEntryForm({
     if (!approvePrice && priceNum <= 0) {
       const reason = 'Vui lòng nhập giá';
       return reason;
+    }
+
+    // Kiểm tra hạn thêm sản phẩm: nếu hiện tại >= (createdOn + 7 ngày) thì không cho thêm sản phẩm
+    if (soCreatedOn) {
+      const createdDate = new Date(soCreatedOn);
+      if (!isNaN(createdDate.getTime())) {
+        const sevenHoursAfter = new Date(createdDate);
+        sevenHoursAfter.setHours(sevenHoursAfter.getHours() + 7);
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        if (sevenHoursAfter.toDateString() === yesterday.toDateString()) {
+          const reason = 'SO đã quá hạn 7 giờ không được thêm sản phẩm';
+          return reason;
+        }
+      }
     }
 
     // Kiểm tra đơn VAT trước - đơn VAT không cho thêm sản phẩm không VAT

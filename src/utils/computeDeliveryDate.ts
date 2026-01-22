@@ -237,7 +237,7 @@ export function computeDeliveryDate(params: {
             const totalCa = districtLeadtime + extraCaForOutOfStock;
             console.log(`   📅 Tổng leadtime: ${totalCa} ca = ${districtLeadtime} (quận) + ${extraCaForOutOfStock} (bổ sung)`);
 
-            let result = addWorkingDaysWithFraction(effectiveOrderTime, totalCa);
+            let result = addWorkingDaysWithFraction(effectiveOrderTime, totalCa, warehouseCode);
 
             // Apply Sunday adjustment for HCM warehouse
             result = applySundayAdjustment(result, warehouseCode);
@@ -250,7 +250,7 @@ export function computeDeliveryDate(params: {
             console.log('   ➖ Không áp dụng Weekend Reset');
 
             // Not out-of-stock: original district leadtime behavior (no weekend reset)
-            let result = addWorkingDaysWithFraction(orderTime, districtLeadtime);
+            let result = addWorkingDaysWithFraction(orderTime, districtLeadtime, warehouseCode);
 
             // Apply Sunday adjustment for HCM warehouse (district result may still fall on Sunday)
             result = applySundayAdjustment(result, warehouseCode);
@@ -284,7 +284,7 @@ export function computeDeliveryDate(params: {
         }
 
         if (leadtimeCa > 0) {
-            let result = addWorkingDaysWithFraction(effectiveOrderTime, leadtimeCa);
+            let result = addWorkingDaysWithFraction(effectiveOrderTime, leadtimeCa, warehouseCode);
             // Apply Sunday adjustment for HCM warehouse
             result = applySundayAdjustment(result, warehouseCode);
             console.log(`   📆 NGÀY GIAO CUỐI CÙNG: ${result.toISOString().split('T')[0]} ${result.toLocaleTimeString('vi-VN')}`);

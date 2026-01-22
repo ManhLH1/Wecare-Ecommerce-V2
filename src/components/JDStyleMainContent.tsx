@@ -9,6 +9,7 @@ import { useProductGroupHierarchy } from '@/hooks/useProductGroupHierarchy';
 import { generateProductUrl } from '@/utils/urlGenerator';
 import { usePermission } from '@/hooks/usePermission';
 import HeroBannerImage from '@/assets/img/sample hero-section wecare.png';
+import FeaturedCategories from '@/components/FeaturedCategories';
 import NewsImage1 from '@/assets/img/Artboard 1.png';
 import NewsImage2 from '@/assets/img/Artboard 2.png';
 import NewsImage3 from '@/assets/img/Artboard 3.png';
@@ -89,8 +90,10 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
   const [sliderHeight, setSliderHeight] = useState<number | null>(null);
   const [currentPromoIdx, setCurrentPromoIdx] = useState(0);
   const heroContainerRef = useRef<HTMLDivElement | null>(null);
+  const newsScrollerRef = useRef<HTMLDivElement | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [userName, setUserName] = useState<string>('');
+  const [newsScrollProgress, setNewsScrollProgress] = useState<number>(0);
   const router = useRouter();
   const { hierarchy } = useProductGroupHierarchy();
   const promoProducts = React.useMemo(() => {
@@ -253,6 +256,11 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
           <span className="text-gray-400 text-2xl">{getIcon(product.crdfd_name || product.crdfd_tensanphamtext || 'Sản phẩm')}</span>
         )}
       </div>
+
+      {/* Featured Categories (mobile only) - show immediately under quick menu */}
+      <div className="block md:hidden mb-3">
+        <FeaturedCategories categories={categoryGroups} loading={false} />
+      </div>
       <div className="text-left">
         <div className="text-sm font-medium text-gray-800 line-clamp-2">
           {product.crdfd_name || product.crdfd_tensanphamtext}
@@ -280,22 +288,53 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
     setSliderHeight(420);
   }, []);
 
+  // Mobile news scroller indicator progress
+  useEffect(() => {
+    const el = newsScrollerRef.current;
+    if (!el) return;
+    let rafId = 0;
+    const onScroll = () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const max = el.scrollWidth - el.clientWidth;
+        const progress = max > 0 ? el.scrollLeft / max : 0;
+        setNewsScrollProgress(progress);
+      });
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [latestNews]);
+
   return (
     <div className="flex-1">
-      {/* Quick Menu - Chỉ hiện trên Mobile với horizontal scroll mượt */}
+      {/* Quick Menu - Mobile: compact icon cards with horizontal scroller */}
       <div className="mb-3 lg:hidden">
-        <div className="w-full overflow-x-auto scrollbar-hide -mx-1 px-1">
-          <nav className="flex gap-2 items-center py-2 min-w-max">
+        <div className="w-full overflow-x-auto scrollbar-hide -mx-4 px-4">
+          <nav className="flex gap-3 items-center py-2 min-w-max overflow-x-auto scrollbar-hide snap-x snap-mandatory px-1 touch-manipulation">
             {getMenuItems().map((item, idx) => (
               <Link
                 key={idx}
                 href={item.href}
-                className="no-underline group flex items-center gap-1.5 whitespace-nowrap bg-white border border-gray-200 rounded-full px-3 py-2 shadow-sm active:scale-95 transition-all duration-200 touch-manipulation"
+                className="no-underline snap-start flex flex-col items-center justify-center w-14 shrink-0 px-0 py-1"
               >
-                <span className="text-sm">{item.icon}</span>
-                <span className="text-xs font-medium text-gray-700 group-hover:text-gray-900 transition-all">{item.label}</span>
+                <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-cyan-600 text-xl shadow-sm transition-transform duration-150 active:scale-95">
+                  <span aria-hidden className="select-none">{item.icon}</span>
+                </div>
+                <span className="mt-1 text-[11px] text-gray-700 text-center truncate w-full">{item.label}</span>
               </Link>
             ))}
+
+            {/* Compact primary CTA */}
+            <Link
+              href="/san-pham"
+              className="no-underline snap-start flex items-center justify-center w-14 shrink-0 px-0 py-1"
+            >
+              <div className="w-12 h-10 rounded-full bg-cyan-600 flex items-center justify-center text-white text-xs font-semibold">Tất cả</div>
+            </Link>
           </nav>
         </div>
       </div>
@@ -347,7 +386,7 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
         {/* Tin tức - Mobile: horizontal scroll, Desktop: vertical stack */}
         <div className="w-full lg:w-[30%] lg:h-[500px]">
           {/* Mobile: horizontal scroll với snap */}
-          <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible scrollbar-hide snap-x snap-mandatory lg:snap-none -mx-2 px-2 lg:mx-0 lg:px-0 lg:h-full">
+          <div ref={newsScrollerRef} className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible scrollbar-hide snap-x snap-mandatory lg:snap-none -mx-2 px-2 lg:mx-0 lg:px-0 lg:h-full">
             {/* Tin tức 1 */}
             <div className="flex-shrink-0 w-[75vw] sm:w-[60vw] lg:w-full h-[140px] sm:h-[160px] lg:flex-1 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden relative snap-start">
               <Link
@@ -397,14 +436,25 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
             </div>
           </div>
 
-          {/* Mobile scroll indicator */}
-          <div className="flex justify-center gap-1.5 mt-2 lg:hidden">
-            <div className="w-6 h-1 bg-cyan-500 rounded-full"></div>
-            <div className="w-1.5 h-1 bg-gray-300 rounded-full"></div>
-            <div className="w-1.5 h-1 bg-gray-300 rounded-full"></div>
+          {/* Mobile scroll indicator - subtle moving thumb */}
+          <div className="flex justify-center mt-2 lg:hidden">
+            <div className="relative w-24 h-1 bg-gray-200/40 rounded-full">
+              <div
+                className="absolute top-0 h-1 bg-cyan-500 rounded-full"
+                style={{
+                  width: '22%',
+                  left: `${Math.min(100, Math.max(0, newsScrollProgress * 100))}%`,
+                  transform: 'translateX(-50%)',
+                  transition: 'left 140ms ease-out',
+                  boxShadow: '0 1px 6px rgba(3,105,161,0.12)',
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>
+
+      
 
       {showExtraSections && (
         <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">

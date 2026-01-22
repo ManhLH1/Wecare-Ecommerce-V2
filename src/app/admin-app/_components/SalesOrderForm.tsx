@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import ProductEntryForm from './ProductEntryForm';
 import ProductTable from './ProductTable';
 import Dropdown from './Dropdown';
@@ -58,6 +59,7 @@ interface SalesOrderFormProps {
 }
 
 export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormProps) {
+  const searchParams = useSearchParams();
 
   // Helpers
   const normalizePromoKey = (p: any) => String(p.promotionId || p.id || p.name || '');
@@ -91,6 +93,14 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const [isSaving, setIsSaving] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [isOrderInfoCollapsed, setIsOrderInfoCollapsed] = useState(false);
+
+  // Read soId from URL params on mount
+  useEffect(() => {
+    const urlSoId = searchParams?.get('soId');
+    if (urlSoId && urlSoId !== soId) {
+      setSoId(urlSoId);
+    }
+  }, [searchParams, soId]);
 
   // Fetch data for dropdowns
   const { customers, loading: customersLoading } = useCustomers(customerSearch);
@@ -2212,6 +2222,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             paymentTerms={selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan}
             orderType={selectedSo?.crdfd_loai_don_hang}
             soId={soId}
+            soCreatedOn={selectedSo?.createdon}
             orderTotal={orderSummary.total}
             quantity={quantity}
             setQuantity={setQuantity}
