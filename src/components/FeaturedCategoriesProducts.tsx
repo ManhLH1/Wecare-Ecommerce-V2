@@ -37,8 +37,8 @@ const sliderSettings = {
   dots: false,
   infinite: true,
   speed: 500,
-  // Increase slides on wide screens since cards are now portrait
-  slidesToShow: 5,
+  // Desktop-first but responsive for mobile
+  slidesToShow: 4,
   slidesToScroll: 1,
   autoplay: true,
   autoplaySpeed: 3500,
@@ -47,10 +47,10 @@ const sliderSettings = {
   prevArrow: <PrevArrow />,
   nextArrow: <NextArrow />,
   responsive: [
-    { breakpoint: 1800, settings: { slidesToShow: 6 } },
-    { breakpoint: 1400, settings: { slidesToShow: 5 } },
+    { breakpoint: 1600, settings: { slidesToShow: 5 } },
     { breakpoint: 1100, settings: { slidesToShow: 4 } },
-    { breakpoint: 800, settings: { slidesToShow: 2 } },
+    { breakpoint: 900, settings: { slidesToShow: 3 } },
+    { breakpoint: 640, settings: { slidesToShow: 2 } },
     { breakpoint: 480, settings: { slidesToShow: 1 } },
   ],
 };
@@ -69,6 +69,17 @@ const FeaturedCategoriesProducts: React.FC<{
     open: false,
     promo: null,
   });
+  const [isMobileView, setIsMobileView] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth < 640;
+  });
+
+  useEffect(() => {
+    const onResize = () => setIsMobileView(window.innerWidth < 640);
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   useEffect(() => {
     if (!categories || categories.length === 0) {
@@ -264,8 +275,8 @@ const FeaturedCategoriesProducts: React.FC<{
             <h3 className="text-lg font-semibold">
               <Link
                 href={category.href || "/san-pham"}
-                className="text-cyan-600 no-underline hover:text-cyan-700 text-2xl uppercase"
-                style={{ textDecoration: "none" }}
+                className="text-cyan-600 no-underline hover:text-cyan-700 text-lg md:text-2xl"
+                style={{ textDecoration: "none", textTransform: "uppercase" }}
               >
                 {category.name}
               </Link>
@@ -287,88 +298,51 @@ const FeaturedCategoriesProducts: React.FC<{
               ))}
             </div>
           ) : products && products.length > 0 ? (
-            <div className="bg-white rounded-md p-3 shadow-sm">
-              <Slider {...sliderSettings}>
+            isMobileView ? (
+              <div
+                className="flex gap-3 overflow-x-auto scrollbar-hide py-2 px-1 snap-x snap-mandatory"
+                style={{ WebkitOverflowScrolling: "touch" }}
+              >
                 {products.map((p: any, idx: number) => {
                   const title = p.crdfd_tensanphamtext || p.crdfd_name || p.name || "";
                   const imageSrc = p.cr1bb_imageurlproduct || p.cr1bb_imageurl || p.imageUrl || p.image || "";
-                  // derive price and original price robustly from common fields
                   const getPriceInfo = (prod: any) => {
                     let sale = null;
-                    let original = null;
                     try {
                       if (Array.isArray(prod.cr1bb_json_gia) && prod.cr1bb_json_gia.length > 0) {
                         const item = prod.cr1bb_json_gia[0];
                         sale = parseFloat(item.crdfd_gia ?? item.cr1bb_giakhongvat ?? item.cr1bb_giaban ?? NaN);
-                        // try to find original within the product or item
-                        original = parseFloat(item.originalPrice ?? prod.cr1bb_originalprice ?? prod.originalPrice ?? NaN);
                       } else if (typeof prod.cr1bb_json_gia === "string") {
                         try {
                           const parsed = JSON.parse(prod.cr1bb_json_gia);
                           if (Array.isArray(parsed) && parsed.length > 0) {
                             const item = parsed[0];
                             sale = parseFloat(item.crdfd_gia ?? item.cr1bb_giakhongvat ?? item.cr1bb_giaban ?? NaN);
-                            original = parseFloat(item.originalPrice ?? prod.cr1bb_originalprice ?? prod.originalPrice ?? NaN);
                           }
-                        } catch (e) {
-                          // ignore parse error
-                        }
+                        } catch (e) {}
                       }
-                    } catch (e) {
-                      // ignore errors
-                    }
-
-                    // fallback fields
+                    } catch (e) {}
                     if (!sale || Number.isNaN(sale)) {
                       sale = parseFloat(prod.cr1bb_giaban ?? prod.price ?? prod.crdfd_giatheovc ?? prod.crdfd_gia ?? NaN);
                     }
-                    if (!original || Number.isNaN(original)) {
-                      original = parseFloat(prod.cr1bb_giakhuyenmai ?? prod.originalPrice ?? prod.cr1bb_originalprice ?? NaN);
-                    }
-
                     sale = Number.isFinite(sale) ? sale : null;
-                    original = Number.isFinite(original) ? original : null;
-                    const discount = original && sale && original > sale ? Math.round(((original - sale) / original) * 100) : null;
-                    return { sale, original, discount };
+                    return { sale };
                   };
-
-                  const { sale: priceVal, original: originalVal, discount: discountPerc } = getPriceInfo(p);
+                  const { sale: priceVal } = getPriceInfo(p);
                   const productId = p.crdfd_productsid || p.productId || p.id || `${category.id}-${idx}`;
-                  const key = productId;
-
                   return (
-                    <div key={key} className="px-2 py-2">
-                      <div
-                        className="relative rounded-lg bg-white p-2 flex flex-col justify-between text-center shadow-sm hover:shadow-md transition-transform transition-colors transform-gpu hover:-translate-y-1"
-                        style={{ height: 300, border: '1px solid #049dbf' }}
-                      >
-                        {/* Discount ribbon */}
-                        {discountPerc ? (
-                          <div
-                            className="absolute -top-1 -left-1 text-white font-semibold"
-                            style={{
-                              background: "linear-gradient(90deg,#ef4444,#dc2626)",
-                              padding: "6px 10px",
-                              borderTopLeftRadius: 8,
-                              borderBottomRightRadius: 10,
-                              boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
-                              fontSize: 12,
-                            }}
-                            aria-hidden
-                          >
-                            -{discountPerc}%
-                          </div>
-                        ) : null}
-
-                        {/* Compare control removed for cleaner layout */}
-
-                        <div className="flex-1 flex flex-col items-center justify-start pt-1">
-                          <div className="w-full max-w-[220px] p-2 flex items-center justify-center h-[140px]">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <div
+                      key={productId}
+                      className="min-w-[46%] flex-shrink-0 snap-start bg-white rounded-lg p-2 shadow-sm hover:shadow-md transition box-border"
+                      style={{ flexBasis: '46%', height: 240 }}
+                    >
+                      <Link href={p.href || category.href || "/san-pham"} className="no-underline text-gray-800">
+                        <div className="flex flex-col h-full justify-between">
+                          <div className="flex-none w-full h-28 flex items-center justify-center overflow-hidden">
                             <img
                               src={imageSrc || ""}
                               alt={title || category.name}
-                              className="object-contain max-w-full max-h-[120px] block"
+                              className="object-contain max-h-full max-w-full block"
                               onError={(e: any) => {
                                 e.currentTarget.onerror = null;
                                 e.currentTarget.src =
@@ -376,30 +350,132 @@ const FeaturedCategoriesProducts: React.FC<{
                               }}
                             />
                           </div>
-                        </div>
 
-                        <div className="mt-2 flex flex-col items-center" style={{ minHeight: 72 }}>
-                          <h3 className="text-base md:text-lg font-semibold text-gray-800 leading-snug mb-2 line-clamp-3 min-h-[54px] flex items-center justify-center text-center">
-                            <Link href={p.href || category.href || "/san-pham"} className="text-gray-800 no-underline" style={{ textDecoration: "none" }}>
-                              {title}
-                            </Link>
-                          </h3>
-
-                          <div className="text-base text-red-600 font-bold">
-                            {priceVal ? `${priceVal.toLocaleString("vi-VN")}₫` : ""}
+                          <div className="flex-none mt-2">
+                            <div className="text-sm font-medium line-clamp-2 text-gray-800 h-10 overflow-hidden">{title}</div>
+                            <div className="text-sm text-red-600 font-semibold mt-1">{priceVal ? `${priceVal.toLocaleString("vi-VN")}₫` : ""}</div>
                           </div>
-                          {originalVal ? (
-                            <div className="text-xs text-gray-400 line-through mt-1">
-                              {originalVal ? `${originalVal.toLocaleString("vi-VN")}₫` : ""}
-                            </div>
-                          ) : null}
                         </div>
-                      </div>
+                      </Link>
                     </div>
                   );
                 })}
-              </Slider>
-            </div>
+              </div>
+            ) : (
+              <div className="bg-white rounded-md p-3 shadow-sm">
+                <Slider {...sliderSettings}>
+                  {products.map((p: any, idx: number) => {
+                    const title = p.crdfd_tensanphamtext || p.crdfd_name || p.name || "";
+                    const imageSrc = p.cr1bb_imageurlproduct || p.cr1bb_imageurl || p.imageUrl || p.image || "";
+                    // derive price and original price robustly from common fields
+                    const getPriceInfo = (prod: any) => {
+                      let sale = null;
+                      let original = null;
+                      try {
+                        if (Array.isArray(prod.cr1bb_json_gia) && prod.cr1bb_json_gia.length > 0) {
+                          const item = prod.cr1bb_json_gia[0];
+                          sale = parseFloat(item.crdfd_gia ?? item.cr1bb_giakhongvat ?? item.cr1bb_giaban ?? NaN);
+                          // try to find original within the product or item
+                          original = parseFloat(item.originalPrice ?? prod.cr1bb_originalprice ?? prod.originalPrice ?? NaN);
+                        } else if (typeof prod.cr1bb_json_gia === "string") {
+                          try {
+                            const parsed = JSON.parse(prod.cr1bb_json_gia);
+                            if (Array.isArray(parsed) && parsed.length > 0) {
+                              const item = parsed[0];
+                              sale = parseFloat(item.crdfd_gia ?? item.cr1bb_giakhongvat ?? item.cr1bb_giaban ?? NaN);
+                              original = parseFloat(item.originalPrice ?? prod.cr1bb_originalprice ?? prod.originalPrice ?? NaN);
+                            }
+                          } catch (e) {
+                            // ignore parse error
+                          }
+                        }
+                      } catch (e) {
+                        // ignore errors
+                      }
+
+                      // fallback fields
+                      if (!sale || Number.isNaN(sale)) {
+                        sale = parseFloat(prod.cr1bb_giaban ?? prod.price ?? prod.crdfd_giatheovc ?? prod.crdfd_gia ?? NaN);
+                      }
+                      if (!original || Number.isNaN(original)) {
+                        original = parseFloat(prod.cr1bb_giakhuyenmai ?? prod.originalPrice ?? prod.cr1bb_originalprice ?? NaN);
+                      }
+
+                      sale = Number.isFinite(sale) ? sale : null;
+                      original = Number.isFinite(original) ? original : null;
+                      const discount = original && sale && original > sale ? Math.round(((original - sale) / original) * 100) : null;
+                      return { sale, original, discount };
+                    };
+
+                    const { sale: priceVal, original: originalVal, discount: discountPerc } = getPriceInfo(p);
+                    const productId = p.crdfd_productsid || p.productId || p.id || `${category.id}-${idx}`;
+                    const key = productId;
+
+                    return (
+                      <div key={key} className="px-2 py-2">
+                        <div
+                          className="relative rounded-lg bg-white p-2 flex flex-col justify-between text-center shadow-sm hover:shadow-md transition-transform transition-colors transform-gpu hover:-translate-y-1 h-[260px] sm:h-[300px]"
+                          style={{ border: '1px solid #049dbf' }}
+                        >
+                          {/* Discount ribbon */}
+                          {discountPerc ? (
+                            <div
+                              className="absolute -top-1 -left-1 text-white font-semibold"
+                              style={{
+                                background: "linear-gradient(90deg,#ef4444,#dc2626)",
+                                padding: "6px 10px",
+                                borderTopLeftRadius: 8,
+                                borderBottomRightRadius: 10,
+                                boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
+                                fontSize: 12,
+                              }}
+                              aria-hidden
+                            >
+                              -{discountPerc}%
+                            </div>
+                          ) : null}
+
+                          {/* Compare control removed for cleaner layout */}
+
+                          <div className="flex-1 flex flex-col items-center justify-start pt-1">
+                            <div className="w-full max-w-[220px] p-2 flex items-center justify-center h-[120px] sm:h-[140px]">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={imageSrc || ""}
+                                alt={title || category.name}
+                                className="object-contain max-w-full max-h-[90px] sm:max-h-[120px] block"
+                                onError={(e: any) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src =
+                                    "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='400'><rect width='100%' height='100%' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='14'>No image</text></svg>";
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="mt-2 flex flex-col items-center" style={{ minHeight: 60 }}>
+                            <h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-800 leading-snug mb-2 line-clamp-2 min-h-[48px] sm:min-h-[54px] flex items-center justify-center text-center">
+                              <Link href={p.href || category.href || "/san-pham"} className="text-gray-800 no-underline" style={{ textDecoration: "none" }}>
+                                {title}
+                              </Link>
+                            </h3>
+
+                            <div className="text-sm sm:text-base text-red-600 font-bold">
+                              {priceVal ? `${priceVal.toLocaleString("vi-VN")}₫` : ""}
+                            </div>
+                            {originalVal ? (
+                              <div className="text-xs text-gray-400 line-through mt-1">
+                                {originalVal ? `${originalVal.toLocaleString("vi-VN")}₫` : ""}
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </Slider>
+              </div>
+            )
           ) : (
             <div className="text-sm text-gray-500">Không có sản phẩm hiển thị cho danh mục này.</div>
           )}

@@ -28,8 +28,40 @@ const BrandStrip: React.FC = () => {
             <a href="/thuong-hieu" className="text-sm text-amber-500 hover:underline">Xem tất cả</a>
           </div>
 
-          {/* Grid: mobile 2, sm 3, md 4, lg 6 per row */}
-          <div className="overflow-hidden">
+          {/* Mobile: horizontal scroll with snap; Desktop: grid */}
+          <div className="block md:hidden">
+            <div className="relative">
+              <div className="overflow-x-auto scrollbar-hide py-3 px-2" style={{ WebkitOverflowScrolling: "touch" }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridAutoFlow: "column",
+                    gridTemplateRows: "repeat(2, 1fr)",
+                    gridAutoColumns: "minmax(140px, 46%)",
+                    gap: "12px",
+                  }}
+                >
+                  {brandImages.map((filename) => {
+                    const src = `/thuong-hieu/${encodeURIComponent(filename)}`;
+                    const alt = filename.replace(/\.[^.]+$/, "");
+                    return (
+                      <div key={filename} className="snap-start flex-shrink-0">
+                        <div className="bg-white rounded-lg p-2 flex items-center justify-center h-20 shadow-sm overflow-hidden">
+                          <img src={src} alt={alt} loading="lazy" className="h-14 w-auto object-contain" />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* left/right gradient indicators */}
+              <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white to-transparent" />
+              <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent" />
+            </div>
+          </div>
+
+          <div className="hidden md:block overflow-hidden">
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 lg:grid-rows-2 gap-0 py-0">
               {brandImages.map((filename) => {
                 const src = `/thuong-hieu/${encodeURIComponent(filename)}`;

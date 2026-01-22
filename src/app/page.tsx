@@ -30,7 +30,6 @@ import TopProductsSection from "../app/product-list/_components/top-products/Top
 import ProductGroupList from "./product-list/productgroup-list";
 import NewsSection from "@/components/NewsSection";
 import CategorySection from "@/components/CategorySection";
-import ShortcutSection from "@/components/ShortcutSection";
 import HomeBenefitsPanel from "@/components/HomeBenefitsPanel";
 import FeaturedCategories from "@/components/FeaturedCategories";
 import HeroSection from "@/components/HeroSection";
@@ -1096,30 +1095,7 @@ const HomeContent = () => {
             </div>
           </Reveal>
         </section>
-        {/* Shortcut Section - MOBILE UI với swipe */}
-        <ShortcutSection
-          items={[
-            { icon: "🛒", label: "Tất cả sản phẩm 1", href: "/san-pham" },
-            {
-              icon: "🔥",
-              label: "Sản phẩm bán chạy",
-              href: "/top-san-pham-ban-chay",
-            },
-            { icon: "🏷️", label: "Khuyến mãi", href: "/promotion" },
-            { icon: "📰", label: "Tin tức", href: "/post" },
-            // Ẩn lịch sử đơn hàng và thanh toán cho tất cả user types
-            // Chỉ hiển thị cho các user type khác nếu cần
-            ...(userType === "sale"
-              ? [
-                {
-                  icon: "👔",
-                  label: getSaleOrdersConfig(false).label,
-                  href: getSaleOrdersConfig(false).href,
-                },
-              ]
-              : []),
-          ]}
-        />
+        {/* ShortcutSection removed as requested */}
         {/* Home Benefits Panel - banners similar to sample */}
         <HomeBenefitsPanel />
         {/* Featured categories (mapped from categoryGroups) */}
