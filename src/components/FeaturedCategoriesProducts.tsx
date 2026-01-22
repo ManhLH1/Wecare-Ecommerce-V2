@@ -270,18 +270,21 @@ const FeaturedCategoriesProducts: React.FC<{
   return (
     <div className="relative px-2 md:px-6 my-1 my-lg-2">
       {groupsWithProducts.map(({ category, products, loading: groupLoading }) => (
-        <section key={category.id} className="py-6">
+        <section key={category.id} className="py-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-semibold">
-              <Link
-                href={category.href || "/san-pham"}
-                className="text-cyan-600 no-underline hover:text-cyan-700 text-lg md:text-2xl"
-                style={{ textDecoration: "none", textTransform: "uppercase" }}
-              >
-                {category.name}
-              </Link>
-            </h3>
-            <Link href={category.href || "/san-pham"} className="text-sm text-gray-500 hover:text-gray-700 no-underline" style={{ textDecoration: "none", textTransform: "none" }}>
+            <div className="flex items-center gap-3">
+              <h3 className="text-lg font-semibold">
+                <Link
+                  href={category.href || "/san-pham"}
+                  className="text-cyan-600 no-underline hover:text-cyan-700 text-lg md:text-2xl"
+                  style={{ textDecoration: "none", textTransform: "uppercase" }}
+                >
+                  {category.name}
+                </Link>
+              </h3>
+              <span className="inline-block w-14 h-1 bg-amber-300 rounded" />
+            </div>
+            <Link href={category.href || "/san-pham"} className="text-sm text-cyan-600 hover:text-cyan-700 no-underline" style={{ textDecoration: "none", textTransform: "none" }}>
               Xem tất cả
             </Link>
           </div>

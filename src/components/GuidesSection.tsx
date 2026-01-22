@@ -94,15 +94,15 @@ import Image from "next/image";
   // We'll use Next.js Image for automatic optimization/responsive srcset.
 
   return (
-    <section className="w-full bg-white py-6">
+    <section className="w-full bg-white py-2">
       <div className="relative px-4 md:px-12">
         <div className="py-2">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <h3 className="text-cyan-600 no-underline hover:text-cyan-700 text-2xl uppercase">CẨM NANG - KINH NGHIỆM</h3>
               <span className="inline-block w-12 h-1 bg-amber-300 rounded" />
             </div>
-            <Link href="/post" className="text-sm text-amber-500 no-underline" style={{ textDecoration: "none" }}>Xem tất cả</Link>
+            <Link href="/post" className="text-sm text-cyan-600 hover:text-cyan-700 no-underline" style={{ textDecoration: "none", textTransform: "none" }}>Xem tất cả</Link>
           </div>
 
           {loading ? (

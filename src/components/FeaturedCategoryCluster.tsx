@@ -67,7 +67,8 @@ const FeaturedCategoryCluster = ({
         </h3>
         <Link
           href="/san-pham"
-          className="text-sm text-blue-600 hover:underline no-underline"
+          className="text-sm text-cyan-600 hover:text-cyan-700 no-underline"
+          style={{ textDecoration: "none" }}
         >
           Xem tất cả
         </Link>

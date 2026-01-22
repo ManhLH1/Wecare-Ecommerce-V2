@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 
 const brandImages = [
   "Nhựa Bình Minh.png",
@@ -17,14 +18,12 @@ const brandImages = [
 
 const BrandStrip: React.FC = () => {
   return (
-    <section className="w-full py-6 bg-white">
-      <div className="relative px-[5px] md:px-[50px]">
+    <section className="w-full pt-2.5 pb-4 bg-white mb-6">
+      <div className="relative">
         <div className="p-0">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <h3 className="text-cyan-600 no-underline hover:text-cyan-700 text-2xl uppercase">THƯƠNG HIỆU NỔI BẬT</h3>
-              <span className="inline-block w-14 h-1 bg-amber-300 rounded" />
-            </div>
+          <div className="flex items-center gap-3 mb-3">
+            <h3 className="text-cyan-600 no-underline hover:text-cyan-700 text-2xl uppercase">THƯƠNG HIỆU NỔI BẬT</h3>
+            <span className="inline-block w-14 h-1 bg-amber-300 rounded" />
           </div>
 
           {/* Mobile: horizontal scroll with snap; Desktop: grid */}

@@ -71,15 +71,14 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
   // Show loading skeleton when loading
   if (loading) {
     return (
-      <section className="w-full py-3 bg-gradient-to-r from-cyan-500 to-cyan-600">
-        <div className="relative px-[5px] md:px-[50px]">
-          <div className="p-3">
+    <section className="w-full py-4 bg-white">
+      <div className="relative px-2 md:px-6">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
-                <h3 className="text-xl font-bold text-white">DANH MỤC NỔI BẬT</h3>
+                <h3 className="text-xl font-bold text-cyan-600">DANH MỤC NỔI BẬT</h3>
                 <span className="inline-block w-14 h-1 bg-amber-300 rounded" />
               </div>
-              <Link href="/san-pham" className="text-sm text-amber-300 hover:text-white hover:underline">Xem tất cả</Link>
+              <Link href="/san-pham" className="text-sm text-cyan-600 hover:text-cyan-700 no-underline" style={{ textDecoration: "none", textTransform: "none" }}>Xem tất cả</Link>
             </div>
             <div className="grid gap-2 items-stretch" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
               {Array.from({ length: 8 }).map((_, index) => (
@@ -96,7 +95,6 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
               ))}
             </div>
           </div>
-        </div>
       </section>
     );
   }
@@ -105,7 +103,7 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
     // Show debug info for production troubleshooting
     console.error('[FeaturedCategories] No valid categories found. Raw categories:', categories);
     return (
-      <section className="w-full py-6">
+      <section className="w-full py-4">
         <div className="w-full text-center text-sm text-gray-500 px-0">
           Không có danh mục nổi bật thỏa điều kiện (cần ảnh).
           <div className="text-xs text-red-500 mt-1">
@@ -117,13 +115,17 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
   }
 
   return (
-    <section className="w-full py-6 bg-white md:bg-gradient-to-r md:from-cyan-500 md:to-cyan-600">
-      <div className="relative px-4 md:px-[5px] md:px-[50px]">
+    <section className="w-full py-4 bg-white">
+      <div className="relative px-2 md:px-6">
         <div className="p-0 md:p-1">
           {/* Mobile: horizontal scroller with 2 rows */}
           <div className="block md:hidden">
-            <div className="flex items-center justify-between mb-3 px-1">
-              <h3 className="text-lg font-semibold text-gray-900">Danh mục nổi bật</h3>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <h3 className="text-lg font-semibold text-cyan-600">DANH MỤC NỔI BẬT</h3>
+                <span className="inline-block w-14 h-1 bg-amber-300 rounded" />
+              </div>
+              <Link href="/san-pham" className="text-sm text-cyan-600 hover:text-cyan-700 no-underline" style={{ textDecoration: "none", textTransform: "none" }}>Xem tất cả</Link>
             </div>
 
             <div className="overflow-x-auto scrollbar-hide -mx-4 px-4" ref={scrollerRef}>
@@ -173,22 +175,23 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
             {/* no more 'Xem thêm' on mobile - list is horizontally scrollable */}
           </div>
 
-          {/* Desktop: Original design */}
+          {/* Desktop: Consistent design */}
           <div className="hidden md:block">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
-                <h3 className="text-xl font-bold text-white">DANH MỤC NỔI BẬT</h3>
+                <h3 className="text-xl font-bold text-cyan-600">DANH MỤC NỔI BẬT</h3>
                 <span className="inline-block w-14 h-1 bg-amber-300 rounded" />
               </div>
-              <a href="/san-pham" className="text-sm text-amber-300 hover:text-white hover:underline">Xem tất cả</a>
+              <a href="/san-pham" className="text-sm text-cyan-600 hover:text-cyan-700 no-underline" style={{ textDecoration: "none", textTransform: "none" }}>Xem tất cả</a>
             </div>
 
-            {(() => {
-              const displayItems = validCategories.slice(0, 20);
-              const columns = Math.max(1, Math.ceil(displayItems.length / 2));
-              const gridStyle: React.CSSProperties = { gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` };
-              return (
-              <div className="grid gap-1 items-stretch" style={gridStyle}>
+            <div>
+              {(() => {
+                const displayItems = validCategories.slice(0, 20);
+                const columns = Math.max(1, Math.ceil(displayItems.length / 2));
+                const gridStyle: React.CSSProperties = { gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` };
+                return (
+                <div className="grid gap-1 items-stretch" style={gridStyle}>
                   {displayItems.map(cat => (
                     <Link key={cat.id || cat.productGroupId || cat.productGroupCode || String(Math.random())} href={cat.href || `/san-pham?group=${encodeURIComponent(cat.productGroupCode || '')}`} className="block text-center no-underline">
                     <div className="bg-white rounded-sm border border-gray-200 hover:shadow-sm transition h-full flex flex-col items-center min-h-[160px]">
@@ -206,8 +209,9 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
                     </Link>
                   ))}
                 </div>
-              );
-            })()}
+                );
+              })()}
+            </div>
           </div>
         </div>
       </div>
