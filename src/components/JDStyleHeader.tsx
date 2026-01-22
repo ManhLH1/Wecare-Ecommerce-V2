@@ -632,7 +632,7 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
 
         {/* Main Header with Search */}
         <div className="w-full bg-white border-b border-gray-200">
-          <div className="w-full max-w-[2560px] mx-auto px-4 md:px-6 lg:px-8 xl:px-16 py-2">
+        <div className="w-full max-w-[2560px] mx-auto px-4 md:px-6 lg:px-8 xl:px-16 py-1 md:py-2">
             <div className="flex items-center justify-between gap-2 sm:gap-3 md:gap-4 lg:gap-6">
               {/* Logo - Bên trái - Compact */}
               <Link

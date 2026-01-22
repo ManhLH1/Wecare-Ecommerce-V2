@@ -12,8 +12,8 @@ const items = [
 
 const HomeBenefitsPanel: React.FC = () => {
   return (
-    <section className="w-full mt-3 mb-3">
-      <div className="w-full max-w-[2560px] mx-auto px-4">
+    <section className="w-full py-6">
+      <div className="w-full max-w-[2560px] mx-auto px-0">
         {/* Mobile: 2-column card grid for better visual balance */}
         <div className="block lg:hidden">
         <div className="grid grid-cols-2 gap-3">
@@ -23,7 +23,7 @@ const HomeBenefitsPanel: React.FC = () => {
               href={it.href}
               className="no-underline"
             >
-              <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200 p-0 flex flex-col items-stretch text-center">
+              <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 p-0 flex flex-col items-stretch text-center">
                 <div className="w-full h-20 overflow-hidden mb-0 flex items-center justify-center bg-gray-50">
                   <img
                     src={it.img}
@@ -32,9 +32,7 @@ const HomeBenefitsPanel: React.FC = () => {
                     style={{ display: 'block' }}
                   />
                 </div>
-                <div className="p-3">
-                  <span className="text-sm font-semibold text-gray-800">{it.alt}</span>
-                </div>
+                {/* Caption removed — labels are embedded in the banner images */}
               </div>
             </Link>
           ))}

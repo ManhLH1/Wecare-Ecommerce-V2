@@ -1612,6 +1612,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         <div className="admin-app-column-right" style={{ flex: '1 1 70%', minWidth: 0 }}>
           <ProductEntryForm
             disableInventoryReserve={true}
+            disableCreatedOnCheck={true}
             isAdding={isAdding}
             isSaving={isSaving}
             isLoadingDetails={isLoadingDetails}

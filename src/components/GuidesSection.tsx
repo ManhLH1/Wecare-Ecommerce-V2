@@ -94,7 +94,7 @@ import Image from "next/image";
   // We'll use Next.js Image for automatic optimization/responsive srcset.
 
   return (
-    <section className="w-full bg-white py-4 mt-6">
+    <section className="w-full bg-white py-6">
       <div className="relative px-4 md:px-12">
         <div className="py-2">
           <div className="flex items-center justify-between mb-2">

@@ -312,9 +312,9 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
   return (
     <div className="flex-1">
       {/* Quick Menu - Mobile: compact icon cards with horizontal scroller */}
-      <div className="mb-3 lg:hidden">
-        <div className="w-full overflow-x-auto scrollbar-hide -mx-4 px-4">
-          <nav className="flex gap-3 items-center py-2 min-w-max overflow-x-auto scrollbar-hide snap-x snap-mandatory px-1 touch-manipulation">
+      <div className="mb-0 lg:hidden -mt-2">
+        <div className="w-full overflow-x-auto scrollbar-hide -mx-2 px-2 lg:mx-0 lg:px-0">
+          <nav className="flex gap-3 items-center py-0 min-w-max overflow-x-auto scrollbar-hide snap-x snap-mandatory px-1 touch-manipulation">
             {getMenuItems().map((item, idx) => (
               <Link
                 key={idx}
@@ -340,7 +340,7 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
       </div>
 
       {/* Hero Section + Tin tức bên phải (Desktop: ngang, Mobile: dọc) */}
-      <div id="hero-banner" ref={heroContainerRef} className="flex flex-col lg:flex-row gap-2 mb-3 lg:pl-0 lg:items-stretch">
+      <div id="hero-banner" ref={heroContainerRef} className="flex flex-col lg:flex-row gap-1 lg:gap-2 mb-2 lg:mb-3 lg:pl-0 lg:items-stretch">
         {/* Hero Banner */}
         <div className="w-full lg:w-[70%] border border-gray-200 rounded-xl shadow-sm overflow-hidden">
           {/* Mobile: aspect ratio 16:9, Desktop: fixed height */}

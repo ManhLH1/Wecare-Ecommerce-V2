@@ -17,7 +17,7 @@ const brandImages = [
 
 const BrandStrip: React.FC = () => {
   return (
-    <section className="w-full pt-4 pb-0 bg-white">
+    <section className="w-full py-6 bg-white">
       <div className="relative px-[5px] md:px-[50px]">
         <div className="p-0">
           <div className="flex items-center justify-between mb-3">
@@ -45,8 +45,8 @@ const BrandStrip: React.FC = () => {
                     const alt = filename.replace(/\.[^.]+$/, "");
                     return (
                       <div key={filename} className="snap-start flex-shrink-0">
-                        <div className="bg-white rounded-lg p-2 flex items-center justify-center h-20 shadow-sm overflow-hidden">
-                          <img src={src} alt={alt} loading="lazy" className="h-14 w-auto object-contain" />
+                        <div className="bg-white rounded-lg p-2 flex items-center justify-center h-24 shadow-sm overflow-hidden">
+                          <img src={src} alt={alt} loading="lazy" className="h-20 w-auto object-contain" />
                         </div>
                       </div>
                     );

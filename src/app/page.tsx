@@ -1047,7 +1047,7 @@ const HomeContent = () => {
         />
 
         {/* Main Layout */}
-        <div className="w-full max-w-[2560px] mx-auto pt-16 px-4">
+        <div className="w-full max-w-[2560px] mx-auto pt-20 md:pt-20 px-6">
           <div className="flex flex-col lg:flex-row">
             {/* Spacer for CategoryMenu dropdown on Desktop */}
             <div className="hidden lg:block w-[280px] flex-shrink-0" />
@@ -1063,7 +1063,7 @@ const HomeContent = () => {
         </div>
       </div>
 
-      <main className="w-full max-w-[2560px] mx-auto pt-0 px-4">
+      <main className="w-full max-w-[2560px] mx-auto pt-0 px-0">
 
         {/* DESKTOP Feature Cards dưới Hero (ẩn theo yêu cầu) */}
         <section id="features-b2b" className="hidden">

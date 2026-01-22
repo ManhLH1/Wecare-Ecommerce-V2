@@ -300,6 +300,7 @@ interface ProductEntryFormProps {
   onInventoryReserved?: () => void; // Callback khi inventory được reserve để trigger reload
   onProductGroupCodeChange?: (code: string) => void; // Callback khi productGroupCode thay đổi
   disableInventoryReserve?: boolean; // Tắt tính năng giữ hàng tự động (dùng cho SOBG)
+  disableCreatedOnCheck?: boolean; // Tắt kiểm tra hạn thêm sản phẩm theo createdOn (dùng cho SOBG)
   orderTotal?: number; // Tổng tiền toàn đơn (dùng để check Promotion Order & phân bổ chiết khấu VNĐ)
   onOpenSpecialPromotions?: () => Promise<void> | void;
   onOpenDiscount2?: (orderTotalOverride?: number) => Promise<void> | void;
@@ -378,6 +379,7 @@ function ProductEntryForm({
   onInventoryReserved,
   onProductGroupCodeChange,
   disableInventoryReserve = false,
+  disableCreatedOnCheck = false,
   orderTotal,
   onOpenSpecialPromotions,
   onOpenDiscount2,
@@ -1040,7 +1042,8 @@ function ProductEntryForm({
     }
 
     // Kiểm tra hạn thêm sản phẩm: nếu hiện tại >= (createdOn + 7 ngày) thì không cho thêm sản phẩm
-    if (soCreatedOn) {
+    // Bỏ qua kiểm tra này nếu disableCreatedOnCheck = true (dùng cho SOBG)
+    if (soCreatedOn && !disableCreatedOnCheck) {
       const createdDate = new Date(soCreatedOn);
       if (!isNaN(createdDate.getTime())) {
         const sevenHoursAfter = new Date(createdDate);
@@ -1191,7 +1194,8 @@ function ProductEntryForm({
     }
 
     // Kiểm tra hạn thêm sản phẩm: nếu hiện tại >= (createdOn + 7 ngày) thì không cho thêm sản phẩm
-    if (soCreatedOn) {
+    // Bypass kiểm tra này khi `disableCreatedOnCheck` được bật (dùng cho SOBG)
+    if (!disableCreatedOnCheck && soCreatedOn) {
       const createdDate = new Date(soCreatedOn);
       if (!isNaN(createdDate.getTime())) {
         const sevenHoursAfter = new Date(createdDate);

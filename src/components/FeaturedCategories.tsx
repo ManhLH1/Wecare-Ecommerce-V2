@@ -106,7 +106,7 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
     console.error('[FeaturedCategories] No valid categories found. Raw categories:', categories);
     return (
       <section className="w-full py-6">
-        <div className="w-full text-center text-sm text-gray-500 px-4">
+        <div className="w-full text-center text-sm text-gray-500 px-0">
           Không có danh mục nổi bật thỏa điều kiện (cần ảnh).
           <div className="text-xs text-red-500 mt-1">
             Debug: Received {categories?.length || 0} categories
@@ -117,7 +117,7 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
   }
 
   return (
-    <section className="w-full py-4 bg-white md:py-3 md:bg-gradient-to-r md:from-cyan-500 md:to-cyan-600">
+    <section className="w-full py-6 bg-white md:bg-gradient-to-r md:from-cyan-500 md:to-cyan-600">
       <div className="relative px-4 md:px-[5px] md:px-[50px]">
         <div className="p-0 md:p-1">
           {/* Mobile: horizontal scroller with 2 rows */}

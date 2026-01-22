@@ -1189,9 +1189,24 @@ export default async function handler(
                 };
 
                 const applySundayAdjustment = (resultDate: Date, warehouseCode?: string): Date => {
-                    if (warehouseCode === 'KHOHCM' && resultDate.getDay() === 0) {
-                        // Sunday → Monday
-                        resultDate.setDate(resultDate.getDate() + 1);
+                    if (warehouseCode === 'KHOHCM') {
+                        const day = resultDate.getDay(); // 0 = Sun, 6 = Sat, 1 = Mon
+                        const hour = resultDate.getHours();
+                        // If result falls on Saturday afternoon (>=12:00) or any Sunday,
+                        // push the result to next Monday at 08:00.
+                        if (day === 0 || (day === 6 && hour >= 12)) {
+                            const daysToAdd = day === 0 ? 1 : 2; // Sun -> Mon (+1), Sat -> Mon (+2)
+                            const monday = new Date(resultDate);
+                            monday.setDate(resultDate.getDate() + daysToAdd);
+                            monday.setHours(8, 0, 0, 0); // Monday 08:00
+                            return monday;
+                        }
+                        // If result is Monday but before business start (08:00), push to Monday 08:00
+                        if (day === 1 && hour < 8) {
+                            const mondayMorning = new Date(resultDate);
+                            mondayMorning.setHours(8, 0, 0, 0);
+                            return mondayMorning;
+                        }
                     }
                     return resultDate;
                 };
