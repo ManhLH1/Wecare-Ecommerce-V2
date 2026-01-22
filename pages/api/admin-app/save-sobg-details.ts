@@ -1023,7 +1023,7 @@ export default async function handler(
         );
 
             // Map fields based on Metadata & Prediction (Vietnamese Schema)
-            const entity: any = {
+                const entity: any = {
                 "crdfd_Maonhang@odata.bind": `/crdfd_sobaogias(${sobgId})`,
                 ...(normalizedProductId ? { "crdfd_Sanpham@odata.bind": `/crdfd_productses(${normalizedProductId})` } : {}),
                 ...(unitConvId ? { "crdfd_onvi@odata.bind": `/crdfd_unitconvertions(${unitConvId})` } : {}),
@@ -1034,7 +1034,36 @@ export default async function handler(
                 "crdfd_gtgt": mapVatPercentToChoice(product.vat),
                 "crdfd_tongtienkhongvat": computedSubtotal,
                 ...(shift ? { "cr1bb_ca": shift } : {}),
-                "crdfd_ngaygiaodukien": formatDateForCRM(product.deliveryDate),
+                // Ensure delivery date is always set: try calculated value, then product.deliveryDate, then fallback to next working day
+                ...(function() {
+                    try {
+                        const candidate1 = formatDateForCRM(deliveryDateNew);
+                        const candidate2 = candidate1 || formatDateForCRM(product.deliveryDate);
+                        if (candidate2) {
+                            return { "crdfd_ngaygiaodukien": candidate2 };
+                        }
+
+                        // Fallback: next working day (Mon-Fri)
+                        const nextWorkingDay = (base: Date) => {
+                            const d = new Date(base);
+                            d.setDate(d.getDate() + 1);
+                            while (d.getDay() === 0 || d.getDay() === 6) {
+                                d.setDate(d.getDate() + 1);
+                            }
+                            return d;
+                        };
+                        const fb = nextWorkingDay(new Date());
+                        const y = fb.getFullYear();
+                        const m = String(fb.getMonth() + 1).padStart(2, '0');
+                        const dd = String(fb.getDate()).padStart(2, '0');
+                        const fallbackDateStr = `${y}-${m}-${dd}`;
+                        console.warn('[Save SOBG] deliveryDate missing/invalid, using fallback next working day:', fallbackDateStr, 'product:', product.productCode);
+                        return { "crdfd_ngaygiaodukien": fallbackDateStr };
+                    } catch (err) {
+                        console.error('[Save SOBG] Error computing crdfd_ngaygiaodukien fallback for product:', product.productCode, err);
+                        return {};
+                    }
+                })(),
                 "crdfd_chietkhau": product.discountPercent ? product.discountPercent / 100 : 0,
                 "crdfd_chietkhauvn": product.discountAmount ?? 0,
                 "crdfd_chietkhau2": product.discount2 ? product.discount2 / 100 : 0,

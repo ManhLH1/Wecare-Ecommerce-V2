@@ -1871,6 +1871,59 @@ export default async function handler(
         } else {
           console.log('[Save SOD] No delivery date provided for product:', product.productCode);
         }
+        // Ensure CRM field is always set: try computed deliveryDateNew from server logic if available, then product.deliveryDate, else fallback next working day
+        try {
+          // If payload didn't set crm date above, compute fallback
+          if (!payload.crdfd_ngaygiaodukientonghop) {
+            // Try server-side compute (if available in scope)
+            // Note: deliveryDateNew variable may not be present here; prefer product.deliveryDate if provided
+            const crmFromProduct = (function() {
+              try {
+                if (!product.deliveryDate) return null;
+                const parts = String(product.deliveryDate).split('/');
+                if (parts.length === 3) {
+                  const [day, month, year] = parts;
+                  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                }
+                const d = new Date(product.deliveryDate);
+                if (!isNaN(d.getTime())) {
+                  const yy = d.getFullYear();
+                  const mm = String(d.getMonth() + 1).padStart(2, '0');
+                  const dd = String(d.getDate()).padStart(2, '0');
+                  return `${yy}-${mm}-${dd}`;
+                }
+              } catch (e) {
+                // ignore
+              }
+              return null;
+            })();
+            if (crmFromProduct) {
+              payload.crdfd_ngaygiaodukientonghop = crmFromProduct;
+              payload.crdfd_exdeliverrydate = crmFromProduct;
+              console.log('[Save SOD] Fallback used product.deliveryDate for crm date:', crmFromProduct);
+            } else {
+              // fallback to next working day
+              const nextWorkingDay = (base: Date) => {
+                const d = new Date(base);
+                d.setDate(d.getDate() + 1);
+                while (d.getDay() === 0 || d.getDay() === 6) {
+                  d.setDate(d.getDate() + 1);
+                }
+                return d;
+              };
+              const fb = nextWorkingDay(new Date());
+              const y = fb.getFullYear();
+              const m = String(fb.getMonth() + 1).padStart(2, '0');
+              const dd = String(fb.getDate()).padStart(2, '0');
+              const fallbackDateStr = `${y}-${m}-${dd}`;
+              payload.crdfd_ngaygiaodukientonghop = fallbackDateStr;
+              payload.crdfd_exdeliverrydate = fallbackDateStr;
+              console.warn('[Save SOD] deliveryDate missing/invalid, using fallback next working day:', fallbackDateStr, 'product:', product.productCode);
+            }
+          }
+        } catch (err) {
+          console.error('[Save SOD] Error while applying fallback delivery date for product:', product.productCode, err);
+        }
 
         // Get pre-fetched product ID (no additional API call needed)
         let finalProductId = product.productId;

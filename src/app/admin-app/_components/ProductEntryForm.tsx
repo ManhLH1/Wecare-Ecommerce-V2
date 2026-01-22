@@ -1200,7 +1200,7 @@ function ProductEntryForm({
         yesterday.setDate(yesterday.getDate() - 1);
 
         if (sevenHoursAfter.toDateString() === yesterday.toDateString()) {
-          const reason = 'SO đã quá hạn 7 giờ không được thêm sản phẩm';
+          const reason = 'Không thêm sản phẩm vào SO cũ';
           return reason;
         }
       }
