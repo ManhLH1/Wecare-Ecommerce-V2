@@ -25,7 +25,6 @@ const BrandStrip: React.FC = () => {
               <h3 className="text-cyan-600 no-underline hover:text-cyan-700 text-2xl uppercase">THƯƠNG HIỆU NỔI BẬT</h3>
               <span className="inline-block w-14 h-1 bg-amber-300 rounded" />
             </div>
-            <a href="/thuong-hieu" className="text-sm text-amber-500 hover:underline">Xem tất cả</a>
           </div>
 
           {/* Mobile: horizontal scroll with snap; Desktop: grid */}

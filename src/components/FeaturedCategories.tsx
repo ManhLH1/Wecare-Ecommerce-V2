@@ -1,5 +1,5 @@
- 'use client';
- 
+'use client';
+
  import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 
@@ -79,7 +79,7 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
                 <h3 className="text-xl font-bold text-white">DANH MỤC NỔI BẬT</h3>
                 <span className="inline-block w-14 h-1 bg-amber-300 rounded" />
               </div>
-              <a href="/san-pham" className="text-sm text-amber-300 hover:text-white hover:underline">Xem tất cả</a>
+              <Link href="/san-pham" className="text-sm text-amber-300 hover:text-white hover:underline">Xem tất cả</Link>
             </div>
             <div className="grid gap-2 items-stretch" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
               {Array.from({ length: 8 }).map((_, index) => (
@@ -132,25 +132,25 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
                 style={{ gridAutoColumns: '140px' }}
               >
                 {validCategories.slice(0, 12).map(cat => (
-                  <Link
-                    key={cat.id || cat.productGroupId || cat.productGroupCode || String(Math.random())}
-                    href={cat.href || `/san-pham?group=${encodeURIComponent(cat.productGroupCode || '')}`}
+                <Link
+                  key={cat.id || cat.productGroupId || cat.productGroupCode || String(Math.random())}
+                  href={cat.href || `/san-pham?group=${encodeURIComponent(cat.productGroupCode || '')}`}
                     className="block text-center no-underline group snap-start"
-                  >
+                >
                     <div className="bg-gray-50 rounded-lg p-2 hover:bg-gray-100 transition-all duration-200 touch-manipulation h-full flex flex-col items-center justify-center">
                       <div className="w-12 h-12 mb-2 flex items-center justify-center">
-                        <img
-                          src={cat.image}
-                          alt={cat.name}
+                      <img
+                        src={cat.image}
+                        alt={cat.name}
                           className={`h-10 w-10 object-contain ${cat.hasPlaceholderImage ? 'opacity-60' : ''}`}
-                        />
-                      </div>
-                      <div className="text-xs font-medium text-gray-700 group-hover:text-cyan-600 line-clamp-2 leading-tight">
-                        {cat.name}
-                      </div>
+                      />
                     </div>
-                  </Link>
-                ))}
+                      <div className="text-xs font-medium text-gray-700 group-hover:text-cyan-600 line-clamp-2 leading-tight">
+                      {cat.name}
+                    </div>
+                  </div>
+                </Link>
+              ))}
               </div>
             </div>
 
@@ -168,7 +168,7 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
                   }}
                 />
               </div>
-            </div>
+              </div>
 
             {/* no more 'Xem thêm' on mobile - list is horizontally scrollable */}
           </div>

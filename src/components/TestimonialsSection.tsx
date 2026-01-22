@@ -49,7 +49,8 @@ const BenefitsItem: React.FC<{ iconSrc: string; title: string; desc?: string }> 
 const TestimonialsSection: React.FC = () => {
   return (
     <section className="w-full bg-gray-100 py-10">
-      <div className="relative px-4 md:px-12">
+      <div className="w-full max-w-[2560px] mx-auto px-4">
+        <div className="relative md:px-12">
         <h3 className="text-center text-2xl font-semibold text-gray-700 mb-8">
           Khách hàng nói gì về WECARE
         </h3>
@@ -134,6 +135,7 @@ const TestimonialsSection: React.FC = () => {
           </div>
         </div>
       </div>
+    </div>
     </section>
   );
 };

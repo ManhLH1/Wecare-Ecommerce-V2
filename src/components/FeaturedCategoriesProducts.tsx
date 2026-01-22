@@ -281,7 +281,7 @@ const FeaturedCategoriesProducts: React.FC<{
                 {category.name}
               </Link>
             </h3>
-            <Link href={category.href || "/san-pham"} className="text-sm text-gray-500 hover:text-gray-700 no-underline" style={{ textDecoration: "none" }}>
+            <Link href={category.href || "/san-pham"} className="text-sm text-gray-500 hover:text-gray-700 no-underline" style={{ textDecoration: "none", textTransform: "none" }}>
               Xem tất cả
             </Link>
           </div>

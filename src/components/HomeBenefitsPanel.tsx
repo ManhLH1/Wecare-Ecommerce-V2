@@ -1,4 +1,4 @@
-'use client';
+ 'use client';
 
 import React from 'react';
 import Link from 'next/link';
@@ -13,8 +13,9 @@ const items = [
 const HomeBenefitsPanel: React.FC = () => {
   return (
     <section className="w-full mt-3 mb-3">
-      {/* Mobile: 2-column card grid for better visual balance */}
-      <div className="block lg:hidden px-4">
+      <div className="w-full max-w-[2560px] mx-auto px-4">
+        {/* Mobile: 2-column card grid for better visual balance */}
+        <div className="block lg:hidden">
         <div className="grid grid-cols-2 gap-3">
           {items.map((it, idx) => (
             <Link
@@ -53,6 +54,7 @@ const HomeBenefitsPanel: React.FC = () => {
             </div>
           </Link>
         ))}
+      </div>
       </div>
     </section>
   );
