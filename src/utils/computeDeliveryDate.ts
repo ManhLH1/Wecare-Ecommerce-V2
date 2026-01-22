@@ -116,11 +116,22 @@ function getWeekendResetTime(orderTime: Date): Date {
     return orderTime;
 }
 
-// Apply Sunday adjustment for HCM warehouse
+// Apply weekend adjustment for HCM warehouse:
+// - If result falls on Saturday afternoon (>=12:00) or any Sunday,
+//   push the result to next Monday at 08:00.
+// - This preserves behavior where we allow weekend hours to be counted,
+//   but ensures HCM deliveries are not scheduled on Sat afternoon or Sun.
 function applySundayAdjustment(resultDate: Date, warehouseCode?: string): Date {
-    if (warehouseCode === 'KHOHCM' && resultDate.getDay() === 0) {
-        // Sunday → Monday
-        return addDays(resultDate, 1);
+    if (warehouseCode === 'KHOHCM') {
+        const day = resultDate.getDay(); // 0 = Sun, 6 = Sat
+        const hour = resultDate.getHours();
+        if (day === 0 || (day === 6 && hour >= 12)) {
+            const daysToAdd = day === 0 ? 1 : 2; // Sun -> Mon (+1), Sat -> Mon (+2)
+            const monday = new Date(resultDate);
+            monday.setDate(resultDate.getDate() + daysToAdd);
+            monday.setHours(8, 0, 0, 0); // set to 08:00 on Monday
+            return monday;
+        }
     }
     return resultDate;
 }
@@ -229,7 +240,7 @@ export function computeDeliveryDate(params: {
                 extraCaForOutOfStock = 4;
                 console.log(`   🏭 Kho Bình Định: +${extraCaForOutOfStock} ca`);
             }
-
+            
             // For out-of-stock items, weekend reset IS applied before adding extra ca
             const effectiveOrderTime = getWeekendResetTime(orderTime);
             console.log(`   ⏰ Áp dụng Weekend Reset: ${orderTime.toISOString()} → ${effectiveOrderTime.toISOString()}`);

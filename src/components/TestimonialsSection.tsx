@@ -84,7 +84,7 @@ const TestimonialsSection: React.FC = () => {
         */}
         <div className="block md:hidden mb-4">
           <div className="overflow-x-auto scrollbar-hide px-2">
-            <div className="grid grid-flow-col gap-3 grid-rows-2 py-2" style={{ gridAutoColumns: '120px' }}>
+            <div className="grid grid-flow-col gap-3 grid-rows-2 py-2 justify-center" style={{ gridAutoColumns: '120px' }}>
               {[
                 { icon: "/images/icon-delivery.png", title: "Giao siêu tốc", desc: "Freeship > 2 triệu" },
                 { icon: "/images/icon-price.png", title: "Giá siêu tốt", desc: "Cam kết tốt nhất" },
