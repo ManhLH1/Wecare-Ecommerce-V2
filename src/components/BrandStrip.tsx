@@ -20,9 +20,9 @@ const BrandStrip: React.FC = () => {
   return (
     <section className="w-full pt-2.5 pb-4 bg-white mb-6">
       <div className="relative">
-        <div className="p-0">
+        <div className="px-2 md:px-6">
           <div className="flex items-center gap-3 mb-3">
-            <h3 className="text-cyan-600 no-underline hover:text-cyan-700 text-2xl uppercase">THƯƠNG HIỆU NỔI BẬT</h3>
+            <h3 className="text-xl font-bold text-cyan-600">THƯƠNG HIỆU NỔI BẬT</h3>
             <span className="inline-block w-14 h-1 bg-amber-300 rounded" />
           </div>
 

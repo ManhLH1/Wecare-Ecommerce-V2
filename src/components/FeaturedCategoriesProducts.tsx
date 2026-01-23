@@ -268,21 +268,21 @@ const FeaturedCategoriesProducts: React.FC<{
   if (!groupsWithProducts || groupsWithProducts.length === 0) return null;
 
   return (
-    <div className="relative px-2 md:px-6 my-1 my-lg-2">
+    <div className="relative px-2 md:px-6 my-0 my-lg-2">
       {groupsWithProducts.map(({ category, products, loading: groupLoading }) => (
-        <section key={category.id} className="py-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <h3 className="text-lg font-semibold">
+        <section key={category.id} className="pt-0 pb-1 md:py-4">
+          <div className="flex items-center justify-between mb-0" style={{ paddingTop: '6px', paddingBottom: '4px' }}>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base md:text-lg font-semibold mb-0">
                 <Link
                   href={category.href || "/san-pham"}
-                  className="text-cyan-600 no-underline hover:text-cyan-700 text-lg md:text-2xl"
+                  className="text-cyan-600 no-underline hover:text-cyan-700 text-base md:text-lg"
                   style={{ textDecoration: "none", textTransform: "uppercase" }}
                 >
                   {category.name}
                 </Link>
               </h3>
-              <span className="inline-block w-14 h-1 bg-amber-300 rounded" />
+              <span className="inline-block w-12 h-1 bg-amber-300 rounded" />
             </div>
             <Link href={category.href || "/san-pham"} className="text-sm text-cyan-600 hover:text-cyan-700 no-underline" style={{ textDecoration: "none", textTransform: "none" }}>
               Xem tất cả
@@ -303,8 +303,8 @@ const FeaturedCategoriesProducts: React.FC<{
           ) : products && products.length > 0 ? (
             isMobileView ? (
               <div
-                className="flex gap-3 overflow-x-auto scrollbar-hide py-2 px-1 snap-x snap-mandatory"
-                style={{ WebkitOverflowScrolling: "touch" }}
+                className="flex gap-3 overflow-x-auto scrollbar-hide py-0 px-1 snap-x snap-mandatory"
+                style={{ WebkitOverflowScrolling: "touch", marginTop: '-4px' }}
               >
                 {products.map((p: any, idx: number) => {
                   const title = p.crdfd_tensanphamtext || p.crdfd_name || p.name || "";
@@ -336,12 +336,12 @@ const FeaturedCategoriesProducts: React.FC<{
                   return (
                     <div
                       key={productId}
-                      className="min-w-[46%] flex-shrink-0 snap-start bg-white rounded-lg p-2 shadow-sm hover:shadow-md transition box-border"
-                      style={{ flexBasis: '46%', height: 240 }}
+                      className="min-w-[46%] flex-shrink-0 snap-start bg-white rounded-lg p-0 sm:p-1 shadow-sm hover:shadow-md transition box-border"
+                      style={{ flexBasis: '46%', height: isMobileView ? 210 : 240 }}
                     >
                       <Link href={p.href || category.href || "/san-pham"} className="no-underline text-gray-800">
-                        <div className="flex flex-col h-full justify-between">
-                          <div className="flex-none w-full h-28 flex items-center justify-center overflow-hidden">
+                        <div className="flex flex-col h-full">
+                          <div className="flex-none w-full h-20 sm:h-28 flex items-start justify-center overflow-hidden">
                             <img
                               src={imageSrc || ""}
                               alt={title || category.name}
@@ -354,7 +354,7 @@ const FeaturedCategoriesProducts: React.FC<{
                             />
                           </div>
 
-                          <div className="flex-none mt-2">
+                          <div className="flex-none mt-1">
                             <div className="text-sm font-medium line-clamp-2 text-gray-800 h-10 overflow-hidden">{title}</div>
                             <div className="text-sm text-red-600 font-semibold mt-1">{priceVal ? `${priceVal.toLocaleString("vi-VN")}₫` : ""}</div>
                           </div>

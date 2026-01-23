@@ -46,7 +46,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
   if (!banners.length) return null;
 
   return (
-    <section className="block md:hidden px-4 pt-6 pb-4">
+    <section className="block md:hidden px-4 pt-12 pb-24">
       <div className="relative">
         {/* Main slide container */}
         <div className="relative h-[220px] sm:h-[240px] rounded-2xl overflow-hidden shadow-2xl">

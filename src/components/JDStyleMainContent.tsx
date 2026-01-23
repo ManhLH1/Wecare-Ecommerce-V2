@@ -340,7 +340,7 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
       </div>
 
       {/* Hero Section + Tin tức bên phải (Desktop: ngang, Mobile: dọc) */}
-      <div id="hero-banner" ref={heroContainerRef} className="flex flex-col lg:flex-row gap-1 lg:gap-2 mb-2 lg:mb-3 lg:pl-0 lg:items-stretch">
+      <div id="hero-banner" ref={heroContainerRef} className="flex flex-col lg:flex-row gap-1 lg:gap-2 mb-6 lg:mb-8 lg:pl-0 lg:items-stretch">
         {/* Hero Banner */}
         <div className="w-full lg:w-[70%] border border-gray-200 rounded-xl shadow-sm overflow-hidden">
           {/* Mobile: aspect ratio 16:9, Desktop: fixed height */}
@@ -359,13 +359,19 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
                   sizes="(max-width: 768px) 100vw, (max-width: 1024px) 100vw, 70vw"
                 />
                 {/* Mobile CTA overlay */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent lg:hidden">
-                  <span className="inline-flex items-center gap-1 text-white text-sm font-medium">
-                    Xem ưu đãi
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </span>
+                <div className="absolute bottom-0 left-0 right-0 p-6 pb-8 bg-gradient-to-t from-black/60 to-transparent lg:hidden" style={{ paddingTop: '14px' }}>
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-2 text-white text-sm font-medium px-3 py-2 rounded-md bg-black/30 backdrop-blur-sm"
+                      aria-label="Xem ưu đãi"
+                    >
+                      Xem ưu đãi
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
