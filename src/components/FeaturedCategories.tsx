@@ -78,7 +78,7 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
                 <h3 className="text-xl font-bold text-cyan-600">DANH MỤC NỔI BẬT</h3>
                 <span className="inline-block w-14 h-1 bg-amber-300 rounded" />
               </div>
-              <Link href="/san-pham" className="text-sm text-cyan-600 hover:text-cyan-700 no-underline" style={{ textDecoration: "none", textTransform: "none" }}>Xem tất cả</Link>
+              <Link href="/san-pham" className="text-sm text-cyan-600 hover:text-cyan-700 no-underline font-normal normal-case" style={{ textDecoration: "none", textTransform: "none" }}>Xem tất cả</Link>
             </div>
             <div className="grid gap-2 items-stretch" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
               {Array.from({ length: 8 }).map((_, index) => (
@@ -125,7 +125,7 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
                 <h3 className="text-lg font-semibold text-cyan-600">DANH MỤC NỔI BẬT</h3>
                 <span className="inline-block w-14 h-1 bg-amber-300 rounded" />
               </div>
-              <Link href="/san-pham" className="text-sm text-cyan-600 hover:text-cyan-700 no-underline" style={{ textDecoration: "none", textTransform: "none" }}>Xem tất cả</Link>
+              <Link href="/san-pham" className="text-sm text-cyan-600 hover:text-cyan-700 no-underline font-normal normal-case" style={{ textDecoration: "none", textTransform: "none" }}>Xem tất cả</Link>
             </div>
 
             <div className="overflow-x-auto scrollbar-hide -mx-4 px-4" ref={scrollerRef}>
@@ -182,7 +182,7 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
                 <h3 className="text-xl font-bold text-cyan-600">DANH MỤC NỔI BẬT</h3>
                 <span className="inline-block w-14 h-1 bg-amber-300 rounded" />
               </div>
-              <a href="/san-pham" className="text-sm text-cyan-600 hover:text-cyan-700 no-underline" style={{ textDecoration: "none", textTransform: "none" }}>Xem tất cả</a>
+              <a href="/san-pham" className="text-sm text-cyan-600 hover:text-cyan-700 no-underline font-normal normal-case" style={{ textDecoration: "none", textTransform: "none" }}>Xem tất cả</a>
             </div>
 
             <div>

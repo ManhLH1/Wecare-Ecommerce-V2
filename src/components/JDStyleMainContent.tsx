@@ -342,9 +342,9 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
       {/* Hero Section + Tin tức bên phải (Desktop: ngang, Mobile: dọc) */}
       <div id="hero-banner" ref={heroContainerRef} className="flex flex-col lg:flex-row gap-1 lg:gap-2 mb-6 lg:mb-8 lg:pl-0 lg:items-stretch">
         {/* Hero Banner */}
-        <div className="w-full lg:w-[70%] border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="w-full lg:w-[70%] border border-gray-200 rounded-xl shadow-sm overflow-hidden  lg:pb-6 mb-2">
           {/* Mobile: aspect ratio 16:9, Desktop: fixed height */}
-          <div className="relative w-full aspect-[16/9] lg:aspect-auto lg:h-[500px]">
+          <div className="relative w-full aspect-[16/9] lg:aspect-auto lg:h-[200px]">
             {bestPromotions.length > 0 ? (
               <div
                 className="relative w-full h-full cursor-pointer active:opacity-90 transition-opacity touch-manipulation"
@@ -388,9 +388,20 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
             )}
           </div>
         </div>
+        {/* Mobile-only spacer to guarantee visual gap under hero */}
+        <div className="block md:hidden h-2" aria-hidden />
+
+        {/* Force mobile margin-bottom on hero banner in case other styles override spacing */}
+        <style jsx>{`
+          @media (max-width: 768px) {
+            #hero-banner {
+              margin-bottom: 2rem !important;
+            }
+          }
+        `}</style>
 
         {/* Tin tức - Mobile: horizontal scroll, Desktop: vertical stack */}
-        <div className="w-full lg:w-[30%] lg:h-[500px]">
+        <div className="w-full lg:w-[30%] lg:h-[200px]">
           {/* Mobile: horizontal scroll với snap */}
           <div ref={newsScrollerRef} className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible scrollbar-hide snap-x snap-mandatory lg:snap-none -mx-2 px-2 lg:mx-0 lg:px-0 lg:h-full">
             {/* Tin tức 1 */}

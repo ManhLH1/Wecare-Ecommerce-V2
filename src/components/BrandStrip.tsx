@@ -21,9 +21,14 @@ const BrandStrip: React.FC = () => {
     <section className="w-full pt-2.5 pb-4 bg-white mb-6">
       <div className="relative">
         <div className="px-2 md:px-6">
-          <div className="flex items-center gap-3 mb-3">
-            <h3 className="text-xl font-bold text-cyan-600">THƯƠNG HIỆU NỔI BẬT</h3>
-            <span className="inline-block w-14 h-1 bg-amber-300 rounded" />
+          <div className="flex items-center gap-3 justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <h3 className="text-base md:text-lg font-bold text-cyan-600">THƯƠNG HIỆU NỔI BẬT</h3>
+              <span className="inline-block w-14 h-1 bg-amber-300 rounded" />
+            </div>
+            <Link href="/san-pham" className="text-sm text-cyan-600 hover:text-cyan-700 no-underline font-normal normal-case" >
+              Xem tất cả
+            </Link>
           </div>
 
           {/* Mobile: horizontal scroll with snap; Desktop: grid */}
