@@ -17,7 +17,7 @@ export default async function handler(
   }
 
   try {
-    const { productCode, warehouseName, isVatOrder } = req.query;
+    const { productCode, warehouseName } = req.query;
     
     if (
       !productCode ||
@@ -30,7 +30,7 @@ export default async function handler(
     }
 
     // Check cache first (use short cache for inventory as it changes frequently)
-    const cacheKey = getCacheKey("inventory", { productCode, warehouseName, isVatOrder });
+    const cacheKey = getCacheKey("inventory", { productCode, warehouseName });
     const cachedResponse = getCachedResponse(cacheKey, true); // Use short cache (1 min)
     if (cachedResponse !== undefined) {
       return res.status(200).json(cachedResponse);
@@ -42,228 +42,102 @@ export default async function handler(
       "OData-Version": "4.0",
     };
 
-    // Decide data source:
-    // - Non VAT: Inventory Weshops (cr44a_inventoryweshops)
-    // - VAT: Kho Bình Định (crdfd_kho_binh_dinhs) with field cr1bb_tonkholythuyetbomua
-    const useKhoBinhDinh =
-      typeof isVatOrder === "string"
-        ? isVatOrder === "true"
-        : !!isVatOrder;
+    // Always use Kho Bình Định (crdfd_kho_binh_dinhs)
+    // Use the provided warehouseName if available, otherwise default to "Kho Bình Định"
+    const targetWarehouse = 
+      warehouseName && typeof warehouseName === "string" && warehouseName.trim()
+        ? warehouseName.trim()
+        : "Kho Bình Định";
 
-    if (useKhoBinhDinh) {
-      // Use optimized query for Kho Bình Định with better filtering
-      const { endpoint, headers: optimizedHeaders } = buildOptimizedInventoryQuery(
-        productCode.trim(),
-        warehouseName && typeof warehouseName === "string" ? warehouseName.trim() : undefined,
-        true
+    // Use optimized query for Kho Bình Định with better filtering
+    const { endpoint, headers: optimizedHeaders } = buildOptimizedInventoryQuery(
+      productCode.trim(),
+      targetWarehouse,
+      true
+    );
+
+    // Use deduplication (try optimized query, fallback to legacy query on error)
+    let first: any = null;
+    try {
+      const dedupKey = getDedupKey(KHO_BD_TABLE, { productCode, warehouseName });
+      const response = await deduplicateRequest(dedupKey, () =>
+        axiosClient.get(endpoint, { headers: { ...headers, ...optimizedHeaders } })
       );
-
-      // Use deduplication (try optimized query, fallback to legacy query on error)
-      let first: any = null;
-      try {
-        const dedupKey = getDedupKey(KHO_BD_TABLE, { productCode, warehouseName });
-        const response = await deduplicateRequest(dedupKey, () =>
-          axiosClient.get(endpoint, { headers: { ...headers, ...optimizedHeaders } })
-        );
-        first = (response.data.value || [])[0];
-      } catch (optErr) {
-        console.warn('Optimized KHO_BD query failed, falling back to legacy query', optErr);
-        // Legacy KHO_BD query (safer fallback)
-        const conditions: Array<{
-          field: string;
-          operator: 'eq' | 'ne' | 'gt' | 'ge' | 'lt' | 'le' | 'contains' | 'startswith' | 'endswith';
-          value: any;
-        }> = [
-          { field: 'crdfd_masp', operator: 'eq', value: productCode.trim() },
-          { field: 'statecode', operator: 'eq', value: 0 }
-        ];
-        if (
-          warehouseName &&
-          typeof warehouseName === "string" &&
-          warehouseName.trim()
-        ) {
-          conditions.push({ field: 'crdfd_vitrikhofx', operator: 'eq', value: warehouseName.trim() });
+      first = (response.data.value || [])[0];
+    } catch (optErr) {
+      console.warn('Optimized KHO_BD query failed, falling back to legacy query', optErr);
+      // Legacy KHO_BD query (safer fallback)
+      const conditions: Array<{
+        field: string;
+        operator: 'eq' | 'ne' | 'gt' | 'ge' | 'lt' | 'le' | 'contains' | 'startswith' | 'endswith';
+        value: any;
+      }> = [
+        { field: 'crdfd_masp', operator: 'eq', value: productCode.trim() },
+        { field: 'statecode', operator: 'eq', value: 0 },
+        { field: 'crdfd_vitrikhofx', operator: 'eq', value: targetWarehouse }
+      ];
+      const filter = conditions.map(({ field, operator, value }, index) => {
+        let filterValue: string;
+        if (typeof value === 'string') {
+          filterValue = `'${value.replace(/'/g, "''")}'`;
+        } else if (typeof value === 'boolean') {
+          filterValue = value ? 'true' : 'false';
+        } else {
+          filterValue = String(value);
         }
-        const filter = conditions.map(({ field, operator, value }, index) => {
-          let filterValue: string;
-          if (typeof value === 'string') {
-            filterValue = `'${value.replace(/'/g, "''")}'`;
-          } else if (typeof value === 'boolean') {
-            filterValue = value ? 'true' : 'false';
-          } else {
-            filterValue = String(value);
-          }
 
-          let conditionStr: string;
-          switch (operator) {
-            case 'contains':
-              conditionStr = `contains(${field},${filterValue})`;
-              break;
-            case 'startswith':
-              conditionStr = `startswith(${field},${filterValue})`;
-              break;
-            case 'endswith':
-              conditionStr = `endswith(${field},${filterValue})`;
-              break;
-            default:
-              conditionStr = `${field} ${operator} ${filterValue}`;
-          }
-
-          return conditionStr;
-        }).join(' and ');
-        const columns =
-          "crdfd_kho_binh_dinhid,crdfd_masp,cr1bb_tonkholythuyetbomua,crdfd_tonkholythuyet,cr1bb_soluonganggiuathang,crdfd_vitrikhofx";
-        const legacyQuery = `$select=${columns}&$filter=${encodeURIComponent(filter)}&$top=1`;
-        const legacyEndpoint = `${BASE_URL}${KHO_BD_TABLE}?${legacyQuery}`;
-
-        const dedupKeyLegacy = getDedupKey(KHO_BD_TABLE, { productCode, warehouseName, legacy: true });
-        const legacyResponse = await deduplicateRequest(dedupKeyLegacy, () =>
-          axiosClient.get(legacyEndpoint, { headers })
-        );
-        first = (legacyResponse.data.value || [])[0];
-      }
-      
-      // CurrentInventory = cr1bb_tonkholythuyetbomua (ưu tiên), fallback về crdfd_tonkholythuyet
-      let currentInventory = first?.cr1bb_tonkholythuyetbomua ?? 0;
-      if (currentInventory === 0 && first?.crdfd_tonkholythuyet) {
-        currentInventory = first.crdfd_tonkholythuyet ?? 0;
-      }
-      // ReservedQuantity = cr1bb_soluonganggiuathang (cột giữ hàng ở Kho Bình Định)
-      let reservedQuantity = first?.cr1bb_soluonganggiuathang ?? 0;
-      
-      const availableToSell = currentInventory - reservedQuantity;
-      
-      const result = {
-        productCode: first?.crdfd_masp || productCode,
-        warehouseName:
-            first?.crdfd_vitrikhofx ||
-          warehouseName ||
-          null,
-        theoreticalStock: currentInventory, // CurrentInventory
-        actualStock: null,
-        reservedQuantity: reservedQuantity, // Số lượng đang giữ đơn
-        availableToSell: availableToSell, // AvailableToSell = CurrentInventory - ReservedQuantity
-      };
-      
-      // Cache the result
-      setCachedResponse(cacheKey, result, true);
-      
-      return res.status(200).json(result);
-    } else {
-      // Inventory Weshops
-      const safeCode = productCode.trim().replace(/'/g, "''");
-      const safeWarehouse =
-        warehouseName && typeof warehouseName === "string" && warehouseName.trim()
-          ? warehouseName.trim().replace(/'/g, "''")
-          : null;
-
-      const queryInventory = async (preferCrdfd: boolean) => {
-        const codeField = preferCrdfd ? "crdfd_masanpham" : "cr44a_masanpham";
-        let filter = `${codeField} eq '${safeCode}' and statecode eq 0`;
-        if (safeWarehouse) {
-          filter += ` and cr1bb_vitrikhotext eq '${safeWarehouse}'`;
+        let conditionStr: string;
+        switch (operator) {
+          case 'contains':
+            conditionStr = `contains(${field},${filterValue})`;
+            break;
+          case 'startswith':
+            conditionStr = `startswith(${field},${filterValue})`;
+            break;
+          case 'endswith':
+            conditionStr = `endswith(${field},${filterValue})`;
+            break;
+          default:
+            conditionStr = `${field} ${operator} ${filterValue}`;
         }
-        // CurrentInventory = cr44a_soluongtonlythuyet
-        // ReservedQuantity = cr1bb_soluonglythuyetgiuathang (cột giữ hàng ở inventory)
-        const columns = preferCrdfd
-          ? "cr44a_inventoryweshopid,crdfd_masanpham,cr44a_soluongtonlythuyet,cr44a_soluongtonthucte,cr1bb_soluonglythuyetgiuathang,cr1bb_vitrikhotext"
-          : "cr44a_inventoryweshopid,cr44a_masanpham,cr44a_soluongtonlythuyet,cr44a_soluongtonthucte,cr1bb_soluonglythuyetgiuathang,cr1bb_vitrikhotext";
-        const query = `$select=${columns}&$filter=${encodeURIComponent(
-          filter
-        )}&$top=1`;
-        const endpoint = `${BASE_URL}${INVENTORY_TABLE}?${query}`;
-        
-        // Use deduplication
-        const dedupKey = getDedupKey(INVENTORY_TABLE, { productCode, warehouseName, preferCrdfd });
-        const response = await deduplicateRequest(dedupKey, () =>
-          axiosClient.get(endpoint, { headers })
-        );
-        const results = response.data.value || [];
-        const first = results[0];
-        
-        // If no result with warehouse filter, try without warehouse filter
-        if (!first && safeWarehouse) {
-          const fallbackFilter = `${codeField} eq '${safeCode}' and statecode eq 0`;
-          const fallbackQuery = `$select=${columns}&$filter=${encodeURIComponent(
-            fallbackFilter
-          )}&$top=1`;
-          const fallbackEndpoint = `${BASE_URL}${INVENTORY_TABLE}?${fallbackQuery}`;
-          
-          // Use deduplication
-          const fallbackDedupKey = getDedupKey(INVENTORY_TABLE, { productCode, preferCrdfd, fallback: true });
-          const fallbackResponse = await deduplicateRequest(fallbackDedupKey, () =>
-            axiosClient.get(fallbackEndpoint, { headers })
-          );
-          const fallbackResults = fallbackResponse.data.value || [];
-          const fallbackFirst = fallbackResults[0];
-          
-          if (fallbackFirst) {
-            const theoretical = fallbackFirst?.cr44a_soluongtonlythuyet ?? 0;
-            // ReservedQuantity = cr1bb_soluonglythuyetgiuathang (cột giữ hàng ở inventory)
-            const reserved = fallbackFirst?.cr1bb_soluonglythuyetgiuathang ?? 0;
-            const available = theoretical - reserved;
-            
-            const fallbackResult = {
-              productCode:
-                (preferCrdfd ? fallbackFirst?.crdfd_masanpham : fallbackFirst?.cr44a_masanpham) ||
-                fallbackFirst?.cr44a_masanpham ||
-                productCode,
-              warehouseName: fallbackFirst?.cr1bb_vitrikhotext || warehouseName || null,
-              theoreticalStock: theoretical,
-              actualStock: fallbackFirst?.cr44a_soluongtonthucte ?? 0,
-              reservedQuantity: reserved,
-              availableToSell: available,
-            };
-            
-            // Cache the fallback result
-            setCachedResponse(cacheKey, fallbackResult, true);
-            
-            return fallbackResult;
-          }
-        }
-        
-        const theoretical = first?.cr44a_soluongtonlythuyet ?? 0;
-        // ReservedQuantity = cr1bb_soluonglythuyetgiuathang (cột giữ hàng ở inventory)
-        const reserved = first?.cr1bb_soluonglythuyetgiuathang ?? 0;
-        const available = theoretical - reserved;
-        
-        const result = {
-          productCode:
-            (preferCrdfd ? first?.crdfd_masanpham : first?.cr44a_masanpham) ||
-            first?.cr44a_masanpham ||
-            productCode,
-          warehouseName: first?.cr1bb_vitrikhotext || warehouseName || null,
-          theoreticalStock: theoretical,
-          actualStock: first?.cr44a_soluongtonthucte ?? 0,
-          reservedQuantity: reserved,
-          availableToSell: available,
-        };
-        
-        // Cache the result
-        setCachedResponse(cacheKey, result, true);
-        
-        return result;
-      };
 
-      try {
-        const result = await queryInventory(true);
-        // Cache already set in queryInventory
-        return res.status(200).json(result);
-      } catch (err: any) {
-        const message: string | undefined =
-          err?.response?.data?.error?.message || err?.message;
-        const isPropertyError =
-          err?.response?.status === 400 &&
-          typeof message === "string" &&
-          message.includes("Could not find a property named");
-        if (isPropertyError) {
-          // Retry with alternative field cr44a_masanpham
-          const result = await queryInventory(false);
-          return res.status(200).json(result);
-        }
-        throw err;
-      }
+        return conditionStr;
+      }).join(' and ');
+      const columns =
+        "crdfd_kho_binh_dinhid,crdfd_masp,cr1bb_tonkholythuyetbomua,crdfd_tonkholythuyet,cr1bb_soluonganggiuathang,crdfd_vitrikhofx";
+      const legacyQuery = `$select=${columns}&$filter=${encodeURIComponent(filter)}&$top=1`;
+      const legacyEndpoint = `${BASE_URL}${KHO_BD_TABLE}?${legacyQuery}`;
+
+      const dedupKeyLegacy = getDedupKey(KHO_BD_TABLE, { productCode, warehouseName, legacy: true });
+      const legacyResponse = await deduplicateRequest(dedupKeyLegacy, () =>
+        axiosClient.get(legacyEndpoint, { headers })
+      );
+      first = (legacyResponse.data.value || [])[0];
     }
+    
+    // CurrentInventory = cr1bb_tonkholythuyetbomua (ưu tiên), fallback về crdfd_tonkholythuyet
+    let currentInventory = first?.cr1bb_tonkholythuyetbomua ?? 0;
+    if (currentInventory === 0 && first?.crdfd_tonkholythuyet) {
+      currentInventory = first.crdfd_tonkholythuyet ?? 0;
+    }
+    // ReservedQuantity = cr1bb_soluonganggiuathang (cột giữ hàng ở Kho Bình Định)
+    let reservedQuantity = first?.cr1bb_soluonganggiuathang ?? 0;
+    
+    const availableToSell = currentInventory - reservedQuantity;
+    
+    const result = {
+      productCode: first?.crdfd_masp || productCode,
+      warehouseName: first?.crdfd_vitrikhofx || targetWarehouse || null,
+      theoreticalStock: currentInventory, // CurrentInventory
+      actualStock: null,
+      reservedQuantity: reservedQuantity, // Số lượng đang giữ đơn
+      availableToSell: availableToSell, // AvailableToSell = CurrentInventory - ReservedQuantity
+    };
+    
+    // Cache the result
+    setCachedResponse(cacheKey, result, true);
+    
+    return res.status(200).json(result);
   } catch (error: any) {
     console.error("Error fetching inventory:", error);
 

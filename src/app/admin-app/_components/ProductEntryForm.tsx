@@ -1330,27 +1330,46 @@ function ProductEntryForm({
       const selectedWarehouse = warehouses.find(w => w.crdfd_khowecareid === warehouseId);
       const selectedWarehouseName = selectedWarehouse?.crdfd_name || warehouse || '';
 
+      console.log(`[loadInventory] DEBUG: warehouseId=${warehouseId}, selectedWarehouse=${JSON.stringify(selectedWarehouse)}, warehouse prop=${warehouse}`);
+
       // Fetch both inventory sources in parallel (Inventory service and Kho Bình Định variant)
-      // Note: API expects warehouseName (text), not warehouseId. Use `warehouse`/selectedWarehouseName here.
-      const warehouseNameForApi = warehouse || selectedWarehouseName || undefined;
+      // Note: API expects warehouseName (text), not warehouseId. Always use selectedWarehouseName from warehouse object
+      // to ensure correct matching with CRM cr1bb_vitrikhotext field
+      const warehouseNameForApi = selectedWarehouseName || undefined;
+      console.log(`[loadInventory] Calling fetchInventory with: productCode=${selectedProductCode}, warehouse=${warehouseNameForApi}, isVatOrder=false`);
       const [inventoryResult, khoBinhDinhResult] = await Promise.all([
         fetchInventory(selectedProductCode, warehouseNameForApi, false),
+        // For Kho Bình Định: also pass warehouse name to ensure correct filtering
         fetchInventory(selectedProductCode, warehouseNameForApi, true)
       ]);
+      console.log(`[loadInventory] Results: inventoryResult=${JSON.stringify(inventoryResult)}, khoBinhDinhResult=${JSON.stringify(khoBinhDinhResult)}`);
 
       // Normalize results
       const inv = inventoryResult || { theoreticalStock: 0, reservedQuantity: 0, availableToSell: 0 };
       const kho = khoBinhDinhResult || { theoreticalStock: 0, reservedQuantity: 0, availableToSell: 0 };
 
-      // If the selected warehouse is Bình Định (name includes 'bình định'), use kho result.
-      const useKho = selectedWarehouseName.toLowerCase().includes('bình định') || selectedWarehouseName.toLowerCase().includes('binh dinh');
+      // Determine which inventory source to use based on warehouse ID
+      // KHO HCM (238fdf2f-1bbc-ef11-a72f-00224856ec6e) and Kho Bình Định (91539a28-50bb-ef11-a72f-6045bd1eb351) 
+      // should both use Kho Bình Định table
+      const KHOHCM_WAREHOUSE_ID = '238fdf2f-1bbc-ef11-a72f-00224856ec6e';
+      const KHO_BINH_DINH_WAREHOUSE_ID = '91539a28-50bb-ef11-a72f-6045bd1eb351';
+      
+      const warehouseId_Lower = (warehouseId || '').toLowerCase();
+      const khohcm_Lower = KHOHCM_WAREHOUSE_ID.toLowerCase();
+      const khobd_Lower = KHO_BINH_DINH_WAREHOUSE_ID.toLowerCase();
+      
+      const useKho = warehouseId_Lower === khohcm_Lower || warehouseId_Lower === khobd_Lower;
 
-      // Choose which source to use for displayed available/reserved based on selected warehouse preference.
+      // Choose which source to use for displayed available/reserved based on warehouse
       const theoretical = useKho ? (kho.theoreticalStock ?? 0) : (inv.theoreticalStock ?? 0);
       const reserved = useKho ? (kho.reservedQuantity ?? 0) : (inv.reservedQuantity ?? 0);
       const available = useKho
         ? (kho.availableToSell ?? ( (kho.theoreticalStock ?? 0) - (kho.reservedQuantity ?? 0) ))
         : (inv.availableToSell ?? ( (inv.theoreticalStock ?? 0) - (inv.reservedQuantity ?? 0) ));
+
+      console.log(`[loadInventory] Warehouse ID: ${warehouseId}, Name: ${selectedWarehouseName}, useKho: ${useKho}`);
+      console.log(`[loadInventory] Inventory: inv.theoreticalStock=${inv.theoreticalStock}, kho.theoreticalStock=${kho.theoreticalStock}`);
+      console.log(`[loadInventory] Using: ${useKho ? 'Kho Bình Định' : 'Inventory'}, theoretical=${theoretical}`);
 
       // Update state
       setInventoryTheoretical(theoretical || 0);
@@ -1358,8 +1377,9 @@ function ProductEntryForm({
       setAvailableToSell(typeof available === 'number' ? available : 0);
       setStockQuantity(theoretical || 0);
 
-      // Determine warehouse label to display. For VAT orders we still show "Kho Bình Định",
-      // otherwise show the selected warehouse name (if available) or fallback to "Inventory".
+      // Determine warehouse label to display
+      // For KHO HCM and Kho Bình Định warehouses that use Kho Bình Định table, show "Kho Bình Định"
+      // For VAT orders, also show "Kho Bình Định"
       const warehouseDisplayLabel = useKho ? 'Kho Bình Định' : (selectedWarehouseName || 'Inventory');
 
       // Set human-readable messages for both sources (for debugging / UI)
@@ -1367,7 +1387,7 @@ function ProductEntryForm({
       setKhoBinhDinhMessage(`Tồn kho Kho Bình Định: ${(kho.theoreticalStock ?? 0).toLocaleString('vi-VN')}`);
 
       // Combined inventory message (preferred source shown)
-      setInventoryMessage(`${warehouseDisplayLabel}: ${(isVatOrderForInventory ? (kho.theoreticalStock ?? 0) : (inv.theoreticalStock ?? 0)).toLocaleString('vi-VN')}`);
+      setInventoryMessage(`${warehouseDisplayLabel}: ${(isVatOrderForInventory || useKho ? (kho.theoreticalStock ?? 0) : (inv.theoreticalStock ?? 0)).toLocaleString('vi-VN')}`);
 
       // Color: green if available >= requested base quantity, red otherwise
       const requestedBase = getRequestedBaseQuantity();
@@ -2595,11 +2615,14 @@ function ProductEntryForm({
 
       // unit conversion factor
       const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
-      const conversionFactor =
-        (currentUnit as any)?.crdfd_giatrichuyenoi ??
-        (currentUnit as any)?.crdfd_giatrichuyendoi ??
-        (currentUnit as any)?.crdfd_conversionvalue ??
-        1;
+      const conversionFactor = 
+        ((currentUnit as any)?.crdfd_giatrichuyenoi > 0) 
+          ? Number((currentUnit as any).crdfd_giatrichuyenoi)
+          : ((currentUnit as any)?.crdfd_conversionfactor > 0)
+          ? Number((currentUnit as any).crdfd_conversionfactor)
+          : ((currentUnit as any)?.crdfd_conversionvalue > 0)
+          ? Number((currentUnit as any).crdfd_conversionvalue)
+          : 1;
 
 
       const computeParams = {
@@ -2635,6 +2658,12 @@ function ProductEntryForm({
     }
   }, [selectedPromotionId, promotions, selectedPromotion, customerIndustry, customerName, quantity, unitId, units, inventoryTheoretical, selectedProduct, stockQuantity, districtLeadtime, inventoryLoading, inventoryLoaded, warehouse]);
 
+  // Track deliveryDate prop changes from parent
+  useEffect(() => {
+    if (deliveryDate) {
+      console.log(`[Leadtime] Final delivery date: ${deliveryDate}`);
+    }
+  }, [deliveryDate]);
 
   // Fetch district leadtime when customer district key changes
   useEffect(() => {
@@ -3268,6 +3297,7 @@ function ProductEntryForm({
             <label className="admin-app-label-inline">Ngày giao</label>
             <div className="admin-app-input-wrapper" style={{ position: 'relative' }}>
               <input
+                key={deliveryDate}
                 type="date"
                 className="admin-app-input admin-app-input-compact admin-app-input-small"
                 value={formatDdMmYyyyToIso(deliveryDate)}

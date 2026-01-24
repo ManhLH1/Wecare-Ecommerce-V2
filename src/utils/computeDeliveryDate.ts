@@ -50,46 +50,53 @@ function addWorkingDays(base: Date, days: number): Date {
     return d;
 }
 
-// Add working days but support fractional days (districtLeadtime in "ca", 1 ca = 12 hours)
-// Count only hours that fall on working days (Mon-Fri). Weekend hours are skipped.
-function addWorkingDaysWithFraction(base: Date, days: number, warehouseCode?: string): Date {
+// Add days with fraction support (24/7, no weekend skip)
+// Used for: district leadtime (Rule 1) - IN-STOCK items
+// 1 ca = 12 hours, count continuously including T7/CN
+function addDaysWithFraction(base: Date, days: number): Date {
+    const d = new Date(base);
+    const totalHours = Math.round(days * 12);
+    if (totalHours <= 0) return d;
+    
+    // Count hours continuously, do not skip weekends (24/7)
+    d.setHours(d.getHours() + totalHours);
+    return d;
+}
+
+// Add working days with fraction support (Mon-Fri only, skip weekends)
+// Used for: out-of-stock items (Rule 2)
+// 1 ca = 12 hours, count only Mon-Fri hours
+function addWorkingDaysWithFraction(base: Date, days: number): Date {
     const d = new Date(base);
 
     const totalHours = Math.round(days * 12);
     if (totalHours <= 0) return d;
 
-    // For HCM warehouse: skip weekend hours (Mon-Fri only) — existing behavior
-    if (warehouseCode === 'KHOHCM') {
-        // If base falls on weekend, advance to next Monday keeping the same hour
-        const baseDay = d.getDay();
-        if (baseDay === 6) {
-            d.setDate(d.getDate() + 2);
-        } else if (baseDay === 0) {
-            d.setDate(d.getDate() + 1);
-        }
-
-        let remainingHours = totalHours;
-        while (remainingHours > 0) {
-            d.setHours(d.getHours() + 1);
-            const dayOfWeek = d.getDay();
-            // Only count hours that fall on Mon-Fri
-            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-                remainingHours--;
-            } else {
-                // If we hit weekend, fast-forward to next Monday at same hour
-                if (dayOfWeek === 6) {
-                    d.setDate(d.getDate() + 2);
-                } else if (dayOfWeek === 0) {
-                    d.setDate(d.getDate() + 1);
-                }
-            }
-        }
-
-        return d;
+    // If base falls on weekend, advance to next Monday keeping the same hour
+    const baseDay = d.getDay();
+    if (baseDay === 6) {
+        d.setDate(d.getDate() + 2);
+    } else if (baseDay === 0) {
+        d.setDate(d.getDate() + 1);
     }
 
-    // For other warehouses (e.g., KHOBD): count hours continuously, do not skip weekends
-    d.setHours(d.getHours() + totalHours);
+    let remainingHours = totalHours;
+    while (remainingHours > 0) {
+        d.setHours(d.getHours() + 1);
+        const dayOfWeek = d.getDay();
+        // Only count hours that fall on Mon-Fri
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+            remainingHours--;
+        } else {
+            // If we hit weekend, fast-forward to next Monday at same hour
+            if (dayOfWeek === 6) {
+                d.setDate(d.getDate() + 2);
+            } else if (dayOfWeek === 0) {
+                d.setDate(d.getDate() + 1);
+            }
+        }
+    }
+
     return d;
 }
 
@@ -198,15 +205,20 @@ export function computeDeliveryDate(params: {
     const theoreticalStock = var_selected_SP_tonkho ?? 0;
 
     // Determine out-of-stock per warehouse rules:
-    // - For KHOHCM: shortage when theoreticalStock <= 0
-    // - For KHOBD: shortage when BD stock <= 0 OR requestedQty - BD_stock > 0
+    // - For KHOHCM: shortage when requestedQty > theoreticalStock (so check SO doesn't exceed stock)
+    //   This ensures we don't over-allocate inventory across multiple SOs
+    // - For KHOBD: shortage when BD stock <= 0 OR requestedQty > BD_stock
+    //   (Check both negative stock AND insufficient stock for this SO)
     // - For other warehouses: shortage when requestedQty > theoreticalStock
     let isOutOfStock = false;
     if (warehouseCode === 'KHOHCM') {
-        isOutOfStock = theoreticalStock <= 0;
+        // HCM: Check if this SO's nhu cầu vượt quá tồn kho sẵn có
+        // This prevents overselling - ensure sum of all SOs doesn't exceed inventory
+        isOutOfStock = requestedQty > theoreticalStock;
     } else if (warehouseCode === 'KHOBD') {
         const bdStock = theoreticalStock; // No separate BD var available; use provided stock
-        isOutOfStock = bdStock <= 0 || (requestedQty - bdStock) > 0;
+        // BD: Check both negative stock AND insufficient for this specific SO
+        isOutOfStock = bdStock <= 0 || (requestedQty > bdStock);
     } else {
         isOutOfStock = requestedQty > theoreticalStock;
     }
@@ -214,7 +226,7 @@ export function computeDeliveryDate(params: {
     console.log('\n📊 PHÂN TÍCH TỒN KHO:');
     console.log(`   📦 Cần: ${requestedQty} | Có: ${theoreticalStock}`);
     console.log(`   ⚠️  Trạng thái: ${isOutOfStock ? 'HẾT HÀNG' : 'CÒN HÀNG'}`);
-    console.log(`   🏭 Quy tắc kho: ${warehouseCode === 'KHOHCM' ? 'HCM (≤0 = hết)' : warehouseCode === 'KHOBD' ? 'BD (≤0 hoặc thiếu = hết)' : 'Khác (> cần = hết)'}`);
+    console.log(`   🏭 Quy tắc kho: ${warehouseCode === 'KHOHCM' ? 'HCM (cần > tồn = hết)' : warehouseCode === 'KHOBD' ? 'BD (≤0 hoặc cần > tồn = hết)' : 'Khác (cần > tồn = hết)'}`);
 
     // NEW LOGIC (2025) - Priority 1: District leadtime
     // Behavior changed: if out-of-stock, add warehouse/promotion extra ca on top of districtLeadtime.
@@ -241,14 +253,21 @@ export function computeDeliveryDate(params: {
                 console.log(`   🏭 Kho Bình Định: +${extraCaForOutOfStock} ca`);
             }
             
-            // For out-of-stock items, weekend reset IS applied before adding extra ca
-            const effectiveOrderTime = getWeekendResetTime(orderTime);
-            console.log(`   ⏰ Áp dụng Weekend Reset: ${orderTime.toISOString()} → ${effectiveOrderTime.toISOString()}`);
-
+            // For out-of-stock items: NO weekend reset, calculate 24/7 directly
+            // (Only in-stock orders get weekend reset special handling)
             const totalCa = districtLeadtime + extraCaForOutOfStock;
             console.log(`   📅 Tổng leadtime: ${totalCa} ca = ${districtLeadtime} (quận) + ${extraCaForOutOfStock} (bổ sung)`);
-
-            let result = addWorkingDaysWithFraction(effectiveOrderTime, totalCa, warehouseCode);
+            console.log(`   ⏰ Không áp dụng Weekend Reset cho hàng HẾT HÀNG - Tính 24/7 trực tiếp`);
+            
+            // Kho HCM: Skip weekend (Mon-Fri only) | Kho BD: 24/7 calculation
+            let result;
+            if (warehouseCode === 'KHOHCM') {
+                console.log(`   🏭 Kho HCM: Áp dụng Skip Weekend (chỉ tính Mon-Fri)`);
+                result = addWorkingDaysWithFraction(orderTime, totalCa);
+            } else {
+                console.log(`   🏭 ${warehouseCode}: Tính 24/7 (không skip weekend)`);
+                result = addDaysWithFraction(orderTime, totalCa);
+            }
 
             // Apply Sunday adjustment for HCM warehouse
             result = applySundayAdjustment(result, warehouseCode);
@@ -259,9 +278,10 @@ export function computeDeliveryDate(params: {
         } else {
             console.log('   📦 Tình huống: CÒN HÀNG + Leadtime quận');
             console.log('   ➖ Không áp dụng Weekend Reset');
+            console.log('   📅 TÍNH 24/7 (T7/CN được tính)');
 
-            // Not out-of-stock: original district leadtime behavior (no weekend reset)
-            let result = addWorkingDaysWithFraction(orderTime, districtLeadtime, warehouseCode);
+            // Not out-of-stock: district leadtime with 24/7 calculation (includes T7/CN)
+            let result = addDaysWithFraction(orderTime, districtLeadtime);
 
             // Apply Sunday adjustment for HCM warehouse (district result may still fall on Sunday)
             result = applySundayAdjustment(result, warehouseCode);
@@ -273,14 +293,10 @@ export function computeDeliveryDate(params: {
     }
 
     // NEW LOGIC (2025) - Priority 2: Out of stock rules by warehouse
-    // IMPORTANT: Weekend reset CHỈ áp dụng cho out-of-stock items
+    // IMPORTANT: NO weekend reset for out-of-stock items - calculate 24/7 directly
     if (isOutOfStock && warehouseCode) {
         console.log('\n🚀 LOGIC MỚI 2025 - ƯU TIÊN 2: QUY TẮC HẾT HÀNG THEO KHO');
-        console.log('   ⚠️  Áp dụng Weekend Reset cho hàng hết tồn');
-
-        // Apply weekend reset for out-of-stock items only
-        let effectiveOrderTime = getWeekendResetTime(orderTime);
-        console.log(`   ⏰ Weekend Reset: ${orderTime.toISOString()} → ${effectiveOrderTime.toISOString()}`);
+        console.log('   ⚠️  Không áp dụng Weekend Reset cho hàng HẾT HÀNG');
 
         let leadtimeCa = 0;
 
@@ -295,7 +311,15 @@ export function computeDeliveryDate(params: {
         }
 
         if (leadtimeCa > 0) {
-            let result = addWorkingDaysWithFraction(effectiveOrderTime, leadtimeCa, warehouseCode);
+            // Kho HCM: Skip weekend (Mon-Fri only) | Kho BD: 24/7 calculation
+            let result;
+            if (warehouseCode === 'KHOHCM') {
+                console.log(`   🏭 Kho HCM: Áp dụng Skip Weekend (chỉ tính Mon-Fri)`);
+                result = addWorkingDaysWithFraction(orderTime, leadtimeCa);
+            } else {
+                console.log(`   🏭 ${warehouseCode}: Tính 24/7 (không skip weekend)`);
+                result = addDaysWithFraction(orderTime, leadtimeCa);
+            }
             // Apply Sunday adjustment for HCM warehouse
             result = applySundayAdjustment(result, warehouseCode);
             console.log(`   📆 NGÀY GIAO CUỐI CÙNG: ${result.toISOString().split('T')[0]} ${result.toLocaleTimeString('vi-VN')}`);

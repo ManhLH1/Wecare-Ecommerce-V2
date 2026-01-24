@@ -955,7 +955,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     setApprovePrice(false);
     setApproveSupPrice(false);
     setUrgentOrder(false);
-    setDeliveryDate('14/12/2025');
+    setDeliveryDate('');  // Allow ProductEntryForm to auto-calculate
     // Keep note - không clear ghi chú
     setApprover('');
     setDiscountPercent(0);
