@@ -30,9 +30,9 @@ export default function LoginForm() {
         }
         setRememberAccount(true);
       }
-    } catch {}
+    } catch { }
   }, []);
-  
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -211,11 +211,11 @@ export default function LoginForm() {
           <div className="absolute top-1/2 left-1/4 w-12 h-12 border-2 border-white transform rotate-15"></div>
           <div className="absolute top-1/3 right-1/4 w-10 h-10 border-2 border-white transform -rotate-30"></div>
         </div>
-        
+
         {/* Decorative Elements */}
         <div className="absolute bottom-1/3 left-1/4 w-6 h-12 bg-white opacity-30 rounded-full"></div>
         <div className="absolute bottom-1/3 left-1/4 ml-8 w-4 h-4 bg-yellow-300 rounded-full"></div>
-        
+
         {/* Main Content */}
         <div className="relative z-10 flex flex-col items-center justify-center w-full px-8">
           {/* Logo */}
@@ -236,7 +236,7 @@ export default function LoginForm() {
               </div>
             </div>
           </div>
-          
+
 
           {/* Company Information */}
           <div className="text-white/90 w-full max-w-md">
@@ -252,7 +252,7 @@ export default function LoginForm() {
                   <div className="text-sm leading-6">
                     <p className="uppercase tracking-wide text-xs text-white/80 font-semibold">Trụ sở 1</p>
                     <p className="text-white">14-16-18-20, Đường 36, P. Bình Phú, Q6, HCM</p>
-                    <p className="flex items-center gap-2 text-amber-200"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>037 833 9009</p>
+                    <p className="flex items-center gap-2 text-amber-200"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>037 833 9009</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
@@ -265,7 +265,7 @@ export default function LoginForm() {
                   <div className="text-sm leading-6">
                     <p className="uppercase tracking-wide text-xs text-white/80 font-semibold">Trụ sở 2</p>
                     <p className="text-white">Lô B39, Khu Công nghiệp Phú Tài, Phường Quy Nhơn Bắc, Tỉnh Gia Lai</p>
-                    <p className="flex items-center gap-2 text-amber-200"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>+84 378 339 009</p>
+                    <p className="flex items-center gap-2 text-amber-200"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>+84 378 339 009</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-white/90">
@@ -281,7 +281,7 @@ export default function LoginForm() {
           {/* Company Description */}
           <div className="mt-8 text-center text-white/70 max-w-md">
             <p className="text-xs leading-relaxed">
-              WECARE - Đối tác tin cậy của các doanh nghiệp trong lĩnh vực công nghiệp. 
+              WECARE - Đối tác tin cậy của các doanh nghiệp trong lĩnh vực công nghiệp.
               Chúng tôi cung cấp giải pháp toàn diện với chất lượng cao và dịch vụ chuyên nghiệp.
             </p>
           </div>
@@ -382,9 +382,9 @@ export default function LoginForm() {
             {/* Options */}
             <div className="flex items-center justify-between">
               <label className="flex items-center">
-                
+
               </label>
-        
+
             </div>
 
             {/* Error/Success Messages */}
@@ -393,7 +393,7 @@ export default function LoginForm() {
                 {loginError}
               </div>
             )}
-            
+
             {successMessage && (
               <div className="p-2 bg-green-50 border border-green-200 rounded-lg text-green-700 text-xs">
                 {successMessage}
@@ -404,11 +404,10 @@ export default function LoginForm() {
             <button
               type="submit"
               disabled={isLoading}
-              className={`w-full py-2.5 px-4 rounded-lg font-semibold text-sm shadow-sm transition-all ${
-                isLoading
-                  ? "bg-gray-400 text-white cursor-not-allowed"
-                  : "bg-gradient-to-r from-blue-600 to-teal-500 text-white hover:from-blue-700 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500/40"
-              }`}
+              className={`w-full py-2.5 px-4 rounded-lg font-semibold text-sm shadow-sm transition-all ${isLoading
+                ? "bg-gray-400 text-white cursor-not-allowed"
+                : "bg-gradient-to-r from-blue-600 to-teal-500 text-white hover:from-blue-700 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500/40"
+                }`}
             >
               {isLoading ? "Đang xử lý..." : "Đăng nhập"}
             </button>
@@ -441,7 +440,7 @@ export default function LoginForm() {
             </p>
             <div className="flex justify-center space-x-3 mt-1 text-xs text-gray-400">
               <a href="/post/dieu-khoan-su-dung" className="hover:text-gray-600">Điều khoản sử dụng</a>
-              <a href="/post/chinh-sach-bao-mat" className="hover:text-gray-600">Chính sách bảo mật</a>
+              <a href="/chinh-sach-bao-mat" className="hover:text-gray-600">Chính sách bảo mật</a>
             </div>
           </div>
         </div>

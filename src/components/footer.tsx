@@ -54,7 +54,7 @@ const Footer: React.FC = () => {
                 <li className="menu-item"><a href="/post/chinh-sach-giao-hang">Chính sách giao hàng</a></li>
                 <li className="menu-item"><a href="/post/chinh-sach-doi-tra">Chính sách đổi trả, hoàn tiền</a></li>
                 <li className="menu-item"><a href="/post/chinh-sach-bao-hanh">Chính sách bảo hành</a></li>
-                <li className="menu-item"><a href="/post/chinh-sach-bao-mat">Chính sách bảo mật</a></li>
+                <li className="menu-item"><a href="/chinh-sach-bao-mat">Chính sách bảo mật</a></li>
               </ul>
             </div>
           </div>
@@ -81,7 +81,7 @@ const Footer: React.FC = () => {
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M22 12.07C22 6.48 17.52 2 11.93 2 6.34 2 1.86 6.48 1.86 12.07c0 4.99 3.65 9.13 8.43 9.93v-7.03H7.9v-2.9h2.39V9.41c0-2.36 1.4-3.66 3.55-3.66 1.03 0 2.1.18 2.1.18v2.31h-1.18c-1.16 0-1.52.72-1.52 1.46v1.75h2.59l-.41 2.9h-2.18V22c4.78-.8 8.43-4.94 8.43-9.93z"></path></svg>
                 </a>
                 <a aria-label="Zalo" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors no-underline" href="https://zalo.me/3642371097976835684">
-                  <img alt="Zalo" loading="lazy" width={20} height={20} decoding="async" className="rounded-full" src="/_next/static/media/Icon_of_Zalo.svg.4b3567f7.webp" style={{color: 'transparent'}} />
+                  <img alt="Zalo" loading="lazy" width={20} height={20} decoding="async" className="rounded-full" src="/_next/static/media/Icon_of_Zalo.svg.4b3567f7.webp" style={{ color: 'transparent' }} />
                 </a>
                 <a aria-label="TikTok" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors no-underline" href="https://www.tiktok.com/@wecaresieuthicongnghiep?_t=ZS-8zYG0SMLRxQ&_r=1">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M16.5 3.5c.7 1.6 2.1 2.8 3.8 3.2v3.1c-1.7 0-3.3-.6-4.6-1.6v6.8c0 3.6-2.9 6.5-6.5 6.5S2.7 18.6 2.7 15s2.9-6.5 6.5-6.5c.4 0 .7 0 1.1.1v3.2c-.3-.1-.7-.2-1.1-.2-1.8 0-3.3 1.5-3.3 3.3S7.4 18.2 9.2 18.2s3.3-1.5 3.3-3.3V2.5h4z"></path></svg>

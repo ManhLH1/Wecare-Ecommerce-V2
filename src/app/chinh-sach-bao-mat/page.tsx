@@ -3,11 +3,12 @@ import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Footer from '@/components/footer';
+import Toolbar from '@/components/toolbar';
 import LogoSvg from '@/assets/img/Logo-Wecare.png';
 
 const PrivacyPolicyPage = () => {
   return (
-    <div className="bg-gray-50">
+    <div className="bg-gray-50 min-h-screen">
       <main>
         {/* Hero Section */}
         <section className="relative bg-gradient-to-r from-blue-600 to-purple-700 text-white overflow-hidden">
@@ -39,148 +40,388 @@ const PrivacyPolicyPage = () => {
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-24 -translate-x-24"></div>
         </section>
 
+        {/* Table of Contents */}
+        <section className="py-8 bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+          <div className="container-responsive">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex flex-wrap justify-center gap-2 md:gap-4">
+                <a href="#thu-thap" className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all duration-300">
+                  Thu thập thông tin
+                </a>
+                <a href="#muc-dich" className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all duration-300">
+                  Mục đích sử dụng
+                </a>
+                <a href="#bao-mat" className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all duration-300">
+                  Bảo mật
+                </a>
+                <a href="#quyen-chinh-sua" className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all duration-300">
+                  Quyền chỉnh sửa
+                </a>
+                <a href="#cap-nhat" className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all duration-300">
+                  Cập nhật
+                </a>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Privacy Policy Content */}
         <section className="py-16 bg-white">
           <div className="container-responsive">
             <div className="max-w-4xl mx-auto">
               <div className="text-center mb-12">
-                <h2 className="title-section text-center mb-6">Chính Sách Bảo Mật Thông Tin Khách Hàng Và Xử Lý Dữ Liệu Cá Nhân</h2>
+                <h2 className="title-section text-center mb-6">Chính Sách Bảo Mật Thông Tin Khách Hàng</h2>
                 <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto mb-8"></div>
               </div>
 
-              <div className="prose prose-lg max-w-none">
-                <div className="space-y-8">
-                  {/* 1. Sự chấp thuận */}
-                  <div className="bg-gray-50 rounded-lg p-6">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-4">1. Sự chấp thuận</h3>
-                    <p className="text-gray-700 leading-relaxed">
-                      Bằng việc truy cập vào và sử dụng các dịch vụ của Wecare Group, bạn đồng ý rằng thông tin cá nhân của bạn sẽ được thu thập và sử dụng như được nêu trong Chính sách bảo mật này. Trường hợp bạn không đồng ý với Chính sách này, bạn có thể dừng cung cấp thông tin cho chúng tôi.
-                    </p>
+              <div className="space-y-8">
+                {/* 1. Loại thông tin được thu thập */}
+                <div id="thu-thap" className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-8 shadow-sm border border-blue-100 scroll-mt-24">
+                  <div className="flex items-start mb-6">
+                    <div className="flex-shrink-0 w-12 h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center text-xl font-bold mr-4 shadow-lg">
+                      1
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 pt-2">Loại thông tin được thu thập</h3>
                   </div>
 
-                  {/* 2. Phạm vi thu thập */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-4">2. Phạm vi thu thập</h3>
-                    <p className="text-gray-700 leading-relaxed mb-4">
-                      Khi truy cập và sử dụng các dịch vụ tại website và ứng dụng của Wecare Group, bạn có thể sẽ được yêu cầu cung cấp trực tiếp cho chúng tôi thông tin cá nhân bao gồm:
+                  <div className="space-y-4 text-gray-700 leading-relaxed">
+                    <p>
+                      Trong quá trình khách hàng truy cập và sử dụng website, Wecare Group có thể tiếp nhận các dữ liệu cá nhân do khách hàng chủ động cung cấp thông qua biểu mẫu liên hệ, đăng ký tư vấn hoặc đặt mua sản phẩm.
                     </p>
-                    <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
-                      <li><strong>Thông tin đăng ký tài khoản:</strong> Email, Họ tên, Số điện thoại liên lạc, địa chỉ giao hàng, thông tin đăng nhập tài khoản (tên đăng nhập, mật khẩu)</li>
-                      <li><strong>Thông tin doanh nghiệp:</strong> Tên công ty, mã số thuế, địa chỉ kinh doanh, ngành nghề</li>
-                      <li><strong>Thông tin giao dịch:</strong> Lịch sử đơn hàng, phương thức thanh toán, thông tin hóa đơn</li>
-                      <li><strong>Thông tin liên hệ:</strong> Số điện thoại, email, địa chỉ giao hàng</li>
-                    </ul>
-                    <p className="text-gray-700 leading-relaxed mt-4">
-                      Chúng tôi cũng có thể thu thập thông tin về số lần truy cập, các trang bạn xem, số liên kết bạn click và những thông tin khác liên quan đến việc kết nối đến website Wecare Group.
-                    </p>
-                  </div>
 
-                  {/* 3. Mục đích thu thập và sử dụng thông tin */}
-                  <div className="bg-gray-50 rounded-lg p-6">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-4">3. Mục đích thu thập và sử dụng thông tin</h3>
-                    <p className="text-gray-700 leading-relaxed mb-4">
-                      Wecare Group thu thập và sử dụng thông tin cá nhân với mục đích phù hợp và hoàn toàn tuân thủ nội dung của &quot;Chính sách bảo mật&quot; này. Cụ thể:
-                    </p>
-                    <ul className="list-disc list-inside text-gray-700 space-y-3 ml-4">
-                      <li><strong>Xử lý đơn hàng:</strong> Gọi điện/tin nhắn xác nhận việc đặt hàng, thông báo về trạng thái đơn hàng & thời gian giao hàng, xác nhận việc huỷ đơn hàng và xử lý các vấn đề khác liên quan đến đơn đặt hàng của bạn</li>
-                      <li><strong>Tạo và duy trì tài khoản:</strong> Để tạo và duy trì tài khoản của bạn tại hệ thống của chúng tôi</li>
-                      <li><strong>Gửi thông tin kinh doanh:</strong> Gửi thư cảm ơn, giới thiệu sản phẩm/dịch vụ mới, thông tin khuyến mãi của Wecare Group</li>
-                      <li><strong>Hỗ trợ kinh doanh:</strong> Tư vấn kỹ thuật về sản phẩm, hướng dẫn sử dụng vật tư công trình, hỗ trợ xuất VAT</li>
-                      <li><strong>Phản hồi và hỗ trợ:</strong> Giải quyết khiếu nại, yêu cầu của khách hàng</li>
-                      <li><strong>Cá nhân hóa dịch vụ:</strong> Cải thiện trải nghiệm mua hàng, đề xuất sản phẩm phù hợp với nhu cầu kinh doanh của bạn</li>
-                      <li><strong>An ninh:</strong> Ngăn ngừa các hoạt động phá hủy tài khoản hoặc giả mạo khách hàng</li>
-                      <li><strong>Tuân thủ pháp luật:</strong> Các trường hợp có sự yêu cầu của cơ quan nhà nước có thẩm quyền</li>
-                    </ul>
-                  </div>
+                    <div className="bg-white rounded-xl p-6 border border-blue-100">
+                      <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
+                        <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Các dữ liệu có thể bao gồm:
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex items-center p-3 bg-blue-50 rounded-lg">
+                          <span className="w-2 h-2 bg-blue-500 rounded-full mr-3"></span>
+                          <span>Họ tên</span>
+                        </div>
+                        <div className="flex items-center p-3 bg-blue-50 rounded-lg">
+                          <span className="w-2 h-2 bg-blue-500 rounded-full mr-3"></span>
+                          <span>Số điện thoại</span>
+                        </div>
+                        <div className="flex items-center p-3 bg-blue-50 rounded-lg">
+                          <span className="w-2 h-2 bg-blue-500 rounded-full mr-3"></span>
+                          <span>Địa chỉ email</span>
+                        </div>
+                        <div className="flex items-center p-3 bg-blue-50 rounded-lg">
+                          <span className="w-2 h-2 bg-blue-500 rounded-full mr-3"></span>
+                          <span>Địa chỉ liên hệ</span>
+                        </div>
+                        <div className="flex items-center p-3 bg-blue-50 rounded-lg md:col-span-2">
+                          <span className="w-2 h-2 bg-blue-500 rounded-full mr-3"></span>
+                          <span>Nội dung trao đổi</span>
+                        </div>
+                      </div>
+                    </div>
 
-                  {/* 4. Thời gian lưu trữ thông tin */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-4">4. Thời gian lưu trữ thông tin</h3>
-                    <p className="text-gray-700 leading-relaxed">
-                      Dữ liệu cá nhân của Khách hàng sẽ được lưu trữ cho đến khi có yêu cầu hủy bỏ hoặc theo quy định pháp luật về lưu trữ dữ liệu. Còn lại trong mọi trường hợp thông tin cá nhân khách hàng sẽ được bảo mật trên hệ thống của Wecare Group.
+                    <p>
+                      Việc thu thập thông tin nhằm phục vụ cho hoạt động tư vấn, xác nhận nhu cầu, xử lý giao dịch và liên hệ với khách hàng, qua đó đảm bảo quyền lợi hợp pháp của người tiêu dùng trong quá trình sử dụng sản phẩm và dịch vụ của Wecare Group.
                     </p>
-                  </div>
 
-                  {/* 5. Đơn vị thu thập và quản lý thông tin cá nhân */}
-                  <div className="bg-gray-50 rounded-lg p-6">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-4">5. Đơn vị thu thập và quản lý thông tin cá nhân</h3>
-                      <div className="bg-white rounded-lg p-4 border border-gray-200">
-                      <p className="text-gray-900 font-semibold text-lg mb-2">Công ty TNHH Wecare Group</p>
-                      <div className="text-gray-700 space-y-1">
-                        <p><strong>Địa chỉ:</strong> Trụ sở 1: Lô B39, KCN Phú Tài, P. Quy Nhơn Bắc, Gia Lai</p>
-                        <p><strong>Địa chỉ:</strong> Trụ sở 2: 14-16-18-20, Đường 36, P. Bình Phú, TP.HCM</p>
-                        <p><strong>Điện thoại:</strong> 037 833 9009</p>
-                        <p><strong>Email:</strong> support@wecare.com.vn</p>
+                    <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg">
+                      <div className="flex items-start">
+                        <svg className="w-6 h-6 text-amber-600 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <div>
+                          <p className="font-semibold text-amber-800 mb-1">Lưu ý quan trọng</p>
+                          <p className="text-amber-700 text-sm">
+                            Khách hàng có trách nhiệm tự bảo mật các thông tin đã cung cấp cũng như chịu trách nhiệm đối với toàn bộ hoạt động phát sinh liên quan đến dữ liệu cá nhân của mình. Trường hợp phát hiện hành vi sử dụng trái phép, mạo danh, vi phạm bảo mật hoặc sử dụng thông tin đăng ký của bên thứ ba, khách hàng cần thông báo kịp thời cho Wecare Group để phối hợp xử lý.
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
+                </div>
 
-                  {/* 6. Quyền của Khách hàng đối với thông tin cá nhân */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-4">6. Quyền của Khách hàng đối với thông tin cá nhân</h3>
-                    <p className="text-gray-700 leading-relaxed mb-4">
-                      Khách hàng có quyền:
-                    </p>
-                    <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4 mb-4">
-                      <li>Cung cấp thông tin cá nhân cho chúng tôi và có thể thay đổi quyết định đó vào bất cứ lúc nào</li>
-                      <li>Yêu cầu chỉnh sửa thông tin cá nhân cơ bản như: tên, địa chỉ, thông tin doanh nghiệp</li>
-                      <li>Yêu cầu xóa thông tin cá nhân theo quy định pháp luật</li>
-                    </ul>
-                    <p className="text-gray-700 leading-relaxed mb-4">
-                      Để thực hiện các quyền trên, khách hàng có thể:
-                    </p>
-                    <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
-                      <li>Gọi điện thoại đến tổng đài chăm sóc khách hàng 037 833 9009</li>
-                      <li>Gửi email đến support@wecare.com.vn</li>
-                      <li>Để lại yêu cầu trực tiếp tại văn phòng công ty</li>
-                    </ul>
-                    <p className="text-gray-700 leading-relaxed mt-4">
-                      Khi nhận được yêu cầu từ Khách hàng, Wecare Group sẽ kiểm tra thông tin và liên lạc với Khách hàng để xác nhận thông tin, thông báo cho Khách hàng biết những rủi ro, ảnh hưởng hoặc thiệt hại có thể xảy ra từ việc chỉnh sửa, xóa dữ liệu đó.
-                    </p>
+                {/* 2. Mục đích và phạm vi sử dụng dữ liệu */}
+                <div id="muc-dich" className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-8 shadow-sm border border-green-100 scroll-mt-24">
+                  <div className="flex items-start mb-6">
+                    <div className="flex-shrink-0 w-12 h-12 bg-green-600 text-white rounded-xl flex items-center justify-center text-xl font-bold mr-4 shadow-lg">
+                      2
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 pt-2">Mục đích và phạm vi sử dụng dữ liệu</h3>
                   </div>
 
-                  {/* 7. Cam kết bảo mật thông tin cá nhân khách hàng */}
-                  <div className="bg-gray-50 rounded-lg p-6">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-4">7. Cam kết bảo mật thông tin cá nhân khách hàng và an toàn dữ liệu</h3>
-                    <p className="text-gray-700 leading-relaxed mb-4">
-                      Khách hàng có quyền yêu cầu thay đổi hoặc huỷ bỏ thông tin cá nhân của mình. Thông tin cá nhân của khách hàng trên hệ thống Wecare Group được cam kết bảo mật tuyệt đối theo chính sách bảo vệ thông tin cá nhân.
+                  <div className="space-y-4 text-gray-700 leading-relaxed">
+                    <p>
+                      Thông tin cá nhân của khách hàng được Wecare Group sử dụng cho các mục đích sau:
                     </p>
-                    <p className="text-gray-700 leading-relaxed mb-4">
-                      <strong>Chúng tôi cam kết:</strong>
-                    </p>
-                    <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
-                      <li>Chỉ sử dụng thông tin khách hàng vào các mục đích đã nêu tại mục 3</li>
-                      <li>Bảo mật tuyệt đối mọi thông tin giao dịch và dữ liệu khách hàng</li>
-                      <li>Sử dụng các biện pháp quản lý, kỹ thuật phù hợp để bảo vệ thông tin</li>
-                      <li>Tuân thủ các tiêu chuẩn, quy chuẩn kỹ thuật về bảo đảm an toàn thông tin mạng</li>
-                      <li>Lưu trữ thông tin cá nhân khách hàng trong môi trường vận hành an toàn</li>
-                      <li>Thông báo kịp thời cho khách hàng trong trường hợp có sự cố bảo mật</li>
-                    </ul>
-                    <p className="text-gray-700 leading-relaxed mt-4">
-                      Wecare Group chỉ cung cấp thông tin cá nhân cho các bên thứ ba khi được sự đồng ý của khách hàng hoặc theo yêu cầu của pháp luật.
-                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-white p-5 rounded-xl border border-green-100 hover:shadow-md transition-shadow duration-300">
+                        <div className="flex items-center mb-3">
+                          <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                            </svg>
+                          </div>
+                          <h5 className="font-semibold text-gray-900">Xác nhận đơn hàng</h5>
+                        </div>
+                        <p className="text-sm text-gray-600">Hỗ trợ giao nhận sản phẩm theo yêu cầu của khách hàng</p>
+                      </div>
+
+                      <div className="bg-white p-5 rounded-xl border border-green-100 hover:shadow-md transition-shadow duration-300">
+                        <div className="flex items-center mb-3">
+                          <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                          <h5 className="font-semibold text-gray-900">Cung cấp thông tin</h5>
+                        </div>
+                        <p className="text-sm text-gray-600">Thông tin liên quan đến sản phẩm, dịch vụ khi khách hàng có nhu cầu</p>
+                      </div>
+
+                      <div className="bg-white p-5 rounded-xl border border-green-100 hover:shadow-md transition-shadow duration-300">
+                        <div className="flex items-center mb-3">
+                          <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                            </svg>
+                          </div>
+                          <h5 className="font-semibold text-gray-900">Tiếp thị & Khuyến mại</h5>
+                        </div>
+                        <p className="text-sm text-gray-600">Gửi thông tin chương trình ưu đãi hoặc khuyến mại</p>
+                      </div>
+
+                      <div className="bg-white p-5 rounded-xl border border-green-100 hover:shadow-md transition-shadow duration-300">
+                        <div className="flex items-center mb-3">
+                          <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                          </div>
+                          <h5 className="font-semibold text-gray-900">Thông báo cập nhật</h5>
+                        </div>
+                        <p className="text-sm text-gray-600">Thông báo các hoạt động phát sinh trên website</p>
+                      </div>
+
+                      <div className="bg-white p-5 rounded-xl border border-green-100 hover:shadow-md transition-shadow duration-300">
+                        <div className="flex items-center mb-3">
+                          <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                          </div>
+                          <h5 className="font-semibold text-gray-900">Hỗ trợ giao dịch</h5>
+                        </div>
+                        <p className="text-sm text-gray-600">Xử lý các tình huống cần thiết trong quá trình giao dịch</p>
+                      </div>
+
+                      <div className="bg-white p-5 rounded-xl border border-green-100 hover:shadow-md transition-shadow duration-300">
+                        <div className="flex items-center mb-3">
+                          <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                          </div>
+                          <h5 className="font-semibold text-gray-900">Tuân thủ pháp luật</h5>
+                        </div>
+                        <p className="text-sm text-gray-600">Cung cấp thông tin theo yêu cầu của cơ quan nhà nước có thẩm quyền</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-green-100 border border-green-200 p-4 rounded-xl mt-4">
+                      <div className="flex items-center">
+                        <svg className="w-6 h-6 text-green-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p className="text-green-800 font-medium">
+                          Wecare Group không sử dụng dữ liệu cá nhân của khách hàng cho các mục đích ngoài phạm vi liên quan đến giao dịch, liên hệ và chăm sóc khách hàng.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Bảo mật thông tin cá nhân */}
+                <div id="bao-mat" className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-2xl p-8 shadow-sm border border-purple-100 scroll-mt-24">
+                  <div className="flex items-start mb-6">
+                    <div className="flex-shrink-0 w-12 h-12 bg-purple-600 text-white rounded-xl flex items-center justify-center text-xl font-bold mr-4 shadow-lg">
+                      3
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 pt-2">Bảo mật thông tin cá nhân</h3>
+                  </div>
+
+                  <div className="space-y-6 text-gray-700 leading-relaxed">
+                    <div className="flex items-start bg-white p-5 rounded-xl border border-purple-100">
+                      <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mr-4 flex-shrink-0">
+                        <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2">Biện pháp bảo vệ</h4>
+                        <p className="text-gray-600">
+                          Wecare Group áp dụng các biện pháp quản lý và kỹ thuật phù hợp nhằm bảo vệ dữ liệu cá nhân của khách hàng khỏi nguy cơ truy cập trái phép, mất mát hoặc sử dụng sai mục đích.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start bg-white p-5 rounded-xl border border-purple-100">
+                      <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mr-4 flex-shrink-0">
+                        <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2">Sự đồng ý của khách hàng</h4>
+                        <p className="text-gray-600">
+                          Việc thu thập và xử lý thông tin cá nhân được thực hiện trên cơ sở sự đồng ý của khách hàng, trừ trường hợp pháp luật có quy định khác.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-purple-100 border border-purple-200 p-5 rounded-xl">
+                      <div className="flex items-start">
+                        <svg className="w-8 h-8 text-purple-600 mr-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                        <div>
+                          <h4 className="font-bold text-purple-900 mb-2">Cam kết của Wecare Group</h4>
+                          <p className="text-purple-800">
+                            Wecare Group cam kết <strong>không chia sẻ</strong>, <strong>không chuyển giao</strong> hoặc <strong>tiết lộ dữ liệu cá nhân</strong> cho bất kỳ tổ chức hay cá nhân nào khác khi chưa có sự chấp thuận từ khách hàng.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-white p-5 rounded-xl border border-purple-100">
+                        <div className="flex items-center mb-3">
+                          <svg className="w-6 h-6 text-purple-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          <h5 className="font-semibold text-gray-900">Xử lý sự cố</h5>
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          Trong trường hợp xảy ra sự cố an toàn dữ liệu do nguyên nhân khách quan, Wecare Group sẽ phối hợp với cơ quan chức năng để xử lý và thông báo đến khách hàng.
+                        </p>
+                      </div>
+
+                      <div className="bg-white p-5 rounded-xl border border-purple-100">
+                        <div className="flex items-center mb-3">
+                          <svg className="w-6 h-6 text-purple-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <h5 className="font-semibold text-gray-900">Trách nhiệm khách hàng</h5>
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          Khách hàng có trách nhiệm cung cấp thông tin chính xác. Wecare Group không chịu trách nhiệm nếu thông tin cung cấp không đầy đủ hoặc không chính xác.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Quyền chỉnh sửa và xóa dữ liệu */}
+                <div id="quyen-chinh-sua" className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-8 shadow-sm border border-orange-100 scroll-mt-24">
+                  <div className="flex items-start mb-6">
+                    <div className="flex-shrink-0 w-12 h-12 bg-orange-600 text-white rounded-xl flex items-center justify-center text-xl font-bold mr-4 shadow-lg">
+                      4
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 pt-2">Quyền chỉnh sửa và xóa dữ liệu</h3>
+                  </div>
+
+                  <div className="space-y-6 text-gray-700 leading-relaxed">
+                    <div className="bg-white p-6 rounded-xl border border-orange-100">
+                      <div className="flex items-center mb-4">
+                        <svg className="w-8 h-8 text-orange-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                        <h4 className="text-lg font-semibold text-gray-900">Quyền của khách hàng</h4>
+                      </div>
+                      <p className="text-gray-600 mb-4">
+                        Khách hàng có quyền yêu cầu kiểm tra, chỉnh sửa hoặc xóa toàn bộ hay một phần dữ liệu cá nhân đã cung cấp cho Wecare Group.
+                      </p>
+
+                      <div className="bg-orange-50 p-5 rounded-xl border border-orange-200">
+                        <div className="flex items-center mb-3">
+                          <svg className="w-6 h-6 text-orange-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                          <span className="font-semibold text-orange-900">Gửi yêu cầu tại:</span>
+                        </div>
+                        <a
+                          href="mailto:mkt.lead@wecare-i.com"
+                          className="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors duration-300"
+                        >
+                          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                          mkt.lead@wecare-i.com
+                        </a>
+                        <p className="text-sm text-orange-700 mt-3">
+                          Sau khi tiếp nhận yêu cầu hợp lệ, Wecare Group sẽ tiến hành xử lý theo quy định nội bộ.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. Cập nhật chính sách */}
+                <div id="cap-nhat" className="bg-gradient-to-br from-cyan-50 to-sky-50 rounded-2xl p-8 shadow-sm border border-cyan-100 scroll-mt-24">
+                  <div className="flex items-start mb-6">
+                    <div className="flex-shrink-0 w-12 h-12 bg-cyan-600 text-white rounded-xl flex items-center justify-center text-xl font-bold mr-4 shadow-lg">
+                      5
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 pt-2">Cập nhật chính sách</h3>
+                  </div>
+
+                  <div className="space-y-4 text-gray-700 leading-relaxed">
+                    <div className="bg-white p-6 rounded-xl border border-cyan-100">
+                      <div className="flex items-start">
+                        <svg className="w-8 h-8 text-cyan-600 mr-4 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        <div>
+                          <p className="text-gray-700 mb-4">
+                            Wecare Group có quyền điều chỉnh nội dung Chính sách Bảo mật này khi cần thiết nhằm phù hợp với hoạt động kinh doanh và quy định pháp luật.
+                          </p>
+                          <div className="bg-cyan-50 p-4 rounded-lg border border-cyan-200">
+                            <div className="flex items-center">
+                              <svg className="w-5 h-5 text-cyan-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <p className="text-cyan-800 font-medium">
+                                Phiên bản cập nhật sẽ được công bố công khai trên website và có hiệu lực kể từ thời điểm đăng tải.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Contact Information */}
-              <div className="mt-12 bg-blue-50 rounded-lg p-6 text-center">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Liên hệ với chúng tôi</h3>
-                <p className="text-gray-700 mb-4">
-                  Nếu bạn có bất kỳ câu hỏi nào về Chính sách Bảo mật này, vui lòng liên hệ với chúng tôi:
-                </p>
-                <div className="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-6">
-                  <div className="flex items-center">
-                    <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
-                    <span className="text-gray-700">037 833 9009</span>
-                  </div>
-                  <div className="flex items-center">
-                    <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    <span className="text-gray-700">support@wecare.com.vn</span>
+              <div className="mt-12 bg-gradient-to-r from-blue-600 to-purple-700 rounded-2xl p-8 text-white shadow-xl">
+                <div className="text-center">
+                  <h3 className="text-2xl font-bold mb-4">Liên hệ với chúng tôi</h3>
+                  <p className="text-blue-100 mb-6">
+                    Nếu bạn có bất kỳ câu hỏi nào về Chính sách Bảo mật này, vui lòng liên hệ với chúng tôi:
+                  </p>
+                  <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6">
+                    <a href="tel:0378339009" className="flex items-center bg-white/10 hover:bg-white/20 px-5 py-3 rounded-xl transition-colors duration-300">
+                      <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                      <span className="font-medium">037 833 9009</span>
+                    </a>
+                    <a href="mailto:mkt.lead@wecare-i.com" className="flex items-center bg-white/10 hover:bg-white/20 px-5 py-3 rounded-xl transition-colors duration-300">
+                      <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      <span className="font-medium">mkt.lead@wecare-i.com</span>
+                    </a>
                   </div>
                 </div>
               </div>
@@ -189,7 +430,7 @@ const PrivacyPolicyPage = () => {
               <div className="text-center mt-8">
                 <Link
                   href="/"
-                  className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg"
+                  className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 >
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -202,6 +443,7 @@ const PrivacyPolicyPage = () => {
         </section>
       </main>
 
+      <Toolbar />
       <Footer />
     </div>
   );
