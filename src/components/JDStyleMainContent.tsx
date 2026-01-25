@@ -344,7 +344,7 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
         {/* Hero Banner */}
         <div className="w-full lg:w-[70%] border border-gray-200 rounded-xl shadow-sm overflow-hidden  lg:pb-6 mb-2">
           {/* Mobile: aspect ratio 16:9, Desktop: fixed height */}
-          <div className="relative w-full aspect-[16/9] lg:aspect-auto lg:h-[200px]">
+          <div className="hero-banner-container relative w-full aspect-[16/9] lg:aspect-auto">
             {bestPromotions.length > 0 ? (
               <div
                 className="relative w-full h-full cursor-pointer active:opacity-90 transition-opacity touch-manipulation"
@@ -398,10 +398,20 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
               margin-bottom: 2rem !important;
             }
           }
+          
+          /* Desktop: Force 390px height for hero banner and news section to align with dropdown */
+          @media (min-width: 1024px) {
+            .hero-banner-container {
+              height: 390px !important;
+            }
+            .hero-news-container {
+              height: 390px !important;
+            }
+          }
         `}</style>
 
         {/* Tin tức - Mobile: horizontal scroll, Desktop: vertical stack */}
-        <div className="w-full lg:w-[30%] lg:h-[200px]">
+        <div className="hero-news-container w-full lg:w-[30%]">
           {/* Mobile: horizontal scroll với snap */}
           <div ref={newsScrollerRef} className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible scrollbar-hide snap-x snap-mandatory lg:snap-none -mx-2 px-2 lg:mx-0 lg:px-0 lg:h-full">
             {/* Tin tức 1 */}
@@ -471,7 +481,7 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
         </div>
       </div>
 
-      
+
 
       {showExtraSections && (
         <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
