@@ -399,13 +399,13 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
             }
           }
           
-          /* Desktop: Force 390px height for hero banner and news section to align with dropdown */
+          /* Desktop: Force 500px height for hero banner and news section */
           @media (min-width: 1024px) {
             .hero-banner-container {
-              height: 390px !important;
+              height: 480px !important;
             }
             .hero-news-container {
-              height: 390px !important;
+              height: 480px !important;
             }
           }
         `}</style>
