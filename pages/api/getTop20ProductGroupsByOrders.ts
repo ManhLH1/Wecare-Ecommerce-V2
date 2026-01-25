@@ -255,6 +255,13 @@ const getTop20ProductGroupsByOrders = async (req: NextApiRequest, res: NextApiRe
             }
           );
 
+          // Exclude specific categories (e.g., Soft Drinks / Nước giải khát)
+          const EXCLUDED_CATEGORY_IDS = ['56526376-91cd-ef11-a72f-000d3ac8ae54'];
+          if (productGroupData?.crdfd_productgroupid && EXCLUDED_CATEGORY_IDS.includes(productGroupData.crdfd_productgroupid)) {
+            logger.info(`Excluding product group: ${productGroupData.crdfd_productname} (${productGroupData.crdfd_productgroupid})`);
+            return null;
+          }
+
           const imageUrl = productGroupData?.crdfd_image_url ? String(productGroupData.crdfd_image_url).trim() : "";
           if (imageUrl) {
             return {
@@ -321,6 +328,13 @@ const getTop20ProductGroupsByOrders = async (req: NextApiRequest, res: NextApiRe
             );
 
             if (productGroupData) {
+              // Exclude specific categories (e.g., Soft Drinks / Nước giải khát)
+              const EXCLUDED_CATEGORY_IDS = ['56526376-91cd-ef11-a72f-000d3ac8ae54'];
+              if (productGroupData.crdfd_productgroupid && EXCLUDED_CATEGORY_IDS.includes(productGroupData.crdfd_productgroupid)) {
+                logger.info(`Excluding fallback product group: ${productGroupData.crdfd_productname} (${productGroupData.crdfd_productgroupid})`);
+                return null;
+              }
+
               const imageUrl = productGroupData.crdfd_image_url ? String(productGroupData.crdfd_image_url).trim() : "";
               return {
                 productGroupCode: group.productGroupCode,
