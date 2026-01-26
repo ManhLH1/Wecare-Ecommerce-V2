@@ -257,11 +257,8 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
         )}
       </div>
 
-      {/* Featured Categories (mobile only) - show immediately under quick menu */}
-      <div className="block md:hidden mb-3">
-        <FeaturedCategories categories={categoryGroups} loading={false} />
-      </div>
-      <div className="text-left">
+
+      <div className="text-center">
         <div className="text-sm font-medium text-gray-800 line-clamp-2">
           {product.crdfd_name || product.crdfd_tensanphamtext}
         </div>

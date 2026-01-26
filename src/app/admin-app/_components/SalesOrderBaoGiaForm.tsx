@@ -249,7 +249,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         setSo(generateSoLabel(newest));
       }
     }
-  }, [soBaoGiaList]); 
+  }, [soBaoGiaList]);
 
 
   // Sync SO label
@@ -417,58 +417,58 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     // Determine promotionId to use for this add (child may pass overrides)
     const promoIdToUse = overrides?.promotionId ?? promotionId;
 
-      // Add new product
-      // Calculate amounts
-      const subtotalCalc = quantity * finalPrice;
-      const vatCalc = (subtotalCalc * vatPercent) / 100;
-      const totalCalc = subtotalCalc + vatCalc;
+    // Add new product
+    // Calculate amounts
+    const subtotalCalc = quantity * finalPrice;
+    const vatCalc = (subtotalCalc * vatPercent) / 100;
+    const totalCalc = subtotalCalc + vatCalc;
 
-      // Auto-increment STT
-      const maxStt = productList.length > 0 ? Math.max(...productList.map((p) => p.stt || 0)) : 0;
-      const newStt = maxStt + 1;
+    // Auto-increment STT
+    const maxStt = productList.length > 0 ? Math.max(...productList.map((p) => p.stt || 0)) : 0;
+    const newStt = maxStt + 1;
 
-      // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [người duyệt]", ngược lại lấy từ input
-      const formattedNote = approvePrice && approver
-        ? `Duyệt giá bởi ${approver}`
-        : note;
+    // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [người duyệt]", ngược lại lấy từ input
+    const formattedNote = approvePrice && approver
+      ? `Duyệt giá bởi ${approver}`
+      : note;
 
-      const newProduct: ProductItem = {
-        id: `${Date.now()}-${newStt}`,
-        stt: newStt,
-        productCode: productCode,
-        productName: product,
-        productGroupCode: productGroupCode,
-        unit: unit,
-        quantity,
-        price: priceNum,
-        priceNoVat: null,
-        surcharge: 0,
-        discount: discountAmount,
-        discountedPrice: finalPrice,
-        discountPercent: discountPercent,
-        discountAmount: discountAmount,
-        discountRate: overrides?.discountRate,
-        vat: vatPercent,
-        subtotal: subtotalCalc,
-        vatAmount: vatCalc,
-        totalAmount: totalCalc,
-        approver: approver,
-        deliveryDate: deliveryDate,
-        warehouse: warehouse,
-        note: formattedNote,
-        urgentOrder: urgentOrder,
-        approvePrice: approvePrice,
-        approveSupPrice: approveSupPrice,
-        promotionText: promotionText,
-        promotionId: promoIdToUse,
-        invoiceSurcharge: invoiceSurchargeRate,
-        createdOn: new Date().toISOString(),
-        isSodCreated: false,
-      };
+    const newProduct: ProductItem = {
+      id: `${Date.now()}-${newStt}`,
+      stt: newStt,
+      productCode: productCode,
+      productName: product,
+      productGroupCode: productGroupCode,
+      unit: unit,
+      quantity,
+      price: priceNum,
+      priceNoVat: null,
+      surcharge: 0,
+      discount: discountAmount,
+      discountedPrice: finalPrice,
+      discountPercent: discountPercent,
+      discountAmount: discountAmount,
+      discountRate: overrides?.discountRate,
+      vat: vatPercent,
+      subtotal: subtotalCalc,
+      vatAmount: vatCalc,
+      totalAmount: totalCalc,
+      approver: approver,
+      deliveryDate: deliveryDate,
+      warehouse: warehouse,
+      note: formattedNote,
+      urgentOrder: urgentOrder,
+      approvePrice: approvePrice,
+      approveSupPrice: approveSupPrice,
+      promotionText: promotionText,
+      promotionId: promoIdToUse,
+      invoiceSurcharge: invoiceSurchargeRate,
+      createdOn: new Date().toISOString(),
+      isSodCreated: false,
+    };
 
-      setProductList([...productList, newProduct]);
-      // Clear parent's promotionId to avoid stale promotion being re-used for next product
-      try { setPromotionId(''); } catch (e) { /* ignore */ }
+    setProductList([...productList, newProduct]);
+    // Clear parent's promotionId to avoid stale promotion being re-used for next product
+    try { setPromotionId(''); } catch (e) { /* ignore */ }
 
     // Reset form fields (mimic PowerApps Reset())
     setProduct('');
@@ -519,7 +519,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           unit: detail.unit,
           quantity: detail.quantity,
           price: detail.price,
-            priceNoVat: (detail as any).priceNoVat ?? (detail as any).cr1bb_giakhongvat ?? null,
+          priceNoVat: (detail as any).priceNoVat ?? (detail as any).cr1bb_giakhongvat ?? null,
           surcharge: detail.surcharge || 0,
           discount: detail.discount || 0,
           discountedPrice: detail.discountedPrice || detail.price,
@@ -754,9 +754,13 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         });
         setPromotionOrderList(available.length > 0 ? available : chietKhau2Promotions);
 
-        // Pre-select chietKhau2 promotions if present
+        // Pre-select chietKhau2 promotions if present AND meeting condition
         if (chietKhau2Promotions.length > 0) {
-          setSelectedPromotionOrders(chietKhau2Promotions);
+          const validChietKhau2 = chietKhau2Promotions.filter(p => {
+            const cond = Number((p as any).totalAmountCondition || 0);
+            return isNaN(cond) || cond === 0 || Number(savedTotalAmount) >= cond;
+          });
+          setSelectedPromotionOrders(validChietKhau2);
         } else {
           setSelectedPromotionOrders([]);
         }
@@ -773,20 +777,20 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       } catch (err: any) {
         console.error('[SOBG Promotion] ❌ Error checking promotion orders after save:', err);
       }
-        // If no promotion popup was shown AND save was full-success, clear entire form (user requested)
-        const wasPartial = Boolean(result.partialSuccess) || (Boolean(result.totalFailed) && Number(result.totalFailed) > 0);
-        if (!shouldShowPromotionPopup && !wasPartial) {
-          // Clear everything (customer, SOBG, product list, form)
-          clearEverything();
-        }
+      // If no promotion popup was shown AND save was full-success, clear entire form (user requested)
+      const wasPartial = Boolean(result.partialSuccess) || (Boolean(result.totalFailed) && Number(result.totalFailed) > 0);
+      if (!shouldShowPromotionPopup && !wasPartial) {
+        // Clear everything (customer, SOBG, product list, form)
+        clearEverything();
+      }
 
-        // Mark saved products as created when API returns savedDetails (even on full success)
-        if (result.savedDetails && result.savedDetails.length > 0) {
-          setProductList(prevList => {
-            const savedCodes = new Set(result.savedDetails.map((p: any) => p.productCode).filter(Boolean));
-            return prevList.map(item => item.productCode && savedCodes.has(item.productCode) ? { ...item, isSodCreated: true } : item);
-          });
-        }
+      // Mark saved products as created when API returns savedDetails (even on full success)
+      if (result.savedDetails && result.savedDetails.length > 0) {
+        setProductList(prevList => {
+          const savedCodes = new Set(result.savedDetails.map((p: any) => p.productCode).filter(Boolean));
+          return prevList.map(item => item.productCode && savedCodes.has(item.productCode) ? { ...item, isSodCreated: true } : item);
+        });
+      }
       if (result.partialSuccess || (result.totalFailed && result.totalFailed > 0)) {
         if (result.savedDetails && result.savedDetails.length > 0) {
           setProductList(prevList => {
@@ -999,7 +1003,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     if (!customerId || orderSummary.total <= 0) return;
 
     try {
-    const orderTotal = selectedSo?.crdfd_tongtiencovat ?? selectedSo?.crdfd_tongtien ?? orderSummary.total;
+      const orderTotal = selectedSo?.crdfd_tongtiencovat ?? selectedSo?.crdfd_tongtien ?? orderSummary.total;
 
       // Fetch available promotions for current order
       const promotionOrderResult = await fetchPromotionOrdersSOBG(
@@ -1312,7 +1316,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          disabled={!meetsCondition}
+                          disabled={!meetsCondition && !isSelected}
                           onChange={(e) => {
                             if (e.target.checked) {
                               setSelectedPromotionOrders([...selectedPromotionOrders, promo]);

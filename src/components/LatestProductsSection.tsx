@@ -28,7 +28,7 @@ const LatestProductsSection: React.FC<LatestProductsSectionProps> = ({ className
       try {
         setLoading(true);
         const response = await axios.get("/api/getLatestProducts");
-        
+
         // Convert API data to ProductCard format
         const products = (response.data || []).slice(0, 15).map((product: any, index: number) => {
           const rawImage: string = product.cr1bb_imageurlproduct || product.cr1bb_imageurl || '';
@@ -45,7 +45,7 @@ const LatestProductsSection: React.FC<LatestProductsSectionProps> = ({ className
             price: 'Liên hệ'
           } as ProductCard;
         });
-        
+
         setLatestProducts(products);
       } catch (error) {
         console.error("Error fetching latest products:", error);
@@ -131,7 +131,7 @@ const LatestProductsSection: React.FC<LatestProductsSectionProps> = ({ className
             Xem thêm
           </Link>
         </div>
-          
+
         <div className="space-y-8">
           {loading ? (
             // Loading skeleton
@@ -168,7 +168,7 @@ const LatestProductsSection: React.FC<LatestProductsSectionProps> = ({ className
                   <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full mr-3"></div>
                   <p className="text-lg font-semibold text-gray-800">{latestProducts.length}+ sản phẩm mới nhất</p>
                 </div>
-                
+
                 {/* Product Grid 2x2 */}
                 <div className="grid grid-cols-2 gap-6">
                   {latestProducts.slice(0, 4).map((product) => (
@@ -188,15 +188,15 @@ const LatestProductsSection: React.FC<LatestProductsSectionProps> = ({ className
                         <div className="absolute inset-0 bg-gradient-to-t from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                       </div>
                       {/* Product info below image */}
-                      <div className="p-4 bg-white">
-                        <h4 className="text-sm text-gray-800 font-semibold truncate leading-tight group-hover:text-blue-600 transition-colors duration-300">
+                      <div className="p-4 bg-white flex flex-col items-center">
+                        <h4 className="text-sm text-gray-800 font-semibold truncate leading-tight group-hover:text-blue-600 transition-colors duration-300 text-center">
                           {product.title}
                         </h4>
-                        <div className="flex items-center mt-2">
+                        <div className="flex items-center mt-2 justify-center">
                           <div className="flex space-x-1">
                             {[...Array(5)].map((_, i) => (
                               <svg key={i} className="w-3 h-3 text-yellow-400 fill-current" viewBox="0 0 20 20">
-                                <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
+                                <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
                               </svg>
                             ))}
                           </div>
@@ -207,7 +207,7 @@ const LatestProductsSection: React.FC<LatestProductsSectionProps> = ({ className
                   ))}
                 </div>
               </div>
-              
+
               {/* Second Section: New this week */}
               <div>
                 <div className="flex items-center mb-4">
@@ -232,14 +232,14 @@ const LatestProductsSection: React.FC<LatestProductsSectionProps> = ({ className
                       <div className="absolute inset-0 bg-gradient-to-t from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     </div>
                     {/* Product info below image */}
-                    <div className="p-4 bg-white">
-                      <h4 className="text-sm text-gray-800 font-semibold truncate leading-tight group-hover:text-green-600 transition-colors duration-300">
+                    <div className="p-4 bg-white flex flex-col items-center">
+                      <h4 className="text-sm text-gray-800 font-semibold truncate leading-tight group-hover:text-green-600 transition-colors duration-300 text-center">
                         {latestProducts[4].title}
                       </h4>
-                      <div className="flex items-center mt-2">
+                      <div className="flex items-center mt-2 justify-center">
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                           <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                           </svg>
                           Đã xác minh
                         </span>
@@ -259,14 +259,14 @@ const LatestProductsSection: React.FC<LatestProductsSectionProps> = ({ className
                       <div className="absolute inset-0 bg-gradient-to-t from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     </div>
                     {/* Product info below image */}
-                    <div className="p-4 bg-white">
-                      <h4 className="text-sm text-gray-800 font-semibold truncate leading-tight group-hover:text-green-600 transition-colors duration-300">
+                    <div className="p-4 bg-white flex flex-col items-center">
+                      <h4 className="text-sm text-gray-800 font-semibold truncate leading-tight group-hover:text-green-600 transition-colors duration-300 text-center">
                         Sản phẩm mới
                       </h4>
-                      <div className="flex items-center mt-2">
+                      <div className="flex items-center mt-2 justify-center">
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                           <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                           </svg>
                           Đã xác minh
                         </span>

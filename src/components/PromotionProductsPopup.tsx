@@ -84,12 +84,12 @@ const PromotionProductsPopup: React.FC<PromotionProductsPopupProps> = ({
 
   const getShopPrice = (priceJson?: string): { price: number; unit: string } | null => {
     if (!priceJson) return null;
-    
+
     try {
       const prices: any[] = JSON.parse(priceJson);
       const shopPrice = prices.find(p => p.crdfd_nhomoituongname === "Shop");
       if (!shopPrice) return null;
-      
+
       return {
         price: shopPrice.crdfd_gia,
         unit: shopPrice.crdfd_onvichuan || shopPrice.crdfd_onvichuantext || ''
@@ -153,11 +153,11 @@ const PromotionProductsPopup: React.FC<PromotionProductsPopupProps> = ({
                         className="object-contain p-2"
                       />
                     </div>
-                    <div className="flex-1 flex flex-col">
-                      <h3 className="font-bold text-base text-gray-800 mb-2 line-clamp-2 min-h-[2.5rem] group-hover:text-blue-600 transition-colors">
+                    <div className="flex-1 flex flex-col items-center text-center">
+                      <h3 className="font-bold text-base text-gray-800 mb-2 line-clamp-2 min-h-[2.5rem] group-hover:text-blue-600 transition-colors w-full text-center">
                         {product.productName}
                       </h3>
-                      <div className="space-y-0.5 mb-2 text-xs text-gray-500">
+                      <div className="space-y-0.5 mb-2 text-xs text-gray-500 w-full text-center">
                         {product.productCode && (
                           <div>Mã SP: <span className="font-medium text-gray-700">{product.productCode}</span></div>
                         )}
@@ -175,13 +175,13 @@ const PromotionProductsPopup: React.FC<PromotionProductsPopupProps> = ({
                         )}
                       </div>
                       {priceInfo && (
-                        <div className="flex flex-row items-center justify-between gap-4 mb-3 mt-2 w-full">
-                          <div className="flex flex-col items-start min-w-[70px]">
+                        <div className="flex flex-col items-center justify-center gap-2 mb-3 mt-2 w-full">
+                          <div className="flex flex-col items-center">
                             <span className="text-2xl font-extrabold text-red-600 leading-tight drop-shadow-sm">{formatPrice(discountedPrice)}đ</span>
                             <span className="text-xs text-gray-400 line-through mt-0.5">{formatPrice(originalPrice)}đ</span>
                           </div>
-                          <div className="flex flex-col items-center min-w-[60px]">
-                            <span className="text-2xl mb-0.5 text-yellow-400">★</span>
+                          <div className="flex flex-row items-center gap-1">
+                            <span className="text-lg text-yellow-400">★</span>
                             <span className="text-xs font-semibold text-gray-700">
                               {priceInfo?.unit ? `Giá/ ${priceInfo.unit}` : 'Giá/ ---'}
                             </span>

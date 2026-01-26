@@ -62,7 +62,7 @@ export default function TopProductsHomeSection({ onAddToCart, limit = 5 }: TopPr
               </div>
             )}
           </div>
-          <div className="p-4">
+          <div className="p-4 flex flex-col items-center text-center">
             <h3 className="text-sm font-medium text-gray-900 line-clamp-2 mb-2">
               {product.crdfd_name}
             </h3>

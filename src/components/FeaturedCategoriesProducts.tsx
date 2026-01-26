@@ -322,9 +322,9 @@ const FeaturedCategoriesProducts: React.FC<{
                             const item = parsed[0];
                             sale = parseFloat(item.crdfd_gia ?? item.cr1bb_giakhongvat ?? item.cr1bb_giaban ?? NaN);
                           }
-                        } catch (e) {}
+                        } catch (e) { }
                       }
-                    } catch (e) {}
+                    } catch (e) { }
                     if (!sale || Number.isNaN(sale)) {
                       sale = parseFloat(prod.cr1bb_giaban ?? prod.price ?? prod.crdfd_giatheovc ?? prod.crdfd_gia ?? NaN);
                     }
@@ -337,7 +337,7 @@ const FeaturedCategoriesProducts: React.FC<{
                     <div
                       key={productId}
                       className="min-w-[46%] flex-shrink-0 snap-start bg-white rounded-lg p-0 sm:p-1 shadow-sm hover:shadow-md transition box-border"
-                      style={{ flexBasis: '46%', height: isMobileView ? 210 : 240 }}
+                      style={{ flexBasis: '46%', height: isMobileView ? 150 : 240 }}
                     >
                       <Link href={p.href || category.href || "/san-pham"} className="no-underline text-gray-800">
                         <div className="flex flex-col h-full">
@@ -354,9 +354,9 @@ const FeaturedCategoriesProducts: React.FC<{
                             />
                           </div>
 
-                          <div className="flex-none mt-1">
-                            <div className="text-sm font-medium line-clamp-2 text-gray-800 h-10 overflow-hidden">{title}</div>
-                            <div className="text-sm text-red-600 font-semibold mt-1">{priceVal ? `${priceVal.toLocaleString("vi-VN")}₫` : ""}</div>
+                          <div className="flex-none mt-1 flex flex-col items-center">
+                            <div className="text-sm font-medium line-clamp-2 text-gray-800 h-10 overflow-hidden text-center">{title}</div>
+                            <div className="text-sm text-red-600 font-semibold mt-1 text-center">{priceVal ? `${priceVal.toLocaleString("vi-VN")}₫` : ""}</div>
                           </div>
                         </div>
                       </Link>

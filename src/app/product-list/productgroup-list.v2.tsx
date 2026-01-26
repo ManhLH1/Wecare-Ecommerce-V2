@@ -352,12 +352,12 @@ const ProductCard: React.FC<{
           className="max-h-full max-w-full object-contain"
         />
       </div>
-      <div className="mt-3 flex-1 flex flex-col">
-        <div className="text-sm font-medium text-gray-800 line-clamp-2">
+      <div className="mt-3 flex-1 flex flex-col items-center text-center">
+        <div className="text-sm font-medium text-gray-800 line-clamp-2 w-full">
           {product.crdfd_name || product.crdfd_fullname}
         </div>
         <div className="mt-2 text-blue-600 font-semibold">{displayPrice}</div>
-        <div className="mt-3 flex items-center justify-between">
+        <div className="mt-3 flex items-center justify-between w-full">
           <button className="text-sm bg-blue-600 text-white px-3 py-1 rounded">Xem</button>
           <button className="text-sm border border-gray-200 px-3 py-1 rounded text-gray-700">Thêm</button>
         </div>
