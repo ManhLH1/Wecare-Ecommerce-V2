@@ -337,7 +337,7 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
       </div>
 
       {/* Hero Section + Tin tức bên phải (Desktop: ngang, Mobile: dọc) */}
-      <div id="hero-banner" ref={heroContainerRef} className="flex flex-col lg:flex-row gap-1 lg:gap-2 mb-6 lg:mb-8 lg:pl-0 lg:items-stretch">
+      <div id="hero-banner" ref={heroContainerRef} className="flex flex-col lg:flex-row gap-0 lg:gap-2 mb-6 lg:mb-4 lg:pl-0 lg:items-stretch">
         {/* Hero Banner */}
         <div className="w-full lg:w-[70%] border border-gray-200 rounded-xl shadow-sm overflow-hidden  lg:pb-6 mb-2">
           {/* Mobile: aspect ratio 16:9, Desktop: fixed height */}
@@ -396,13 +396,13 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
             }
           }
           
-          /* Desktop: Force 500px height for hero banner and news section */
+          /* Desktop: Force 520px height for hero banner and news section */
           @media (min-width: 1024px) {
             .hero-banner-container {
-              height: 480px !important;
+              height: 520px !important;
             }
             .hero-news-container {
-              height: 480px !important;
+              height: 520px !important;
             }
           }
         `}</style>

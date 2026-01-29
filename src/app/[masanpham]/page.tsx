@@ -36,8 +36,13 @@
 
    const { products: relatedProducts, isLoading: isLoadingRelatedProducts, error: relatedProductsError, refetch: refetchRelatedProducts } = useRelatedProducts(product);
 
-   useEffect(() => {
-     const data = localStorage.getItem("productDetail");
+  useEffect(() => {
+    // Remove data-cursor-element-id attributes added by browser extensions
+    document.querySelectorAll('[data-cursor-element-id]').forEach((el) => {
+      el.removeAttribute('data-cursor-element-id');
+    });
+
+    const data = localStorage.getItem("productDetail");
      if (data) {
        const parsedProduct = JSON.parse(data);
        setProduct(parsedProduct);
@@ -364,7 +369,7 @@
       `}</style>
       <JDStyleHeader cartItemsCount={cartItems.length} onSearch={() => {}} onCartClick={openCart} />
 
-      <main id="main" style={{ marginTop: '120px' }} className="w-full mx-auto px-4 sm:px-6 py-3 sm:py-4 pb-28 sm:pb-4 pt-32">
+      <main id="main" style={{ marginTop: '100px' }} className="w-full mx-auto px-4 sm:px-6 py-3 sm:py-4 pb-28 sm:pb-4 pt-32">
         <nav className="mb-6">
           <div className="flex items-center text-sm text-gray-600">
             <FaHome className="w-4 h-4 mr-2" />
@@ -376,11 +381,11 @@
 
         {/* Main Product Layout - New Design */}
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-[5px]">
             {/* Left Column - 65-70% */}
             <div className="lg:col-span-8 xl:col-span-9 order-2 lg:order-1">
               {/* Product Images Section */}
-              <section className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mb-8">
+              <section className="bg-white rounded-xl shadow-lg border border-gray-200 p-[13px] mb-[5px]">
                 <div className="space-y-4">
                   {/* Main Image with Badges */}
                   <div className="relative image-zoom-container rounded-lg overflow-hidden bg-white border border-gray-200">
@@ -394,7 +399,7 @@
                         return chosen;
                       })()}
                       alt={product.crdfd_name}
-                      className="w-full h-[500px] lg:h-[600px] object-contain bg-white"
+                      className="w-full h-[330px] lg:h-[500px] object-contain bg-white"
                       onError={e => { (e.target as HTMLImageElement).src = "/images/no-image.png"; }}
                     />
 
@@ -452,19 +457,9 @@
               </section>
 
               {/* Product Information Sections */}
-              <div className="space-y-8">
-                {/* Quick Info */}
-                <section className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">{product.crdfd_name}</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                    <div><span className="font-semibold">SKU:</span> {product.crdfd_masanpham || ""}</div>
-                    <div><span className="font-semibold">Thương hiệu:</span> {product.crdfd_thuonghieu || ""}</div>
-                    <div><span className="font-semibold">Đổi trả:</span> Trong 10 ngày</div>
-                  </div>
-                </section>
-
+              <div className="space-y-[5px]">
                 {/* Mô tả ngắn nổi bật */}
-                <section className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+                <section className="bg-white rounded-xl shadow-lg border border-gray-200 p-[13px] mt-[5px]">
                   <h3 className="text-xl font-bold text-gray-900 mb-4">Đặc điểm nổi bật</h3>
                   <ul className="space-y-3">
                     {product.crdfd_mota ? (
@@ -505,59 +500,9 @@
                   </ul>
                 </section>
 
-                {/* Thông số kỹ thuật */}
-                <section className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">Thông số kỹ thuật</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-3">
-                      <div className="flex justify-between py-2 border-b border-gray-100">
-                        <span className="text-gray-600 font-medium">Mã sản phẩm</span>
-                        <span className="text-gray-900">{product?.crdfd_masanpham || "-"}</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-b border-gray-100">
-                        <span className="text-gray-600 font-medium">Quy cách</span>
-                        <span className="text-gray-900">{product?.crdfd_quycach || "-"}</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-b border-gray-100">
-                        <span className="text-gray-600 font-medium">Thương hiệu</span>
-                        <span className="text-gray-900">{product?.crdfd_thuonghieu || "-"}</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-b border-gray-100">
-                        <span className="text-gray-600 font-medium">Chất liệu</span>
-                        <span className="text-gray-900">{product?.crdfd_chatlieu || "-"}</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-b border-gray-100">
-                        <span className="text-gray-600 font-medium">Hoàn thiện</span>
-                        <span className="text-gray-900">{product?.crdfd_hoanthienbemat || "-"}</span>
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex justify-between py-2 border-b border-gray-100">
-                        <span className="text-gray-600 font-medium">Công suất</span>
-                        <span className="text-gray-900">{product?.crdfd_congsuat || "-"}</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-b border-gray-100">
-                        <span className="text-gray-600 font-medium">Tốc độ</span>
-                        <span className="text-gray-900">{product?.crdfd_tocdo || "-"}</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-b border-gray-100">
-                        <span className="text-gray-600 font-medium">Kích thước</span>
-                        <span className="text-gray-900">{product?.crdfd_kichthuoc || "-"}</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-b border-gray-100">
-                        <span className="text-gray-600 font-medium">Trọng lượng</span>
-                        <span className="text-gray-900">{product?.crdfd_trongluong || "-"}</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-b border-gray-100">
-                        <span className="text-gray-600 font-medium">Xuất xứ</span>
-                        <span className="text-gray-900">{product?.crdfd_xuatxu || "Đức"}</span>
-                      </div>
-                    </div>
-                  </div>
-                </section>
 
                 {/* Vì sao nên mua */}
-                <section className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+                <section className="bg-white rounded-xl shadow-lg border border-gray-200 p-[13px] mt-[5px]">
                   <h3 className="text-xl font-bold text-gray-900 mb-4">Vì sao nên mua sản phẩm này?</h3>
                   <div className="space-y-4">
                     <div className="flex items-start">
@@ -598,14 +543,14 @@
 
                 {/* Mô tả chi tiết */}
                 {product.crdfd_mota && (
-                  <section className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+                  <section className="bg-white rounded-xl shadow-lg border border-gray-200 p-[13px] mt-[5px]">
                     <h3 className="text-xl font-bold text-gray-900 mb-4">Mô tả chi tiết sản phẩm</h3>
                     <div className="text-gray-700 leading-relaxed prose max-w-none">{product.crdfd_mota}</div>
                   </section>
                 )}
 
                 {/* Sản phẩm tương tự */}
-                <section className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+                {/* <section className="bg-white rounded-xl shadow-lg border border-gray-200 p-[13px] mt-[5px]">
                   <RelatedProductsSection
                     products={relatedProducts}
                     isLoading={isLoadingRelatedProducts}
@@ -613,7 +558,7 @@
                     onRetry={refetchRelatedProducts}
                     currentProductName={product?.crdfd_name || product?.crdfd_fullname}
                   />
-                </section>
+                </section> */}
               </div>
             </div>
 
@@ -621,7 +566,7 @@
             <div className="lg:col-span-4 xl:col-span-3 order-1 lg:order-2">
               <div className="lg:sticky lg:top-24 space-y-6 tablet-sidebar">
                 {/* Price & CTA Section */}
-                <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+                <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-[13px] mt-0">
                   {/* Price Display */}
                   <div className="text-center mb-6">
                     {promotion && promoDisplay ? (
@@ -747,7 +692,7 @@
                 </div>
 
                 {/* Trust Block */}
-                <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+                <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-[13px]">
                   <h4 className="text-lg font-bold text-gray-900 mb-4 text-center">DỤNG CỤ VÀNG CAM KẾT</h4>
                   <div className="space-y-4">
                     <div className="flex items-center">

@@ -95,10 +95,10 @@ const PromotionsHero = () => {
   const featuredPromotions = visiblePromotions.slice(0, 3);
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-10 md:space-y-12">
       {/* Enhanced Carousel for Latest 3 Promotions */}
-      <div className="relative overflow-hidden rounded-2xl shadow-2xl bg-gradient-to-r from-blue-600 to-cyan-500">
-        <div className="relative h-[225px] md:h-[300px]">
+      <div className="relative overflow-hidden rounded-xl shadow-lg bg-gradient-to-r from-blue-600 to-cyan-500">
+        <div className="relative h-[200px] md:h-[300px] lg:h-[400px]">
           {/* Background Pattern */}
           <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
           
@@ -127,37 +127,35 @@ const PromotionsHero = () => {
               </div>
 
               {/* Content */}
-              <div className="relative h-full z-20">
-                <div className="container mx-auto px-4 h-full flex items-center">
-                  <div className="max-w-2xl space-y-3">
+              <div className="relative h-full z-20 flex flex-col justify-end pb-16">
+                <div className="container mx-auto px-4">
+                  <div className="max-w-2xl space-y-2">
                     {/* Badge */}
-                    <div className="inline-block px-4 py-2 bg-white/20 backdrop-blur-md rounded-full text-white text-sm font-medium">
+                    <div className="inline-block px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-white text-xs font-medium">
                       {promotion.cr1bb_header || 'Khuyến mãi mới'}
                     </div>
                     
                     {/* Title */}
-                    <h3 className="text-3xl md:text-4xl font-bold text-white leading-tight">
+                    <h3 className="text-xl md:text-4xl font-bold text-white leading-tight">
                       {promotion.cr1bb_title}
                     </h3>
                     
                     {/* Description */}
-                    <p className="text-base md:text-lg text-white/90 line-clamp-2 leading-relaxed">
+                    <p className="text-sm md:text-lg text-white/90 line-clamp-2 leading-relaxed">
                       {promotion.cr1bb_excerpt}
                     </p>
                     
-                    {/* CTA Button - Positioned to the left and above navigation controls */}
+                    {/* CTA Button */}
                     {promotion.cr1bb_linkfileembedded && (
-                      <div className="absolute bottom-12 left-4">
-                        <Link 
-                          href={promotion.cr1bb_linkfileembedded}
-                          className="inline-flex items-center px-4 py-2 bg-white text-blue-600 font-semibold rounded-full hover:bg-blue-50 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 text-sm"
-                        >
-                          Xem chi tiết
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                          </svg>
-                        </Link>
-                      </div>
+                      <Link 
+                        href={promotion.cr1bb_linkfileembedded}
+                        className="inline-flex items-center px-4 py-2 mt-2 bg-white text-blue-600 font-semibold rounded-full hover:bg-blue-50 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 text-sm"
+                      >
+                        Xem chi tiết
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                        </svg>
+                      </Link>
                     )}
                   </div>
                 </div>
@@ -166,37 +164,37 @@ const PromotionsHero = () => {
           ))}
 
           {/* Navigation Arrows */}
-          <div className="absolute bottom-8 right-8 flex items-center gap-4 z-30">
+          <div className="absolute bottom-4 right-4 flex items-center gap-2 z-30">
             <button
               onClick={prevSlide}
-              className="p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md transition-all duration-300 group"
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md transition-all duration-300 group"
               aria-label="Previous slide"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white transition-transform duration-300 transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white transition-transform duration-300 transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
             <button
               onClick={nextSlide}
-              className="p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md transition-all duration-300 group"
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md transition-all duration-300 group"
               aria-label="Next slide"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white transition-transform duration-300 transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white transition-transform duration-300 transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
           </div>
 
           {/* Navigation Dots */}
-          <div className="absolute bottom-8 left-8 z-30 flex items-center gap-3">
+          <div className="absolute bottom-4 left-4 z-30 flex items-center gap-2">
             {featuredPromotions.map((_, index) => (
               <button
                 key={index}
                 onClick={() => goToSlide(index)}
-                className={`relative w-12 h-2 rounded-full transition-all duration-500 ${
+                className={`relative h-2 rounded-full transition-all duration-500 ${
                   currentSlide === index 
-                    ? 'bg-white w-20' 
-                    : 'bg-white/40 hover:bg-white/60'
+                    ? 'bg-white w-12' 
+                    : 'bg-white/40 hover:bg-white/60 w-2'
                 }`}
                 aria-label={`Go to slide ${index + 1}`}
               />

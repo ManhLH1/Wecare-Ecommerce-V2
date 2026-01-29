@@ -1,4 +1,4 @@
- 'use client';
+'use client';
 
 import React, { useMemo, useState } from 'react';
 import { showToast } from '../../../components/ToastManager';
@@ -127,7 +127,7 @@ function ProductTable({
         // So sánh với originalQuantity (nếu có) hoặc quantity hiện tại
         const originalQty = p.originalQuantity !== undefined ? p.originalQuantity : p.quantity;
         const isModified = product.isSodCreated === true && newQuantity !== originalQty;
-        
+
         return {
           ...p,
           quantity: newQuantity,
@@ -136,8 +136,8 @@ function ProductTable({
           totalAmount: newTotalAmount,
           isModified: isModified,
           // Chỉ lưu originalQuantity lần đầu (khi chưa có) và chỉ cho SOD đã lưu
-          originalQuantity: p.originalQuantity !== undefined 
-            ? p.originalQuantity 
+          originalQuantity: p.originalQuantity !== undefined
+            ? p.originalQuantity
             : (product.isSodCreated === true ? p.quantity : undefined),
         };
       }
@@ -201,7 +201,7 @@ function ProductTable({
           const originalSubtotal = originalQty * (p.discountedPrice || p.price);
           const originalVatAmount = (originalSubtotal * p.vat) / 100;
           const originalTotalAmount = originalSubtotal + originalVatAmount;
-          
+
           return {
             ...p,
             quantity: originalQty,
@@ -258,7 +258,7 @@ function ProductTable({
     setConfirmingProduct(null);
   };
 
-  const showSurchargeColumn = 
+  const showSurchargeColumn =
     invoiceType !== null && invoiceType !== undefined &&
     vatChoice === 191920001 &&
     customerIndustry === 191920004;
@@ -270,7 +270,7 @@ function ProductTable({
       if (!a.createdOn && !b.createdOn) return 0;
       if (!a.createdOn) return 1;
       if (!b.createdOn) return -1;
-      
+
       // Sắp xếp theo thời gian (mới nhất lên đầu)
       const dateA = new Date(a.createdOn).getTime();
       const dateB = new Date(b.createdOn).getTime();
@@ -306,7 +306,7 @@ function ProductTable({
     const sodCreated = product.isSodCreated
       ?? crmGuidPattern.test(product.id || '')
       ?? (product.id?.toLowerCase().startsWith('crdfd_') ?? false);
-    
+
     return (
       <span className={`admin-app-table-status-badge ${sodCreated ? 'admin-app-status-success' : 'admin-app-status-pending'}`}>
         {sodCreated ? '✓' : '○'}
@@ -327,11 +327,11 @@ function ProductTable({
           </>
         )}
       </div>
-      
+
       <div className="admin-app-table-compact-container">
         <table className="admin-app-table-compact">
-        <thead>
-          <tr>
+          <thead>
+            <tr>
               <th style={{ width: '40px' }}>STT</th>
               <th style={{ width: '250px', minWidth: '200px' }}>SP</th>
               <th style={{ width: '80px' }}>ĐV</th>
@@ -341,25 +341,26 @@ function ProductTable({
               <th style={{ width: '80px' }}>CK</th>
               <th style={{ width: '100px' }}>VAT</th>
               <th style={{ width: '120px' }}>Tổng</th>
+              <th style={{ width: '100px' }}>Ngày giao</th>
               <th style={{ width: '60px' }}>TT</th>
               <th style={{ width: '60px' }}>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {products.length === 0 ? (
-            <tr>
-                <td colSpan={showSurchargeColumn ? 11 : 10} className="admin-app-table-empty-compact">
-                Chưa có đơn hàng
-              </td>
             </tr>
-          ) : (
+          </thead>
+          <tbody>
+            {products.length === 0 ? (
+              <tr>
+                <td colSpan={showSurchargeColumn ? 12 : 11} className="admin-app-table-empty-compact">
+                  Chưa có đơn hàng
+                </td>
+              </tr>
+            ) : (
               sortedProducts.map((product, idx) => {
-              const isEditing = editingQuantityId === product.id;
-              const isModified = product.isModified === true;
-              const showConfirmButton = product.isSodCreated && isModified;
-              
-              return (
-                <tr key={product.id} className={isModified ? 'admin-app-row-modified' : ''}>
+                const isEditing = editingQuantityId === product.id;
+                const isModified = product.isModified === true;
+                const showConfirmButton = product.isSodCreated && isModified;
+
+                return (
+                  <tr key={product.id} className={isModified ? 'admin-app-row-modified' : ''}>
                     <td className="admin-app-cell-center">{idx + 1}</td>
                     <td className="admin-app-cell-product-name" title={product.productName}>
                       {product.productName}
@@ -367,68 +368,68 @@ function ProductTable({
                         <span className="admin-app-modified-badge" title="Dòng đã sửa">⚠️</span>
                       )}
                     </td>
-                  <td>{product.unit}</td>
-                  <td className="admin-app-cell-right">
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        value={editingQuantityValue}
-                        onChange={(e) => {
-                          const inputValue = e.target.value;
-                          // Allow empty string, numbers, and decimal points
-                          if (inputValue === '' || /^\d*\.?\d*$/.test(inputValue)) {
-                            setEditingQuantityValue(inputValue);
-                          }
-                        }}
-                        onBlur={() => handleQuantityEditEnd(product)}
-                        onKeyDown={(e) => handleQuantityKeyDown(e, product)}
-                        className="admin-app-quantity-input"
-                        autoFocus
-                        style={{
-                          width: '60px',
-                          textAlign: 'right',
-                          padding: '2px 4px',
-                          border: '1px solid #3b82f6',
-                          borderRadius: '4px',
-                        }}
-                      />
-                    ) : (
-                      <span
-                        onClick={() => handleQuantityEditStart(product)}
-                        style={{
-                          cursor: 'pointer',
-                          padding: '2px 4px',
-                          borderRadius: '4px',
-                          display: 'inline-block',
-                          minWidth: '40px',
-                        }}
-                        title="Click để sửa số lượng"
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#f0f9ff';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                        }}
-                      >
-                        {product.quantity}
-                      </span>
-                    )}
-                  </td>
-                  <td className="admin-app-cell-right">{product.price.toLocaleString('vi-VN')}</td>
-                  {showSurchargeColumn && (
+                    <td>{product.unit}</td>
+                    <td className="admin-app-cell-right">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={editingQuantityValue}
+                          onChange={(e) => {
+                            const inputValue = e.target.value;
+                            // Allow empty string, numbers, and decimal points
+                            if (inputValue === '' || /^\d*\.?\d*$/.test(inputValue)) {
+                              setEditingQuantityValue(inputValue);
+                            }
+                          }}
+                          onBlur={() => handleQuantityEditEnd(product)}
+                          onKeyDown={(e) => handleQuantityKeyDown(e, product)}
+                          className="admin-app-quantity-input"
+                          autoFocus
+                          style={{
+                            width: '60px',
+                            textAlign: 'right',
+                            padding: '2px 4px',
+                            border: '1px solid #3b82f6',
+                            borderRadius: '4px',
+                          }}
+                        />
+                      ) : (
+                        <span
+                          onClick={() => handleQuantityEditStart(product)}
+                          style={{
+                            cursor: 'pointer',
+                            padding: '2px 4px',
+                            borderRadius: '4px',
+                            display: 'inline-block',
+                            minWidth: '40px',
+                          }}
+                          title="Click để sửa số lượng"
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#f0f9ff';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
+                        >
+                          {product.quantity}
+                        </span>
+                      )}
+                    </td>
+                    <td className="admin-app-cell-right">{product.price.toLocaleString('vi-VN')}</td>
+                    {showSurchargeColumn && (
                       <td className="admin-app-cell-right">{product.surcharge.toLocaleString('vi-VN')}</td>
-                  )}
-                  <td className="admin-app-cell-right">
-                    {product.discountPercent !== undefined && product.discountPercent !== null && product.discountPercent > 0
-                      ? `${(Number.isInteger(product.discountPercent) ? product.discountPercent : Number(product.discountPercent).toFixed(1))}%`
-                      : product.discountAmount !== undefined && product.discountAmount !== null && product.discountAmount > 0
-                      ? product.discountAmount.toLocaleString('vi-VN')
-                      : product.discount !== undefined && product.discount !== null && product.discount > 0
-                      ? product.discount.toLocaleString('vi-VN')
-                      : '-'}
-                  </td>
-                  <td className="admin-app-cell-right">{product.vat}%</td>
+                    )}
+                    <td className="admin-app-cell-right">
+                      {product.discountPercent !== undefined && product.discountPercent !== null && product.discountPercent > 0
+                        ? `${(Number.isInteger(product.discountPercent) ? product.discountPercent : Number(product.discountPercent).toFixed(1))}%`
+                        : product.discountAmount !== undefined && product.discountAmount !== null && product.discountAmount > 0
+                          ? product.discountAmount.toLocaleString('vi-VN')
+                          : product.discount !== undefined && product.discount !== null && product.discount > 0
+                            ? product.discount.toLocaleString('vi-VN')
+                            : '-'}
+                    </td>
+                    <td className="admin-app-cell-right">{product.vat}%</td>
                     {/* Ensure 'Tổng' shows subtotal + VAT (trust subtotal & vatAmount or compute them) */}
                     {(() => {
                       const displaySubtotal = product.subtotal ?? ((product.discountedPrice || product.price) * product.quantity);
@@ -438,46 +439,49 @@ function ProductTable({
                         <td className="admin-app-cell-right admin-app-cell-total">{displayTotal.toLocaleString('vi-VN')}</td>
                       );
                     })()}
+                    <td className="admin-app-cell-center" style={{ fontSize: '12px' }}>
+                      {formatDate(product.deliveryDate)}
+                    </td>
                     <td className="admin-app-cell-center" title={`Người duyệt: ${product.approver || '-'}\nNgày giao: ${formatDate(product.deliveryDate)}`}>
                       {getStatusBadge(product)}
-                  </td>
+                    </td>
                     <td className="admin-app-cell-center">
-                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'center' }}>
-                      {showConfirmButton && (
+                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'center' }}>
+                        {showConfirmButton && (
+                          <button
+                            className="admin-app-confirm-btn-compact"
+                            onClick={() => handleConfirmUpdate(product)}
+                            disabled={updatingProductId === product.id}
+                            title="Xác nhận cập nhật"
+                            style={{
+                              padding: '2px 6px',
+                              fontSize: '11px',
+                              backgroundColor: '#10b981',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: updatingProductId === product.id ? 'not-allowed' : 'pointer',
+                              opacity: updatingProductId === product.id ? 0.6 : 1,
+                            }}
+                          >
+                            {updatingProductId === product.id ? '...' : '✓'}
+                          </button>
+                        )}
                         <button
-                          className="admin-app-confirm-btn-compact"
-                          onClick={() => handleConfirmUpdate(product)}
-                          disabled={updatingProductId === product.id}
-                          title="Xác nhận cập nhật"
-                          style={{
-                            padding: '2px 6px',
-                            fontSize: '11px',
-                            backgroundColor: '#10b981',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: updatingProductId === product.id ? 'not-allowed' : 'pointer',
-                            opacity: updatingProductId === product.id ? 0.6 : 1,
-                          }}
+                          className="admin-app-delete-btn-compact"
+                          onClick={() => handleDelete(product.id)}
+                          title="Xóa"
                         >
-                          {updatingProductId === product.id ? '...' : '✓'}
+                          ×
                         </button>
-                      )}
-                      <button
-                        className="admin-app-delete-btn-compact"
-                        onClick={() => handleDelete(product.id)}
-                        title="Xóa"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })
-          )}
-        </tbody>
-      </table>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
       </div>
       {/* Confirmation Modal */}
       {showConfirmModal && confirmingProduct && (

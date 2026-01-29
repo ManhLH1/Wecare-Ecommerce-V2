@@ -171,6 +171,16 @@ const ProductTableRow = ({ index, style, data }: {
           {product.totalAmount?.toLocaleString('vi-VN') || '0'}
         </div>
 
+        <div className="admin-app-cell-center" style={{ width: '100px', fontSize: '12px' }}>
+          {(product.deliveryDate && product.deliveryDate !== '-') ? (function () {
+            try {
+              const date = new Date(product.deliveryDate);
+              if (isNaN(date.getTime())) return product.deliveryDate;
+              return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+            } catch { return product.deliveryDate; }
+          })() : '-'}
+        </div>
+
         <div className="admin-app-cell-center" style={{ width: '60px' }}>
           {product.isSodCreated ? (
             <span className="admin-app-status-saved" title="Đã lưu">✓</span>
@@ -260,11 +270,11 @@ export default function VirtualizedProductTable({
     setProducts(products.map(p =>
       p.id === product.id
         ? {
-            ...p,
-            quantity: newQuantity,
-            isModified: true,
-            originalQuantity: p.originalQuantity || p.quantity
-          }
+          ...p,
+          quantity: newQuantity,
+          isModified: true,
+          originalQuantity: p.originalQuantity || p.quantity
+        }
         : p
     ));
 
@@ -340,6 +350,7 @@ export default function VirtualizedProductTable({
           <div style={{ width: '80px' }}>CK</div>
           <div style={{ width: '100px' }}>VAT</div>
           <div style={{ width: '120px' }}>Tổng</div>
+          <div style={{ width: '100px' }}>Ngày giao</div>
           <div style={{ width: '60px' }}>TT</div>
           <div style={{ width: '60px' }}>Action</div>
         </div>

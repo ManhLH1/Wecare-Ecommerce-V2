@@ -213,14 +213,14 @@ const NewsSection = () => {
       <div aria-hidden className="pointer-events-none absolute -top-px left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] h-px w-screen bg-stone-200/80" />
       <div aria-hidden className="pointer-events-none absolute -bottom-px left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] h-px w-screen bg-stone-200/80" />
       
-      <div className="relative space-y-3 max-w-12xl xl:max-w-12xl mx-auto px-3 md:px-10">
+      <div className="relative space-y-4 max-w-12xl xl:max-w-12xl mx-auto px-4 md:px-10">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <h2 className="text-base md:text-2xl font-semibold text-gray-900">Tin tức mới nhất</h2>
+        <div className="flex justify-between items-center gap-2">
+          <h2 className="text-lg md:text-2xl font-semibold text-gray-900">Tin tức mới nhất</h2>
           <Link
             href="/post"
             aria-label="Xem tất cả tin tức"
-            className="text-cyan-600 hover:text-cyan-700 text-xs font-medium transition-all duration-200 bg-cyan-50 px-2.5 py-1 rounded-full active:scale-95 touch-manipulation"
+            className="text-cyan-600 hover:text-cyan-700 text-xs font-medium transition-all duration-200 bg-cyan-50 px-3 py-1.5 rounded-full active:scale-95 whitespace-nowrap"
           >
             Xem tất cả
           </Link>

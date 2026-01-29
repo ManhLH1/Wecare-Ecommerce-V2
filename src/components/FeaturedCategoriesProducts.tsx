@@ -4,6 +4,8 @@ import axios from "axios";
 import Link from "next/link";
 import { FaChevronLeft, FaChevronRight, FaSearch } from "react-icons/fa";
 import { productsCache } from "@/utils/cache";
+import { generateProductUrl } from "@/utils/urlGenerator";
+import { useProductGroupHierarchy } from "@/hooks/useProductGroupHierarchy";
 
 interface CategoryItem {
   id: string;
@@ -73,6 +75,9 @@ const FeaturedCategoriesProducts: React.FC<{
     if (typeof window === "undefined") return false;
     return window.innerWidth < 640;
   });
+
+  // Get product group hierarchy for generating SEO-friendly URLs
+  const { hierarchy } = useProductGroupHierarchy();
 
   useEffect(() => {
     const onResize = () => setIsMobileView(window.innerWidth < 640);
@@ -303,7 +308,7 @@ const FeaturedCategoriesProducts: React.FC<{
           ) : products && products.length > 0 ? (
             isMobileView ? (
               <div
-                className="flex gap-3 overflow-x-auto scrollbar-hide py-0 px-1 snap-x snap-mandatory"
+                className="flex gap-3 overflow-x-auto scrollbar-hide py-0 px-1 pr-4 snap-x snap-mandatory"
                 style={{ WebkitOverflowScrolling: "touch", marginTop: '-4px' }}
               >
                 {products.map((p: any, idx: number) => {
@@ -332,14 +337,15 @@ const FeaturedCategoriesProducts: React.FC<{
                     return { sale };
                   };
                   const { sale: priceVal } = getPriceInfo(p);
-                  const productId = p.crdfd_productsid || p.productId || p.id || `${category.id}-${idx}`;
+                  const productCode = p.crdfd_masanpham || p.crdfd_masanphamtext || p.crdfd_code || p.code || p.crdfd_productsid || p.productId || "";
+                  const productHref = productCode ? generateProductUrl({ ...p, productCode }, hierarchy) : (category.href || "/san-pham");
                   return (
                     <div
-                      key={productId}
-                      className="min-w-[46%] flex-shrink-0 snap-start bg-white rounded-lg p-0 sm:p-1 shadow-sm hover:shadow-md transition box-border"
-                      style={{ flexBasis: '46%', height: isMobileView ? 150 : 240 }}
+                      key={productCode}
+                      className="w-[calc((100%-20px)/2)] flex-shrink-0 snap-start bg-white rounded-lg p-0 sm:p-1 shadow-sm hover:shadow-md transition box-border"
+                      style={{ height: isMobileView ? 150 : 240 }}
                     >
-                      <Link href={p.href || category.href || "/san-pham"} className="no-underline text-gray-800">
+                      <Link href={productHref} className="no-underline text-gray-800">
                         <div className="flex flex-col h-full">
                           <div className="flex-none w-full h-20 sm:h-28 flex items-start justify-center overflow-hidden">
                             <img
@@ -412,6 +418,8 @@ const FeaturedCategoriesProducts: React.FC<{
 
                     const { sale: priceVal, original: originalVal, discount: discountPerc } = getPriceInfo(p);
                     const productId = p.crdfd_productsid || p.productId || p.id || `${category.id}-${idx}`;
+                    const productCode = p.crdfd_masanpham || p.crdfd_masanphamtext || p.crdfd_code || p.code || p.crdfd_productsid || p.productId || "";
+                    const productHref = productCode ? generateProductUrl({ ...p, productCode }, hierarchy) : (category.href || "/san-pham");
                     const key = productId;
 
                     return (
@@ -442,23 +450,25 @@ const FeaturedCategoriesProducts: React.FC<{
 
                           <div className="flex-1 flex flex-col items-center justify-start pt-1">
                             <div className="w-full max-w-[220px] p-2 flex items-center justify-center h-[120px] sm:h-[140px]">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={imageSrc || ""}
-                                alt={title || category.name}
-                                className="object-contain max-w-full max-h-[90px] sm:max-h-[120px] block"
-                                onError={(e: any) => {
-                                  e.currentTarget.onerror = null;
-                                  e.currentTarget.src =
-                                    "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='400'><rect width='100%' height='100%' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='14'>No image</text></svg>";
-                                }}
-                              />
+                              <Link href={productHref} className="contents">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={imageSrc || ""}
+                                  alt={title || category.name}
+                                  className="object-contain max-w-full max-h-[90px] sm:max-h-[120px] block cursor-pointer"
+                                  onError={(e: any) => {
+                                    e.currentTarget.onerror = null;
+                                    e.currentTarget.src =
+                                      "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='400'><rect width='100%' height='100%' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='14'>No image</text></svg>";
+                                  }}
+                                />
+                              </Link>
                             </div>
                           </div>
 
                           <div className="mt-2 flex flex-col items-center" style={{ minHeight: 60 }}>
                             <h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-800 leading-snug mb-2 line-clamp-2 min-h-[48px] sm:min-h-[54px] flex items-center justify-center text-center">
-                              <Link href={p.href || category.href || "/san-pham"} className="text-gray-800 no-underline" style={{ textDecoration: "none" }}>
+                              <Link href={productHref} className="text-gray-800 no-underline" style={{ textDecoration: "none" }}>
                                 {title}
                               </Link>
                             </h3>

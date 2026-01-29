@@ -49,7 +49,7 @@ const BrandStrip: React.FC = () => {
                     const alt = filename.replace(/\.[^.]+$/, "");
                     return (
                       <div key={filename} className="snap-start flex-shrink-0">
-                        <div className="bg-white rounded-lg p-2 flex items-center justify-center h-24 shadow-sm overflow-hidden">
+                        <div className="bg-white rounded-lg p-0 md:p-2 flex items-center justify-center h-24 shadow-sm overflow-hidden">
                           <img src={src} alt={alt} loading="lazy" className="h-20 w-auto object-contain" />
                         </div>
                       </div>
