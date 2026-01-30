@@ -9,6 +9,7 @@ import Dropdown from './Dropdown';
 const ImportModal = lazy(() => import('./ImportModal'));
 import { useCustomers, useSaleOrderBaoGia } from '../_hooks/useDropdownData';
 import { saveSOBGDetails, fetchSOBGDetails, SaleOrderDetail, fetchPromotionOrders, fetchPromotionOrdersSOBG, fetchSpecialPromotionOrders, applySOBGPromotionOrder, PromotionOrderItem, SOBaoGia } from '../_api/adminApi';
+import { APPROVERS_LIST } from '../../../constants/constants';
 import { showToast } from '../../../components/ToastManager';
 import { getItem } from '../../../utils/SecureStorage';
 import { getStoredUser } from '../_utils/implicitAuthService';
@@ -104,21 +105,6 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   const [discountPercent, setDiscountPercent] = useState(0);
   const [discount2, setDiscount2] = useState(0);
   const [discount2Enabled, setDiscount2Enabled] = useState(false);
-
-  // Danh sách người duyệt
-  const approversList = [
-    // 'Bùi Tuấn Dũng',
-    // 'Lê Sinh Thông',
-    // 'Lê Thị Ngọc Anh',
-    // 'Nguyễn Quốc Chinh',
-    // 'Phạm Quốc Hưng',
-    'Huỳnh Minh Trung',
-    // 'Bùi Thị Mỹ Trang',
-    // 'Hà Bông',
-    // 'Vũ Thành Minh',
-    // 'Phạm Thị Mỹ Hương',
-    // 'Hoàng Thị Mỹ Linh',
-  ];
 
   const discountRates = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '20'];
   const [discountAmount, setDiscountAmount] = useState(0);

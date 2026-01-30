@@ -1995,16 +1995,15 @@ export default async function handler(
         }
 
 
-        // Add approver if available
+        // Add approver if available (crdfd_Nguoi_duyet_gia is lookup to Employee table)
         if (product.approver) {
-          // TODO: Lookup approver record ID from "Duyệt giá" table
-          // payload.crdfd_duyetgia = approverRecordId;
+          // product.approver now contains the Employee GUID
+          payload['crdfd_Nguoi_duyet_gia@odata.bind'] = `/crdfd_employees(${product.approver})`;
         }
 
         // Add approval status
         if (product.approvePrice) {
-          // TODO: Map approver to OptionSet value
-          // payload.crdfd_duyetgia = mappedApprovalOptionSet;
+          // Approval status already handled above
         }
 
         // Add SUP approval if available (using Navigation property)

@@ -1,3 +1,13 @@
+// Danh sách người duyệt giá (dùng chung cho ProductEntryForm, SalesOrderForm, SalesOrderBaoGiaForm)
+// ID format: GUID dùng cho cột lookup trong CRM
+export const APPROVERS_LIST = [
+  { id: 'c45a4395-8b66-485e-185c-08d910334fac', name: 'Huỳnh Minh Trung' },
+  { id: '5d5dc7fd-8820-ee11-9966-6045bd1f9e5b', name: 'Phạm Thị Mỹ Hương (Nhà máy)' },
+] as const;
+
+// Type for approver entries
+export type ApproverEntry = typeof APPROVERS_LIST[number];
+
 // src/constants/messages.ts
 
 export const MESSAGES = {

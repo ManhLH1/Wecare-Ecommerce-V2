@@ -14,7 +14,7 @@ import {
   Promotion,
   Product,
 } from '../_api/adminApi';
-import { showToast } from '../../../components/ToastManager';
+import { APPROVERS_LIST } from '../../../constants/constants';
 import axios from 'axios';
 
 // Simple in-memory cache with TTL for product data
@@ -712,12 +712,6 @@ function ProductEntryForm({
     const warningMsg = `Sản phẩm chưa báo giá cho đơn vị ${unitText} !!`;
     return warningMsg;
   }, [vatText, vatPercent, warehouse, inventoryTheoretical, selectedProduct, price, unit, apiPrice]);
-
-  // Danh sách người duyệt
-  const approversList = [
-    'Huỳnh Minh Trung',
-  ];
-
   // Tỉ lệ chiết khấu
   const discountRates = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '20'];
 
@@ -3091,7 +3085,7 @@ function ProductEntryForm({
                 {approvePrice && <span className="admin-app-required">*</span>}
               </label>
               <Dropdown
-                options={approversList.map((name) => ({ value: name, label: name }))}
+                options={APPROVERS_LIST.map((approver) => ({ value: approver.id, label: approver.name }))}
                 value={approver}
                 onChange={(value) => setApprover(value)}
                 placeholder="Chọn người duyệt"

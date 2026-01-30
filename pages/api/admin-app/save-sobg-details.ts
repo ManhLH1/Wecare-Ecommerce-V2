@@ -1083,6 +1083,11 @@ export default async function handler(
                 entity["crdfd_duyetgia"] = mappedApproval;
             }
 
+            // Add approver lookup (crdfd_Nguoi_duyet_gia is lookup to Employee table)
+            if (product.approver) {
+                entity["crdfd_Nguoi_duyet_gia@odata.bind"] = `/crdfd_employees(${product.approver})`;
+            }
+
             // If SUP approver ID is provided, set lookup binding property
             if (product.approveSupPrice && product.approveSupPriceId) {
                 entity[`cr1bb_duyetgiasup@odata.bind`] = `/crdfd_duyetgias(${product.approveSupPriceId})`;

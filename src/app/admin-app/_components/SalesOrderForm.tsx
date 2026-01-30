@@ -7,6 +7,7 @@ import ProductTable from './ProductTable';
 import Dropdown from './Dropdown';
 import { useCustomers, useSaleOrders } from '../_hooks/useDropdownData';
 import { fetchSaleOrderDetails, SaleOrderDetail, saveSaleOrderDetails, updateInventory, fetchInventory, fetchUnits, fetchPromotionOrders, fetchSpecialPromotionOrders, applyPromotionOrder, PromotionOrderItem, InventoryInfo } from '../_api/adminApi';
+import { APPROVERS_LIST } from '../../../constants/constants';
 import { showToast } from '../../../components/ToastManager';
 import { getItem } from '../../../utils/SecureStorage';
 import { getStoredUser } from '../_utils/implicitAuthService';
@@ -133,21 +134,6 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const [priceEntryMethod, setPriceEntryMethod] = useState<'Nhập thủ công' | 'Theo chiết khấu'>('Nhập thủ công');
   const [discountRate, setDiscountRate] = useState<string>('1');
   const [discountPercent, setDiscountPercent] = useState(0);
-
-  // Danh sách người duyệt
-  const approversList = [
-    // 'Bùi Tuấn Dũng',
-    // 'Lê Sinh Thông',
-    // 'Lê Thị Ngọc Anh',
-    // 'Nguyễn Quốc Chinh',
-    // 'Phạm Quốc Hưng',
-    'Huỳnh Minh Trung',
-    // 'Bùi Thị Mỹ Trang',
-    // 'Hà Bông',
-    // 'Vũ Thành Minh',
-    // 'Phạm Thị Mỹ Hương',
-    // 'Hoàng Thị Mỹ Linh',
-  ];
 
   const discountRates = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '20'];
   const [discountAmount, setDiscountAmount] = useState(0);
@@ -504,7 +490,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       subtotal: subtotalCalc,
       vatAmount: vatCalc,
       totalAmount: totalCalc,
-      approver: approver,
+      approver: approver, // Should be GUID ID now
       deliveryDate: deliveryDate,
       warehouse: warehouse,
       note: formattedNote,
@@ -517,13 +503,11 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       createdOn: new Date().toISOString(),
       isSodCreated: false,
     };
-    // Debug: log constructed product to verify discount fields
+    // Debug: log constructed product to verify approver field
     try {
       console.debug('[SalesOrderForm][DEBUG] New product prepared', {
-        discountPercent: newProduct.discountPercent,
-        discountAmount: newProduct.discountAmount,
-        discountedPrice: newProduct.discountedPrice,
-        subtotal: newProduct.subtotal,
+        approver: approver,
+        approverType: typeof approver,
       });
     } catch (err) { /* ignore logging errors */ }
 
