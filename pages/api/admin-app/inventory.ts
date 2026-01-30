@@ -1,11 +1,9 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import axiosClient from "./_utils/axiosClient";
-import { getCacheKey, getCachedResponse, setCachedResponse } from "./_utils/cache";
 import { deduplicateRequest, getDedupKey } from "./_utils/requestDeduplication";
 import { buildOptimizedInventoryQuery } from "./_utils/dynamicsQueryOptimizer";
 
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
-const INVENTORY_TABLE = "cr44a_inventoryweshops";
 const KHO_BD_TABLE = "crdfd_kho_binh_dinhs";
 
 export default async function handler(
@@ -27,13 +25,6 @@ export default async function handler(
       return res
         .status(400)
         .json({ error: "productCode (Mã sản phẩm) is required" });
-    }
-
-    // Check cache first (use short cache for inventory as it changes frequently)
-    const cacheKey = getCacheKey("inventory", { productCode, warehouseName });
-    const cachedResponse = getCachedResponse(cacheKey, true); // Use short cache (1 min)
-    if (cachedResponse !== undefined) {
-      return res.status(200).json(cachedResponse);
     }
 
     const headers = {
@@ -104,7 +95,7 @@ export default async function handler(
         return conditionStr;
       }).join(' and ');
       const columns =
-        "crdfd_kho_binh_dinhid,crdfd_masp,cr1bb_tonkholythuyetbomua,crdfd_tonkholythuyet,cr1bb_soluonganggiuathang,crdfd_vitrikhofx";
+        "crdfd_kho_binh_dinhid,crdfd_masp,cr1bb_tonkholythuyetbomua,cr1bb_soluonganggiuathang,crdfd_vitrikhofx";
       const legacyQuery = `$select=${columns}&$filter=${encodeURIComponent(filter)}&$top=1`;
       const legacyEndpoint = `${BASE_URL}${KHO_BD_TABLE}?${legacyQuery}`;
 
@@ -115,11 +106,9 @@ export default async function handler(
       first = (legacyResponse.data.value || [])[0];
     }
     
-    // CurrentInventory = cr1bb_tonkholythuyetbomua (ưu tiên), fallback về crdfd_tonkholythuyet
-    let currentInventory = first?.cr1bb_tonkholythuyetbomua ?? 0;
-    if (currentInventory === 0 && first?.crdfd_tonkholythuyet) {
-      currentInventory = first.crdfd_tonkholythuyet ?? 0;
-    }
+    // Inventory from cr1bb_tonkholythuyetbomua
+    const currentInventory = first?.cr1bb_tonkholythuyetbomua ?? 0;
+    
     // ReservedQuantity = cr1bb_soluonganggiuathang (cột giữ hàng ở Kho Bình Định)
     let reservedQuantity = first?.cr1bb_soluonganggiuathang ?? 0;
     
@@ -133,9 +122,6 @@ export default async function handler(
       reservedQuantity: reservedQuantity, // Số lượng đang giữ đơn
       availableToSell: availableToSell, // AvailableToSell = CurrentInventory - ReservedQuantity
     };
-    
-    // Cache the result
-    setCachedResponse(cacheKey, result, true);
     
     return res.status(200).json(result);
   } catch (error: any) {

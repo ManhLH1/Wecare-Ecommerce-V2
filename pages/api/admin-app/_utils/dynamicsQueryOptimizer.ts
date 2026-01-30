@@ -276,7 +276,6 @@ export function buildOptimizedInventoryQuery(productCode: string, warehouseName?
         'crdfd_kho_binh_dinhid',
         'crdfd_masp',
         'cr1bb_tonkholythuyetbomua',
-        'crdfd_tonkholythuyet',
         'cr1bb_soluonganggiuathang',
         'crdfd_vitrikhofx'
       ],

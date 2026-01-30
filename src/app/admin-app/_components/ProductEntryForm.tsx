@@ -533,6 +533,7 @@ function ProductEntryForm({
   const userSelectedUnitRef = useRef<boolean>(false); // Track nếu người dùng đã chọn đơn vị thủ công
   const userHasManuallySelectedUnitRef = useRef<boolean>(false); // Persistent until product changes
   const lastProductSelectionTimeRef = useRef<number>(0); // Track last product selection time for debouncing
+  const inventoryForDeliveryDateRef = useRef<number | null>(null); // Track inventory value used for delivery date calculation
 
   // Start background cache sync on mount
   useEffect(() => {
@@ -2354,6 +2355,77 @@ function ProductEntryForm({
   };
 
   const handleSaveWithInventoryCheck = async () => {
+    // KIỂM TRA VÀ TÍNH LẠI NGÀY GIAO NẾU TỒN KHO THAY ĐỔI
+    // Trước khi save, kiểm tra nếu inventory thay đổi thì tính lại delivery date
+    try {
+      const currentInventory = inventoryTheoretical ?? 0;
+      const lastInventory = inventoryForDeliveryDateRef.current;
+
+      // Nếu inventory thay đổi, tính lại delivery date
+      if (selectedProduct && currentInventory !== lastInventory && districtLeadtime > 0) {
+        console.log(`[Save Check] Tồn kho thay đổi: ${lastInventory} → ${currentInventory}, tính lại ngày giao...`);
+
+        // Lấy promotion info (tương tự logic trong useEffect)
+        const promo = selectedPromotion as any;
+        const promoLeadRaw = promo?.cr1bb_leadtimepromotion ?? promo?.leadtime ?? promo?.leadTime ?? promo?.lead_time ?? promo?.value;
+        const promoRecord = {
+          cr1bb_leadtimepromotion: promoLeadRaw,
+          cr1bb_phanloaichuongtrinh: (promo as any)?.phânLoai || (promo as any)?.type || undefined,
+        };
+
+        // Xác định varNganhNghe
+        let varNganhNghe: string | undefined = undefined;
+        if (typeof customerIndustry === 'number') {
+          if (customerIndustry === 5 || customerIndustry === 191920004) {
+            varNganhNghe = 'Shop';
+          }
+        }
+        if (!varNganhNghe && customerName && String(customerName).toLowerCase().includes('shop')) {
+          varNganhNghe = 'Shop';
+        }
+
+        // Lấy product lead time
+        const productLeadTime = Number((selectedProduct as any)?.crdfd_leadtime) ||
+          Number((selectedProduct as any)?.leadtime) ||
+          Number((selectedProduct as any)?.leadTime) ||
+          Number((selectedProduct as any)?.cr1bb_leadtime) || 0;
+
+        // Lấy conversion factor
+        const currentUnit = units.find((u) => u.crdfd_unitsid === unitId);
+        const conversionFactor = ((currentUnit as any)?.crdfd_giatrichuyenoi > 0)
+          ? Number((currentUnit as any).crdfd_giatrichuyenoi)
+          : ((currentUnit as any)?.crdfd_conversionfactor > 0)
+          ? Number((currentUnit as any).crdfd_conversionfactor)
+          : ((currentUnit as any)?.crdfd_conversionvalue > 0)
+          ? Number((currentUnit as any).crdfd_conversionvalue)
+          : 1;
+
+        // Tính delivery date với inventory mới
+        const computeParams = {
+          warehouseCode: warehouseCode,
+          orderCreatedOn: new Date().toISOString(),
+          districtLeadtime: districtLeadtime,
+          promotion: promoRecord,
+          varNganhNghe: varNganhNghe,
+          var_leadtime_quanhuyen: districtLeadtime,
+          var_input_soluong: quantity || 0,
+          var_selected_donvi_conversion: Number(conversionFactor) || 1,
+          var_selected_SP_tonkho: currentInventory,
+          var_selected_SP_leadtime: productLeadTime || 0,
+        };
+
+        const computed = computeDeliveryDate(computeParams);
+        const formattedDate = formatDate(computed);
+        setDeliveryDate(formattedDate);
+        inventoryForDeliveryDateRef.current = currentInventory;
+
+        console.log(`[Save Check] Ngày giao mới: ${formattedDate}`);
+      }
+    } catch (e) {
+      console.warn('[Save Check] Lỗi khi tính lại ngày giao:', e);
+      // Vẫn tiếp tục save nếu lỗi
+    }
+
     // BỎ KIỂM TRA VALIDATE CÁC TRƯỜNG TRONG "THÔNG TIN SẢN PHẨM"
     // Chỉ gọi onSave() trực tiếp - validation sẽ được thực hiện ở handleSave của parent component
     // (chỉ check danh sách sản phẩm mới chưa lưu SOD)
@@ -2642,6 +2714,7 @@ function ProductEntryForm({
       const formattedDate = formatDate(computed);
 
       setDeliveryDate(formattedDate);
+      inventoryForDeliveryDateRef.current = inventoryTheoretical ?? 0; // Track inventory used for delivery date
     } catch (e) {
       // fallback: simple logic
       const today = new Date();
