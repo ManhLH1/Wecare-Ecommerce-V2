@@ -3024,88 +3024,141 @@ function ProductEntryForm({
         </div>
       </div>
       <div className="admin-app-form-compact">
-        {/* Price approval UI moved into Product Entry */}
+        {/* Price approval UI - PROFESSIONAL DESIGN */}
         {approvePrice && (
-          <div className="admin-app-form-row-compact admin-app-form-row-approval" style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #e2e8f0' }}>
-            <div className="admin-app-field-compact">
-              <label className="admin-app-label-inline">Phương thức</label>
-              <Dropdown
-                options={[
-                  { value: 'Nhập thủ công', label: 'Nhập thủ công' },
-                  { value: 'Theo chiết khấu', label: 'Theo chiết khấu' },
-                ]}
-                value={priceEntryMethod}
-                onChange={(value) => setPriceEntryMethod(value as 'Nhập thủ công' | 'Theo chiết khấu')}
-                placeholder="Chọn phương thức"
-                disabled={isFormDisabled}
-              />
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            marginBottom: '12px',
+            padding: '10px 14px',
+            background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+            border: '1px solid #e2e8f0',
+            borderRadius: '8px',
+            flexWrap: 'nowrap',
+            overflow: 'visible',
+          }}>
+            {/* Phương thức */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+              <label style={{ 
+                fontSize: '12px', 
+                fontWeight: 600, 
+                color: '#475569', 
+                whiteSpace: 'nowrap',
+                letterSpacing: '0.3px'
+              }}>Phương thức</label>
+              <div style={{ width: '140px' }}>
+                <Dropdown
+                  options={[
+                    { value: 'Nhập thủ công', label: 'Nhập thủ công' },
+                    { value: 'Theo chiết khấu', label: 'Theo chiết khấu' },
+                  ]}
+                  value={priceEntryMethod}
+                  onChange={(value) => setPriceEntryMethod(value as 'Nhập thủ công' | 'Theo chiết khấu')}
+                  placeholder="Chọn..."
+                  disabled={isFormDisabled}
+                />
+              </div>
             </div>
 
+            {/* Divider */}
+            <div style={{ width: '1px', height: '32px', background: '#cbd5e1', flexShrink: 0 }} />
+
+            {/* Chiết khấu - only show when 'Theo chiết khấu' */}
             {priceEntryMethod === 'Theo chiết khấu' && (
-              <div className="admin-app-field-compact admin-app-field-discount-group">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <Dropdown
-                      options={[
-                        ...discountRates.map((rate) => ({ value: rate, label: rate })),
-                        { value: 'Khác', label: 'Khác' },
-                      ]}
-                      value={discountRate}
-                      onChange={(value) => {
-                        setDiscountRate(value);
-                        if (value === 'Khác') {
-                          setDiscountPercent(0);
-                        } else {
-                          const num = Number(value);
-                          const finalPercent = isNaN(num) ? 0 : num;
-                          setDiscountPercent(finalPercent);
-                        }
-                      }}
-                      placeholder="Chọn tỉ lệ"
-                      disabled={isFormDisabled}
-                    />
-                  </div>
-                  {discountRate === 'Khác' && (
-                    <div style={{ width: '100px', flex: '0 0 100px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                      <label
-                        className="admin-app-label-inline"
-                        style={{ marginBottom: '6px', textAlign: 'left', display: 'block', width: '100%' }}
-                      >
-                        Chiết khấu (%)
-                      </label>
-                      <input
-                        type="number"
-                        className="admin-app-input admin-app-input-compact"
-                        min={0}
-                        max={100}
-                        value={discountPercent}
-                        onChange={(e) => {
-                          const v = e.target.value === '' ? 0 : Number(e.target.value);
-                          setDiscountPercent(isNaN(v) ? 0 : v);
-                        }}
-                        disabled={isFormDisabled}
-                        placeholder="Nhập %"
-                      />
-                    </div>
-                  )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                <label style={{ 
+                  fontSize: '12px', 
+                  fontWeight: 600, 
+                  color: '#475569', 
+                  whiteSpace: 'nowrap',
+                  letterSpacing: '0.3px'
+                }}>Chiết khấu</label>
+                <div style={{ width: '100px' }}>
+                  <Dropdown
+                    options={[
+                      ...discountRates.map((rate) => ({ value: rate, label: rate })),
+                      { value: 'Khác', label: 'Khác' },
+                    ]}
+                    value={discountRate}
+                    onChange={(value) => {
+                      setDiscountRate(value);
+                      if (value === 'Khác') {
+                        setDiscountPercent(0);
+                      } else {
+                        const num = Number(value);
+                        setDiscountPercent(isNaN(num) ? 0 : num);
+                      }
+                    }}
+                    placeholder="Chọn..."
+                    disabled={isFormDisabled}
+                  />
                 </div>
+                {discountRate === 'Khác' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '110px' }}>
+                    <input
+                      type="number"
+                      style={{
+                        width: '75px',
+                        height: '32px',
+                        padding: '6px 10px',
+                        fontSize: '13px',
+                        fontWeight: 500,
+                        border: '1.5px solid #cbd5e1',
+                        borderRadius: '6px',
+                        textAlign: 'right',
+                        background: '#fff',
+                        outline: 'none',
+                        transition: 'border-color 0.2s, box-shadow 0.2s',
+                      }}
+                      min={0}
+                      max={100}
+                      value={discountPercent}
+                      onChange={(e) => {
+                        const v = e.target.value === '' ? 0 : Number(e.target.value);
+                        setDiscountPercent(isNaN(v) ? 0 : v);
+                      }}
+                      disabled={isFormDisabled}
+                      placeholder="0"
+                    />
+                    <span style={{ 
+                      fontSize: '12px', 
+                      fontWeight: 600, 
+                      color: '#64748b',
+                      letterSpacing: '0.5px'
+                    }}>%</span>
+                  </div>
+                )}
               </div>
             )}
 
-            <div className="admin-app-field-compact">
-              <label className="admin-app-label-inline">
-                Người duyệt
-                {approvePrice && <span className="admin-app-required">*</span>}
+            {/* Người duyệt */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, marginLeft: 'auto' }}>
+              <label style={{ 
+                fontSize: '12px', 
+                fontWeight: 600, 
+                color: '#475569', 
+                whiteSpace: 'nowrap',
+                letterSpacing: '0.3px'
+              }}>
+                Người duyệt{approvePrice && <span style={{ color: '#dc2626', marginLeft: '2px' }}>*</span>}
               </label>
-              <Dropdown
-                options={APPROVERS_LIST.map((approver) => ({ value: approver.id, label: approver.name }))}
-                value={approver}
-                onChange={(value) => setApprover(value)}
-                placeholder="Chọn người duyệt"
-                disabled={isFormDisabled}
-              />
+              <div style={{ width: '180px' }}>
+                <Dropdown
+                  options={APPROVERS_LIST.map((approver) => ({ value: approver.id, label: approver.name }))}
+                  value={approver}
+                  onChange={(value) => setApprover(value)}
+                  placeholder="Chọn..."
+                  disabled={isFormDisabled}
+                />
+              </div>
               {approvePrice && !approver && (
-                <div className="admin-app-error-inline">Vui lòng chọn người duyệt</div>
+                <div style={{ 
+                  fontSize: '11px', 
+                  color: '#dc2626', 
+                  whiteSpace: 'nowrap',
+                  fontWeight: 500
+                }}>Vui lòng chọn</div>
               )}
             </div>
           </div>
