@@ -39,7 +39,7 @@ export default async function handler(
     }
 
   // Select fields: get unit conversion info - crdfd_onvichuyenoitransfome is the unit name text field
-  const columns = "crdfd_unitconvertionid,cr44a_masanpham,crdfd_onvichuyenoitransfome,crdfd_giatrichuyenoi,crdfd_conversionfactor,crdfd_conversionvalue,crdfd_onvichuan";
+  const columns = "crdfd_unitconvertionid,cr44a_masanpham,crdfd_onvichuyenoitransfome,crdfd_giatrichuyenoi,crdfd_onvichuan";
     
     const query = `$select=${columns}&$filter=${encodeURIComponent(filter)}&$orderby=crdfd_onvichuyenoitransfome&$top=500`;
 
@@ -58,15 +58,12 @@ export default async function handler(
         const unitName = item.crdfd_onvichuyenoitransfome || "";
         const unitId = item.crdfd_unitconvertionid || "";
         const giatrichuyenoi = item.crdfd_giatrichuyenoi || 0;
-        const conversionfactor = item.crdfd_conversionfactor || 0;
-        const conversionvalue = item.crdfd_conversionvalue || 0;
         const onvichuan = item.crdfd_onvichuan || "";
         return {
           crdfd_unitsid: unitId,
           crdfd_name: unitName,
-          crdfd_giatrichuyenoi: giatrichuyenoi > 0 ? giatrichuyenoi : (conversionfactor > 0 ? conversionfactor : (conversionvalue > 0 ? conversionvalue : 0)),
-          crdfd_conversionfactor: conversionfactor,
-          crdfd_conversionvalue: conversionvalue,
+          crdfd_giatrichuyenoi: giatrichuyenoi,
+          crdfd_conversionfactor: giatrichuyenoi,
           crdfd_onvichuan: onvichuan,
         };
       })
