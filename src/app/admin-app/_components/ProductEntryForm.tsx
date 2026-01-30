@@ -1050,16 +1050,17 @@ function ProductEntryForm({
         const sevenHoursAfterDateStr = sevenHoursAfter.toLocaleDateString('en-CA');
         const yesterdayDateStr = yesterday.toLocaleDateString('en-CA');
 
-        // Debug log to help trace why button may still be enabled
-        // (will appear in browser console)
-        // eslint-disable-next-line no-console
-        console.log('[ProductEntryForm] soCreatedOn:', soCreatedOn, 'sevenHoursAfter:', sevenHoursAfter.toISOString(), 'sevenHoursAfterDate:', sevenHoursAfterDateStr, 'yesterdayDate:', yesterdayDateStr);
-
         // If (createdOn + 7h) is on or before yesterday (local date), disable adding today
         const sevenDateOnly = new Date(sevenHoursAfter.getFullYear(), sevenHoursAfter.getMonth(), sevenHoursAfter.getDate()).getTime();
         const yesterdayOnly = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate()).getTime();
 
+        // Debug log to help trace why button may still be enabled
+        // (will appear in browser console)
+        // eslint-disable-next-line no-console
+        console.log('[ProductEntryForm DEBUG] Today:', new Date().toISOString(), '| soCreatedOn:', soCreatedOn, '| sevenHoursAfter:', sevenHoursAfter.toISOString(), '| sevenDateOnly:', sevenDateOnly, '| yesterdayOnly:', yesterdayOnly, '| Disabled:', sevenDateOnly <= yesterdayOnly);
+
         if (sevenDateOnly <= yesterdayOnly) {
+          console.warn('[ProductEntryForm] SO cũ - Disable form. soCreatedOn:', soCreatedOn, '| sevenHoursAfter:', sevenHoursAfter.toISOString());
           const reason = 'không bổ sung sản phẩm vào SO cũ';
           return true;
         }
@@ -2864,6 +2865,17 @@ function ProductEntryForm({
       setPromotionDiscountPercent(0);
       // Recompute totals với chiết khấu = 0
       recomputeTotals(price, quantity, 0, vatPercent);
+
+      // Set default approver based on customer nganhnghe
+      // - crdfd_nganhnghe != 191920004 → Phạm Thị Mỹ Hương
+      // - crdfd_nganhnghe = 191920004 (hoặc null/undefined) → Huỳnh Minh Trung
+      const NGANHNGHEMOI_KHONG_PHI_MUA_BAN = 191920004;
+      const APPROVER_PHUONG = '5d5dc7fd-8820-ee11-9966-6045bd1f9e5b'; // Phạm Thị Mỹ Hương
+      const APPROVER_TRUNG = 'c45a4395-8b66-485e-185c-08d910334fac'; // Huỳnh Minh Trung
+
+      const customerNganhnghe = customerIndustry; // customerIndustry is nganhnghemoi from SalesOrderForm
+      const shouldUsePhuong = customerNganhnghe !== NGANHNGHEMOI_KHONG_PHI_MUA_BAN;
+      setApprover(shouldUsePhuong ? APPROVER_PHUONG : APPROVER_TRUNG);
       // When enabling approval, load full price dataset from API and use regular price for display
       (async () => {
         try {
