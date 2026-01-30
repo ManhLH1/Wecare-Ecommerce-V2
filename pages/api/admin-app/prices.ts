@@ -8,12 +8,15 @@ const QUOTE_DETAIL_TABLE = "crdfd_baogiachitiets";
 const GROUP_KH_TABLE = "cr1bb_groupkhs"; // Group - KH
 const CUSTOMER_TABLE = "crdfd_customers";
 
-// Helper function to get customer info (ID and rewards) from customerCode or customerId
+// Ngành nghề đặc biệt không áp dụng discount rate
+const NGANHNGHEMOI_SKIP_RATE = 283640000;
+
+// Helper function to get customer info (ID, rewards, and nganhnghemoi) from customerCode or customerId
 async function getCustomerInfo(
   customerCode: string | undefined,
   customerId: string | undefined,
   headers: any
-): Promise<{ customerId: string | null; wecareRewards: string | null }> {
+): Promise<{ customerId: string | null; wecareRewards: string | null; nganhnghemoi: number | null }> {
   if (customerId) {
     // Validate GUID format
     const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -24,7 +27,7 @@ async function getCustomerInfo(
   }
 
   if (!customerCode && !customerId) {
-    return { customerId: null, wecareRewards: null };
+    return { customerId: null, wecareRewards: null, nganhnghemoi: null };
   }
 
   // Check cache first
@@ -45,12 +48,12 @@ async function getCustomerInfo(
       if (customerId) {
         // If we have customerId, query directly
         customerFilter += ` and crdfd_customerid eq ${customerId}`;
-        customerQuery = `$select=crdfd_customerid,crdfd_wecare_rewards&$filter=${encodeURIComponent(customerFilter)}&$top=1`;
+        customerQuery = `$select=crdfd_customerid,crdfd_wecare_rewards,cr1bb_nganhnghemoi&$filter=${encodeURIComponent(customerFilter)}&$top=1`;
       } else if (customerCode) {
         // If we have customerCode, query by code
         const safeCode = customerCode.replace(/'/g, "''");
         customerFilter += ` and cr44a_makhachhang eq '${safeCode}'`;
-        customerQuery = `$select=crdfd_customerid,crdfd_wecare_rewards&$filter=${encodeURIComponent(customerFilter)}&$top=1`;
+        customerQuery = `$select=crdfd_customerid,crdfd_wecare_rewards,cr1bb_nganhnghemoi&$filter=${encodeURIComponent(customerFilter)}&$top=1`;
       }
 
       const customerEndpoint = `${BASE_URL}${CUSTOMER_TABLE}?${customerQuery}`;
@@ -59,20 +62,21 @@ async function getCustomerInfo(
 
       const result = {
         customerId: customer?.crdfd_customerid || null,
-        wecareRewards: customer?.crdfd_wecare_rewards || null
+        wecareRewards: customer?.crdfd_wecare_rewards || null,
+        nganhnghemoi: customer?.cr1bb_nganhnghemoi ?? null
       };
 
       // Cache the result
       setCachedResponse(cacheKey, result, true);
 
       return result;
-      return { customerId: null, wecareRewards: null };
+      return { customerId: null, wecareRewards: null, nganhnghemoi: null };
     } catch (error: any) {
       console.error("❌ [Get Customer Info] Error:", {
         error: error.message,
         response: error.response?.data,
       });
-      return { customerId: null, wecareRewards: null };
+      return { customerId: null, wecareRewards: null, nganhnghemoi: null };
     }
   });
 }
@@ -157,11 +161,12 @@ export default async function handler(
       "OData-Version": "4.0",
     };
 
-    // Step 1 & 2: Get customer info (ID and rewards) and groups in parallel when possible
+    // Step 1 & 2: Get customer info (ID, rewards, and nganhnghemoi) and groups in parallel when possible
     // If we have customerId (GUID), we can get groups immediately
     // Otherwise, we need to get customerId first, then groups
     let finalCustomerId: string | null = null;
     let customerWecareRewards: string | null = null;
+    let customerNganhnghemoi: number | null = null;
     let customerGroups: string[] = [];
 
     if (customerId && typeof customerId === "string") {
@@ -175,6 +180,7 @@ export default async function handler(
           headers
         );
         customerWecareRewards = customerInfo.wecareRewards;
+        customerNganhnghemoi = customerInfo.nganhnghemoi;
         [customerGroups] = await Promise.all([
           getCustomerGroups(finalCustomerId, headers),
         ]);
@@ -187,6 +193,7 @@ export default async function handler(
         );
         finalCustomerId = customerInfo.customerId;
         customerWecareRewards = customerInfo.wecareRewards;
+        customerNganhnghemoi = customerInfo.nganhnghemoi;
         customerGroups = await getCustomerGroups(finalCustomerId, headers);
       }
     } else {
@@ -198,6 +205,7 @@ export default async function handler(
       );
       finalCustomerId = customerInfo.customerId;
       customerWecareRewards = customerInfo.wecareRewards;
+      customerNganhnghemoi = customerInfo.nganhnghemoi;
       customerGroups = await getCustomerGroups(finalCustomerId, headers);
     }
 
@@ -262,7 +270,13 @@ export default async function handler(
     const allPrices = response.data.value || [];
     
     // Helper function to get discount rate from JSON based on wecare rewards
-    const getDiscountRate = (discountRateJson: any, wecareRewards: string | null): number | null => {
+    // If nganhnghemoi = 283640000, return null (no rate pricing)
+    const getDiscountRate = (discountRateJson: any, wecareRewards: string | null, nganhnghemoi: number | null): number | null => {
+      // Nếu cr1bb_nganhnghemoi = 283640000, không tính giá rate
+      if (nganhnghemoi === 283640000) {
+        return null;
+      }
+      
       if (!discountRateJson || !wecareRewards) return null;
 
       try {
@@ -318,9 +332,14 @@ export default async function handler(
       const slTheoKho = parsedQuantity * giatrichuyenoi;
 
       // Get discount rate based on customer's wecare rewards
-      const discountRate = getDiscountRate(item.crdfd_discount_rate, customerWecareRewards);
+      // Skip discount rate if cr1bb_nganhnghemoi === 283640000 (ngành nghề đặc biệt không áp dụng rate)
+      const shouldSkipDiscountRate = customerNganhnghemoi === 283640000;
+      const discountRate = shouldSkipDiscountRate
+        ? null
+        : getDiscountRate(item.crdfd_discount_rate, customerWecareRewards, customerNganhnghemoi);
 
       // Calculate final price: giakhongvat - (priceNoVat * discountRate)
+      // If discountRate is null, finalPrice = priceNoVat (no discount)
       const priceNoVat = item.cr1bb_giakhongvat ?? null;
       const finalPrice = (priceNoVat !== null && discountRate !== null)
         ? priceNoVat - (priceNoVat * discountRate)
