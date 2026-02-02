@@ -133,14 +133,20 @@ export function generateProductUrl(
   // Convert to slugs - industryCategory is already a slug from the functions above
   const industrySlug = industryCategory;
   const productNameSlug = textToSlug(productName);
-  const specSlug = textToSlug(specifications);
-  
-  // Build URL parts - only industry and product name, no specifications
-  const urlParts = [industrySlug, productNameSlug];
-  
+
+  // Build URL parts - check if product name already starts with industry slug to avoid duplication
+  // e.g., if industrySlug = "son" and productNameSlug = "son-xit-win...", use only productNameSlug
+  let urlParts: string[];
+  if (productNameSlug.startsWith(industrySlug + '-') || productNameSlug === industrySlug) {
+    // Product name already includes the category at the beginning, don't duplicate
+    urlParts = [productNameSlug];
+  } else {
+    urlParts = [industrySlug, productNameSlug];
+  }
+
   // Join with hyphens and ensure no empty parts
   const url = '/' + urlParts.filter(part => part && part !== '').join('-');
-  
+
   return url;
 }
 

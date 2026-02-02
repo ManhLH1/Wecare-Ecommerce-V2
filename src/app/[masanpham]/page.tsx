@@ -29,7 +29,7 @@ export default function ProductDetailPage({ params }: { params: any }) {
     if (data) {
       const parsedProduct = JSON.parse(data);
       setProduct(parsedProduct);
-      
+
       const images: string[] = [];
       if (parsedProduct?.cr1bb_imageurlproduct) images.push(parsedProduct.cr1bb_imageurlproduct);
       if (parsedProduct?.cr1bb_imageurl && parsedProduct.cr1bb_imageurl !== parsedProduct.cr1bb_imageurlproduct) {
@@ -50,7 +50,7 @@ export default function ProductDetailPage({ params }: { params: any }) {
     if (product?.cr1bb_json_gia) {
       let giaArr = product.cr1bb_json_gia;
       if (typeof giaArr === 'string') {
-        try { giaArr = JSON.parse(giaArr); } catch {}
+        try { giaArr = JSON.parse(giaArr); } catch { }
       }
       if (Array.isArray(giaArr) && giaArr.length > 0) {
         const valid = giaArr.filter((g: any) => g.crdfd_trangthaihieulucname === 'Còn hiệu lực' || g.crdfd_trangthaihieuluc === 191920000);
@@ -106,7 +106,7 @@ export default function ProductDetailPage({ params }: { params: any }) {
 
   return (
     <div className="bg-gray-50 min-h-screen">
-      <JDStyleHeader cartItemsCount={cartItems.length} onSearch={() => {}} onCartClick={openCart} />
+      <JDStyleHeader cartItemsCount={cartItems.length} onSearch={() => { }} onCartClick={openCart} />
 
       <main className="max-w-5xl mx-auto px-4 py-4 pt-20" style={{ marginTop: '95px' }}>
         {/* Breadcrumb */}
@@ -120,19 +120,19 @@ export default function ProductDetailPage({ params }: { params: any }) {
 
         {/* Product Card */}
         <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-4">
-          
+
           {/* Top Section: Info Left, Images Right */}
           <div className="grid grid-cols-1 md:grid-cols-2">
-            
+
             {/* LEFT: Product Info */}
             <div className="p-4 border-r border-gray-100">
               {/* Title */}
               <h1 className="text-lg font-bold text-gray-900 mb-2">{product.crdfd_name}</h1>
-              
+
               {/* Meta Info Row */}
               <div className="flex items-center gap-3 text-xs text-gray-500 mb-3">
                 <div className="flex items-center gap-1">
-                  {[1,2,3,4,5].map((star) => (
+                  {[1, 2, 3, 4, 5].map((star) => (
                     <span key={star} className="text-yellow-400">
                       {star <= 4 ? <FaStar className="w-3 h-3 fill-current" /> : <FaStarHalfAlt className="w-3 h-3 fill-current" />}
                     </span>
@@ -242,28 +242,26 @@ export default function ProductDetailPage({ params }: { params: any }) {
           <div className="flex border-b border-gray-200">
             <button
               onClick={() => setActiveTab('description')}
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors ${
-                activeTab === 'description' 
-                  ? 'text-orange-600 bg-orange-50 border-b-2 border-orange-600' 
+              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors ${activeTab === 'description'
+                  ? 'text-orange-600 bg-orange-50 border-b-2 border-orange-600'
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-              }`}
+                }`}
             >
               <FaInfoCircle className="w-4 h-4" />
               Mô tả sản phẩm
             </button>
             <button
               onClick={() => setActiveTab('specs')}
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors ${
-                activeTab === 'specs' 
-                  ? 'text-orange-600 bg-orange-50 border-b-2 border-orange-600' 
+              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors ${activeTab === 'specs'
+                  ? 'text-orange-600 bg-orange-50 border-b-2 border-orange-600'
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-              }`}
+                }`}
             >
               <FaListUl className="w-4 h-4" />
               Thông số kỹ thuật
             </button>
           </div>
-          
+
           {/* Tab Content */}
           <div className="p-6">
             {activeTab === 'description' && (
@@ -276,7 +274,7 @@ export default function ProductDetailPage({ params }: { params: any }) {
                 </div>
               </div>
             )}
-            
+
             {activeTab === 'specs' && (
               <div>
                 <h3 className="text-lg font-bold text-gray-900 mb-4">Thông số kỹ thuật</h3>
