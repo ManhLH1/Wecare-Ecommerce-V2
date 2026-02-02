@@ -116,6 +116,23 @@ export default function ProductDetailPage({ params }: { params: any }) {
     </div>
   );
 
+  if (!product) return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+      <JDStyleHeader cartItemsCount={cartItems.length} onSearch={() => { }} onCartClick={openCart} />
+      <div className="text-center mt-20">
+        <h1 className="text-2xl font-bold text-gray-800 mb-2">Không tìm thấy sản phẩm</h1>
+        <p className="text-gray-600 mb-4">Sản phẩm bạn tìm kiếm không tồn tại hoặc đã bị xóa.</p>
+        <button
+          onClick={() => router.push("/san-pham")}
+          className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-6 rounded transition-colors"
+        >
+          Xem tất cả sản phẩm
+        </button>
+      </div>
+      <Footer />
+    </div>
+  );
+
   const getProductBasePrice = (product: any): number => {
     if (product?.cr1bb_json_gia) {
       let giaArr = product.cr1bb_json_gia;

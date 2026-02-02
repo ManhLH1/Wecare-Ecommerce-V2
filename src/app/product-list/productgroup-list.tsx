@@ -178,12 +178,21 @@ const ProductCard: React.FC<{ product: ProductDetails }> = ({ product }) => {
     // Save product data to localStorage
     localStorage.setItem("productDetail", JSON.stringify(product));
 
-    // Use product code as URL slug for simplicity and reliability
-    const productSlug = product.crdfd_masanpham || product.productCode || product.productId || product.id;
+    // Generate proper URL slug from product name (matching textToSlug logic elsewhere)
+    const productName = product.crdfd_fullname || product.crdfd_name || '';
+    const productSlug = productName
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove accents
+      .replace(/[đĐ]/g, 'd')
+      .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+      .replace(/\s+/g, '-')
+      .trim();
+
     if (productSlug) {
       window.location.href = `/${productSlug}`;
     } else {
-      // Fallback to a generic product URL
+      // Fallback to category page if slug generation fails
       window.location.href = '/san-pham';
     }
   };
