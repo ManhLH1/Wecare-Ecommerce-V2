@@ -37,6 +37,34 @@ const normalizePaymentTerm = (input?: string | null) : string | null => {
 };
 
 /**
+ * Parse multiple payment terms (comma-separated) into array of normalized terms
+ * Ví dụ: "0,283640005" -> ["0", "283640005"]
+ */
+const parsePaymentTerms = (input?: string | null): string[] => {
+  if (!input && input !== "") return [];
+  const t = String(input || "").trim();
+  if (t === "") return [];
+  // Split by comma and normalize each term
+  return t
+    .split(",")
+    .map((term) => term.trim())
+    .filter(Boolean)
+    .map((term) => normalizePaymentTerm(term) || term)
+    .filter((term) => term !== "");
+};
+
+/**
+ * Check if requested payment term is in the list of allowed payment terms
+ */
+const isPaymentTermAllowed = (
+  requested: string | null,
+  allowedTerms: string[]
+): boolean => {
+  if (!requested || allowedTerms.length === 0) return true;
+  return allowedTerms.includes(requested);
+};
+
+/**
  * API để lấy danh sách Promotion đặc biệt (Special Promotions)
  * Chỉ lấy những promotion đặc biệt mà khách hàng được áp dụng
  *
@@ -284,7 +312,10 @@ const fetchSpecialPromotionsRaw = async (customerCode: string, headers: any) => 
  */
 const annotateWithPaymentTerms = (promotions: SpecialPromotion[], requestedPaymentTerms: string | null) => {
   return promotions.map((p) => {
-    const promoNormalized = normalizePaymentTerm(String(p.ieukhoanthanhtoanapdung || ''));
+    // Parse multiple payment terms (comma-separated) into array
+    const promoTermsArray = parsePaymentTerms(p.ieukhoanthanhtoanapdung);
+    // Use first normalized term for display purposes
+    const promoNormalized = promoTermsArray.length > 0 ? promoTermsArray[0] : null;
     let applicable = true;
     let paymentTermsMismatch = false;
     let warningMessage: string | undefined;
@@ -292,15 +323,18 @@ const annotateWithPaymentTerms = (promotions: SpecialPromotion[], requestedPayme
     if (requestedPaymentTerms) {
       if (!p.ieukhoanthanhtoanapdung || String(p.ieukhoanthanhtoanapdung).trim() === '') {
         applicable = true;
-      } else if (promoNormalized === requestedPaymentTerms) {
+      } else if (isPaymentTermAllowed(requestedPaymentTerms, promoTermsArray)) {
+        // requested payment term is in the list of allowed terms
         applicable = true;
       } else {
         applicable = false;
         paymentTermsMismatch = true;
-        // Use friendly labels when possible
-        const promoLabel = PAYMENT_TERMS_MAP[promoNormalized || String(p.ieukhoanthanhtoanapdung)] || String(p.ieukhoanthanhtoanapdung || '');
+        // Use friendly labels for multiple payment terms
+        const promoLabels = promoTermsArray
+          .map((term) => PAYMENT_TERMS_MAP[term] || term)
+          .join(" hoặc ");
         const orderLabel = PAYMENT_TERMS_MAP[requestedPaymentTerms] || requestedPaymentTerms;
-        warningMessage = `Điều khoản thanh toán không khớp: chương trình yêu cầu "${promoLabel}", đơn hàng là "${orderLabel}"`;
+        warningMessage = `Điều khoản thanh toán không khớp: chương trình yêu cầu "${promoLabels}", đơn hàng là "${orderLabel}"`;
       }
     }
 

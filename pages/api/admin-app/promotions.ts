@@ -41,6 +41,34 @@ const normalizePaymentTerm = (input?: string | null) : string | null => {
   return t;
 };
 
+/**
+ * Parse multiple payment terms (comma-separated) into array of normalized terms
+ * Ví dụ: "0,283640005" -> ["0", "283640005"]
+ */
+const parsePaymentTerms = (input?: string | null): string[] => {
+  if (!input && input !== "") return [];
+  const t = String(input || "").trim();
+  if (t === "") return [];
+  // Split by comma and normalize each term
+  return t
+    .split(",")
+    .map((term) => term.trim())
+    .filter(Boolean)
+    .map((term) => normalizePaymentTerm(term) || term)
+    .filter((term) => term !== "");
+};
+
+/**
+ * Check if requested payment term is in the list of allowed payment terms
+ */
+const isPaymentTermAllowed = (
+  requested: string | null,
+  allowedTerms: string[]
+): boolean => {
+  if (!requested || allowedTerms.length === 0) return true;
+  return allowedTerms.includes(requested);
+};
+
 const resolveCustomerCodeFromPhone = async (phone: string, headers: Record<string, string>) => {
   const variants: string[] = [];
   const trimmed = phone.trim();
@@ -312,7 +340,10 @@ export default async function handler(
 
     promotions = promotions.map((promo: any) => {
       const promoPaymentTerms = promo.paymentTerms;
-      const promoNormalized = normalizePaymentTerm(promoPaymentTerms);
+      // Parse multiple payment terms (comma-separated) into array
+      const promoTermsArray = parsePaymentTerms(promoPaymentTerms);
+      // Use first normalized term for display purposes
+      const promoNormalized = promoTermsArray.length > 0 ? promoTermsArray[0] : null;
       let applicable = true;
       let paymentTermsMismatch = false;
       let warningMessage: string | undefined;
@@ -321,13 +352,18 @@ export default async function handler(
         // If promotion has no payment terms restriction -> applicable
         if (!promoPaymentTerms || promoPaymentTerms.trim() === "") {
           applicable = true;
-        } else if (promoNormalized === requestedNormalized) {
-          // exact normalized match
+        } else if (isPaymentTermAllowed(requestedNormalized, promoTermsArray)) {
+          // requested payment term is in the list of allowed terms
           applicable = true;
         } else {
           applicable = false;
           paymentTermsMismatch = true;
-          warningMessage = `Điều khoản thanh toán không khớp: chương trình yêu cầu \"${promoPaymentTerms}\", đơn hàng là \"${paymentTerms}\"`;
+          // Build friendly labels for multiple payment terms
+          const promoLabels = promoTermsArray
+            .map((term) => PAYMENT_TERMS_MAP[term] || term)
+            .join(" hoặc ");
+          const orderLabel = PAYMENT_TERMS_MAP[requestedNormalized] || requestedNormalized;
+          warningMessage = `Điều khoản thanh toán không khớp: chương trình yêu cầu "${promoLabels}", đơn hàng là "${orderLabel}"`;
         }
       } else {
         // No payment term provided by client -> treat as applicable
