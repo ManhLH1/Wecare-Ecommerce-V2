@@ -131,7 +131,7 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
                 {validCategories.slice(0, 12).map(cat => (
                 <Link
                   key={cat.id || cat.productGroupId || cat.productGroupCode || String(Math.random())}
-                  href={cat.href || `/san-pham?group=${encodeURIComponent(cat.productGroupCode || '')}`}
+                  href={cat.href || `/san-pham?product_group_Id=${encodeURIComponent(cat.productGroupId || cat.productGroupCode || '')}`}
                     className="block text-center no-underline group snap-start"
                 >
                     <div className="bg-gray-50 rounded-xl p-3 hover:bg-gray-100 transition-all duration-200 touch-manipulation h-full flex flex-col items-center justify-start min-h-[110px]">
@@ -186,7 +186,7 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
                 return (
                 <div className="grid gap-1 items-stretch" style={gridStyle}>
                   {displayItems.map(cat => (
-                    <Link key={cat.id || cat.productGroupId || cat.productGroupCode || String(Math.random())} href={cat.href || `/san-pham?group=${encodeURIComponent(cat.productGroupCode || '')}`} className="block text-center no-underline">
+                    <Link key={cat.id || cat.productGroupId || cat.productGroupCode || String(Math.random())} href={cat.href || `/san-pham?product_group_Id=${encodeURIComponent(cat.productGroupId || cat.productGroupCode || '')}`} className="block text-center no-underline">
                     <div className="bg-white rounded-sm border border-gray-200 hover:shadow-sm transition h-full flex flex-col items-center min-h-[160px]">
                         <div className="w-full p-1 flex items-center justify-center">
                           <img

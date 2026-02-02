@@ -3,7 +3,6 @@ import React from 'react';
 import Link from 'next/link';
 import Footer from '@/components/footer';
 import JDStyleHeader from "@/components/JDStyleHeader";
-import JDStyleMainContent from "@/components/JDStyleMainContent";
 
 const PricingPolicyPage: React.FC = () => {
   return (
@@ -40,74 +39,46 @@ const PricingPolicyPage: React.FC = () => {
                 {/* Pricing Policy Content */}
                 <section className="pb-16 px-4 sm:px-6 lg:px-8">
                   <div className="mx-auto w-full max-w-[1800px]">
-                    <div className="space-y-10">
-                    {/* 1. Chính sách giá & chiết khấu */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-                      <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 uppercase text-center">
-                        1. Chính sách giá & chiết khấu
-                      </h3>
-                      <div className="text-lg text-gray-700 leading-relaxed">
-                        <ul className="space-y-3 ml-6">
-                          <li>• Giá bán sản phẩm được niêm yết rõ ràng và cập nhật theo từng thời điểm, phù hợp với biến động thị trường.</li>
-                          <li>• Chiết khấu trực tiếp được áp dụng dựa trên số lượng, giá trị đơn hàng hoặc danh mục sản phẩm.</li>
-                          <li>• Đối với khách hàng mua số lượng lớn, khách hàng dự án hoặc đối tác hợp tác dài hạn, Wecare áp dụng chính sách giá riêng theo thỏa thuận cụ thể.</li>
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8">
+
+                      {/* Nội dung chính */}
+                      <div className="text-base md:text-lg text-gray-700 leading-relaxed space-y-4">
+                        <p className="font-semibold text-xl text-gray-900">1. Chính sách giá & chiết khấu:</p>
+                        <ul className="space-y-2 ml-6 list-disc">
+                          <li>Giá bán sản phẩm được niêm yết rõ ràng và cập nhật theo từng thời điểm, phù hợp với biến động thị trường.</li>
+                          <li>Chiết khấu trực tiếp được áp dụng dựa trên số lượng, giá trị đơn hàng hoặc danh mục sản phẩm.</li>
+                          <li>Đối với khách hàng mua số lượng lớn, khách hàng dự án hoặc đối tác hợp tác dài hạn, Wecare áp dụng chính sách giá riêng theo thỏa thuận cụ thể.</li>
                         </ul>
-                      </div>
-                    </div>
 
-                    {/* 2. Chương trình ưu đãi & khuyến mãi định kỳ */}
-                    <div className="bg-gray-50 rounded-xl shadow-sm border border-gray-100 p-8">
-                      <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 uppercase text-center">
-                        2. Chương trình ưu đãi & khuyến mãi định kỳ
-                      </h3>
-                      <div className="text-lg text-gray-700 leading-relaxed space-y-4">
-                        <p>Wecare triển khai các chương trình ưu đãi định kỳ nhằm tạo điều kiện cho khách hàng tiếp cận mức giá tốt và nhiều lợi ích bổ sung:</p>
-                        <ul className="space-y-3 ml-6">
-                          <li>• <strong className="text-blue-600">Ưu đãi theo tuần:</strong> Áp dụng cho từng nhóm sản phẩm hoặc danh mục cụ thể.</li>
-                          <li>• <strong className="text-green-600">Ưu đãi theo tháng:</strong> Bao gồm giảm giá trực tiếp, combo sản phẩm, hỗ trợ vận chuyển và voucher.</li>
-                          <li>• <strong className="text-purple-600">Ưu đãi theo quý:</strong> Áp dụng cho nhóm sản phẩm chủ lực hoặc theo sản lượng mua tích lũy trong quý.</li>
+                        <p className="font-semibold text-xl text-gray-900">2. Chương trình ưu đãi & khuyến mãi định kỳ:</p>
+                        <ul className="space-y-2 ml-6 list-disc">
+                          <li><strong className="text-blue-600">Ưu đãi theo tuần:</strong> Áp dụng cho từng nhóm sản phẩm hoặc danh mục cụ thể.</li>
+                          <li><strong className="text-green-600">Ưu đãi theo tháng:</strong> Bao gồm giảm giá trực tiếp, combo sản phẩm, hỗ trợ vận chuyển và voucher.</li>
+                          <li><strong className="text-purple-600">Ưu đãi theo quý:</strong> Áp dụng cho nhóm sản phẩm chủ lực hoặc theo sản lượng mua tích lũy trong quý.</li>
                         </ul>
-                      </div>
-                    </div>
 
-                    {/* 3. Chính sách vận chuyển (tóm tắt) */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-                      <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 uppercase text-center">
-                        3. Chính sách vận chuyển
-                      </h3>
-                      <div className="text-lg text-gray-700 leading-relaxed">
-                        <p>Miễn phí vận chuyển (<strong className="text-green-600">Freeship</strong>) cho các đơn hàng đạt giá trị tối thiểu theo quy định của từng chương trình. Phạm vi và thời gian giao hàng được sắp xếp phù hợp với từng khu vực.</p>
-                      </div>
-                    </div>
-
-                    {/* 4. Voucher & ưu đãi dành cho khách hàng mới */}
-                    <div className="bg-gray-50 rounded-xl shadow-sm border border-gray-100 p-8">
-                      <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 uppercase text-center">
-                        4. Voucher & ưu đãi dành cho khách hàng mới
-                      </h3>
-                      <div className="text-lg text-gray-700 leading-relaxed">
-                        <ul className="space-y-3 ml-6">
-                          <li>• Voucher trị giá <strong className="text-red-600 text-xl">50.000đ</strong> áp dụng cho khách hàng đặt đơn hàng lần đầu qua Zalo Official Account (Zalo OA) của Wecare.</li>
-                          <li>• Voucher được trừ trực tiếp vào giá trị đơn hàng theo điều kiện áp dụng tại thời điểm sử dụng.</li>
-                          <li>• Mỗi khách hàng chỉ được áp dụng <strong className="text-blue-600">01 lần</strong> cho đơn hàng đầu tiên.</li>
+                        <p className="font-semibold text-xl text-gray-900">3. Chính sách vận chuyển:</p>
+                        <ul className="space-y-2 ml-6 list-disc">
+                          <li>Miễn phí vận chuyển (<strong className="text-green-600">Freeship</strong>) cho các đơn hàng đạt giá trị tối thiểu theo quy định của từng chương trình.</li>
+                          <li>Phạm vi và thời gian giao hàng được sắp xếp phù hợp với từng khu vực.</li>
                         </ul>
-                      </div>
-                    </div>
 
-                    {/* 5. Cập nhật & điều chỉnh chính sách */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-                      <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 uppercase text-center">
-                        5. Cập nhật & điều chỉnh chính sách
-                      </h3>
-                      <div className="text-lg text-gray-700 leading-relaxed">
-                        <p>Các chính sách giá và chương trình ưu đãi - khuyến mãi được cập nhật định kỳ theo tuần, tháng và quý. Wecare có quyền điều chỉnh nội dung chính sách nhằm phù hợp với tình hình kinh doanh và sẽ thông báo trước khi áp dụng.</p>
+                        <p className="font-semibold text-xl text-gray-900">4. Voucher & ưu đãi dành cho khách hàng mới:</p>
+                        <ul className="space-y-2 ml-6 list-disc">
+                          <li>Voucher trị giá <strong className="text-red-600 text-xl">50.000đ</strong> áp dụng cho khách hàng đặt đơn hàng lần đầu qua Zalo OA của Wecare.</li>
+                          <li>Voucher được trừ trực tiếp vào giá trị đơn hàng theo điều kiện áp dụng tại thời điểm sử dụng.</li>
+                          <li>Mỗi khách hàng chỉ được áp dụng <strong className="text-blue-600">01 lần</strong> cho đơn hàng đầu tiên.</li>
+                        </ul>
+
+                        <p className="font-semibold text-xl text-gray-900">5. Cập nhật & điều chỉnh chính sách:</p>
+                        <p>Các chính sách giá và chương trình ưu đãi được cập nhật định kỳ theo tuần, tháng và quý. Wecare có quyền điều chỉnh nội dung chính sách nhằm phù hợp với tình hình kinh doanh và sẽ thông báo trước khi áp dụng.</p>
                       </div>
                     </div>
 
                     {/* Contact Information */}
-                    <div className="mt-12 bg-gradient-to-r from-pink-50 to-purple-50 border-2 border-pink-300 rounded-xl p-8 text-center">
-                      <h3 className="text-3xl font-bold text-gray-900 mb-6 uppercase">Liên hệ</h3>
-                      <p className="text-xl text-gray-700 mb-6">
+                    <div className="mt-8 bg-gradient-to-r from-pink-50 to-purple-50 border-2 border-pink-300 rounded-xl p-6 md:p-8 text-center">
+                      <h3 className="text-2xl font-bold text-gray-900 mb-4 uppercase">Liên hệ</h3>
+                      <p className="text-lg text-gray-700 mb-6">
                         Nếu bạn có câu hỏi về chính sách giá hoặc chương trình khuyến mại, vui lòng liên hệ:
                       </p>
                       <div className="flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-8 mb-6">
@@ -128,7 +99,7 @@ const PricingPolicyPage: React.FC = () => {
                           <span className="text-gray-700 font-semibold">support@wecare.com.vn</span>
                         </div>
                       </div>
-                      <div className="text-lg text-gray-600 border-t border-gray-300 pt-4">
+                      <div className="text-base text-gray-600 border-t border-gray-300 pt-4">
                         <p><strong className="text-pink-600">Thời gian làm việc:</strong> Thứ 2 - Thứ 6 (8:00 - 17:00)</p>
                       </div>
                     </div>
@@ -145,7 +116,6 @@ const PricingPolicyPage: React.FC = () => {
                         Về trang chủ
                       </Link>
                     </div>
-                    </div>
                   </div>
                 </section>
               </main>
@@ -161,5 +131,3 @@ const PricingPolicyPage: React.FC = () => {
 };
 
 export default PricingPolicyPage;
-
-

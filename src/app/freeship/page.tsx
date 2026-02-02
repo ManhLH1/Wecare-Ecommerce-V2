@@ -3,7 +3,6 @@ import React from 'react';
 import Link from 'next/link';
 import Footer from '@/components/footer';
 import JDStyleHeader from "@/components/JDStyleHeader";
-import JDStyleMainContent from "@/components/JDStyleMainContent";
 
 const ShippingPolicyPage: React.FC = () => {
   return (
@@ -40,77 +39,51 @@ const ShippingPolicyPage: React.FC = () => {
                 {/* Shipping Policy Content */}
                 <section className="pb-12 px-4 sm:px-6 lg:px-8">
                   <div className="mx-auto w-full max-w-[1800px]">
-                    <div className="space-y-8 md:space-y-10">
-                    {/* 1. Phương thức giao hàng */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 md:p-8">
-                      <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 uppercase text-center">
-                        1. Phương thức giao hàng
-                      </h3>
-                      <div className="text-base md:text-lg text-gray-700 leading-relaxed space-y-4">
-                        <p>Wecare Group hợp tác với các đơn vị vận chuyển và chành xe uy tín trên toàn quốc nhằm đảm bảo hàng hóa được giao đến tay khách hàng nhanh chóng – an toàn – đúng hẹn.</p>
-                        <ul className="space-y-3 ml-6">
-                          <li>• Hỗ trợ giao hàng tận nơi theo địa chỉ khách hàng yêu cầu hoặc giao tại chành xe theo thỏa thuận.</li>
-                          <li>• Phù hợp cho đơn hàng nhỏ lẻ lẫn đơn hàng số lượng lớn, hàng cồng kềnh.</li>
-                        </ul>
-                      </div>
-                    </div>
-
-                    {/* 2. Thời gian vận chuyển */}
-                    <div className="bg-gray-50 rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 md:p-8">
-                      <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 uppercase text-center">
-                        2. Thời gian vận chuyển
-                      </h3>
-                      <div className="text-base md:text-lg text-gray-700 leading-relaxed space-y-4">
-                        <p>Sau khi đơn hàng được xác nhận, Wecare Group tiến hành chốt đơn và bàn giao hàng cho đơn vị vận chuyển/chành xe trong thời gian sớm nhất.</p>
-                        <p>Thời gian giao hàng dự kiến: <strong className="text-blue-600">Từ 1 – 5 ngày làm việc</strong>, tùy khu vực và hình thức vận chuyển.</p>
-                        <p>Thời gian vận chuyển được tính từ lúc Wecare Group xác nhận đơn hàng thành công đến khi khách hàng nhận được hàng, không bao gồm ngày lễ, thứ 7 và Chủ nhật.</p>
-                      </div>
-                    </div>
-
-                    {/* 3. Phí vận chuyển */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8">
-                      <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 uppercase text-center">
-                        3. Phí vận chuyển
-                      </h3>
-                      <div className="text-lg text-gray-700 leading-relaxed space-y-4">
-                        <p>Wecare Group hỗ trợ <strong className="text-green-600">FREESHIP</strong> nhiều khu vực, kể cả đơn hàng giá trị nhỏ và đơn hàng số lượng lớn.</p>
-                        <p>Trường hợp phát sinh phí, mức phí được thông báo rõ ràng trước khi xác nhận đơn. Ưu tiên giao hàng qua chành xe uy tín, tối ưu chi phí. Phí vận chuyển được hỗ trợ tối đa hoặc áp dụng theo cước thực tế của đơn vị vận chuyển, luôn báo trước cho khách hàng.</p>
-                      </div>
-                    </div>
 
-                    {/* 4. Trường hợp chậm trễ giao hàng */}
-                    <div className="bg-gray-50 rounded-xl shadow-sm border border-gray-100 p-6 md:p-8">
-                      <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 uppercase text-center">
-                        4. Trường hợp chậm trễ giao hàng
-                      </h3>
-                      <div className="text-lg text-gray-700 leading-relaxed space-y-4">
-                        <p>Trong trường hợp phát sinh chậm trễ do lỗi hoàn toàn từ phía Wecare Group, chúng tôi sẽ:</p>
-                        <ul className="space-y-3 ml-6">
-                          <li>• Chủ động liên hệ khách hàng qua số điện thoại hoặc Zalo OA.</li>
-                          <li>• Thông báo rõ nguyên nhân và thời gian giao hàng dự kiến mới.</li>
+                      {/* Nội dung chính - không phân cụm */}
+                      <div className="text-base md:text-lg text-gray-700 leading-relaxed space-y-4">
+                        <p className="font-semibold text-xl text-gray-900">1. Phương thức giao hàng:</p>
+                        <ul className="space-y-2 ml-6 list-disc">
+                          <li>Wecare Group hợp tác với các đơn vị vận chuyển và chành xe uy tín trên toàn quốc.</li>
+                          <li>Hỗ trợ giao hàng tận nơi hoặc giao tại chành xe theo thỏa thuận.</li>
+                          <li>Phù hợp cho đơn hàng nhỏ lẻ lẫn đơn hàng số lượng lớn, hàng cồng kềnh.</li>
                         </ul>
-                        <p>Khách hàng có quyền yêu cầu hủy đơn hàng hoặc yêu cầu hoàn tiền theo chính sách của công ty nếu không tiếp tục nhận hàng.</p>
-                      </div>
-                    </div>
 
-                    {/* 5. Cam kết của Wecare Group */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8">
-                      <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 uppercase text-center">
-                        5. Cam kết của Wecare Group
-                      </h3>
-                      <div className="text-lg text-gray-700 leading-relaxed">
-                        <ul className="space-y-3 ml-6">
-                          <li>• Giao hàng nhanh – đúng – đủ.</li>
-                          <li>• Hỗ trợ tối đa chi phí vận chuyển cho khách hàng.</li>
-                          <li>• Linh hoạt hình thức giao nhận, phù hợp mọi nhu cầu từ cá nhân đến doanh nghiệp.</li>
+                        <p className="font-semibold text-xl text-gray-900">2. Thời gian vận chuyển:</p>
+                        <ul className="space-y-2 ml-6 list-disc">
+                          <li>Thời gian giao hàng dự kiến: <strong className="text-blue-600">Từ 1 – 5 ngày làm việc</strong>, tùy khu vực và hình thức vận chuyển.</li>
+                          <li>Thời gian được tính từ khi xác nhận đơn hàng thành công đến khi khách hàng nhận được hàng.</li>
+                          <li>Không bao gồm ngày lễ, thứ 7 và Chủ nhật.</li>
+                        </ul>
+
+                        <p className="font-semibold text-xl text-gray-900">3. Phí vận chuyển:</p>
+                        <ul className="space-y-2 ml-6 list-disc">
+                          <li>Wecare Group hỗ trợ <strong className="text-green-600">FREESHIP</strong> nhiều khu vực.</li>
+                          <li>Phí vận chuyển được thông báo rõ ràng trước khi xác nhận đơn.</li>
+                          <li>Ưu tiên giao hàng qua chành xe uy tín, tối ưu chi phí cho khách hàng.</li>
+                        </ul>
+
+                        <p className="font-semibold text-xl text-gray-900">4. Trường hợp chậm trễ giao hàng:</p>
+                        <ul className="space-y-2 ml-6 list-disc">
+                          <li>Wecare Group chủ động liên hệ khách hàng qua số điện thoại hoặc Zalo OA.</li>
+                          <li>Thông báo rõ nguyên nhân và thời gian giao hàng dự kiến mới.</li>
+                          <li>Khách hàng có quyền yêu cầu hủy đơn hoặc hoàn tiền nếu không tiếp tục nhận hàng.</li>
+                        </ul>
+
+                        <p className="font-semibold text-xl text-gray-900">5. Cam kết của Wecare Group:</p>
+                        <ul className="space-y-2 ml-6 list-disc">
+                          <li>Giao hàng nhanh – đúng – đủ.</li>
+                          <li>Hỗ trợ tối đa chi phí vận chuyển cho khách hàng.</li>
+                          <li>Linh hoạt hình thức giao nhận, phù hợp mọi nhu cầu từ cá nhân đến doanh nghiệp.</li>
                         </ul>
                       </div>
                     </div>
 
                     {/* Contact Information */}
-                    <div className="mt-12 bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-300 rounded-xl p-6 md:p-8 text-center">
-                      <h3 className="text-3xl font-bold text-gray-900 mb-6 uppercase">Liên hệ vận chuyển</h3>
-                      <p className="text-xl text-gray-700 mb-6">
+                    <div className="mt-8 bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-300 rounded-xl p-6 md:p-8 text-center">
+                      <h3 className="text-2xl font-bold text-gray-900 mb-4 uppercase">Liên hệ vận chuyển</h3>
+                      <p className="text-lg text-gray-700 mb-6">
                         Nếu bạn có bất kỳ câu hỏi nào về chính sách vận chuyển, vui lòng liên hệ với chúng tôi:
                       </p>
                       <div className="flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-8 mb-6">
@@ -131,7 +104,7 @@ const ShippingPolicyPage: React.FC = () => {
                           <span className="text-gray-700 font-semibold">support@wecare.com.vn</span>
                         </div>
                       </div>
-                      <div className="text-lg text-gray-600 border-t border-gray-300 pt-4">
+                      <div className="text-base text-gray-600 border-t border-gray-300 pt-4">
                         <p><strong className="text-blue-600">Thời gian làm việc:</strong> Thứ 2 - Thứ 6 (8:00 - 17:00)</p>
                       </div>
                     </div>
@@ -148,7 +121,6 @@ const ShippingPolicyPage: React.FC = () => {
                         Về trang chủ
                       </Link>
                     </div>
-                    </div>
                   </div>
                 </section>
               </main>
@@ -164,5 +136,3 @@ const ShippingPolicyPage: React.FC = () => {
 };
 
 export default ShippingPolicyPage;
-
-
