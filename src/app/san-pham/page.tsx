@@ -251,24 +251,43 @@ const HomeContent = () => {
     if (!searchParams) return;
     
     const productGroupId = searchParams.get('product_group_Id');
+    const groupCode = searchParams.get('groupCode');
     setIsSidebarSearch(!!productGroupId);
     
-    if (productGroupId) {
+    if (productGroupId || groupCode) {
+      console.log('[DEBUG] product_group_Id:', productGroupId, 'groupCode:', groupCode);
       // Fetch the product group hierarchy to get the name for creating the slug
       const fetchProductGroupHierarchy = async () => {
         try {
           const response = await axios.get('/api/getProductGroupHierarchy');
           const hierarchyData = response.data;
+          console.log('[DEBUG] hierarchyData stats:', hierarchyData.stats);
+          
+          // Helper function to create slug from product name
+          const toSlug = (text: string) => text
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[đĐ]/g, 'd')
+            .replace(/[^a-z0-9\s]/g, '')
+            .replace(/\s+/g, '-');
           
           // Find the current product group and build breadcrumb path
-          const buildBreadcrumbPath = (groupId: string) => {
+          const buildBreadcrumbPath = (groupId: string, codeForSearch?: string) => {
             // Create a flat map of all product groups for easy lookup
-            const allGroups = new Map();
+            const allGroupsById = new Map();
+            const allGroupsByCode = new Map();
+            const allGroupsBySlug = new Map();
             
             // Function to extract all groups from the hierarchical structure
             const extractGroups = (groups: any[]) => {
               groups.forEach(group => {
-                allGroups.set(group.crdfd_productgroupid, group);
+                allGroupsById.set(group.crdfd_productgroupid, group);
+                if (group.crdfd_manhomsp) {
+                  allGroupsByCode.set(group.crdfd_manhomsp, group);
+                }
+                const slug = toSlug(group.crdfd_productname);
+                allGroupsBySlug.set(slug, group);
                 if (group.children && group.children.length > 0) {
                   extractGroups(group.children);
                 }
@@ -280,60 +299,41 @@ const HomeContent = () => {
               extractGroups(hierarchyData.hierarchy);
             }
             
-            // Get the selected group
-            const selectedGroup = allGroups.get(groupId);
+            console.log('[DEBUG] Total groups by ID:', allGroupsById.size);
+            console.log('[DEBUG] Total groups by code:', allGroupsByCode.size);
+            
+            // Try to find group by ID first
+            let selectedGroup = allGroupsById.get(groupId);
+            console.log('[DEBUG] Group found by ID:', selectedGroup ? selectedGroup.crdfd_productname : 'NOT FOUND');
+            
+            // If not found by ID, try by groupCode
+            if (!selectedGroup && codeForSearch) {
+              selectedGroup = allGroupsByCode.get(codeForSearch);
+              console.log('[DEBUG] Group found by code:', selectedGroup ? selectedGroup.crdfd_productname : 'NOT FOUND');
+            }
+            
+            // If still not found, try by slug (from groupCode)
+            if (!selectedGroup && codeForSearch) {
+              const slugFromCode = toSlug(codeForSearch);
+              selectedGroup = allGroupsBySlug.get(slugFromCode);
+              console.log('[DEBUG] Group found by slug:', selectedGroup ? selectedGroup.crdfd_productname : 'NOT FOUND');
+            }
+            
             if (selectedGroup) {
               // Create a slug from the product name
-              const productNameSlug = selectedGroup.crdfd_productname
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '') // Remove accents
-                .replace(/[đĐ]/g, 'd')
-                .replace(/[^a-z0-9\s]/g, '') // Remove special characters
-                .replace(/\s+/g, '-'); // Replace spaces with hyphens
+              const productNameSlug = toSlug(selectedGroup.crdfd_productname);
               
               // Redirect to the new URL format
               window.location.href = `/san-pham/${productNameSlug}`;
               return;
             }
             
-            // Build breadcrumb path (this part will only run if the redirect doesn't happen)
-            const breadcrumbPath: string[] = [];
-            let currentGroup = allGroups.get(groupId);
-            
-            if (currentGroup) {
-              // Add the current group name
-              breadcrumbPath.unshift(currentGroup.crdfd_productname);
-              
-              // Navigate up the hierarchy adding parent names
-              while (currentGroup && currentGroup._crdfd_nhomsanphamcha_value) {
-                const parentId = currentGroup._crdfd_nhomsanphamcha_value;
-                currentGroup = allGroups.get(parentId);
-                
-                if (currentGroup) {
-                  breadcrumbPath.unshift(currentGroup.crdfd_productname);
-                }
-              }
-              
-              // Set breadcrumb and other group details
-              setBreadcrumb(breadcrumbPath);
-              
-              // Get the selected group to set its details
-              const selectedGroup = allGroups.get(groupId);
-              if (selectedGroup) {
-                setSelectedProductGroup(selectedGroup.crdfd_productname);
-                setSelectedGroupImage(selectedGroup.crdfd_image_url || "");
-                
-                // Set dummy price range if actual data isn't available
-                // This will be overridden by actual product data later
-                setSelectedGroupMinPrice(0);
-                setSelectedGroupMaxPrice(9999999);
-              }
-            }
+            // If still not found, log warning and do nothing
+            console.warn('[DEBUG] Could not find group with ID:', groupId, 'or code:', codeForSearch);
           };
           
           // Build the breadcrumb path
-          buildBreadcrumbPath(productGroupId);
+          buildBreadcrumbPath(productGroupId || '', groupCode || '');
           
         } catch (error) {
           console.error("Error fetching product group hierarchy:", error);

@@ -100,7 +100,7 @@ const PricingPolicyPage: React.FC = () => {
                         </div>
                       </div>
                       <div className="text-base text-gray-600 border-t border-gray-300 pt-4">
-                        <p><strong className="text-pink-600">Thời gian làm việc:</strong> Thứ 2 - Thứ 6 (8:00 - 17:00)</p>
+                        <p><strong className="text-pink-600">Thời gian làm việc:</strong> Thứ 2 - Thứ 7 (8:00 - 17:00)</p>
                       </div>
                     </div>
 

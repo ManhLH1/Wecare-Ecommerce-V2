@@ -488,7 +488,7 @@ export default function ProductDetailPage({ params }: { params: any }) {
         onCartClick={openCart}
       />
 
-      <main className="max-w-7xl mx-auto px-4 pb-4 pt-20">
+      <main className="max-w-7xl mx-auto px-4 pb-4 pt-32" style={{ marginTop: '95px' }}>
         {/* Breadcrumb */}
         <nav className="mb-3">
           <div className="flex items-center text-sm text-gray-600">

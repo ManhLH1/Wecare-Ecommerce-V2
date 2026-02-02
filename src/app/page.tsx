@@ -1114,7 +1114,7 @@ const HomeContent = () => {
                 name,
                 code: g.productGroupCode,
                 image,
-                href: `/san-pham?product_group_Id=${encodeURIComponent(g.productGroupId || "")}`,
+                href: `/san-pham?product_group_Id=${encodeURIComponent(g.productGroupId || "")}&groupCode=${encodeURIComponent(g.productGroupCode || "")}`,
               };
             });
 
@@ -1172,7 +1172,7 @@ const HomeContent = () => {
                 name,
                 code: g.productGroupCode,
                 image,
-                href: `/san-pham?product_group_Id=${encodeURIComponent(g.productGroupId || "")}`,
+                href: `/san-pham?product_group_Id=${encodeURIComponent(g.productGroupId || "")}&groupCode=${encodeURIComponent(g.productGroupCode || "")}`,
               };
             });
 

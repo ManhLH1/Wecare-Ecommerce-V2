@@ -26,8 +26,8 @@ const ShippingPolicyPage: React.FC = () => {
                 {/* Page Header */}
                 <section className="py-6 md:py-8">
                   <div className="text-center px-4 sm:px-6">
-                    <h1 className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-4 uppercase leading-tight">
-                      CHÍNH SÁCH VẬN CHUYỂN
+                  <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 uppercase">
+                     CHÍNH SÁCH VẬN CHUYỂN
                     </h1>
                     <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-cyan-500 mx-auto mb-6"></div>
                     <p className="text-lg md:text-xl text-gray-600 max-w-[1400px] mx-auto leading-relaxed">
@@ -105,7 +105,7 @@ const ShippingPolicyPage: React.FC = () => {
                         </div>
                       </div>
                       <div className="text-base text-gray-600 border-t border-gray-300 pt-4">
-                        <p><strong className="text-blue-600">Thời gian làm việc:</strong> Thứ 2 - Thứ 6 (8:00 - 17:00)</p>
+                        <p><strong className="text-blue-600">Thời gian làm việc:</strong> Thứ 2 - Thứ 7 (8:00 - 17:00)</p>
                       </div>
                     </div>
 
