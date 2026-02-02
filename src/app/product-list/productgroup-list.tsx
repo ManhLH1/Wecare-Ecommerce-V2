@@ -93,7 +93,8 @@ const useProductsData = (
   customerId: string | null,
   searchTerm: string,
   currentPage: number,
-  advancedFilters?: AdvancedFilters
+  advancedFilters?: AdvancedFilters,
+  productGroupId?: string | null
 ) => {
   const [productsData, setProductsData] = useState<PaginatedProductGroups | null>(null);
   const [allLoadedGroups, setAllLoadedGroups] = useState<Record<string, ProductGroup>>({});
@@ -106,6 +107,7 @@ const useProductsData = (
       const params = new URLSearchParams();
       if (customerId) params.append("customerId", customerId);
       if (searchTerm) params.append("searchTerm", searchTerm);
+      if (productGroupId) params.append("product_group_Id", productGroupId);
       params.append("page", String(currentPage || 1));
       if (advancedFilters) {
         if (advancedFilters.thuongHieu.length) params.append("filterThuongHieu", JSON.stringify(advancedFilters.thuongHieu));
@@ -153,7 +155,7 @@ const useProductsData = (
     } finally {
       setLoading(false);
     }
-  }, [customerId, searchTerm, currentPage, advancedFilters]);
+  }, [customerId, searchTerm, currentPage, advancedFilters, productGroupId]);
 
   useEffect(() => {
     const timer = setTimeout(() => fetchProductsData(), 200);
@@ -255,7 +257,7 @@ const ProductCard: React.FC<{ product: ProductDetails }> = ({ product }) => {
 };
 
 // --- Main component (replaces previous wrapper) ---
-const ProductGroupList: React.FC<any> = ({ searchTerm, title, descriptionHtml }) => {
+const ProductGroupList: React.FC<any> = ({ searchTerm, title, descriptionHtml, productGroupId }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isMobile, setIsMobile] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({ thuongHieu: [], chatLieu: [], priceRange: [0, 10000000] });
@@ -270,7 +272,8 @@ const ProductGroupList: React.FC<any> = ({ searchTerm, title, descriptionHtml })
     null,
     searchTerm || "",
     currentPage,
-    advancedFilters
+    advancedFilters,
+    productGroupId || null
   );
 
   useEffect(() => {

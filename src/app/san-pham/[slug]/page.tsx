@@ -142,11 +142,45 @@ const ProductContent = () => {
     }
   }, [searchParams, searchTerm]);
 
-  // Fetch product group ID from slug (only when not searching)
+  // Handle product_group_Id and groupCode from URL query parameters
+  useEffect(() => {
+    if (searchParams) {
+      const productGroupIdFromUrl = searchParams.get('product_group_Id');
+      const groupCode = searchParams.get('groupCode');
+
+      // If product_group_Id is present in URL, use it directly
+      if (productGroupIdFromUrl && productGroupIdFromUrl.trim()) {
+        console.log('=== SAN-PHAM PAGE DEBUG ===');
+        console.log('product_group_Id from URL:', productGroupIdFromUrl);
+        console.log('groupCode from URL:', groupCode);
+        console.log('===========================');
+
+        setProductGroupId(productGroupIdFromUrl);
+
+        // Set breadcrumb based on groupCode or display name
+        if (groupCode) {
+          setBreadcrumb([`Nhóm sản phẩm: ${groupCode}`]);
+        } else {
+          setBreadcrumb([displayName]);
+        }
+
+        // Always dispatch event for product list component
+        const event = new CustomEvent('productGroupSelected', {
+          detail: {
+            productGroupId: productGroupIdFromUrl,
+            breadcrumb: groupCode ? `Nhóm sản phẩm: ${groupCode}` : displayName
+          }
+        });
+        window.dispatchEvent(event);
+      }
+    }
+  }, [searchParams, displayName]);
+
+  // Fetch product group ID from slug (only when not searching and no product_group_Id in URL)
   useEffect(() => {
     const fetchProductGroupFromSlug = async () => {
-      // Skip if we're in search mode to avoid unnecessary API calls
-      if (searchTerm) {
+      // Skip if we're in search mode OR if product_group_Id is already provided in URL
+      if (searchTerm || productGroupId) {
         setIsLoading(false);
         return;
       }

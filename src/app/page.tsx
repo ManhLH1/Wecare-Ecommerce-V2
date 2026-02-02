@@ -1104,17 +1104,28 @@ const HomeContent = () => {
           Prevents children from refetching repeatedly when parent re-renders.
         */}
         {(() => {
+          // Helper: convert text to slug for product group links
+          const toSlug = (str: string) =>
+            str
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/\p{Diacritic}/gu, "")
+              .replace(/[đĐ]/g, "d")
+              .replace(/[^a-z0-9\s]/g, "")
+              .replace(/\s+/g, "-");
+
           const featuredCategories = (categoryGroups || [])
             .filter((g: any) => !!g)
             .map((g: any) => {
               const name = g.productGroupName || `Danh mục ${g.productGroupCode || ""}`;
               const image = g.imageUrl;
+              const slug = toSlug(name);
               return {
                 id: g.productGroupId || g.productGroupCode || String(name),
                 name,
                 code: g.productGroupCode,
                 image,
-                href: `/san-pham?product_group_Id=${encodeURIComponent(g.productGroupId || "")}&groupCode=${encodeURIComponent(g.productGroupCode || "")}`,
+                href: `/san-pham/${slug}?product_group_Id=${encodeURIComponent(g.productGroupId || "")}&groupCode=${encodeURIComponent(g.productGroupCode || "")}`,
               };
             });
 
@@ -1162,17 +1173,28 @@ const HomeContent = () => {
 
         {/* Products for top 5 featured categories */}
         {(() => {
+          // Helper: convert text to slug for product group links
+          const toSlug = (str: string) =>
+            str
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/\p{Diacritic}/gu, "")
+              .replace(/[đĐ]/g, "d")
+              .replace(/[^a-z0-9\s]/g, "")
+              .replace(/\s+/g, "-");
+
           const featuredCategoriesProducts = (categoryGroups || [])
             .filter((g: any) => !!g)
             .map((g: any) => {
               const name = g.productGroupName || `Danh mục ${g.productGroupCode || ""}`;
               const image = g.imageUrl;
+              const slug = toSlug(name);
               return {
                 id: g.productGroupId || g.productGroupCode || String(name),
                 name,
                 code: g.productGroupCode,
                 image,
-                href: `/san-pham?product_group_Id=${encodeURIComponent(g.productGroupId || "")}&groupCode=${encodeURIComponent(g.productGroupCode || "")}`,
+                href: `/san-pham/${slug}?product_group_Id=${encodeURIComponent(g.productGroupId || "")}&groupCode=${encodeURIComponent(g.productGroupCode || "")}`,
               };
             });
 
