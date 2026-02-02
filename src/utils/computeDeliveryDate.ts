@@ -409,4 +409,154 @@ export function computeDeliveryDate(params: {
     return finalResult;
 }
 
+// ============================================
+// TEST SUITE
+// ============================================
+
+export interface TestResult {
+    name: string;
+    passed: boolean;
+    expected: string;
+    actual: string;
+}
+
+export interface TestSuiteResult {
+    total: number;
+    passed: number;
+    failed: number;
+    results: TestResult[];
+}
+
+export function testDeliveryDateCalculations(): TestSuiteResult {
+    const results: TestResult[] = [];
+    let passed = 0;
+    let failed = 0;
+
+    function runTest(name: string, testFn: () => { expected: string; actual: string; condition: boolean }) {
+        try {
+            const { expected, actual, condition } = testFn();
+            const passedResult = condition;
+            results.push({ name, passed: passedResult, expected, actual });
+            if (passedResult) {
+                passed++;
+                console.log(`✅ ${name}`);
+            } else {
+                failed++;
+                console.log(`❌ ${name} - Expected: ${expected}, Got: ${actual}`);
+            }
+        } catch (error) {
+            failed++;
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            results.push({ name, passed: false, expected: 'No error', actual: errorMsg });
+            console.log(`❌ ${name} - Error: ${errorMsg}`);
+        }
+    }
+
+    console.log('\n🔍 Running Test Suite...\n');
+
+    // Test 1: District Leadtime IN-STOCK (24/7, including T7/CN)
+    runTest('District Leadtime - IN STOCK (24/7)', () => {
+        const result = computeDeliveryDate({
+            warehouseCode: 'KHOHCM',
+            districtLeadtime: 2,
+            now: new Date('2025-01-15T10:00:00'), // Wednesday 10:00
+        });
+        const expected = '2025-01-16';
+        const actual = result.toISOString().split('T')[0];
+        return { expected, actual, condition: actual === expected };
+    });
+
+    // Test 2: District Leadtime IN-STOCK - Friday to Sunday (24/7, then adjust)
+    runTest('District Leadtime - Friday → Sunday → Adjust to Monday', () => {
+        const result = computeDeliveryDate({
+            warehouseCode: 'KHOHCM',
+            districtLeadtime: 2,
+            orderCreatedOn: new Date('2025-01-17T18:00:00'), // Friday 6:00 PM
+        });
+        const expected = '2025-01-20'; // Mon 8:00 AM
+        const actual = result.toISOString().split('T')[0];
+        return { expected, actual, condition: actual === expected };
+    });
+
+    // Test 3: District Leadtime IN-STOCK - Saturday 24/7
+    runTest('District Leadtime - Saturday 24/7 (includes CN)', () => {
+        const result = computeDeliveryDate({
+            warehouseCode: 'KHOHCM',
+            districtLeadtime: 2,
+            orderCreatedOn: new Date('2025-01-18T10:00:00'), // Saturday 10:00 AM
+        });
+        const expected = '2025-01-20'; // Mon 8:00 AM
+        const actual = result.toISOString().split('T')[0];
+        return { expected, actual, condition: actual === expected };
+    });
+
+    // Test 4: Out of Stock - Skip Weekend
+    runTest('Out of Stock HCM - Skip Weekend (Mon-Fri only)', () => {
+        const result = computeDeliveryDate({
+            warehouseCode: 'KHOHCM',
+            var_input_soluong: 10,
+            var_selected_donvi_conversion: 1,
+            var_selected_SP_tonkho: 5, // Out of stock
+            now: new Date('2025-01-15T10:00:00'), // Wednesday
+        });
+        const expected = '2025-01-17'; // Friday
+        const actual = result.toISOString().split('T')[0];
+        return { expected, actual, condition: actual === expected };
+    });
+
+    // Test 5: Weekend Reset + Out of Stock
+    runTest('Weekend Reset (Sat 2PM) + Out of Stock', () => {
+        const result = computeDeliveryDate({
+            warehouseCode: 'KHOHCM',
+            var_input_soluong: 10,
+            var_selected_donvi_conversion: 1,
+            var_selected_SP_tonkho: 5, // Out of stock
+            orderCreatedOn: new Date('2025-01-18T14:00:00'), // Saturday 2:00 PM
+        });
+        const expected = '2025-01-21'; // Tuesday (Sat → Mon + 2 days)
+        const actual = result.toISOString().split('T')[0];
+        return { expected, actual, condition: actual === expected };
+    });
+
+    // Test 6: Sunday Reset + Out of Stock
+    runTest('Weekend Reset (Sunday) + Out of Stock', () => {
+        const result = computeDeliveryDate({
+            warehouseCode: 'KHOHCM',
+            var_input_soluong: 10,
+            var_selected_donvi_conversion: 1,
+            var_selected_SP_tonkho: 5, // Out of stock
+            orderCreatedOn: new Date('2025-01-19T10:00:00'), // Sunday
+        });
+        const expected = '2025-01-21'; // Tuesday (Sun → Mon + 2 days)
+        const actual = result.toISOString().split('T')[0];
+        return { expected, actual, condition: actual === expected };
+    });
+
+    // Test 7: KHOBD - 24/7 calculation for in-stock
+    runTest('KHOBD - In-stock with 24/7 calculation', () => {
+        const result = computeDeliveryDate({
+            warehouseCode: 'KHOBD',
+            districtLeadtime: 2,
+            now: new Date('2025-01-18T10:00:00'), // Saturday 10:00 AM
+        });
+        const expected = '2025-01-19'; // Sunday
+        const actual = result.toISOString().split('T')[0];
+        return { expected, actual, condition: actual === expected };
+    });
+
+    // Test 8: No district leadtime, no stock info - default +1 working day
+    runTest('Default case - +1 working day', () => {
+        const result = computeDeliveryDate({
+            now: new Date('2025-01-15T10:00:00'), // Wednesday
+        });
+        const expected = '2025-01-16'; // Thursday
+        const actual = result.toISOString().split('T')[0];
+        return { expected, actual, condition: actual === expected };
+    });
+
+    console.log(`\n📊 Test Results: ${passed}/${passed + failed} passed\n`);
+
+    return { total: passed + failed, passed, failed, results };
+}
+
 

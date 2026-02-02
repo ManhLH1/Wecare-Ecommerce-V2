@@ -3,7 +3,7 @@
  * Run with: npx ts-node test-leadtime.ts
  */
 
-import { computeDeliveryDate, testDeliveryDateCalculations } from './src/utils/computeDeliveryDate';
+import { computeDeliveryDate, testDeliveryDateCalculations } from './src/utils/computeDeliveryDate.js';
 
 console.log('\n🔍 TESTING LEADTIME CALCULATION - FIX T7/CN CHO KHO HCM\n');
 console.log('='.repeat(80));
