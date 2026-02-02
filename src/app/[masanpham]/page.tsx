@@ -24,23 +24,93 @@ export default function ProductDetailPage({ params }: { params: any }) {
   const [activeTab, setActiveTab] = useState<'description' | 'specs'>('description');
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
 
-  useEffect(() => {
-    const data = localStorage.getItem("productDetail");
-    if (data) {
-      const parsedProduct = JSON.parse(data);
-      setProduct(parsedProduct);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const data = localStorage.getItem("productDetail");
+        let parsedProduct = null;
+
+        if (data) {
+          try {
+            parsedProduct = JSON.parse(data);
+          } catch (e) {
+            console.error("Error parsing product from local storage", e);
+          }
+        }
+
+        // Check if local storage product matches the current URL params roughly
+        // If the URL has a product ID or slug, we should verify. 
+        // For now, if we have a slug in params, and it doesn't match the product name/slug, we fetch.
+        const currentSlug = params.masanpham; // e.g. "son-xit-win-404..."
+
+        // Simple check: if we have params and no local product, or if the local product doesn't seem to match
+        // We'll fetch from API to be safe if local data is missing or likely wrong
+        let shouldFetch = !parsedProduct;
+
+        if (parsedProduct && currentSlug) {
+          // Normalize slug and product name to check match
+          const normSlug = currentSlug.toLowerCase().replace(/-/g, ' ');
+          const normName = (parsedProduct.crdfd_tensanphamtext || parsedProduct.crdfd_name || '').toLowerCase();
+
+          // Very loose check - if the local product name doesn't contain parts of the slug, we might be on the wrong page
+          // But actually, clicking from home page sets local storage correcty. 
+          // Direct access (F5) might have old local storage.
+          // Better strategy: If direct access (no navigation state), always fetch or verify?
+          // For now: Always fetch if direct URL access (we can't easily detect direct access vs nav, 
+          // but we can check if the params.masanpham looks like the product)
+
+          // If the visual slug from URL is significantly different from product, fetch
+          // e.g. URL: son-xit... Product: Vit go... -> Fetch
+          const parts = normSlug.split(' ');
+          const matches = parts.filter((p: string) => normName.includes(p));
+          if (matches.length < parts.length * 0.5) { // If less than 50% overlap, probably wrong product
+            shouldFetch = true;
+          }
+        }
+
+        if (shouldFetch) {
+          console.log("Fetching product from API for slug:", currentSlug);
+          const res = await fetch(`/api/searchProductByUrl?productName=${currentSlug}`);
+          if (!res.ok) {
+            console.error("Product not found via API");
+            setProduct(null);
+          } else {
+            const apiProduct = await res.json();
+            setProduct(apiProduct);
+            // Optionally update local storage
+            localStorage.setItem("productDetail", JSON.stringify(apiProduct));
+          }
+        } else {
+          setProduct(parsedProduct);
+        }
+      } catch (err) {
+        console.error("Error initializing product page", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData().then(() => {
+      // Handle images after product is set
+    });
+  }, [params.masanpham]);
+
+  useEffect(() => {
+    if (product) {
       const images: string[] = [];
-      if (parsedProduct?.cr1bb_imageurlproduct) images.push(parsedProduct.cr1bb_imageurlproduct);
-      if (parsedProduct?.cr1bb_imageurl && parsedProduct.cr1bb_imageurl !== parsedProduct.cr1bb_imageurlproduct) {
-        images.push(parsedProduct.cr1bb_imageurl);
+      if (product?.cr1bb_imageurlproduct) images.push(product.cr1bb_imageurlproduct);
+      if (product?.cr1bb_imageurl && product.cr1bb_imageurl !== product.cr1bb_imageurlproduct) {
+        images.push(product.cr1bb_imageurl);
       }
       while (images.length < 4) images.push('/images/no-image.png');
       setGalleryImages(images.slice(0, 4));
     }
-  }, []);
+  }, [product]);
 
-  if (!product) return (
+  if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="w-10 h-10 border-3 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
     </div>
@@ -243,8 +313,8 @@ export default function ProductDetailPage({ params }: { params: any }) {
             <button
               onClick={() => setActiveTab('description')}
               className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors ${activeTab === 'description'
-                  ? 'text-orange-600 bg-orange-50 border-b-2 border-orange-600'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                ? 'text-orange-600 bg-orange-50 border-b-2 border-orange-600'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                 }`}
             >
               <FaInfoCircle className="w-4 h-4" />
@@ -253,8 +323,8 @@ export default function ProductDetailPage({ params }: { params: any }) {
             <button
               onClick={() => setActiveTab('specs')}
               className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors ${activeTab === 'specs'
-                  ? 'text-orange-600 bg-orange-50 border-b-2 border-orange-600'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                ? 'text-orange-600 bg-orange-50 border-b-2 border-orange-600'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                 }`}
             >
               <FaListUl className="w-4 h-4" />
