@@ -1,5 +1,14 @@
 /** @type {import('next').NextConfig} */
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 const nextConfig = {
+  // 🚀 PERFORMANCE: Enable compression
+  compress: true,
+
   images: {
     remotePatterns: [
       {
@@ -11,6 +20,10 @@ const nextConfig = {
       'speechbob.blob.core.windows.net',
       'wecare-ii.crm5.dynamics.com',
     ],
+    // Optimize image formats
+    formats: ['image/avif', 'image/webp'],
+    // Responsive image sizes
+    deviceSizes: [640, 750, 828, 1080, 1200],
   },
   transpilePackages: ['react-toastify'],
 
@@ -56,11 +69,46 @@ const nextConfig = {
             value: cspValue
           }
         ]
-      }
+      },
+      // 🚀 PERFORMANCE: Cache headers for API routes
+      {
+        source: '/api/admin-app/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, s-maxage=60, stale-while-revalidate=300',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+        ]
+      },
+      // 🚀 PERFORMANCE: Cache headers for static assets
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ]
+      },
     ];
   },
   // Cải thiện hot reload
   webpack: (config, { isServer, dev }) => {
+    // 🚀 PERFORMANCE: Enable persistent caching for faster rebuilds
+    if (!isServer) {
+      config.cache = {
+        type: 'filesystem',
+        buildDependencies: {
+          config: [__filename],
+        },
+        cacheDirectory: join(__dirname, '.next', 'cache'),
+      };
+    }
+
     // Add a rule to handle mjs files
     config.module.rules.push({
       test: /\.mjs$/,
@@ -69,7 +117,6 @@ const nextConfig = {
     });
 
     // Fix CSS loading from node_modules
-    // Next.js CSS rules might exclude node_modules, we need to allow CSS files
     const oneOfRule = config.module.rules.find((rule) => rule.oneOf);
     if (oneOfRule) {
       oneOfRule.oneOf.forEach((rule) => {
@@ -78,7 +125,6 @@ const nextConfig = {
           rule.test.toString().match(/css|scss|sass/) &&
           rule.exclude
         ) {
-          // Modify exclude to allow CSS from node_modules
           if (Array.isArray(rule.exclude)) {
             rule.exclude = rule.exclude.filter((exclude) => {
               if (typeof exclude === 'string') {
@@ -93,7 +139,6 @@ const nextConfig = {
           } else if (typeof rule.exclude === 'function') {
             const originalExclude = rule.exclude;
             rule.exclude = (filePath) => {
-              // Allow CSS files from node_modules
               if (filePath.includes('node_modules') && /\.css$/.test(filePath)) {
                 return false;
               }
@@ -102,13 +147,11 @@ const nextConfig = {
           } else if (rule.exclude && rule.exclude.toString) {
             const excludeStr = rule.exclude.toString();
             if (excludeStr.includes('node_modules')) {
-              // Replace with function that allows CSS
               const originalExclude = rule.exclude;
               rule.exclude = (filePath) => {
                 if (filePath.includes('node_modules') && /\.css$/.test(filePath)) {
                   return false;
                 }
-                // Try to use original exclude if it's a regex
                 if (originalExclude instanceof RegExp) {
                   return originalExclude.test(filePath);
                 }
@@ -143,24 +186,17 @@ const nextConfig = {
   // Cải thiện development experience và bundle optimization
   experimental: {
     optimizePackageImports: ['react-icons', 'lucide-react', '@mui/material', '@mui/icons-material'],
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
   },
 
-  // Bundle optimization
-  swcMinify: true,
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
-  },
-
-  // Tắt source maps trong production để bảo mật
-  productionBrowserSourceMaps: false,
   async rewrites() {
     return [
       {
         source: '/san-pham/chi-tiet/:masanpham',
         destination: '/:masanpham',
       },
-      // Pretty category URL that keeps destination unchanged
-      // Browser displays /san-pham-:slug while serving /san-pham/:slug
       {
         source: '/san-pham-:slug',
         destination: '/san-pham/:slug',
@@ -174,7 +210,6 @@ const nextConfig = {
         destination: '/:masanpham',
         permanent: true,
       },
-      // Optional: normalize legacy category path to pretty URL
       {
         source: '/san-pham/:slug',
         destination: '/san-pham-:slug',
