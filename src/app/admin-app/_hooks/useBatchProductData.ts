@@ -101,7 +101,7 @@ export function useBatchProductData(): UseBatchProductDataReturn {
 
             // Limit cache size (max 100 entries)
             if (cacheRef.current.size > 100) {
-              const firstKey = cacheRef.current.keys().next().value;
+              const firstKey = cacheRef.current.keys().next().value as string;
               cacheRef.current.delete(firstKey);
             }
           }

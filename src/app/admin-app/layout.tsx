@@ -9,17 +9,7 @@ import { usePathname } from 'next/navigation';
 
 // 🚀 LAZY LOAD - Code splitting cho heavy components
 const SalesOrderFormWrapper = lazy(
-  () => import('./_components/SalesOrderFormWrapper'),
-  {
-    loading: () => (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="admin-app-spinner admin-app-spinner-medium mx-auto mb-4"></div>
-          <p className="text-gray-500">Đang tải...</p>
-        </div>
-      </div>
-    ),
-  }
+  () => import('./_components/SalesOrderFormWrapper')
 );
 
 // Loading skeleton for heavy pages
