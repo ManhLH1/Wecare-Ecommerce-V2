@@ -195,7 +195,7 @@ export default function ProductDetailPage({ params }: { params: any }) {
     <div className="bg-gray-50 min-h-screen">
       <JDStyleHeader cartItemsCount={cartItems.length} onSearch={() => { }} onCartClick={openCart} />
 
-      <main className="max-w-5xl mx-auto px-4 py-4 pt-20" style={{ marginTop: '95px' }}>
+      <main className="max-w-6xl mx-auto py-4 " style={{ marginTop: '95px' }}>
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm mb-3 text-gray-500">
           <button onClick={() => router.push("/")} className="hover:text-orange-500">Trang chủ</button>
