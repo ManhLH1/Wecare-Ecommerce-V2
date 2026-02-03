@@ -6,7 +6,7 @@ services:
     container_name: wecare-ecommerce
     hostname: wecare.com.vn
     ports:
-      - "3000:3000"
+      - "3001:3000"
     labels:
       NAME: "wecare-ecommerce"
       maintainer: "wecare-team"
