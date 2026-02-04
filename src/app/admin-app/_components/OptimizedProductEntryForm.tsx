@@ -67,6 +67,8 @@ export default function OptimizedProductEntryForm({
   const loadProductData = useCallback(async (productCode: string) => {
     if (!productCode) return;
 
+    // Clear old product data TRƯỚC KHI load mới để đảm bảo luôn refresh
+    setProductData(null);
     setLoading(true);
     try {
       const requests = [{

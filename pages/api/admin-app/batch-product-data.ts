@@ -58,6 +58,8 @@ export default async function handler(
       }
 
       // Create cache key for this specific request
+      // Thêm timestamp để bust cache và đảm bảo inventory luôn được refresh
+      const timestamp = Date.now();
       const cacheKey = getCacheKey("batch-product-data", {
         productCode,
         customerCode,
@@ -66,6 +68,7 @@ export default async function handler(
         warehouseName,
         isVatOrder,
         quantity,
+        _t: timestamp, // Cache busting - luôn fetch mới khi chọn lại sản phẩm
       });
 
       const cachedResponse = getCachedResponse(cacheKey, true);

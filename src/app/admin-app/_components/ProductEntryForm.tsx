@@ -462,6 +462,22 @@ function ProductEntryForm({
   const isCriticalDataLoading = useMemo(() => {
     return priceLoading || inventoryLoading || (promotionLoading && enablePromotionAutoFetch);
   }, [priceLoading, inventoryLoading, promotionLoading, enablePromotionAutoFetch]);
+
+  // Đơn hàng gấp chỉ được bật khi tồn kho >= số lượng và số lượng != null
+  const isUrgentOrderDisabled = useMemo(() => {
+    // Debug log
+    console.log(`[UrgentOrder] isFormDisabled=${isFormDisabled}, quantity=${quantity}, inventoryTheoretical=${inventoryTheoretical}, availableToSell=${availableToSell}`);
+    // Disable khi form đang disabled hoặc chưa có số lượng
+    if (isFormDisabled || quantity === null || quantity === undefined) return true;
+    // Disable khi inventory đã load và tồn kho lý thuyết < số lượng
+    // Dùng inventoryTheoretical (theoreticalStock) thay vì availableToSell vì "tồn kho" hiển thị trên UI là theoreticalStock
+    if (inventoryLoaded && inventoryTheoretical !== undefined && inventoryTheoretical < quantity) {
+      console.log(`[UrgentOrder] Disable: inventoryTheoretical(${inventoryTheoretical}) < quantity(${quantity})`);
+      return true;
+    }
+    return false;
+  }, [isFormDisabled, quantity, inventoryLoaded, inventoryTheoretical]);
+
   const [selectedPromotionId, setSelectedPromotionId] = useState<string>('');
   /**
    * Kiểm tra promotions cho sản phẩm hiện tại bằng API server-side
@@ -2995,14 +3011,14 @@ function ProductEntryForm({
       <div className="admin-app-card-title-row" style={{ alignItems: 'center', gap: '12px' }}>
         <h3 className="admin-app-card-title">Thông tin sản phẩm</h3>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <label className={`admin-app-chip-toggle ${urgentOrder ? 'is-active' : ''} ${isFormDisabled ? 'is-disabled' : ''}`} style={{ marginRight: 8 }}>
+          <label className={`admin-app-chip-toggle ${urgentOrder ? 'is-active' : ''} ${isUrgentOrderDisabled ? 'is-disabled' : ''}`} style={{ marginRight: 8 }}>
             <input
               type="checkbox"
               checked={urgentOrder}
               onChange={(e) => setUrgentOrder(e.target.checked)}
-              disabled={isFormDisabled}
+              disabled={isUrgentOrderDisabled}
             />
-            <span>Đơn hàng gấp</span>
+            <span title={isUrgentOrderDisabled && !isFormDisabled && quantity !== null && quantity !== undefined && inventoryTheoretical !== undefined && inventoryTheoretical < quantity ? `Không thể đặt đơn hàng gấp khi tồn kho (${inventoryTheoretical?.toLocaleString()}) < số lượng (${quantity?.toLocaleString()})` : ''}>Đơn hàng gấp</span>
           </label>
           <label className={`admin-app-chip-toggle ${approvePrice ? 'is-active' : ''} ${isFormDisabled ? 'is-disabled' : ''}`}>
             <input
