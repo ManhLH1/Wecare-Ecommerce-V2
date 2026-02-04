@@ -1,0 +1,87 @@
+---
+name: User Rules PRO MAX v4.0
+description: Next.js development rules - Vietnamese, Server-first, Type-safe, Performance-focused
+alwaysApply: true
+trigger:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.jsx"
+---
+
+# ───────────────────────────────────────────────────────────────
+# USER RULES PRO MAX v4.0 – Manh @ HCMC 2026
+# Mục tiêu: Code Next.js sạch, nhanh, type-safe, performant, accessible.
+# Luôn ưu tiên: Tiếng Việt 100% + Next.js App Router + Server-first.
+# ───────────────────────────────────────────────────────────────
+
+## 1. NGÔN NGỮ & GIAO TIẾP (bắt buộc, override mọi thứ)
+- Trả lời **HOÀN TOÀN BẰNG TIẾNG VIỆT** tự nhiên, rõ ràng, thân thiện như dev senior nói chuyện với Manh.
+- Chỉ dùng tiếng Anh cho: code keywords, tên biến/hàm/class/file, thư viện (Next.js, React, Tailwind, TanStack Query, Zod, Shadcn/UI, Clerk, Supabase…).
+- Không dùng cụm thừa: "Sure", "Here", "Of course", "Absolutely", "Let me"… → bắt đầu ngay bằng nội dung tiếng Việt.
+- Giải thích, comment trong code, nhận xét → bằng tiếng Việt ngắn gọn, tập trung "tại sao" + "lợi ích".
+- Nếu user hỏi tiếng Anh → vẫn trả lời tiếng Việt trừ khi yêu cầu rõ "English only".
+
+## 2. CORE PRINCIPLES (áp dụng mọi lúc)
+- Think step-by-step trước khi generate code lớn (Composer/Agent): phân tích yêu cầu → đề xuất architecture → code.
+- Ưu tiên **Server Components** mặc định → "use client" chỉ khi cần interactivity (state, effect, event, browser API).
+- TypeScript strict: no any, prefer interface + generics, Zod cho runtime validation.
+- Follow **SOLID + DRY + KISS**, Single Responsibility cho component/hook/function.
+- Code ngắn gọn, readable: dùng early return, guard clauses, descriptive names.
+- Naming: handleXxx cho handler, isXxx cho boolean, fetchXxx cho data fetch.
+
+## 3. NEXT.JS 15+ APP ROUTER (ưu tiên cao nhất)
+- App Router (app/) only. Server Actions cho mutation/form.
+- Partial Prerendering (PPR) + React Compiler (nếu enable) → tận dụng auto-memo.
+- Fetch: { next: { revalidate: X } } hoặc cache: 'force-cache' cho static.
+- Metadata động: generateMetadata async.
+- Parallel routes (@folder), intercepting routes khi phù hợp.
+- Middleware cho auth, i18n, security headers.
+- Route Handlers: app/api/**/route.ts với named exports GET/POST/…
+
+## 4. UI/STYLING (Tailwind-first 2026)
+- Tailwind v4+ + cn() (clsx hoặc cva).
+- Shadcn/UI + Radix primitives → không tự viết lại Dialog, Dropdown, Tooltip…
+- Mobile-first responsive: sm/md/lg/xl/2xl, dark: class.
+- next-themes cho dark mode nếu cần.
+- Component props: className?: string để override.
+- Accessible: semantic HTML, aria-*, focus-visible, keyboard nav.
+
+## 5. DATA & STATE (performance-focused)
+- Server Components + fetch ưu tiên → Suspense + loading.tsx.
+- Client: TanStack Query v5 (useQuery/useMutation + optimistic + error handling).
+- Global state: Zustand (persist nếu cần) hoặc Jotai atoms.
+- Form: React Hook Form + Zod resolver + Server Actions.
+- Avoid heavy client libs → ưu tiên server-only khi có thể.
+
+## 6. PERFORMANCE & OPTIMIZATION
+- Memo: useMemo/useCallback khi deps ổn định, React.memo cho component.
+- Lazy: dynamic(() => import(), { ssr: false }).
+- Image: next/image với sizes, priority, placeholder="blur".
+- Bundle: tree-shake, server-only imports, avoid 'use client' thừa.
+- RevalidatePath / revalidateTag cho on-demand ISR.
+
+## 7. SECURITY & A11Y & QUALITY
+- Env vars cho secrets → không hardcode.
+- Zod parse input ở Server Actions + error handling.
+- Auth: middleware hoặc Clerk/NextAuth → check session sớm.
+- A11y: role, aria-label, alt text, focus trap.
+- Error: global-error.tsx, try-catch + toast/error boundary.
+- Test khi yêu cầu: Vitest + RTL, mock fetch.
+
+## 8. WORKFLOW & OUTPUT
+- Trước code: giải thích ngắn tiếng Việt (architecture + lý do).
+- Code đầy đủ: imports, types, runnable.
+- Giữ style file hiện tại (Prettier/ESLint).
+- Comment tiếng Việt: // Tại sao: ... | // Lưu ý: ...
+- Refactor: giữ logic cũ nhưng clean + type-safe hơn.
+- Tái sử dụng: ưu tiên component/hook/utils hiện có.
+
+## 9. RULE PRIORITY & ADVANCED
+- Tuân thủ order: 1. Tiếng Việt → 2. Server-first → 3. TypeScript strict → 4. Performance.
+- Nếu dự án có .cursor/rules/*.mdc → ưu tiên chúng (scoped globs/trigger).
+- Khuyến khích tách rule: language.mdc, nextjs-core.mdc, performance.mdc, security.mdc.
+
+## 10. LANGUAGE SETTINGS
+- Language: Vietnamese only
+- Response language: Vietnamese (except code/proper nouns)

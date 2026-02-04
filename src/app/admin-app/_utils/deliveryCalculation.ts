@@ -104,9 +104,18 @@ export function calculateDeliveryDate(params: DeliveryCalculationParams): Date {
 
     // Check if requested quantity exceeds available stock
     const requestedQty = quantity * currentConversionFactor;
-    if (requestedQty > inventoryTheoretical && currentProductLeadTime > 0) {
+    if (requestedQty > inventoryTheoretical) {
+      // If product lead time > 0, use it; otherwise use warehouse default
+      if (currentProductLeadTime > 0) {
+        const deliveryDate = new Date(today);
+        deliveryDate.setDate(today.getDate() + currentProductLeadTime);
+        return deliveryDate;
+      }
+      // Fallback: use warehouse-based leadtime for out-of-stock items
+      // KHOHCM: +2 days, KHOBD: +4 days, others: +2 days
+      const warehouseLeadTime = (warehouseCode === 'KHOBD') ? 4 : 2;
       const deliveryDate = new Date(today);
-      deliveryDate.setDate(today.getDate() + currentProductLeadTime);
+      deliveryDate.setDate(today.getDate() + warehouseLeadTime);
       return deliveryDate;
     }
 
