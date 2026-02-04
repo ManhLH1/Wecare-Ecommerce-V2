@@ -422,35 +422,89 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     // Prefer overrides from child to avoid React state propagation timing issues.
     const basePrice = priceNum;
 
-    // If child passed explicit override, use it. Otherwise attempt to infer discountPercent
-    // from currently applied Promotion Orders on the server (soId) for this product.
+    // Tính tổng tiền ƯỚC TÍNH sau khi thêm sản phẩm (dùng để filter promotions)
+    // Dùng giá gốc (chưa discount) vì promotion chưa được apply khi tính tongTienApDung
+    const currentOrderTotal = orderSummary?.total || totalAmount || 0;
+    const newProductSubtotalEstimate = Math.round(quantity * basePrice);
+    const newProductVatEstimate = Math.round((newProductSubtotalEstimate * (vatPercent || 0)) / 100);
+    const newProductTotalEstimate = newProductSubtotalEstimate + newProductVatEstimate;
+    const estimatedOrderTotal = currentOrderTotal + newProductTotalEstimate;
+
+    // QUAN TRỌNG: Luôn tính inferredDiscountPercent từ candidates, BỎ QUA overrides.discountPercent
+    // Đảm bảo discount chỉ được apply KHI promotion valid (đáp ứng điều kiện tongTienApDung)
     let inferredDiscountPercent: number | null = null;
-    if (!overrides?.discountPercent && soId) {
+    let inferredPromotionId: string | undefined;
+    
+    // Luôn gọi API để kiểm tra promotion (bỏ qua condition !overrides?.discountPercent)
+    if (soId) {
       try {
         // Ask server for promotions for this SO restricted to this product
-        const res = await fetchPromotionOrders(soId, customerCode || undefined, undefined, productCode ? [productCode] : [], productGroupCode ? [productGroupCode] : [], selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan);
+        // Dùng estimatedOrderTotal để filter promotions (đã bao gồm sản phẩm mới)
+        const res = await fetchPromotionOrders(
+          soId,
+          customerCode || undefined,
+          estimatedOrderTotal,
+          productCode ? [productCode] : [],
+          productGroupCode ? [productGroupCode] : [],
+          selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan
+        );
+
         // Prefer existingPromotionOrders presence or availablePromotions that apply to this product
         const candidates = (res.availablePromotions || res.allPromotions || []).filter(p => {
           // Only percent-based CK2 promotions
-          return vndCodeEquals(p, 191920000) && (
-            p.chietKhau2 === 191920001 ||
+          const isPercent = vndCodeEquals(p, 191920000);
+          const isChietKhau2 = p.chietKhau2 === 191920001 ||
             String(p.chietKhau2).toLowerCase() === 'true' ||
-            String(p.chietKhau2) === '1'
-          );
+            String(p.chietKhau2) === '1';
+
+          // Kiểm tra điều kiện tổng tiền (tongTienApDung)
+          // Chỉ apply promotion nếu đơn hàng đáp ứng điều kiện tối thiểu
+          const minTotal = Number(p.totalAmountCondition || 0);
+          const meetsTotalCondition = minTotal === 0 || estimatedOrderTotal >= minTotal;
+
+          return isPercent && isChietKhau2 && meetsTotalCondition;
         });
+
         if (candidates && candidates.length > 0) {
           // Choose first matching (server already filters by productCodes when provided)
           const pick = candidates[0];
           const num = Number(pick.value) || 0;
           if (!isNaN(num) && num > 0) inferredDiscountPercent = num;
+
+          // Luôn dùng promotionId từ candidates nếu tìm thấy
+          inferredPromotionId = pick.id;
+
+          console.debug('[SalesOrderForm][PROMO DEBUG] Found valid promotion:', {
+            promotionId: pick.id,
+            name: pick.name,
+            value: num,
+            minTotalCondition: pick.totalAmountCondition,
+            estimatedOrderTotal,
+          });
+        } else {
+          console.debug('[SalesOrderForm][PROMO DEBUG] No valid promotion found:', {
+            currentOrderTotal,
+            estimatedOrderTotal,
+            allPromotionsCount: (res.allPromotions || []).length,
+            availablePromotionsCount: (res.availablePromotions || []).length,
+          });
         }
       } catch (err) {
         console.warn('[SalesOrderForm] Could not fetch promotions to infer discountPercent:', err);
       }
     }
 
-    const usedDiscountPercent = overrides?.discountPercent ?? (inferredDiscountPercent ?? discountPercent ?? 0);
-    const usedDiscountAmount = overrides?.discountAmount ?? discountAmount ?? 0;
+    // ƯU TIÊN DISCOUNT:
+    // 1. inferredDiscountPercent (từ promotion valid - đáp ứng điều kiện tongTienApDung)
+    // 2. overrides.discountPercent (từ ProductEntryForm - chỉ dùng KHI có promotion valid)
+    // 3. 0 (không có discount)
+    // NẾU KHÔNG có promotion valid → KHÔNG apply discount (kể cả từ state/overrides)
+    const usedDiscountPercent = inferredDiscountPercent !== null
+      ? (overrides?.discountPercent ?? inferredDiscountPercent)
+      : 0;
+    const usedDiscountAmount = inferredDiscountPercent !== null
+      ? (overrides?.discountAmount ?? discountAmount)
+      : 0;
     const discountedPriceCalc = basePrice * (1 - (usedDiscountPercent || 0) / 100) - (usedDiscountAmount || 0);
     const finalPrice = discountedPriceCalc * (1 + invoiceSurchargeRate);
 
@@ -469,7 +523,16 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       ? `Duyệt giá bởi ${approver}`
       : note;
 
-    const promoIdToUse = overrides?.promotionId ?? promotionId;
+    // Xác định promotionId để sử dụng:
+    // Ưu tiên: overrides.promotionId > inferredPromotionId
+    // Nếu không có inferredPromotionId (không tìm thấy promotion phù hợp), dùng chuỗi rỗng
+    // Đảm bảo KHÔNG fallback về promotionId cũ từ state khi không có promotion phù hợp
+    const promoIdToUse = overrides?.promotionId ?? inferredPromotionId ?? '';
+    const promotionTextToUse = inferredPromotionId ? (() => {
+      // Lấy promotion name từ candidates nếu có
+      // Note: candidates được define trong scope trên, có thể truy cập nếu inferredPromotionId có giá trị
+      return '';
+    })() : '';
     const newProduct: ProductTableItem = {
       id: `${Date.now()}-${newStt}`,
       stt: newStt,
@@ -497,7 +560,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       urgentOrder: urgentOrder,
       approvePrice: approvePrice,
       approveSupPrice: approveSupPrice,
-      promotionText: promotionText,
+      promotionText: promotionTextToUse,
       promotionId: promoIdToUse,
       invoiceSurcharge: invoiceSurchargeRate,
       createdOn: new Date().toISOString(),

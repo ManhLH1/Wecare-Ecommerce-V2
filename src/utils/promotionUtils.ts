@@ -24,6 +24,64 @@ export interface Promotion {
   tongTienApDung?: number; // Tổng tiền áp dụng cho khuyến mãi
   productCodes?: string[]; // Danh sách mã sản phẩm áp dụng khuyến mãi
 }
+
+// =========================================
+// HELPER FUNCTIONS CHO PROMOTION
+// =========================================
+
+/**
+ * Parse giá trị promotion từ string sang number
+ * Xử lý các trường hợp: "5", "5%", "50000", 5
+ */
+export const parsePromotionValue = (
+  value: string | number | undefined
+): number => {
+  if (value === undefined || value === null) return 0;
+  if (typeof value === 'number') return value;
+  const parsed = parseFloat(value);
+  return isNaN(parsed) ? 0 : parsed;
+};
+
+/**
+ * Parse productCodes từ string (CRM) sang array
+ * Input: "CODE1,CODE2,CODE3" hoặc "CODE1"
+ */
+export const parseProductCodes = (
+  codes: string | undefined
+): string[] => {
+  if (!codes) return [];
+  return codes.split(',').map(c => c.trim()).filter(Boolean);
+};
+
+/**
+ * Check xem product có thuộc danh sách áp dụng không
+ */
+export const isProductApplicable = (
+  productCode: string,
+  applicableCodes: string[]
+): boolean => {
+  if (!applicableCodes || applicableCodes.length === 0) return true;
+  return applicableCodes.some(code => 
+    code.toLowerCase() === productCode.toLowerCase()
+  );
+};
+
+/**
+ * Tính tổng giá trị cart items theo product codes
+ */
+export const calculateCartTotalByProductCodes = (
+  cartItems: CartItem[],
+  productCodes: string[]
+): number => {
+  return cartItems
+    .filter(item => productCodes.includes(item.productId))
+    .reduce((sum, item) => sum + (item.price * item.quantity), 0);
+};
+
+// =========================================
+// CORE CALCULATION FUNCTIONS
+// =========================================
+
 // Hàm tính tổng số lượng theo promotionId
 export const getTotalQuantityByPromotion = (
   items: CartItem[],
@@ -34,59 +92,40 @@ export const getTotalQuantityByPromotion = (
     .reduce((total, item) => total + item.quantity, 0);
 };
 
-// Hàm tính giá sau khuyến mãi cho một sản phẩm
-export const calculatePromotionPrice = (
-  price: number,
-  promotion: Promotion,
+/**
+ * Xác định giá trị khuyến mãi dựa trên số lượng
+ * Returns: { promotionValue, isValue2Applied, isValue3Applied }
+ */
+export const getPromotionValueByQuantity = (
   totalQuantity: number,
-  cartItems?: CartItem[] // Thêm tham số cartItems để tính tổng giá trị sản phẩm
-): { 
-  finalPrice: number;
-  isValue2Applied: boolean;
-  appliedValue: number;
-} => {
-  // Nếu không phải khuyến mãi cộng dồn
-  if (!promotion.congdonsoluong) {
-    const finalPrice = applyPromotionValue(price, promotion.value, promotion.vn);
-    return {
-      finalPrice,
-      isValue2Applied: false,
-      appliedValue: promotion.value
-    };
+  value: number,
+  value2: number | undefined,
+  value3: number | undefined,
+  quantityThreshold: number | undefined,
+  quantityThreshold3: number | undefined
+): { promotionValue: number; isValue2Applied: boolean; isValue3Applied: boolean } => {
+  let promotionValue = value;
+  let isValue2Applied = false;
+  let isValue3Applied = false;
+
+  // Check mức 3 trước (ưu tiên cao nhất)
+  if (quantityThreshold3 && totalQuantity >= quantityThreshold3 && value3 !== undefined) {
+    promotionValue = value3;
+    isValue3Applied = true;
+  } 
+  // Check mức 2
+  else if (quantityThreshold && totalQuantity >= quantityThreshold && value2 !== undefined) {
+    promotionValue = value2;
+    isValue2Applied = true;
   }
 
-  // Xử lý logic cho tongTienApDung
-  if (promotion.tongTienApDung && promotion.productCodes && cartItems) {
-    // Tính tổng giá trị sản phẩm trong productCodes
-    const totalProductValue = cartItems
-      .filter(item => promotion.productCodes?.includes(item.productId))
-      .reduce((sum, item) => sum + (item.price * item.quantity), 0);
-
-    // Nếu tổng giá trị sản phẩm >= tongTienApDung thì áp dụng value 1, ngược lại áp dụng value
-    const promotionValue = totalProductValue >= promotion.tongTienApDung ? 1 : promotion.value;
-
-    return {
-      finalPrice: applyPromotionValue(price, promotionValue, promotion.vn),
-      isValue2Applied: false,
-      appliedValue: promotionValue
-    };
-  }
-
-  // Xác định giá trị khuyến mãi dựa trên tổng số lượng
-  const isValue2Applied = totalQuantity >= promotion.soluongapdung;
-  const promotionValue = isValue2Applied && promotion.value2
-    ? promotion.value2
-    : promotion.value;
-
-  return {
-    finalPrice: applyPromotionValue(price, promotionValue, promotion.vn),
-    isValue2Applied,
-    appliedValue: promotionValue
-  };
+  return { promotionValue, isValue2Applied, isValue3Applied };
 };
 
-// Hàm áp dụng giá trị khuyến mãi
-const applyPromotionValue = (
+/**
+ * Áp dụng giá trị khuyến mãi vào giá gốc
+ */
+export const applyPromotionValue = (
   price: number,
   value: number,
   type: "191920000" | "191920001"
@@ -98,18 +137,143 @@ const applyPromotionValue = (
   }
 };
 
+/**
+ * Tính giá sau khuyến mãi cho một sản phẩm
+ * Hỗ trợ cả 2 loại: theo số lượng và theo tổng tiền
+ */
+export const calculatePromotionPrice = (
+  basePrice: number,
+  promotion: Promotion,
+  totalQuantity: number,
+  cartItems?: CartItem[]
+): { 
+  finalPrice: number;
+  isValue2Applied: boolean;
+  isValue3Applied: boolean;
+  appliedValue: number;
+} => {
+  // Trường hợp không có điều kiện tổng tiền
+  if (!promotion.tongTienApDung || !promotion.productCodes || !cartItems) {
+    const { promotionValue, isValue2Applied, isValue3Applied } = getPromotionValueByQuantity(
+      totalQuantity,
+      promotion.value,
+      promotion.value2,
+      undefined, // value3
+      promotion.soluongapdung,
+      undefined  // quantityThreshold3
+    );
+
+    return {
+      finalPrice: applyPromotionValue(basePrice, promotionValue, promotion.vn),
+      isValue2Applied,
+      isValue3Applied: false,
+      appliedValue: promotionValue
+    };
+  }
+
+  // Trường hợp có điều kiện tổng tiền (tongTienApDung)
+  const totalProductValue = calculateCartTotalByProductCodes(cartItems, promotion.productCodes);
+  const isValue2Applied = totalProductValue >= promotion.tongTienApDung;
+  const promotionValue = isValue2Applied ? (promotion.value2 || promotion.value) : promotion.value;
+
+  return {
+    finalPrice: applyPromotionValue(basePrice, promotionValue, promotion.vn),
+    isValue2Applied,
+    isValue3Applied: false,
+    appliedValue: promotionValue
+  };
+};
+
+/**
+ * Tính giá sau khuyến mãi với đầy đủ 3 mức (bao gồm value3)
+ * Dùng cho ProductDetailPopup với logic đầy đủ
+ */
+export const calculatePromotionPriceFull = (
+  basePrice: number,
+  promotion: {
+    value: number | string;
+    value2?: number | string;
+    value3?: number | string;
+    vn?: string;
+    congdonsoluong?: boolean;
+    soluongapdung?: number;
+    soluongapdungmuc3?: number;
+    tongTienApDung?: number | string;
+    productCodes?: string;
+  },
+  totalQuantity: number,
+  cartItems?: { productId: string; price: string | number; quantity?: number }[]
+): {
+  finalPrice: number;
+  appliedValue: number;
+  isValue2Applied: boolean;
+  isValue3Applied: boolean;
+} => {
+  const value = parsePromotionValue(promotion.value);
+  const value2 = parsePromotionValue(promotion.value2);
+  const value3 = parsePromotionValue(promotion.value3);
+  const vn = promotion.vn === "191920000" ? "191920000" : "191920001";
+
+  // Trường hợp có tongTienApDung
+  if (promotion.tongTienApDung && promotion.productCodes && cartItems) {
+    const codes = parseProductCodes(promotion.productCodes);
+    const totalValue = calculateCartTotalByProductCodes(
+      cartItems
+        .filter(item => codes.includes(item.productId))
+        .map(item => ({
+          productId: item.productId,
+          price: parsePromotionValue(item.price),
+          quantity: item.quantity || 1,
+          productName: '' // Required by CartItem but not used in calculation
+        })),
+      codes
+    );
+    const tongTienApDungNum = parsePromotionValue(promotion.tongTienApDung);
+    const isValue2Applied = totalValue >= tongTienApDungNum;
+    const promotionValue = isValue2Applied ? value2 : value;
+
+    return {
+      finalPrice: applyPromotionValue(basePrice, promotionValue, vn as "191920000" | "191920001"),
+      appliedValue: promotionValue,
+      isValue2Applied,
+      isValue3Applied: false
+    };
+  }
+
+  // Trường hợp theo số lượng (cộng dồn)
+  const { promotionValue, isValue2Applied, isValue3Applied } = getPromotionValueByQuantity(
+    totalQuantity,
+    value,
+    value2,
+    value3,
+    promotion.soluongapdung,
+    promotion.soluongapdungmuc3
+  );
+
+  return {
+    finalPrice: applyPromotionValue(basePrice, promotionValue, vn as "191920000" | "191920001"),
+    appliedValue: promotionValue,
+    isValue2Applied,
+    isValue3Applied
+  };
+};
+
+// =========================================
+// CART UPDATE FUNCTIONS
+// =========================================
+
 // Hàm cập nhật khuyến mãi cho một sản phẩm
 export const updateItemPromotion = (
   item: CartItem,
   totalQuantity: number,
   promotion: Promotion,
-  cartItems?: CartItem[] // Thêm tham số cartItems
+  cartItems?: CartItem[]
 ): CartItem => {
-  const { finalPrice, isValue2Applied, appliedValue } = calculatePromotionPrice(
+  const { finalPrice, isValue2Applied, isValue3Applied, appliedValue } = calculatePromotionPrice(
     item.price,
     promotion,
     totalQuantity,
-    cartItems // Truyền cartItems vào calculatePromotionPrice
+    cartItems
   );
 
   return {
@@ -198,4 +362,70 @@ export const updateCartItemQuantity = (
 
   // Cập nhật khuyến mãi cho toàn bộ giỏ hàng
   return updateCartPromotions(filteredItems, promotions);
+};
+
+// =========================================
+// API RESPONSE PARSING HELPERS
+// =========================================
+
+/**
+ * Parse promotion từ API response sang format chuẩn hóa
+ * Đảm bảo backward compatibility với code hiện tại
+ */
+export const parsePromotionFromApi = (apiPromo: {
+  promotion_id?: string;
+  promotionId?: string;
+  name?: string;
+  value?: string | number;
+  value2?: string | number;
+  value3?: string | number;
+  vn?: string;
+  congdonsoluong?: boolean;
+  soluongapdung?: number;
+  soluongapdungmuc3?: number;
+  tongTienApDung?: number | string;
+  productCodes?: string;
+  productGroupCodes?: string;
+}): {
+  promotionId: string;
+  value: number;
+  value2?: number;
+  value3?: number;
+  congdonsoluong: boolean;
+  soluongapdung: number;
+  vn: "191920000" | "191920001";
+  tongTienApDung?: number;
+  productCodes?: string[];
+} => {
+  return {
+    promotionId: apiPromo.promotion_id || apiPromo.promotionId || '',
+    value: parsePromotionValue(apiPromo.value),
+    value2: apiPromo.value2 !== undefined ? parsePromotionValue(apiPromo.value2) : undefined,
+    value3: apiPromo.value3 !== undefined ? parsePromotionValue(apiPromo.value3) : undefined,
+    congdonsoluong: apiPromo.congdonsoluong || false,
+    soluongapdung: apiPromo.soluongapdung || 0,
+    vn: (apiPromo.vn === "191920000" ? "191920000" : "191920001") as "191920000" | "191920001",
+    tongTienApDung: apiPromo.tongTienApDung 
+      ? parsePromotionValue(apiPromo.tongTienApDung) 
+      : undefined,
+    productCodes: apiPromo.productCodes 
+      ? parseProductCodes(apiPromo.productCodes)
+      : undefined
+  };
+};
+
+/**
+ * Parse promotions từ API getPromotionDataNewVersion
+ */
+export const parsePromotionsFromNewVersionApi = (
+  apiResponse: any[]
+): { [customerGroupId: string]: Promotion[] } => {
+  const result: { [customerGroupId: string]: Promotion[] } = {};
+
+  apiResponse.forEach(group => {
+    const promotions = (group.promotions || []).map(parsePromotionFromApi);
+    result[group.customerGroupId] = promotions;
+  });
+
+  return result;
 };
