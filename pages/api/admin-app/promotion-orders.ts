@@ -433,6 +433,10 @@ const buildPromotionFilters = (
   }
 
   // Total amount filter
+  // Promotion chỉ được áp dụng khi:
+  // - Không có điều kiện tổng tiền (cr1bb_tongtienapdung eq null), HOẶC
+  // - Tổng tiền đơn >= điều kiện tối thiểu (amount >= cr1bb_tongtienapdung)
+  // Nếu amount < cr1bb_tongtienapdung thì promotion KHÔNG được áp dụng
   if (totalAmount && typeof totalAmount === "string") {
     const amount = parseFloat(totalAmount);
     if (!isNaN(amount) && amount > 0) {
@@ -627,8 +631,25 @@ export default async function handler(
     // Preserve full fetched list (before further narrowing) so we can surface
     // "special" promotions regardless of product code constraints.
     const allFetchedPromotions = fetchedPromotions.slice();
+
+    // Helper function to check if promotion is CK1 (not CK2)
+    const isChietKhauau1 = (promo: AvailablePromotion) => {
+      // CK1 = promotions WITHOUT chietKhau2 flag, or with chietKhau2 = false/0/"false"/"0"
+      const isCK2 = normalizeChietKhau2(promo.chietKhau2);
+      console.log(`[DEBUG isChietKhauau1] promo: ${promo.name?.substring(0, 30)}, chietKhau2: ${promo.chietKhau2}, isCK2: ${isCK2}, result: ${!isCK2}`);
+      return !isCK2;
+    };
+
     // Narrow available promotions to those of type 'Order' for normal processing
-    let availablePromotions = fetchedPromotions.filter(p => String(p.type || '').toLowerCase() === 'order');
+    // BUT vẫn giữ lại CK1 promotions (chietKhau2 = false) với type khác để frontend có thể apply
+    let availablePromotions = fetchedPromotions.filter(p => {
+      const typeOrder = String(p.type || '').toLowerCase() === 'order';
+      const isCK1 = isChietKhauau1(p);
+      const result = typeOrder || isCK1;
+      console.log(`[DEBUG filter] promo: ${p.name?.substring(0, 30)}, type: ${p.type}, typeOrder: ${typeOrder}, isCK1: ${isCK1}, result: ${result}`);
+      // Giữ lại: promotions "Order" HOẶC promotions CK1 (chietKhau2 = false)
+      return result;
+    });
 
     // Debug logging
     console.log(`Available promotions before filtering: ${availablePromotions.length}`);

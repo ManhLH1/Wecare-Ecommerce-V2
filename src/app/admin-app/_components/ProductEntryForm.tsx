@@ -2307,23 +2307,49 @@ function ProductEntryForm({
         if (!skipApplyingSelectedPromotion) {
           const sel = selectedPromotion || promotions[0];
           if (sel) {
-            computedDiscountPercent = derivePromotionPercent(sel);
-            // If promotion is VND-based, compute money value based on VAT context
-            const vatTextLower = (vatText || '').toLowerCase();
-            const isVatOrderForPromo = vatTextLower.includes('có vat') || vatPercent > 0;
-            const moneyCandidates = isVatOrderForPromo
-              ? [sel.valueWithVat, sel.value, sel.value2, sel.value3, sel.valueBuyTogether]
-              : [sel.valueNoVat, sel.valueWithVat, sel.value, sel.value2, sel.value3, sel.valueBuyTogether];
-            for (const c of moneyCandidates) {
-              const num = Number(c);
-              if (!isNaN(num) && num > 0) {
-                computedDiscountAmount = num;
-                break;
-              }
-            }
-            // If percent was derived (non-zero), zero out money value to avoid double-applying
-            if (computedDiscountPercent > 0) {
+            // KIỂM TRA ĐIỀU KIỆN TỔNG TIỀN (totalAmountCondition) TRƯỚC KHI ÁP DỤNG PROMOTION
+            // Nếu promotion có điều kiện tổng tiền tối thiểu, chỉ áp dụng khi tổng đơn >= điều kiện
+            // Tính estimatedOrderTotal tương tự SalesOrderForm: currentOrderTotal + newProductTotalEstimate
+            const minTotalCondition = Number(sel.totalAmountCondition || 0) || 0;
+            // Dùng orderTotal (tổng hiện tại) + totalAmount (sản phẩm đang thêm, CHƯA có discount)
+            const estimatedOrderTotal = Number(orderTotal || 0) + Number(totalAmount || 0);
+            const meetsTotalCondition = minTotalCondition === 0 || estimatedOrderTotal >= minTotalCondition;
+
+            console.debug('[ProductEntryForm][PROMO DEBUG] Promotion condition check:', {
+              promotionId: sel.id,
+              promotionName: sel.name,
+              totalAmountCondition: minTotalCondition,
+              orderTotal: orderTotal,
+              totalAmount: totalAmount,
+              estimatedOrderTotal,
+              meetsTotalCondition,
+            });
+
+            if (!meetsTotalCondition) {
+              // Không đủ điều kiện tổng tiền -> không áp dụng promotion, để giá gốc
+              computedDiscountPercent = 0;
               computedDiscountAmount = 0;
+              console.debug('[ProductEntryForm][PROMO DEBUG] Condition NOT met, discount = 0');
+            } else {
+              // Đủ điều kiện -> tính discount từ promotion
+              computedDiscountPercent = derivePromotionPercent(sel);
+              // If promotion is VND-based, compute money value based on VAT context
+              const vatTextLower = (vatText || '').toLowerCase();
+              const isVatOrderForPromo = vatTextLower.includes('có vat') || vatPercent > 0;
+              const moneyCandidates = isVatOrderForPromo
+                ? [sel.valueWithVat, sel.value, sel.value2, sel.value3, sel.valueBuyTogether]
+                : [sel.valueNoVat, sel.valueWithVat, sel.value, sel.value2, sel.value3, sel.valueBuyTogether];
+              for (const c of moneyCandidates) {
+                const num = Number(c);
+                if (!isNaN(num) && num > 0) {
+                  computedDiscountAmount = num;
+                  break;
+                }
+              }
+              // If percent was derived (non-zero), zero out money value to avoid double-applying
+              if (computedDiscountPercent > 0) {
+                computedDiscountAmount = 0;
+              }
             }
           }
         } else {

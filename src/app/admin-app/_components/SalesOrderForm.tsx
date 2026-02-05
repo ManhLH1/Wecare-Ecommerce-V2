@@ -434,7 +434,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     // Đảm bảo discount chỉ được apply KHI promotion valid (đáp ứng điều kiện tongTienApDung)
     let inferredDiscountPercent: number | null = null;
     let inferredPromotionId: string | undefined;
-    
+
     // Luôn gọi API để kiểm tra promotion (bỏ qua condition !overrides?.discountPercent)
     if (soId) {
       try {
@@ -449,20 +449,72 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan
         );
 
-        // Prefer existingPromotionOrders presence or availablePromotions that apply to this product
-        const candidates = (res.availablePromotions || res.allPromotions || []).filter(p => {
-          // Only percent-based CK2 promotions
+        // Lấy tất cả promotions percent-based đáp ứng điều kiện (bao gồm cả CK1 và CK2)
+        // Chiết khấu 1 (CK1) cũng cần được tính khi tổng tiền đạt điều kiện tongTienApDung
+        const allPromotions = res.availablePromotions || res.allPromotions || [];
+
+        console.debug('[SalesOrderForm][PROMO API RESPONSE]', {
+          hasAvailablePromotions: Array.isArray(res.availablePromotions),
+          availablePromotionsCount: res.availablePromotions?.length,
+          hasAllPromotions: Array.isArray(res.allPromotions),
+          allPromotionsCount: res.allPromotions?.length,
+          estimatedOrderTotal,
+        });
+
+        // Log detailed info about each promotion
+        allPromotions.forEach((p, idx) => {
+          console.debug(`[SalesOrderForm][PROMO API] [${idx}]`, {
+            id: p.id,
+            name: p.name?.substring(0, 60),
+            type: p.type,
+            value: p.value,
+            vndOrPercent: p.vndOrPercent,
+            chietKhau2: p.chietKhau2,
+            totalAmountCondition: p.totalAmountCondition,
+            applicable: p.applicable,
+          });
+        });
+
+        const candidates = allPromotions.filter(p => {
+          // Chỉ lấy percent-based promotions
           const isPercent = vndCodeEquals(p, 191920000);
-          const isChietKhau2 = p.chietKhau2 === 191920001 ||
-            String(p.chietKhau2).toLowerCase() === 'true' ||
-            String(p.chietKhau2) === '1';
 
           // Kiểm tra điều kiện tổng tiền (tongTienApDung)
-          // Chỉ apply promotion nếu đơn hàng đáp ứng điều kiện tối thiểu
+          // Áp dụng cho CẢ CK1 và CK2 khi đáp ứng điều kiện
           const minTotal = Number(p.totalAmountCondition || 0);
           const meetsTotalCondition = minTotal === 0 || estimatedOrderTotal >= minTotal;
 
-          return isPercent && isChietKhau2 && meetsTotalCondition;
+          const shouldInclude = isPercent && meetsTotalCondition;
+
+          // Debug: Log tất cả promotions và lý do
+          console.debug('[SalesOrderForm][PROMO FILTER]', {
+            id: p.id,
+            name: p.name?.substring(0, 50),
+            type: p.type,
+            isPercent,
+            vndOrPercent: p.vndOrPercent,
+            chietKhau2: p.chietKhau2,
+            minTotal,
+            estimatedOrderTotal,
+            meetsTotalCondition,
+            shouldInclude,
+          });
+
+          // Debug: Log lý do promotion bị loại bỏ
+          if (!shouldInclude) {
+            console.debug('[SalesOrderForm][PROMO FILTER DEBUG] Filtered out promotion:', {
+              id: p.id,
+              name: p.name?.substring(0, 50),
+              isPercent,
+              vndOrPercent: p.vndOrPercent,
+              minTotal,
+              estimatedOrderTotal,
+              meetsTotalCondition,
+              reason: !isPercent ? 'Not percent-based' : 'Does not meet total condition'
+            });
+          }
+
+          return shouldInclude;
         });
 
         if (candidates && candidates.length > 0) {
@@ -495,22 +547,42 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     }
 
     // ƯU TIÊN DISCOUNT:
-    // 1. inferredDiscountPercent (từ promotion valid - đáp ứng điều kiện tongTienApDung)
-    // 2. overrides.discountPercent (từ ProductEntryForm - chỉ dùng KHI có promotion valid)
+    // 1. overrides.discountPercent (từ ProductEntryForm - manual entry, ƯU TIÊN CAO NHẤT)
+    // 2. inferredDiscountPercent (từ promotion valid - đáp ứng điều kiện tongTienApDung)
     // 3. 0 (không có discount)
-    // NẾU KHÔNG có promotion valid → KHÔNG apply discount (kể cả từ state/overrides)
-    const usedDiscountPercent = inferredDiscountPercent !== null
-      ? (overrides?.discountPercent ?? inferredDiscountPercent)
-      : 0;
-    const usedDiscountAmount = inferredDiscountPercent !== null
-      ? (overrides?.discountAmount ?? discountAmount)
-      : 0;
+    const usedDiscountPercent = overrides?.discountPercent ?? inferredDiscountPercent ?? 0;
+    const usedDiscountAmount = overrides?.discountAmount ?? discountAmount;
+
+    console.debug('[SalesOrderForm][DISCOUNT FINAL] Final discount calculation:', {
+      inferredDiscountPercent,
+      overridesDiscountPercent: overrides?.discountPercent,
+      overridesDiscountAmount: overrides?.discountAmount,
+      usedDiscountPercent,
+      usedDiscountAmount,
+      estimatedOrderTotal,
+      hasSoId: !!soId,
+    });
+
     const discountedPriceCalc = basePrice * (1 - (usedDiscountPercent || 0) / 100) - (usedDiscountAmount || 0);
     const finalPrice = discountedPriceCalc * (1 + invoiceSurchargeRate);
 
+    console.debug('[SalesOrderForm][DISCOUNT DEBUG] Price calculation:', {
+      basePrice,
+      inferredDiscountPercent,
+      overridesDiscountPercent: overrides?.discountPercent,
+      usedDiscountPercent,
+      usedDiscountAmount,
+      discountedPriceCalc,
+      invoiceSurchargeRate,
+      finalPrice,
+      estimatedOrderTotal,
+    });
+
     // Add new product (always create new line, no merging)
     // Calculate amounts (round VAT per line)
-    const subtotalCalc = Math.round(quantity * finalPrice);
+    // IMPORTANT: Use discountedPriceCalc (not finalPrice) to match orderSummary calculation logic
+    // Invoice surcharge is tracked separately in invoiceSurcharge field
+    const subtotalCalc = Math.round(quantity * discountedPriceCalc);
     const vatCalc = Math.round((subtotalCalc * (vatPercent || 0)) / 100);
     const totalCalc = subtotalCalc + vatCalc;
 
@@ -545,7 +617,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       priceNoVat: priceNoVat,
       surcharge: 0,
       discount: usedDiscountAmount,
-      discountedPrice: approvePrice ? (priceNoVat ?? finalPrice) : finalPrice,
+      // CRITICAL FIX: Use discountedPriceCalc (before surcharge) instead of finalPrice
+      // discountedPrice should be: price after discount, before VAT and invoice surcharge
+      discountedPrice: approvePrice ? (priceNoVat ?? discountedPriceCalc) : discountedPriceCalc,
       discountPercent: usedDiscountPercent,
       discountAmount: usedDiscountAmount,
       discountRate: overrides?.discountRate,
@@ -571,6 +645,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       console.debug('[SalesOrderForm][DEBUG] New product prepared', {
         approver: approver,
         approverType: typeof approver,
+        discountPercent: usedDiscountPercent,
+        discountedPrice: newProduct.discountedPrice,
+        promotionId: promoIdToUse,
       });
     } catch (err) { /* ignore logging errors */ }
 
@@ -682,10 +759,10 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           discountPercent: item.discountPercent,
           discountAmount: item.discountAmount,
           discountRate: item.discountRate,
-            // Secondary discount (Chiết khấu 2) - percent value (e.g., 5 = 5%)
-            discount2: item.discount2 ?? 0,
-            discount2Enabled: item.discount2Enabled ?? false,
-            crdfd_chietkhau2: item.discount2 ?? 0, // Send to backend as crdfd_chietkhau2
+          // Secondary discount (Chiết khấu 2) - percent value (e.g., 5 = 5%)
+          discount2: item.discount2 ?? 0,
+          discount2Enabled: item.discount2Enabled ?? false,
+          crdfd_chietkhau2: item.discount2 ?? 0, // Send to backend as crdfd_chietkhau2
           promotionText: item.promotionText,
           promotionId: item.promotionId,
           invoiceSurcharge: item.invoiceSurcharge,
