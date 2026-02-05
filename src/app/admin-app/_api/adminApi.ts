@@ -117,6 +117,10 @@ export interface Promotion {
   paymentTermsLevel3?: string;
   saleInventoryOnly?: any;
   unitName?: string;
+  // Chiết khấu 2 flag (từ cr1bb_chietkhau2 trong CRM)
+  chietKhau2?: number;
+  // vndOrPercent field (used by vndCodeEquals for compatibility)
+  vndOrPercent?: string | number;
 }
 
 export interface SaleOrderDetail {

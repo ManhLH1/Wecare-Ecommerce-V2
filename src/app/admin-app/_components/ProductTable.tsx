@@ -2,15 +2,18 @@
 
 import React, { useMemo, useState, useCallback } from 'react';
 import { showToast } from '../../../components/ToastManager';
-import { fetchPromotionOrders, PromotionOrderItem } from '../_api/adminApi';
+import { fetchPromotionOrders, fetchProductPromotions, PromotionOrderItem, Promotion } from '../_api/adminApi';
 
 // Helper function để check percent-based promotion
 const vndCodeEquals = (p: any, code: number) => {
   if (p === null || p === undefined) return false;
-  const v = p.vndOrPercent ?? p.crdfd_vn ?? p.vndOrPercent;
+  // fetchProductPromotions trả về field `vn` (string) từ promotions.ts API
+  const v = p.vn ?? p.vndOrPercent ?? p.crdfd_vn;
   if (v === undefined || v === null) return false;
   const vs = String(v).trim();
-  return vs === String(code);
+  // Dùng == để so sánh string vs number (vn có thể là "191920000" hoặc 191920000)
+  // biome-ignore lint/style/useIsNan: <explanation>
+  return vs == String(code);
 };
 
 interface ProductTableItem {
@@ -69,6 +72,7 @@ interface ProductTableProps {
   isSOBG?: boolean; // nếu true gọi API deactivate SOBG detail thay vì SOD
   customerCode?: string; // Customer code cho promotion calculation
   paymentTerms?: string; // Payment terms cho promotion calculation
+  saleOrders?: Array<{ crdfd_sale_orderid: string; crdfd_ieukhoanthanhtoan?: string; crdfd_dieu_khoan_thanh_toan?: string }>; // Sale orders array để tìm selected SO cho promotion calculation
 }
 
 // ============================================================
@@ -79,14 +83,20 @@ async function recalculatePromotionEligibility(
   currentProducts: ProductTableItem[],
   soIdValue: string,
   customerCodeValue: string,
-  paymentTermsValue: string | undefined
+  saleOrders: Array<{ crdfd_sale_orderid: string; crdfd_ieukhoanthanhtoan?: string; crdfd_dieu_khoan_thanh_toan?: string }> | undefined
 ): Promise<ProductTableItem[]> {
   if (!soIdValue || currentProducts.length === 0) return currentProducts;
+
+  // Tìm selected SO từ saleOrders array
+  const selectedSo = saleOrders?.find(so => so.crdfd_sale_orderid === soIdValue);
+  const paymentTermsValue = selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan;
 
   console.debug('[ProductTable][RECALC] Starting recalculation:', {
     totalProducts: currentProducts.length,
     soId: soIdValue,
     customerCode: customerCodeValue,
+    selectedSoFound: !!selectedSo,
+    paymentTerms: paymentTermsValue,
   });
 
   // 1. Tìm items đã có promotion (eligibleForPromotion = true)
@@ -131,89 +141,95 @@ async function recalculatePromotionEligibility(
     return currentProducts;
   }
 
-  // 3. Fetch tất cả promotions một lần với promotionalItemsTotal
+  // 3. Fetch promotions cho TẤT CẢ items bằng fetchProductPromotions (cho cả CK1 và CK2)
+  // Dùng promotions.ts API thay vì promotion-orders.ts
   try {
-    const res = await fetchPromotionOrders(
-      soIdValue,
-      customerCodeValue || undefined,
-      totalOrderAmount, // Dùng totalOrderAmount (TẤT CẢ items)
-      [],
-      [],
-      paymentTermsValue
-    );
-
-    const allPromotions = (res.availablePromotions?.length > 0) 
-      ? res.availablePromotions 
-      : res.allPromotions || [];
-
-    // 4. Build map: productCode → best promotion (percent-based, meets total condition)
-    const promotionMap = new Map<string, { discountPercent: number; promotionId: string }>();
-
-    console.debug('[ProductTable][RECALC] Promotions from API:', {
-      count: allPromotions.length,
-      totalOrderAmount,
+    // Collect tất cả items
+    const allItems = [...nonPromoItems, ...promoItems];
+    console.debug('[ProductTable][RECALC] All items for promotions:', {
+      totalProducts: allItems.length,
+      promoItems: promoItems.map(p => ({ code: p.productCode, name: p.productName?.substring(0, 20), eligible: p.eligibleForPromotion })),
+      nonPromoItems: nonPromoItems.map(p => ({ code: p.productCode, name: p.productName?.substring(0, 20), eligible: p.eligibleForPromotion })),
     });
 
-    for (const p of allPromotions) {
-      const isPercent = vndCodeEquals(p, 191920000);
-      const minTotal = Number(p.totalAmountCondition || 0);
-      const meetsTotal = minTotal === 0 || totalOrderAmount >= minTotal;
+    // Gọi fetchProductPromotions cho TỪNG product để lấy promotions (bao gồm cả CK1 và CK2)
+    const promotionMap = new Map<string, { discountPercent: number; promotionId: string }>();
+    let promotionsFetched = 0;
 
-      if (isPercent && meetsTotal) {
-        const value = Number(p.value) || 0;
-        const promoId = p.id;
+    console.debug('[ProductTable][RECALC] Fetching promotions for each product...');
 
-        // Parse productCodes từ promotion
-        const promoProductCodes = (p.productCodes || '').split(',').map(s => s.trim()).filter(Boolean);
-        const promoGroupCodes = (p.productGroupCodes || '').split(',').map(s => s.trim()).filter(Boolean);
+    for (const item of allItems) {
+      if (!item.productCode) continue;
 
-        console.debug('[ProductTable][RECALC] Matching promotion:', {
-          promoId,
-          promoName: p.name?.substring(0, 50),
-          value,
-          minTotal,
-          totalOrderAmount,
-          meetsTotal,
-          promoProductCodes,
-          promoGroupCodes,
+      // Gọi fetchProductPromotions cho từng product
+      const promotions = await fetchProductPromotions(
+        item.productCode,
+        customerCodeValue || undefined,
+        undefined, // region
+        paymentTermsValue
+      );
+
+      console.debug('[ProductTable][RECALC] Promotions for product:', {
+        productCode: item.productCode,
+        promotionsCount: promotions.length,
+        promotions: promotions.map(p => ({
+          id: p.id,
+          name: p.name?.substring(0, 40),
+          value: p.value,
+          vn: p.vn,
+          totalAmountCondition: p.totalAmountCondition,
+        })),
+      });
+
+      // Filter promotions: percent-based và meets total condition
+      const candidates = promotions.filter(p => {
+        const isPercent = vndCodeEquals(p, 191920000);
+        const minTotal = Number(p.totalAmountCondition || 0);
+        const meetsTotal = minTotal === 0 || totalOrderAmount >= minTotal;
+        return isPercent && meetsTotal;
+      });
+
+      console.debug('[ProductTable][RECALC] Filtered candidates for product:', {
+        productCode: item.productCode,
+        candidatesCount: candidates.length,
+        totalOrderAmount,
+      });
+
+      // Lấy promotion có giá trị cao nhất
+      if (candidates.length > 0) {
+        const bestPromo = candidates.reduce((best, current) => {
+          const bestVal = Number(best.value) || 0;
+          const currVal = Number(current.value) || 0;
+          return currVal > bestVal ? current : best;
+        }, candidates[0]);
+
+        const discountPercent = Number(bestPromo.value) || 0;
+
+        promotionMap.set(item.productCode, {
+          discountPercent,
+          promotionId: bestPromo.id
         });
 
-        // QUAN TRỌNG: Duyệt TẤT CẢ items (promoItems + nonPromoItems)
-        // để khi tổng đơn đủ điều kiện, TẤT CẢ items matching đều được apply promotion
-        const allItems = [...nonPromoItems, ...promoItems];
-        for (const item of allItems) {
-          const matchesProduct = promoProductCodes.length === 0 || promoProductCodes.includes(item.productCode || '');
-          const matchesGroup = promoGroupCodes.length === 0 || promoGroupCodes.includes(item.productGroupCode || '');
-
-          console.debug('[ProductTable][RECALC] Checking item against promotion:', {
-            itemProductCode: item.productCode,
-            itemProductName: item.productName?.substring(0, 30),
-            promoProductCodes,
-            promoGroupCodes,
-            matchesProduct,
-            matchesGroup,
-            willGetPromotion: matchesProduct || matchesGroup,
-            currentEligible: item.eligibleForPromotion,
-          });
-
-          if (matchesProduct || matchesGroup) {
-            // Lưu promotion tốt nhất (discount cao nhất)
-            const existing = promotionMap.get(item.productCode || '');
-            if (!existing || value > existing.discountPercent) {
-              promotionMap.set(item.productCode || '', {
-                discountPercent: value,
-                promotionId: promoId
-              });
-            }
-          }
-        }
+        console.debug('[ProductTable][RECALC] Best promotion for product:', {
+          productCode: item.productCode,
+          promotionId: bestPromo.id,
+          name: bestPromo.name?.substring(0, 40),
+          discountPercent,
+        });
       }
+
+      promotionsFetched++;
     }
 
-    console.debug('[ProductTable][RECALC] Promotion map built:', {
+    console.debug('[ProductTable][RECALC] Final promotionMap:', {
       mapSize: promotionMap.size,
-      nonPromoItemCount: nonPromoItems.length,
-      willUpdateCount: Array.from(promotionMap.keys()),
+      totalProducts: allItems.length,
+      promotionsFetched,
+      promotions: Array.from(promotionMap.entries()).map(([code, info]) => ({
+        productCode: code,
+        discountPercent: info.discountPercent,
+        promotionId: info.promotionId,
+      })),
     });
 
     // 5. Update TẤT CẢ items dựa trên promotionMap
@@ -319,10 +335,11 @@ function ProductTable({
   onUpdate,
   soId,
   warehouseName,
-  isVatOrder
-  , isSOBG = false
-  , customerCode
-  , paymentTerms
+  isVatOrder,
+  isSOBG = false,
+  customerCode,
+  paymentTerms,
+  saleOrders,
 }: ProductTableProps) {
   const [editingQuantityId, setEditingQuantityId] = useState<string | null>(null);
   const [editingQuantityValue, setEditingQuantityValue] = useState<string>('');
@@ -362,7 +379,7 @@ function ProductTable({
               productsAfterDelete,
               soId,
               customerCode || '',
-              paymentTerms
+              saleOrders
             ).then(recalculated => {
               // Chỉ update nếu có thay đổi (có items được loại bỏ promotion)
               const hasChanges = recalculated.some((p, idx) => {
@@ -448,7 +465,7 @@ function ProductTable({
           productsWithNewQty,
           soId,
           customerCode || '',
-          paymentTerms
+          saleOrders
         );
         setProducts(recalculatedProducts);
       } catch (err) {
