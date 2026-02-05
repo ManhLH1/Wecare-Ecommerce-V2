@@ -466,13 +466,11 @@ function ProductEntryForm({
   // Đơn hàng gấp chỉ được bật khi tồn kho >= số lượng và số lượng != null
   const isUrgentOrderDisabled = useMemo(() => {
     // Debug log
-    console.log(`[UrgentOrder] isFormDisabled=${isFormDisabled}, quantity=${quantity}, inventoryTheoretical=${inventoryTheoretical}, availableToSell=${availableToSell}`);
     // Disable khi form đang disabled hoặc chưa có số lượng
     if (isFormDisabled || quantity === null || quantity === undefined) return true;
     // Disable khi inventory đã load và tồn kho lý thuyết < số lượng
     // Dùng inventoryTheoretical (theoreticalStock) thay vì availableToSell vì "tồn kho" hiển thị trên UI là theoreticalStock
     if (inventoryLoaded && inventoryTheoretical !== undefined && inventoryTheoretical < quantity) {
-      console.log(`[UrgentOrder] Disable: inventoryTheoretical(${inventoryTheoretical}) < quantity(${quantity})`);
       return true;
     }
     return false;
@@ -1074,8 +1072,6 @@ function ProductEntryForm({
         // Debug log to help trace why button may still be enabled
         // (will appear in browser console)
         // eslint-disable-next-line no-console
-        console.log('[ProductEntryForm DEBUG] Today:', new Date().toISOString(), '| soCreatedOn:', soCreatedOn, '| sevenHoursAfter:', sevenHoursAfter.toISOString(), '| sevenDateOnly:', sevenDateOnly, '| yesterdayOnly:', yesterdayOnly, '| Disabled:', sevenDateOnly <= yesterdayOnly);
-
         if (sevenDateOnly <= yesterdayOnly) {
           console.warn('[ProductEntryForm] SO cũ - Disable form. soCreatedOn:', soCreatedOn, '| sevenHoursAfter:', sevenHoursAfter.toISOString());
           const reason = 'không bổ sung sản phẩm vào SO cũ';
@@ -1343,19 +1339,15 @@ function ProductEntryForm({
       const selectedWarehouse = warehouses.find(w => w.crdfd_khowecareid === warehouseId);
       const selectedWarehouseName = selectedWarehouse?.crdfd_name || warehouse || '';
 
-      console.log(`[loadInventory] DEBUG: warehouseId=${warehouseId}, selectedWarehouse=${JSON.stringify(selectedWarehouse)}, warehouse prop=${warehouse}`);
-
       // Fetch both inventory sources in parallel (Inventory service and Kho Bình Định variant)
       // Note: API expects warehouseName (text), not warehouseId. Always use selectedWarehouseName from warehouse object
       // to ensure correct matching with CRM cr1bb_vitrikhotext field
       const warehouseNameForApi = selectedWarehouseName || undefined;
-      console.log(`[loadInventory] Calling fetchInventory with: productCode=${selectedProductCode}, warehouse=${warehouseNameForApi}, isVatOrder=false`);
       const [inventoryResult, khoBinhDinhResult] = await Promise.all([
         fetchInventory(selectedProductCode, warehouseNameForApi, false),
         // For Kho Bình Định: also pass warehouse name to ensure correct filtering
         fetchInventory(selectedProductCode, warehouseNameForApi, true)
       ]);
-      console.log(`[loadInventory] Results: inventoryResult=${JSON.stringify(inventoryResult)}, khoBinhDinhResult=${JSON.stringify(khoBinhDinhResult)}`);
 
       // Normalize results
       const inv = inventoryResult || { theoreticalStock: 0, reservedQuantity: 0, availableToSell: 0 };
@@ -1379,10 +1371,6 @@ function ProductEntryForm({
       const available = useKho
         ? (kho.availableToSell ?? ( (kho.theoreticalStock ?? 0) - (kho.reservedQuantity ?? 0) ))
         : (inv.availableToSell ?? ( (inv.theoreticalStock ?? 0) - (inv.reservedQuantity ?? 0) ));
-
-      console.log(`[loadInventory] Warehouse ID: ${warehouseId}, Name: ${selectedWarehouseName}, useKho: ${useKho}`);
-      console.log(`[loadInventory] Inventory: inv.theoreticalStock=${inv.theoreticalStock}, kho.theoreticalStock=${kho.theoreticalStock}`);
-      console.log(`[loadInventory] Using: ${useKho ? 'Kho Bình Định' : 'Inventory'}, theoretical=${theoretical}`);
 
       // Update state
       setInventoryTheoretical(theoretical || 0);

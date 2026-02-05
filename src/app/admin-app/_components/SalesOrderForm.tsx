@@ -47,7 +47,8 @@ interface ProductTableItem {
   discount2?: number;
   discount2Enabled?: boolean;
   promotionText?: string;
-  promotionId?: string;
+  promotionId?: string; // ID của promotion được apply cho item này
+  eligibleForPromotion?: boolean; // Item có đủ điều kiện promotion không (dựa trên productCode + total amount condition)
   invoiceSurcharge?: number; // Phụ phí hoá đơn
   stockQuantity?: number;
   createdOn?: string;
@@ -83,6 +84,302 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     const vs = String(v).trim();
     return vs === String(code);
   };
+
+  // ============================================================
+  // Hàm recalculate promotion eligibility cho TẤT CẢ items
+  // Called khi thêm item mới có promotion → cần check lại items khác
+  // ============================================================
+  const recalculatePromotionEligibility = useCallback(async (
+    currentProducts: ProductTableItem[],
+    soIdValue: string,
+    customerCodeValue: string,
+    selectedSo: any
+  ): Promise<ProductTableItem[]> => {
+    if (!soIdValue || currentProducts.length === 0) return currentProducts;
+
+    // 1. Tìm items đã có promotion (eligibleForPromotion = true)
+    const promoItems = currentProducts.filter(item => item.eligibleForPromotion);
+
+    // 2. Tìm items CHƯA có promotion
+    const nonPromoItems = currentProducts.filter(item => !item.eligibleForPromotion);
+
+    // NOTE: KHÔNG early return ở đây vì vẫn cần kiểm tra promoItems
+    // (promo có thể thay đổi hoặc bị loại bỏ khi tổng đơn thay đổi)
+
+    // 3. Tính TỔNG TẤT CẢ items dùng BASE PRICE (giá gốc) để check điều kiện promotion
+    // QUAN TRỌNG: Dùng price (giá gốc) để tính tổng, KHÔNG dùng discountedPrice
+    // Vì điều kiện promotion (totalAmountCondition) áp dụng cho GIÁ TRỊ ĐƠN HÀNG GỐC,
+    // sau đó mới tính discount cho từng item
+    const totalOrderAmount = currentProducts.reduce((sum, item) => {
+      // Dùng price (giá gốc), không phải discountedPrice
+      const basePrice = item.price;
+      const lineSubtotal = basePrice * (item.quantity || 0);
+      const lineVat = Math.round((lineSubtotal * (item.vat ?? 0)) / 100);
+      return sum + lineSubtotal + lineVat;
+    }, 0);
+
+    console.debug('[SalesOrderForm][RECALC] Starting recalculation:', {
+      promoItemCount: promoItems.length,
+      nonPromoItemCount: nonPromoItems.length,
+      totalOrderAmount,
+    });
+
+    // 4. Fetch tất cả promotions một lần với totalOrderAmount (TẤT CẢ items)
+    try {
+      // Collect all productCodes và productGroupCodes từ TẤT CẢ items
+      // QUAN TRỌNG: Không chỉ nonPromoItems, mà cả promoItems nữa
+      // để đảm bảo API trả về promotions cho TẤT CẢ products
+      const allItems = [...nonPromoItems, ...promoItems];
+      console.debug('[SalesOrderForm][RECALC] All items for API:', {
+        totalProducts: allItems.length,
+        promoItems: promoItems.map(p => ({ code: p.productCode, name: p.productName?.substring(0, 20), eligible: p.eligibleForPromotion })),
+        nonPromoItems: nonPromoItems.map(p => ({ code: p.productCode, name: p.productName?.substring(0, 20), eligible: p.eligibleForPromotion })),
+      });
+
+      const allProductCodes = allItems
+        .map(item => item.productCode)
+        .filter(Boolean) as string[];
+      const allProductGroupCodes = allItems
+        .map(item => item.productGroupCode)
+        .filter(Boolean) as string[];
+
+      console.debug('[SalesOrderForm][RECALC] API params:', {
+        soIdValue,
+        totalOrderAmount,
+        allProductCodes,
+        allProductGroupCodes,
+      });
+
+      const res = await fetchPromotionOrders(
+        soIdValue,
+        customerCodeValue || undefined,
+        totalOrderAmount, // Dùng totalOrderAmount (TẤT CẢ items)
+        allProductCodes,
+        allProductGroupCodes,
+        selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan
+      );
+
+      // QUAN TRỌNG: Dùng allPromotions thay vì availablePromotions
+      // Vì availablePromotions có thể là [] (empty array) nhưng allPromotions có promotion
+      // Empty array [] vẫn là truthy nên cần check length
+      const allPromotions = (res.availablePromotions?.length > 0) 
+        ? res.availablePromotions 
+        : res.allPromotions || [];
+
+      console.debug('[SalesOrderForm][RECALC] API response:', {
+        promotionsCount: allPromotions.length,
+        promotions: allPromotions.map(p => ({
+          id: p.id,
+          name: p.name?.substring(0, 40),
+          value: p.value,
+          totalAmountCondition: p.totalAmountCondition,
+          productCodes: p.productCodes,
+          productGroupCodes: p.productGroupCodes,
+          chietKhau2: p.chietKhau2,
+        })),
+      });
+
+      // 5. Filter promotions - chỉ lấy percent-based và meets total condition
+      // QUAN TRỌNG: Cần filter giống handleAddProduct để đảm bảo consistency
+      const candidates = allPromotions.filter(p => {
+        // Chỉ lấy percent-based promotions
+        const isPercent = vndCodeEquals(p, 191920000);
+
+        // Kiểm tra điều kiện tổng tiền
+        const minTotal = Number(p.totalAmountCondition || 0);
+        const meetsTotalCondition = minTotal === 0 || totalOrderAmount >= minTotal;
+
+        const shouldInclude = isPercent && meetsTotalCondition;
+
+        console.debug('[SalesOrderForm][RECALC] Promotion filter:', {
+          id: p.id,
+          name: p.name?.substring(0, 40),
+          isPercent,
+          chietKhau2: p.chietKhau2,
+          minTotal,
+          totalOrderAmount,
+          meetsTotalCondition,
+          shouldInclude,
+        });
+
+        return shouldInclude;
+      });
+
+      console.debug('[SalesOrderForm][RECALC] Filtered candidates:', {
+        totalPromotions: allPromotions.length,
+        candidatesCount: candidates.length,
+        candidates: candidates.map(c => ({ id: c.id, name: c.name?.substring(0, 40), value: c.value })),
+      });
+
+      // 6. Build map: productCode → best promotion từ candidates
+      const promotionMap = new Map<string, { discountPercent: number; promotionId: string }>();
+      
+      for (const p of candidates) {
+        const value = Number(p.value) || 0;
+        const promoId = p.id;
+
+        // Parse productCodes từ promotion
+        const promoProductCodes = (p.productCodes || '').split(',').map(s => s.trim()).filter(Boolean);
+        const promoGroupCodes = (p.productGroupCodes || '').split(',').map(s => s.trim()).filter(Boolean);
+
+        console.debug('[SalesOrderForm][RECALC] Promotion matched criteria, checking items:', {
+          promoId,
+          promoProductCodes,
+          promoGroupCodes,
+          allItemsCount: allItems.length,
+        });
+
+        // QUAN TRỌNG: Duyệt TẤT CẢ items (promoItems + nonPromoItems)
+        // để khi tổng đơn đủ điều kiện, TẤT CẢ items matching đều được apply promotion
+        for (const item of allItems) {
+          const matchesProduct = promoProductCodes.length === 0 || promoProductCodes.includes(item.productCode || '');
+          const matchesGroup = promoGroupCodes.length === 0 || promoGroupCodes.includes(item.productGroupCode || '');
+
+          console.debug('[SalesOrderForm][RECALC] Matching item to promotion:', {
+            itemProductCode: item.productCode,
+            itemProductName: item.productName?.substring(0, 30),
+            itemProductGroupCode: item.productGroupCode,
+            promoProductCodes,
+            promoGroupCodes,
+            matchesProduct,
+            matchesGroup,
+            willGetPromotion: matchesProduct || matchesGroup,
+          });
+
+          if (matchesProduct || matchesGroup) {
+            // Lưu promotion tốt nhất (discount cao nhất)
+            const existing = promotionMap.get(item.productCode || '');
+            if (!existing || value > existing.discountPercent) {
+              console.debug('[SalesOrderForm][RECALC] Adding/updating promotion for item:', {
+                productCode: item.productCode,
+                previousDiscount: existing?.discountPercent,
+                newDiscount: value,
+              });
+              promotionMap.set(item.productCode || '', {
+                discountPercent: value,
+                promotionId: promoId
+              });
+            }
+          }
+        }
+      }
+
+      console.debug('[SalesOrderForm][RECALC] Final promotionMap:', {
+        mapSize: promotionMap.size,
+        promotions: Array.from(promotionMap.entries()).map(([code, info]) => ({
+          productCode: code,
+          discountPercent: info.discountPercent,
+          promotionId: info.promotionId,
+        })),
+      });
+
+      // 6. Update TẤT CẢ items dựa trên promotionMap
+      // Logic đơn giản:
+      // - Nếu item có trong promotionMap → ÁP DỤNG promotion
+      // - Nếu item không có trong promotionMap → LOẠI BỎ promotion
+      let updatedCount = 0;
+      let removedCount = 0;
+      const updatedProducts = currentProducts.map(item => {
+        const promoInfo = promotionMap.get(item.productCode || '');
+
+        console.debug('[SalesOrderForm][RECALC] Processing item for update:', {
+          productCode: item.productCode,
+          productName: item.productName?.substring(0, 30),
+          currentEligibleForPromotion: item.eligibleForPromotion,
+          hasPromoInfo: !!promoInfo,
+          promoInfoDiscount: promoInfo?.discountPercent,
+        });
+
+        // Case A: Item có trong promotionMap → ÁP DỤNG promotion
+        if (promoInfo) {
+          // Nếu đã có promotion và discount giống nhau → giữ nguyên
+          if (item.eligibleForPromotion && item.discountPercent === promoInfo.discountPercent) {
+            console.debug('[SalesOrderForm][RECALC] Item already has same promotion, skipping:', {
+              productCode: item.productCode,
+              discountPercent: item.discountPercent,
+            });
+            return item;
+          }
+
+          updatedCount++;
+          console.debug('[SalesOrderForm][RECALC] Applied promotion to item:', {
+            productCode: item.productCode,
+            newDiscountPercent: promoInfo.discountPercent,
+          });
+
+          // Tính discountedPrice từ basePrice
+          const basePrice = item.price;
+          const discountAmount = basePrice * (promoInfo.discountPercent / 100);
+          const discountedPrice = basePrice - discountAmount;
+
+          const subtotal = Math.round((item.quantity || 0) * discountedPrice);
+          const vatAmount = Math.round((subtotal * (item.vat || 0)) / 100);
+          const totalAmount = subtotal + vatAmount;
+
+          return {
+            ...item,
+            eligibleForPromotion: true,
+            discountPercent: promoInfo.discountPercent,
+            discount: discountAmount,
+            discountedPrice,
+            subtotal,
+            vatAmount,
+            totalAmount,
+            promotionId: promoInfo.promotionId,
+          };
+        }
+
+        // Case B: Item không có trong promotionMap → LOẠI BỎ promotion
+        if (item.eligibleForPromotion) {
+          removedCount++;
+          console.debug('[SalesOrderForm][RECALC] Removed promotion from item:', {
+            productCode: item.productCode,
+            reason: 'Không có promotion khả dụng hoặc tổng đơn không đủ điều kiện',
+            previousDiscountPercent: item.discountPercent,
+          });
+
+          // Khôi phục giá gốc
+          const basePrice = item.price;
+          const subtotal = Math.round((item.quantity || 0) * basePrice);
+          const vatAmount = Math.round((subtotal * (item.vat || 0)) / 100);
+          const totalAmount = subtotal + vatAmount;
+
+          return {
+            ...item,
+            eligibleForPromotion: false,
+            discountPercent: 0,
+            discount: 0,
+            discountedPrice: basePrice,
+            subtotal,
+            vatAmount,
+            totalAmount,
+            promotionId: undefined,
+            promotionText: undefined,
+          };
+        }
+
+        // Case C: Item không có promotion và không có trong promotionMap → giữ nguyên
+        console.debug('[SalesOrderForm][RECALC] Item unchanged (no promotion applicable):', {
+          productCode: item.productCode,
+          productName: item.productName?.substring(0, 30),
+          currentEligibleForPromotion: item.eligibleForPromotion,
+          inPromotionMap: !!promoInfo,
+        });
+        return item;
+      });
+
+      console.debug('[SalesOrderForm][RECALC] Completed:', {
+        updatedCount,    // Số items được THÊM promotion
+        removedCount,    // Số items được LOẠI BỎ promotion
+        totalProducts: updatedProducts.length,
+      });
+
+      return updatedProducts;
+    } catch (err) {
+      console.warn('[SalesOrderForm][RECALC] Error:', err);
+      return currentProducts;
+    }
+  }, []);
 
   const [customer, setCustomer] = useState('');
   const [customerId, setCustomerId] = useState('');
@@ -335,6 +632,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             discountRate: detail.discountRate,
             promotionText: detail.promotionText,
             promotionId: detail.promotionId,
+            // Existing products: nếu có discount hoặc promotion thì được tính là eligible
+            // Đây là products đã được save trước đó nên đã có promotion status từ backend
+            eligibleForPromotion: (detail.discountPercent ?? 0) > 0 || (detail.discountAmount ?? 0) > 0 || Boolean(detail.promotionId),
             invoiceSurcharge: detail.invoiceSurcharge,
             isSodCreated: true,
             isModified: false, // Mặc định chưa sửa
@@ -422,35 +722,50 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     // Prefer overrides from child to avoid React state propagation timing issues.
     const basePrice = priceNum;
 
-    // Tính tổng tiền ƯỚC TÍNH sau khi thêm sản phẩm (dùng để filter promotions)
-    // Dùng giá gốc (chưa discount) vì promotion chưa được apply khi tính tongTienApDung
-    const currentOrderTotal = orderSummary?.total || totalAmount || 0;
+    // Tính tổng tiền của các items ĐÃ CÓ promotion eligibility
+    // QUAN TRỌNG: Dùng price (giá gốc), không phải discountedPrice
+    // Vì promotion condition tính trên giá chưa chiết khấu
+    const promotionalItemsTotal = productList
+      .filter(item => item.eligibleForPromotion)
+      .reduce((sum, item) => {
+        // Dùng price (giá gốc), không phải discountedPrice
+        const lineSubtotal = item.price * (item.quantity || 0);
+        const lineVat = Math.round((lineSubtotal * (item.vat ?? 0)) / 100);
+        return sum + lineSubtotal + lineVat;
+      }, 0);
+
+    // Tính subtotal và VAT ƯỚC TÍNH của sản phẩm mới (chưa discount)
     const newProductSubtotalEstimate = Math.round(quantity * basePrice);
     const newProductVatEstimate = Math.round((newProductSubtotalEstimate * (vatPercent || 0)) / 100);
     const newProductTotalEstimate = newProductSubtotalEstimate + newProductVatEstimate;
-    const estimatedOrderTotal = currentOrderTotal + newProductTotalEstimate;
 
-    // QUAN TRỌNG: Luôn tính inferredDiscountPercent từ candidates, BỎ QUA overrides.discountPercent
-    // Đảm bảo discount chỉ được apply KHI promotion valid (đáp ứng điều kiện tongTienApDung)
+    // Tổng tiền để check promotion eligibility = chỉ promotional items + sản phẩm mới
+    const estimatedPromotionalTotal = promotionalItemsTotal + newProductTotalEstimate;
+
+    // QUAN TRỌNG: Check promotion eligibility RIÊNG CHO TỪNG ITEM
+    // Mỗi item sẽ tự check xem nó có promotion applicable không dựa trên:
+    // 1. productCode của chính nó
+    // 2. Tổng tiền của TẤT CẢ promotional items (không phải toàn bộ order)
     let inferredDiscountPercent: number | null = null;
     let inferredPromotionId: string | undefined;
+    let currentItemEligibleForPromotion = false; // Item hiện tại có đủ điều kiện promotion không
 
-    // Luôn gọi API để kiểm tra promotion (bỏ qua condition !overrides?.discountPercent)
+    // Luôn gọi API để kiểm tra promotion cho item này
     if (soId) {
       try {
         // Ask server for promotions for this SO restricted to this product
-        // Dùng estimatedOrderTotal để filter promotions (đã bao gồm sản phẩm mới)
+        // Dùng estimatedPromotionalTotal (chỉ promotional items) để filter promotions
+        // Đảm bảo KHÔNG tính những items không có promotion vào điều kiện tổng tiền
         const res = await fetchPromotionOrders(
           soId,
           customerCode || undefined,
-          estimatedOrderTotal,
+          estimatedPromotionalTotal,
           productCode ? [productCode] : [],
           productGroupCode ? [productGroupCode] : [],
           selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan
         );
 
         // Lấy tất cả promotions percent-based đáp ứng điều kiện (bao gồm cả CK1 và CK2)
-        // Chiết khấu 1 (CK1) cũng cần được tính khi tổng tiền đạt điều kiện tongTienApDung
         const allPromotions = res.availablePromotions || res.allPromotions || [];
 
         console.debug('[SalesOrderForm][PROMO API RESPONSE]', {
@@ -458,7 +773,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           availablePromotionsCount: res.availablePromotions?.length,
           hasAllPromotions: Array.isArray(res.allPromotions),
           allPromotionsCount: res.allPromotions?.length,
-          estimatedOrderTotal,
+          estimatedPromotionalTotal,
+          promotionalItemsTotal,
+          productCode,
         });
 
         // Log detailed info about each promotion
@@ -480,9 +797,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           const isPercent = vndCodeEquals(p, 191920000);
 
           // Kiểm tra điều kiện tổng tiền (tongTienApDung)
-          // Áp dụng cho CẢ CK1 và CK2 khi đáp ứng điều kiện
+          // Dùng estimatedPromotionalTotal thay vì estimatedOrderTotal
           const minTotal = Number(p.totalAmountCondition || 0);
-          const meetsTotalCondition = minTotal === 0 || estimatedOrderTotal >= minTotal;
+          const meetsTotalCondition = minTotal === 0 || estimatedPromotionalTotal >= minTotal;
 
           const shouldInclude = isPercent && meetsTotalCondition;
 
@@ -490,29 +807,15 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           console.debug('[SalesOrderForm][PROMO FILTER]', {
             id: p.id,
             name: p.name?.substring(0, 50),
-            type: p.type,
             isPercent,
             vndOrPercent: p.vndOrPercent,
             chietKhau2: p.chietKhau2,
             minTotal,
-            estimatedOrderTotal,
+            estimatedPromotionalTotal,
+            promotionalItemsTotal,
             meetsTotalCondition,
             shouldInclude,
           });
-
-          // Debug: Log lý do promotion bị loại bỏ
-          if (!shouldInclude) {
-            console.debug('[SalesOrderForm][PROMO FILTER DEBUG] Filtered out promotion:', {
-              id: p.id,
-              name: p.name?.substring(0, 50),
-              isPercent,
-              vndOrPercent: p.vndOrPercent,
-              minTotal,
-              estimatedOrderTotal,
-              meetsTotalCondition,
-              reason: !isPercent ? 'Not percent-based' : 'Does not meet total condition'
-            });
-          }
 
           return shouldInclude;
         });
@@ -521,24 +824,31 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           // Choose first matching (server already filters by productCodes when provided)
           const pick = candidates[0];
           const num = Number(pick.value) || 0;
-          if (!isNaN(num) && num > 0) inferredDiscountPercent = num;
+          if (!isNaN(num) && num > 0) {
+            inferredDiscountPercent = num;
+            currentItemEligibleForPromotion = true; // Item này có promotion!
+          }
 
           // Luôn dùng promotionId từ candidates nếu tìm thấy
           inferredPromotionId = pick.id;
 
-          console.debug('[SalesOrderForm][PROMO DEBUG] Found valid promotion:', {
+          console.debug('[SalesOrderForm][PROMO DEBUG] Found valid promotion for item:', {
+            productCode,
             promotionId: pick.id,
             name: pick.name,
             value: num,
             minTotalCondition: pick.totalAmountCondition,
-            estimatedOrderTotal,
+            estimatedPromotionalTotal,
+            currentItemEligibleForPromotion,
           });
         } else {
-          console.debug('[SalesOrderForm][PROMO DEBUG] No valid promotion found:', {
-            currentOrderTotal,
-            estimatedOrderTotal,
-            allPromotionsCount: (res.allPromotions || []).length,
-            availablePromotionsCount: (res.availablePromotions || []).length,
+          // Không tìm thấy promotion phù hợp cho item này
+          currentItemEligibleForPromotion = false;
+          console.debug('[SalesOrderForm][PROMO DEBUG] No valid promotion found for item:', {
+            productCode,
+            currentItemEligibleForPromotion,
+            estimatedPromotionalTotal,
+            allPromotionsCount: allPromotions.length,
           });
         }
       } catch (err) {
@@ -548,18 +858,20 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
 
     // ƯU TIÊN DISCOUNT:
     // 1. overrides.discountPercent (từ ProductEntryForm - manual entry, ƯU TIÊN CAO NHẤT)
-    // 2. inferredDiscountPercent (từ promotion valid - đáp ứng điều kiện tongTienApDung)
+    // 2. inferredDiscountPercent (từ promotion valid - đáp ứng điều kiện)
     // 3. 0 (không có discount)
+    // Lưu ý: inferredDiscountPercent chỉ có giá trị KHI currentItemEligibleForPromotion = true
     const usedDiscountPercent = overrides?.discountPercent ?? inferredDiscountPercent ?? 0;
     const usedDiscountAmount = overrides?.discountAmount ?? discountAmount;
 
     console.debug('[SalesOrderForm][DISCOUNT FINAL] Final discount calculation:', {
       inferredDiscountPercent,
+      currentItemEligibleForPromotion,
       overridesDiscountPercent: overrides?.discountPercent,
       overridesDiscountAmount: overrides?.discountAmount,
       usedDiscountPercent,
       usedDiscountAmount,
-      estimatedOrderTotal,
+      estimatedPromotionalTotal,
       hasSoId: !!soId,
     });
 
@@ -568,6 +880,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
 
     console.debug('[SalesOrderForm][DISCOUNT DEBUG] Price calculation:', {
       basePrice,
+      currentItemEligibleForPromotion,
       inferredDiscountPercent,
       overridesDiscountPercent: overrides?.discountPercent,
       usedDiscountPercent,
@@ -575,7 +888,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       discountedPriceCalc,
       invoiceSurchargeRate,
       finalPrice,
-      estimatedOrderTotal,
+      estimatedPromotionalTotal,
     });
 
     // Add new product (always create new line, no merging)
@@ -636,6 +949,10 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       approveSupPrice: approveSupPrice,
       promotionText: promotionTextToUse,
       promotionId: promoIdToUse,
+      // Trạng thái promotion eligibility của item này
+      // true = item này có promotion (đáp ứng điều kiện totalAmountCondition)
+      // false = item này không có promotion
+      eligibleForPromotion: currentItemEligibleForPromotion,
       invoiceSurcharge: invoiceSurchargeRate,
       createdOn: new Date().toISOString(),
       isSodCreated: false,
@@ -648,11 +965,27 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         discountPercent: usedDiscountPercent,
         discountedPrice: newProduct.discountedPrice,
         promotionId: promoIdToUse,
+        eligibleForPromotion: currentItemEligibleForPromotion,
       });
     } catch (err) { /* ignore logging errors */ }
 
-    console.debug('[SalesOrderForm] Adding product with promotionId:', promoIdToUse);
-    setProductList([...productList, newProduct]);
+    console.debug('[SalesOrderForm] Adding product with promotionId:', promoIdToUse, 'eligibleForPromotion:', currentItemEligibleForPromotion);
+
+    // Thêm product mới vào danh sách tạm
+    const productsWithNew = [...productList, newProduct];
+
+    // ============================================================
+    // QUAN TRỌNG: Recalculate promotion eligibility cho TẤT CẢ items
+    // Nếu item mới có promotion (eligibleForPromotion = true),
+    // các items khác CHƯA có promotion có thể đã đủ điều kiện
+    // ============================================================
+    const recalculatedProducts = await recalculatePromotionEligibility(
+      productsWithNew,
+      soId,
+      customerCode,
+      selectedSo
+    );
+    setProductList(recalculatedProducts);
 
     // NOTE: Inventory reservation đã được xử lý trong ProductEntryForm.tsx (handleAddWithInventoryCheck)
     // Không cần reserve lại ở đây để tránh reserve 2 lần
@@ -2482,6 +2815,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           soId={soId}
           warehouseName={warehouse}
           isVatOrder={!isNonVatSelected}
+          customerCode={customerCode}
+          paymentTerms={selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan}
           onDelete={async (product) => {
             // Giải phóng hàng khi xóa sản phẩm (chỉ cho sản phẩm chưa được save vào CRM)
             if (!product.isSodCreated && product.productCode && product.warehouse && product.quantity > 0) {
