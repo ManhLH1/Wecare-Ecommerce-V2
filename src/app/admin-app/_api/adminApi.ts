@@ -96,7 +96,7 @@ export interface Promotion {
   value?: string;
   value2?: string;
   value3?: string;
-  valueWithVat?: string;
+  valueWithVat?: string;  // Discount % có VAT (dùng khi value = 0)
   valueNoVat?: string;
   valueBuyTogether?: string;
   vn?: string;

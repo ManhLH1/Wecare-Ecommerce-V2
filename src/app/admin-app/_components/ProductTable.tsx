@@ -9,7 +9,8 @@ const vndCodeEquals = (p: any, code: number) => {
   if (p === null || p === undefined) return false;
   // fetchProductPromotions trả về field `vn` (string) từ promotions.ts API
   const v = p.vn ?? p.vndOrPercent ?? p.crdfd_vn;
-  if (v === undefined || v === null) return false;
+  // Xử lý null, undefined, và empty string - đều coi như không có giá trị
+  if (v === undefined || v === null || v === '') return false;
   const vs = String(v).trim();
   // Dùng == để so sánh string vs number (vn có thể là "191920000" hoặc 191920000)
   // biome-ignore lint/style/useIsNan: <explanation>
@@ -176,6 +177,7 @@ async function recalculatePromotionEligibility(
           id: p.id,
           name: p.name?.substring(0, 40),
           value: p.value,
+          valueWithVat: p.valueWithVat,  // QUAN TRỌNG: Debug valueWithVat
           vn: p.vn,
           totalAmountCondition: p.totalAmountCondition,
         })),
@@ -184,8 +186,13 @@ async function recalculatePromotionEligibility(
       // Filter promotions: percent-based và meets total condition
       const candidates = promotions.filter(p => {
         const isPercent = vndCodeEquals(p, 191920000);
-        const minTotal = Number(p.totalAmountCondition || 0);
-        const meetsTotal = minTotal === 0 || totalOrderAmount >= minTotal;
+        // Xử lý null/undefined/string "null" đúng cách
+        // Dùng ?? thay vì || để handle string "null" (vì "" ?? 0 = "" ≠ 0)
+        const rawCond = p.totalAmountCondition ?? null;
+        // Chỉ convert sang number nếu là giá trị truthy, ngược lại coi như 0
+        const minTotal = rawCond !== null ? Number(rawCond) : 0;
+        // Nếu minTotal = 0 hoặc NaN → coi như không có điều kiện tối thiểu → luôn đáp ứng
+        const meetsTotal = !minTotal || minTotal === 0 || isNaN(minTotal) || totalOrderAmount >= minTotal;
         return isPercent && meetsTotal;
       });
 
@@ -193,17 +200,27 @@ async function recalculatePromotionEligibility(
         productCode: item.productCode,
         candidatesCount: candidates.length,
         totalOrderAmount,
+        candidates: candidates.map(c => ({
+          id: c.id,
+          name: c.name?.substring(0, 30),
+          value: c.value,
+          valueWithVat: c.valueWithVat,
+          minTotal: c.totalAmountCondition,
+        })),
       });
 
       // Lấy promotion có giá trị cao nhất
       if (candidates.length > 0) {
         const bestPromo = candidates.reduce((best, current) => {
-          const bestVal = Number(best.value) || 0;
-          const currVal = Number(current.value) || 0;
+          // QUAN TRỌNG: promotions.ts trả về valueWithVat cho CK1 VAT
+          // Dùng valueWithVat thay vì value khi value = 0
+          const bestVal = Number(best.valueWithVat || best.value) || 0;
+          const currVal = Number(current.valueWithVat || current.value) || 0;
           return currVal > bestVal ? current : best;
         }, candidates[0]);
 
-        const discountPercent = Number(bestPromo.value) || 0;
+        // QUAN TRỌNG: Dùng valueWithVat thay vì value khi value = 0
+        const discountPercent = Number(bestPromo.valueWithVat || bestPromo.value) || 0;
 
         promotionMap.set(item.productCode, {
           discountPercent,
