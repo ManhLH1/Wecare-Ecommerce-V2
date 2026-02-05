@@ -1639,12 +1639,13 @@ export default async function handler(
     const promoCache: Record<string, any> = {};
 
     const BATCH_SIZE = 5; // Process 5 products at a time
+    let batchPromises: Promise<any>[] = [];
     for (let i = 0; i < products.length; i += BATCH_SIZE) {
       const batch = products.slice(i, i + BATCH_SIZE);
       console.log(`[Save SOD] Processing batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(products.length/BATCH_SIZE)} (${batch.length} products)`);
 
       // Process batch in parallel
-      const batchPromises = batch.map(async (product, batchIndex) => {
+      batchPromises = batch.map(async (product, batchIndex) => {
         const globalIndex = i + batchIndex;
         const vatOptionSet = VAT_TO_IEUCHINHGTGT_MAP[product.vat] ?? 191920000;
         const gttgOptionSet = VAT_TO_GTGT_MAP[product.vat] ?? 191920000;
