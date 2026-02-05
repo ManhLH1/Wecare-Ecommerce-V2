@@ -5,7 +5,7 @@ import { ProductTableProps, ColumnWidths, QuantityState, PopupState } from "../.
 import { useCart } from "@/components/CartManager";
 
 const ProductDetailPopup = lazy(
-  () => import("../ProductDetailPopup/ProductDetailPopup ")
+  () => import("../ProductDetailPopup/ProductDetailPopup")
 );
 
 const ProductTable: React.FC<ProductTableProps> = ({
@@ -139,12 +139,12 @@ const ProductTable: React.FC<ProductTableProps> = ({
                     <ProductDetailPopup
                       item={item}
                       quantity={quantities[item.crdfd_productsid] || 0}
-                      handleQuantityChange={(delta) =>
+                      onQuantityChange={(delta: number) =>
                         handleQuantityChange(item.crdfd_productsid, delta)
                       }
                       onAddToCart={onAddToCart}
                       onClose={handleClosePopup}
-                      cartItems={cartItems}
+                      cartItems={cartItems as any}
                     />
                   </td>
                 </tr>
@@ -212,12 +212,12 @@ const ProductTable: React.FC<ProductTableProps> = ({
                         <ProductDetailPopup
                           item={item}
                           quantity={quantities[item.crdfd_productsid] || 0}
-                          handleQuantityChange={(delta) =>
+                          onQuantityChange={(delta: number) =>
                             handleQuantityChange(item.crdfd_productsid, delta)
                           }
                           onAddToCart={onAddToCart}
                           onClose={handleClosePopup}
-                          cartItems={cartItems}
+                          cartItems={cartItems as any}
                         />
                       </td>
                     </tr>

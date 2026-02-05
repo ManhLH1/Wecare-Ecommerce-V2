@@ -152,7 +152,7 @@ export function usePromotion(options: UsePromotionOptions = {}): UsePromotionRet
     const result = calculatePromotionPriceFull(
       basePrice,
       {
-        value: promotion.value,
+        value: promotion.value ?? 0,
         value2: promotion.value2,
         value3: undefined,
         vn: promotion.vn,
@@ -160,7 +160,7 @@ export function usePromotion(options: UsePromotionOptions = {}): UsePromotionRet
         soluongapdung: promotion.soluongapdung,
         soluongapdungmuc3: undefined,
         tongTienApDung: promotion.tongTienApDung,
-        productCodes: promotion.productCodes?.join(',')
+        productCodes: promotion.productCodes
       },
       totalQuantity,
       cartItems
@@ -236,7 +236,7 @@ export function usePromotionCalculator(
     const result = calculatePromotionPriceFull(
       basePrice,
       {
-        value: promotion.value,
+        value: promotion.value ?? 0,
         value2: promotion.value2,
         value3: undefined,
         vn: promotion.vn,
@@ -244,7 +244,7 @@ export function usePromotionCalculator(
         soluongapdung: promotion.soluongapdung,
         soluongapdungmuc3: undefined,
         tongTienApDung: promotion.tongTienApDung,
-        productCodes: promotion.productCodes?.join(',')
+        productCodes: promotion.productCodes
       },
       totalQuantity,
       cartItems

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, Suspense, lazy } from "react";
 import axios from "axios";
 import { Products } from "../../../../model/interface/ProductCartData";
+import { CartItem } from "../../../../model/interface/ProductCartData";
 import InlineSpinner from "@/components/InlineSpinner";
 import Diacritics from "diacritics";
 import { getItem } from "@/utils/SecureStorage";
@@ -10,7 +11,7 @@ import { ProductTableIndexProps, SortConfig, TableStyles, ColumnWidths } from ".
 import { useCart } from "@/components/CartManager";
 
 const ProductDetailPopup = lazy(
-  () => import("../ProductDetailPopup/ProductDetailPopup ")
+  () => import("../ProductDetailPopup/ProductDetailPopup")
 );
 
 const ProductTable_index: React.FC<ProductTableIndexProps> = ({
@@ -594,12 +595,12 @@ const ProductTable_index: React.FC<ProductTableIndexProps> = ({
                               : undefined,
                           }}
                           quantity={quantities[item.crdfd_productsid] || 0}
-                          handleQuantityChange={(delta) =>
+                          onQuantityChange={(delta: number) =>
                             handleQuantityChange(item.crdfd_productsid, delta)
                           }
                           onAddToCart={onAddToCart as any}
                           onClose={handleClosePopup}
-                          cartItems={cartItems}
+                          cartItems={cartItems as any}
                           isPriceViewer={isPriceViewer}
                         />
                         </div>
@@ -739,12 +740,12 @@ const ProductTable_index: React.FC<ProductTableIndexProps> = ({
                         : undefined,
                     }}
                     quantity={quantities[item.crdfd_productsid] || 0}
-                    handleQuantityChange={(delta) =>
+                    onQuantityChange={(delta: number) =>
                       handleQuantityChange(item.crdfd_productsid, delta)
                     }
                     onAddToCart={onAddToCart as any}
                     onClose={handleClosePopup}
-                    cartItems={cartItems}
+                    cartItems={cartItems as any}
                     isPriceViewer={isPriceViewer}
                   />
                 </div>

@@ -245,7 +245,8 @@ export default async function handler(
     }
 
     // Before creating Orders x Promotion, check if a record for the same SO + Promotion already exists
-    let createdOrderXPromotionId: string | undefined = undefined;
+    let existingOrderXPromotionId: string | undefined = undefined;
+    let checkFailed = false;
     try {
       const existingFilter = `_crdfd_so_value eq ${soId} and _crdfd_promotion_value eq ${promotionId} and crdfd_type eq 'Order' and statecode eq 0`;
       const existingQuery = `$filter=${encodeURIComponent(existingFilter)}&$select=crdfd_ordersxpromotionid`;
@@ -253,48 +254,69 @@ export default async function handler(
       const existingResp = await axios.get(existingEndpoint, { headers });
       const existingItems = existingResp.data?.value || [];
       if (existingItems.length > 0) {
-        createdOrderXPromotionId = existingItems[0].crdfd_ordersxpromotionid;
+        existingOrderXPromotionId = existingItems[0].crdfd_ordersxpromotionid;
+        console.log(`[ApplyPromotion] Found existing Orders x Promotion: ${existingOrderXPromotionId}`);
       }
     } catch (err) {
       console.warn('[ApplyPromotion] Failed to check existing Orders x Promotion:', (err as any)?.message || err);
+      // QUAN TRỌNG: Nếu check thất bại, KHÔNG tạo mới → return error để frontend biết
+      // Tránh tạo duplicate khi không chắc chắn
+      checkFailed = true;
+    }
+
+    // Nếu check thất bại, abort để tránh duplicate
+    if (checkFailed) {
+      return res.status(409).json({
+        error: 'Không thể kiểm tra promotion đã tồn tại. Vui lòng thử lại.',
+        code: 'CHECK_EXISTING_FAILED'
+      });
+    }
+
+    // Nếu đã có record, reuse và không tạo mới
+    if (existingOrderXPromotionId) {
+      console.log(`[ApplyPromotion] Reusing existing Orders x Promotion: ${existingOrderXPromotionId}`);
+      return res.status(200).json({
+        success: true,
+        message: 'Promotion đã được áp dụng trước đó',
+        orderXPromotionId: existingOrderXPromotionId,
+        reused: true,
+      });
     }
 
     // Extra safety: re-check total before creating Orders x Promotion using UI-provided total
-    if (!createdOrderXPromotionId) {
-      try {
-        if (promoData && promoData.cr1bb_tongtienapdung !== null && promoData.cr1bb_tongtienapdung !== undefined) {
-          const minTotalSafety = Number(promoData.cr1bb_tongtienapdung) || 0;
-          if (minTotalSafety > 0) {
-            const uiTotalRaw = req.body.orderTotal ?? req.body.uiTotal ?? req.body.totalAmount ?? req.body.crdfd_tongtien;
-            if (uiTotalRaw === null || uiTotalRaw === undefined || uiTotalRaw === "") {
-              return res.status(400).json({ error: `Missing order total from UI to validate promotion minimum (safety check).` });
-            }
-            const uiTotalNum = typeof uiTotalRaw === "number"
-              ? uiTotalRaw
-              : Number(String(uiTotalRaw).replace(/[^\d.-]+/g, ""));
-            if (isNaN(uiTotalNum)) {
-              return res.status(400).json({ error: "Invalid order total provided from UI for promotion safety validation." });
-            }
-            if (uiTotalNum < minTotalSafety) {
-              return res.status(400).json({ error: `Promotion \"${promotionName}\" không được áp dụng vì đơn hàng chưa đạt điều kiện tổng tiền.` });
-            }
+    try {
+      if (promoData && promoData.cr1bb_tongtienapdung !== null && promoData.cr1bb_tongtienapdung !== undefined) {
+        const minTotalSafety = Number(promoData.cr1bb_tongtienapdung) || 0;
+        if (minTotalSafety > 0) {
+          const uiTotalRaw = req.body.orderTotal ?? req.body.uiTotal ?? req.body.totalAmount ?? req.body.crdfd_tongtien;
+          if (uiTotalRaw === null || uiTotalRaw === undefined || uiTotalRaw === "") {
+            return res.status(400).json({ error: `Missing order total from UI to validate promotion minimum (safety check).` });
+          }
+          const uiTotalNum = typeof uiTotalRaw === "number"
+            ? uiTotalRaw
+            : Number(String(uiTotalRaw).replace(/[^\d.-]+/g, ""));
+          if (isNaN(uiTotalNum)) {
+            return res.status(400).json({ error: "Invalid order total provided from UI for promotion safety validation." });
+          }
+          if (uiTotalNum < minTotalSafety) {
+            return res.status(400).json({ error: `Promotion \"${promotionName}\" không được áp dụng vì đơn hàng chưa đạt điều kiện tổng tiền.` });
           }
         }
-      } catch (err: any) {
-        console.error('[ApplyPromotion] Safety total re-check failed, aborting apply:', err?.message || err, err?.response?.data);
-        return res.status(500).json({ error: "Lỗi khi kiểm tra lại tổng tiền đơn hàng trước khi áp dụng promotion" });
       }
-
-      const createOrderXPromotionEndpoint = `${BASE_URL}${ORDERS_X_PROMOTION_TABLE}`;
-      const createResponse = await axios.post(
-        createOrderXPromotionEndpoint,
-        ordersXPromotionPayload,
-        { headers }
-      );
-      // Get the created record ID from response headers
-      createdOrderXPromotionId = createResponse.headers["odata-entityid"]
-        ?.match(/\(([^)]+)\)/)?.[1];
+    } catch (err: any) {
+      console.error('[ApplyPromotion] Safety total re-check failed, aborting apply:', err?.message || err, err?.response?.data);
+      return res.status(500).json({ error: "Lỗi khi kiểm tra lại tổng tiền đơn hàng trước khi áp dụng promotion" });
     }
+
+    const createOrderXPromotionEndpoint = `${BASE_URL}${ORDERS_X_PROMOTION_TABLE}`;
+    const createResponse = await axios.post(
+      createOrderXPromotionEndpoint,
+      ordersXPromotionPayload,
+      { headers }
+    );
+    // Get the created record ID from response headers
+    const createdOrderXPromotionId = createResponse.headers["odata-entityid"]
+      ?.match(/\(([^)]+)\)/)?.[1];
 
     // 2. Special direct discount promotions - no header updates needed
 

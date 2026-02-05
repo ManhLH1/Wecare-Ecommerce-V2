@@ -1748,6 +1748,8 @@ export default async function handler(
 
         // Set promotion lookup only if promotion was actually applied to this order and passed validations.
         // Defensive check: verify an Orders x Promotion record exists linking this SO and Promotion.
+        let existingOrderXPromotionId: string | undefined = undefined;
+        let checkFailed = false;
         try {
             if (promotionApplicableForThisProduct) {
             const existingFilter = `_crdfd_so_value eq ${soId} and _crdfd_promotion_value eq ${promotionIdClean} and crdfd_type eq 'Order' and statecode eq 0`;
@@ -1756,19 +1758,35 @@ export default async function handler(
             const existingResp = await apiClient.get(existingEndpoint, { headers });
             const existingItems = existingResp.data?.value || [];
             if (existingItems.length > 0) {
-              payload[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${promotionIdClean})`;
-              payload.crdfd_promotiontext = product.promotionText || "";
-              console.log(`[Save SOD] ✅ Set promotion lookup for product ${product.productCode}: crdfd_Promotion@odata.bind = /crdfd_promotions(${promotionIdClean})`);
-            } else {
-              // Try to create Orders x Promotion linking SO & Promotion if missing
-              try {
-                const createPayload: any = {
-                  [`crdfd_SO@odata.bind`]: `/crdfd_sale_orders(${soId})`,
-                  [`crdfd_Promotion@odata.bind`]: `/crdfd_promotions(${promotionIdClean})`,
-                  crdfd_type: 'Order',
-                  statecode: 0,
-                  crdfd_name: `SO ${soId} - Promo ${promotionIdClean}`
-                };
+              existingOrderXPromotionId = existingItems[0].crdfd_ordersxpromotionid;
+              console.log(`[Save SOD] Found existing Orders x Promotion: ${existingOrderXPromotionId} for promo ${promotionIdClean}`);
+            }
+          }
+        } catch (err: any) {
+          // QUAN TRỌNG: Nếu check thất bại, KHÔNG tạo mới → skip để tránh duplicate
+          console.error(`[Save SOD] Failed to check existing Orders x Promotion for SO=${soId}, promo=${promotionIdClean}:`, err?.message || err);
+          checkFailed = true;
+        }
+
+        // Nếu check thất bại, skip tạo mới
+        if (checkFailed) {
+          console.warn(`[Save SOD] Skipping Orders x Promotion creation for SO=${soId}, promo=${promotionIdClean} due to check failure`);
+          payload.crdfd_promotiontext = "";
+        } else if (existingOrderXPromotionId) {
+          // Đã có record, reuse
+          payload[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${promotionIdClean})`;
+          payload.crdfd_promotiontext = product.promotionText || "";
+          console.log(`[Save SOD] ✅ Set promotion lookup for product ${product.productCode}: crdfd_Promotion@odata.bind = /crdfd_promotions(${promotionIdClean})`);
+        } else {
+          // Chưa có record, tạo mới
+          try {
+            const createPayload: any = {
+              [`crdfd_SO@odata.bind`]: `/crdfd_sale_orders(${soId})`,
+              [`crdfd_Promotion@odata.bind`]: `/crdfd_promotions(${promotionIdClean})`,
+              crdfd_type: 'Order',
+              statecode: 0,
+              crdfd_name: `SO ${soId} - Promo ${promotionIdClean}`
+            };
                 // Prefer using product.discountPercent for crdfd_chieckhau2 when available
                 if (product.discountPercent !== undefined && product.discountPercent !== null) {
                   // product.discountPercent is expected as percentage (e.g., 5 -> 5%)
@@ -1825,22 +1843,8 @@ export default async function handler(
                 payload.crdfd_promotiontext = "";
               }
             }
-          } else {
-            // Skip applying promotion due to validation; ensure promotion fields are empty
-            payload.crdfd_promotiontext = "";
-            console.log(`[Save SOD] Promotion ${promotionIdClean} skipped for product ${product.productCode} (will not be saved on SOD)`);
-          }
-        } catch (err: any) {
-          // On error, be conservative and skip setting promotion to avoid writing incorrect data
-          console.error(`[Save SOD] Error checking Orders x Promotion existence:`, err?.message || err, err?.response?.data);
-          payload.crdfd_promotiontext = "";
-        }
-        } else {
-          // Ensure promotion fields are empty if no promotionId
-          payload.crdfd_promotiontext = "";
-        }
 
-        // Add note (ghi chú) if available
+            // Add note (ghi chú) if available
         if (product.note) {
           payload.crdfd_notes = product.note;
         }
@@ -2078,7 +2082,7 @@ export default async function handler(
             fullError: saveError.response?.data
           };
         }
-      });
+      };
 
       // Wait for all products in this batch to complete
       const batchResults = await Promise.allSettled(batchPromises);
@@ -2086,7 +2090,7 @@ export default async function handler(
       // Process results
       batchResults.forEach((result) => {
         if (result.status === 'fulfilled') {
-          const outcome = result.value;
+          const outcome = result.value!; // Non-null: fulfilled đảm bảo value tồn tại
           if (outcome.success) {
             savedDetails.push({ id: outcome.id, ...outcome.product });
           } else {
@@ -2110,9 +2114,9 @@ export default async function handler(
           });
         }
       });
-    }
+    },
 
-    progress.addStep(`Completed saving ${savedDetails.length} products (${failedProducts.length} failed)`);
+    progress.addStep(`Completed saving ${savedDetails.length} products (${failedProducts.length} failed)`));
 
     // ============ IMMEDIATE RESPONSE - FAST SUCCESS PATH ============
     // Nếu có sản phẩm thất bại trong việc save, trả về ngay lập tức
@@ -2201,9 +2205,9 @@ export default async function handler(
 
     // Clean up old jobs periodically
     cleanupOldJobs();
-
-  } catch (error: any) {
-    console.error("❌ Error saving sale order details:", error);
+    cleanupOldJobs();
+  }
+} catch (error: any) {
 
     // Check for timeout errors
     if (error.code === 'ECONNABORTED' || error.message?.includes('timeout') || error.message?.includes('TIMEOUT')) {
@@ -2244,5 +2248,3 @@ export default async function handler(
     });
   }
 }
-
-
