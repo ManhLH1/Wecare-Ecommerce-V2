@@ -748,13 +748,17 @@ export default async function handler(
 
         const orderTotal = Math.round((existingOrderTotal + newProductsTotalRaw) * 100) / 100;
 
-        // Fetch effective payment terms from SOBG header (if present) for promotion validation
+        // Fetch effective payment terms and createdOn from SOBG header (if present) for promotion validation and shift calculation
         let effectivePaymentTerms: any = undefined;
+        let sobgCreatedOn: string | undefined = undefined;
         try {
-            const sobgResp = await axios.get(`${BASE_URL}${SODBAOGIA_TABLE}(${sobgId})?$select=crdfd_dieu_khoan_thanh_toan`, { headers });
+            const sobgResp = await axios.get(`${BASE_URL}${SODBAOGIA_TABLE}(${sobgId})?$select=crdfd_dieu_khoan_thanh_toan,createdon`, { headers });
             effectivePaymentTerms = sobgResp.data?.crdfd_dieu_khoan_thanh_toan;
+            sobgCreatedOn = sobgResp.data?.createdon;
+            console.log('[Save SOBG] Fetched SOBG created on:', sobgCreatedOn);
         } catch (e) {
             // ignore - treat as no payment term restriction
+            console.warn('[Save SOBG] Could not fetch SOBG header, using fallback:', (e as any)?.message || e);
         }
 
         // ============ STEP 4: SAVE DETAILS ============
@@ -1018,7 +1022,7 @@ export default async function handler(
           product.deliveryDate,
           undefined, // headers - not used in SOBG
           warehouseCode, // Extracted from warehouseName
-          undefined, // orderCreatedOn - TODO: get from SOBG record
+          sobgCreatedOn, // orderCreatedOn - fetched from SOBG record
           undefined  // districtLeadtime - TODO: get from customer district
         );
 
@@ -1127,6 +1131,29 @@ export default async function handler(
         // Helper constants for shift OptionSet values (match CRM)
         const CA_SANG = 283640000; // "Ca sáng"
         const CA_CHIEU = 283640001; // "Ca chiều"
+
+        /**
+         * Normalize createdOn từ UTC sang GMT+7 (Việt Nam)
+         * CRM trả về createdon ở UTC, cần +7h để tính toán theo giờ Việt Nam
+         * @param createdOn - Timestamp từ CRM (UTC format, ví dụ: "2025-01-15T10:00:00Z")
+         * @returns Date object đã được điều chỉnh +7h (giờ Việt Nam)
+         */
+        function normalizeCreatedOnToVietnamTime(createdOn: string | undefined): Date {
+            if (!createdOn) {
+                return new Date(); // Fallback to current time
+            }
+            
+            // Parse UTC time
+            const utcDate = new Date(createdOn);
+            if (isNaN(utcDate.getTime())) {
+                return new Date(); // Fallback if invalid
+            }
+            
+            // Add 7 hours (7 * 60 * 60 * 1000 milliseconds) to convert UTC to GMT+7
+            const vietnamTime = new Date(utcDate.getTime() + 7 * 60 * 60 * 1000);
+            
+            return vietnamTime;
+        }
 
         // Helper function to extract warehouse code from warehouse name (moved up for hoisting)
         function extractWarehouseCode(warehouseName?: string): string | undefined {
@@ -1266,8 +1293,8 @@ export default async function handler(
                     return name.includes('apollo') || name.includes('kim tín');
                 };
 
-                // Parse order creation time for weekend reset logic
-                let effectiveOrderTime = orderCreatedOn ? new Date(orderCreatedOn) : new Date();
+                // Parse order creation time for weekend reset logic - Normalize từ UTC sang GMT+7 (Việt Nam)
+                let effectiveOrderTime = normalizeCreatedOnToVietnamTime(orderCreatedOn);
                 if (isNaN(effectiveOrderTime.getTime())) {
                     effectiveOrderTime = new Date();
                 }

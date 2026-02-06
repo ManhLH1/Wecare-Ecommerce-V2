@@ -502,6 +502,29 @@ async function trySetTensanphamLookup(
 const CA_SANG = 283640000; // "Ca sáng" (0:00 - 12:00)
 const CA_CHIEU = 283640001; // "Ca chiều" (12:00 - 23:59)
 
+/**
+ * Normalize createdOn từ UTC sang GMT+7 (Việt Nam)
+ * CRM trả về createdon ở UTC, cần +7h để tính toán theo giờ Việt Nam
+ * @param createdOn - Timestamp từ CRM (UTC format, ví dụ: "2025-01-15T10:00:00Z")
+ * @returns Date object đã được điều chỉnh +7h (giờ Việt Nam)
+ */
+function normalizeCreatedOnToVietnamTime(createdOn: string | undefined): Date {
+  if (!createdOn) {
+    return new Date(); // Fallback to current time
+  }
+  
+  // Parse UTC time
+  const utcDate = new Date(createdOn);
+  if (isNaN(utcDate.getTime())) {
+    return new Date(); // Fallback if invalid
+  }
+  
+  // Add 7 hours (7 * 60 * 60 * 1000 milliseconds) to convert UTC to GMT+7
+  const vietnamTime = new Date(utcDate.getTime() + 7 * 60 * 60 * 1000);
+  
+  return vietnamTime;
+}
+
 // Helper function to calculate shift (ca) based on created on time and delivery date
 function calculateShiftFromCreatedOnAndDeliveryDate(
   orderCreatedOn: string | undefined,
@@ -512,8 +535,8 @@ function calculateShiftFromCreatedOnAndDeliveryDate(
   }
 
   try {
-    // Parse order creation time
-    const createdDateTime = new Date(orderCreatedOn);
+    // Parse order creation time - Normalize từ UTC sang GMT+7 (Việt Nam)
+    const createdDateTime = normalizeCreatedOnToVietnamTime(orderCreatedOn);
     if (isNaN(createdDateTime.getTime())) {
       console.warn('[Calculate Shift] Invalid orderCreatedOn format:', orderCreatedOn);
       return null;
@@ -823,8 +846,8 @@ async function calculateDeliveryDateAndShift(
       return name.includes('apollo') || name.includes('kim tín');
     };
 
-    // Parse base date
-    let orderTime = orderCreatedOn ? new Date(orderCreatedOn) : new Date();
+    // Parse base date - Normalize từ UTC sang GMT+7 (Việt Nam)
+    let orderTime = normalizeCreatedOnToVietnamTime(orderCreatedOn);
     if (isNaN(orderTime.getTime())) {
       orderTime = new Date();
     }

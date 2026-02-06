@@ -74,6 +74,7 @@ interface ProductTableProps {
   customerCode?: string; // Customer code cho promotion calculation
   paymentTerms?: string; // Payment terms cho promotion calculation
   saleOrders?: Array<{ crdfd_sale_orderid: string; crdfd_ieukhoanthanhtoan?: string; crdfd_dieu_khoan_thanh_toan?: string }>; // Sale orders array để tìm selected SO cho promotion calculation
+  onRecalculatePromotions?: (products: ProductTableItem[]) => Promise<ProductTableItem[]>; // Optional callback để recalculate promotions (dùng cho SOBG)
 }
 
 // ============================================================
@@ -357,6 +358,7 @@ function ProductTable({
   customerCode,
   paymentTerms,
   saleOrders,
+  onRecalculatePromotions,
 }: ProductTableProps) {
   const [editingQuantityId, setEditingQuantityId] = useState<string | null>(null);
   const [editingQuantityValue, setEditingQuantityValue] = useState<string>('');
@@ -375,49 +377,65 @@ function ProductTable({
 
       const performRemoval = async (prod?: ProductTableItem) => {
         try {
-          // Call parent onDelete to handle inventory adjustments (if provided)
+          // Call parent onDelete để handle recalculate promotion và set products
+          // Parent sẽ filter, recalculate và set products mới
           if (onDelete) {
+            // Parent (SalesOrderBaoGiaForm) sẽ handle filter, recalculate và set products
             await onDelete(prod || productToDelete);
+            // KHÔNG set products ở đây vì parent đã set rồi qua prop products
+          } else {
+            // Nếu không có onDelete từ parent, tự filter và recalculate ở đây
+            const productsAfterDelete = products.filter((p) => p.id !== id);
+            setProducts(productsAfterDelete);
+            // Nếu không có onDelete từ parent, tự recalculate ở đây
+            setProducts(productsAfterDelete);
+
+            // ============================================================
+            // QUAN TRỌNG: Recalculate promotion eligibility sau khi xóa sản phẩm
+            // Khi xóa sản phẩm, tổng tiền đơn giảm → các items còn lại có thể
+            // KHÔNG còn đủ điều kiện promotion (totalAmountCondition)
+            // ============================================================
+            if (soId && productsAfterDelete.length > 0) {
+              // Nếu có custom recalculate function (cho SOBG), dùng nó
+              // Ngược lại, dùng hàm recalculatePromotionEligibility mặc định (cho SO)
+              if (onRecalculatePromotions) {
+                onRecalculatePromotions(productsAfterDelete).then(recalculated => {
+                  setProducts(recalculated);
+                }).catch(err => {
+                  console.warn('[ProductTable][Delete] Error recalculating promotions:', err);
+                  setProducts(productsAfterDelete);
+                });
+              } else {
+                recalculatePromotionEligibility(
+                  productsAfterDelete,
+                  soId,
+                  customerCode || '',
+                  saleOrders
+                ).then(recalculated => {
+                  // Chỉ update nếu có thay đổi (có items được loại bỏ promotion)
+                  const hasChanges = recalculated.some((p, idx) => {
+                    const original = productsAfterDelete[idx];
+                    return original && (
+                      p.eligibleForPromotion !== original.eligibleForPromotion ||
+                      p.discountPercent !== original.discountPercent ||
+                      p.discountedPrice !== original.discountedPrice
+                    );
+                  });
+                  if (hasChanges) {
+                    console.debug('[ProductTable][DELETE] Recalculated promotions after delete:', {
+                      productCodeDeleted: productToDelete.productCode,
+                      hasPromotionChanges: true,
+                    });
+                    setProducts(recalculated);
+                  }
+                }).catch(err => {
+                  console.warn('[ProductTable][DELETE] Error recalculating promotions after delete:', err);
+                });
+              }
+            }
           }
         } catch (err: any) {
-          console.warn('Error in onDelete handler:', err);
-        } finally {
-          // Remove from UI list
-          const productsAfterDelete = products.filter((p) => p.id !== id);
-          setProducts(productsAfterDelete);
-
-          // ============================================================
-          // QUAN TRỌNG: Recalculate promotion eligibility sau khi xóa sản phẩm
-          // Khi xóa sản phẩm, tổng tiền đơn giảm → các items còn lại có thể
-          // KHÔNG còn đủ điều kiện promotion (totalAmountCondition)
-          // ============================================================
-          if (soId && productsAfterDelete.length > 0) {
-            recalculatePromotionEligibility(
-              productsAfterDelete,
-              soId,
-              customerCode || '',
-              saleOrders
-            ).then(recalculated => {
-              // Chỉ update nếu có thay đổi (có items được loại bỏ promotion)
-              const hasChanges = recalculated.some((p, idx) => {
-                const original = productsAfterDelete[idx];
-                return original && (
-                  p.eligibleForPromotion !== original.eligibleForPromotion ||
-                  p.discountPercent !== original.discountPercent ||
-                  p.discountedPrice !== original.discountedPrice
-                );
-              });
-              if (hasChanges) {
-                console.debug('[ProductTable][DELETE] Recalculated promotions after delete:', {
-                  productCodeDeleted: productToDelete.productCode,
-                  hasPromotionChanges: true,
-                });
-                setProducts(recalculated);
-              }
-            }).catch(err => {
-              console.warn('[ProductTable][DELETE] Error recalculating promotions after delete:', err);
-            });
-          }
+          console.warn('Error in performRemoval:', err);
         }
       };
 
@@ -443,7 +461,14 @@ function ProductTable({
     // ============================================================
 
     // Tính lại các giá trị với số lượng mới
-    const newSubtotal = newQuantity * (product.discountedPrice || product.price);
+    // IMPORTANT: Tính từ base price và discountPercent (không dùng discountedPrice vì có thể có surcharge)
+    const basePrice = product.price;
+    const discountPercent = product.discountPercent || 0;
+    const discountAmount = basePrice * (discountPercent / 100);
+    const discountedPriceCalc = basePrice - discountAmount;
+    
+    // Tính subtotal từ discountedPriceCalc (KHÔNG có surcharge)
+    const newSubtotal = Math.round(newQuantity * discountedPriceCalc);
     const newVatAmount = Math.round((newSubtotal * product.vat) / 100);
     const newTotalAmount = newSubtotal + newVatAmount;
 
@@ -476,14 +501,20 @@ function ProductTable({
           productCode: product.productCode,
           oldQty: product.quantity,
           newQty: newQuantity,
+          isSOBG,
+          hasCustomRecalculate: !!onRecalculatePromotions,
         });
 
-        const recalculatedProducts = await recalculatePromotionEligibility(
-          productsWithNewQty,
-          soId,
-          customerCode || '',
-          saleOrders
-        );
+        // Nếu có custom recalculate function (cho SOBG), dùng nó
+        // Ngược lại, dùng hàm recalculatePromotionEligibility mặc định (cho SO)
+        const recalculatedProducts = onRecalculatePromotions
+          ? await onRecalculatePromotions(productsWithNewQty)
+          : await recalculatePromotionEligibility(
+              productsWithNewQty,
+              soId,
+              customerCode || '',
+              saleOrders
+            );
         setProducts(recalculatedProducts);
       } catch (err) {
         console.warn('[ProductTable][QuantityChange] Error recalculating promotions:', err);
@@ -585,13 +616,22 @@ function ProductTable({
         return;
       }
       showToast.success('Đã vô hiệu hoá sản phẩm thành công');
-      // perform onDelete and remove from list
+      // perform onDelete - parent sẽ handle recalculate và set products
       try {
-        if (onDelete) await onDelete(confirmingProduct);
+        if (onDelete) {
+          await onDelete(confirmingProduct);
+          // KHÔNG set products ở đây vì parent đã set rồi
+        } else {
+          // Nếu không có onDelete từ parent, tự remove từ list
+          setProducts(products.filter(p => p.id !== confirmingProduct.id));
+        }
       } catch (err: any) {
         console.warn('Error in onDelete after deactivate:', err);
+        // Nếu có lỗi, vẫn remove từ list để UI không bị stuck
+        if (!onDelete) {
+          setProducts(products.filter(p => p.id !== confirmingProduct.id));
+        }
       }
-      setProducts(products.filter(p => p.id !== confirmingProduct.id));
     } catch (err: any) {
       console.error('Error deactivating product:', err);
       showToast.error(err?.message || 'Lỗi khi vô hiệu hoá sản phẩm');

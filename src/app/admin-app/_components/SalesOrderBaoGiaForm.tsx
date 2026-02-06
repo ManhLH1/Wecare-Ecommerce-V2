@@ -1138,13 +1138,34 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       if (result.success) {
         showToast.success('Đã cập nhật sản phẩm thành công!');
         // Cập nhật isModified = false và originalQuantity = quantity mới
-        setProductList(prevList =>
-          prevList.map(item =>
-            item.id === product.id
-              ? { ...item, isModified: false, originalQuantity: item.quantity }
-              : item
-          )
+        const updatedList = productList.map(item =>
+          item.id === product.id
+            ? { ...item, isModified: false, originalQuantity: item.quantity }
+            : item
         );
+
+        // ============================================================
+        // QUAN TRỌNG: Recalculate promotion eligibility sau khi update sản phẩm
+        // Khi update quantity/price, tổng tiền đơn thay đổi → các items có thể
+        // đủ/không đủ điều kiện promotion (totalAmountCondition)
+        // ============================================================
+        if (soId && updatedList.length > 0) {
+          try {
+            const recalculatedProducts = await recalculatePromotionEligibilitySOBG(
+              updatedList,
+              soId,
+              customerCode,
+              selectedSo
+            );
+            setProductList(recalculatedProducts);
+          } catch (err) {
+            console.warn('[SalesOrderBaoGiaForm][UPDATE] Error recalculating promotions after update:', err);
+            // Vẫn set list đã update dù có lỗi recalculate
+            setProductList(updatedList);
+          }
+        } else {
+          setProductList(updatedList);
+        }
       } else {
         const errorMsg = result.message || 'Không thể cập nhật sản phẩm.';
         showToast.error(errorMsg);
@@ -1875,8 +1896,8 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       {/* Product Table - Bottom Full Width */}
       <div className="admin-app-table-wrapper">
         <ProductTable
-          products={productList}
-          setProducts={setProductList}
+          products={productList as any}
+          setProducts={setProductList as any}
           soId={soId}
           warehouseName={warehouse}
           isVatOrder={!isNonVatSelected}
@@ -1885,10 +1906,47 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           vatChoice={selectedSo?.vat} // Pass vatChoice for surcharge column
           customerIndustry={customerIndustry} // Pass customerIndustry for surcharge column
           isSOBG={true}
-          onDelete={(product) => {
+          customerCode={customerCode} // Pass customerCode cho promotion calculation
+          paymentTerms={selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan} // Pass paymentTerms cho promotion calculation
+          onRecalculatePromotions={async (products: any[]) => {
+            // Wrapper function để recalculate promotions cho SOBG
+            if (!soId) return products;
+            const selectedSo = soBaoGiaList.find((so) => so.id === soId);
+            return await recalculatePromotionEligibilitySOBG(
+              products as ProductItem[],
+              soId,
+              customerCode,
+              selectedSo
+            ) as any[];
+          }}
+          onDelete={async (product) => {
             // Logic xóa
             const newList = productList.filter(p => p.id !== product.id);
-            setProductList(newList);
+            
+            // ============================================================
+            // QUAN TRỌNG: Recalculate promotion eligibility sau khi xóa sản phẩm
+            // Khi xóa sản phẩm, tổng tiền đơn giảm → các items còn lại có thể
+            // KHÔNG còn đủ điều kiện promotion (totalAmountCondition)
+            // ============================================================
+            if (soId && newList.length > 0) {
+              try {
+                const selectedSo = soBaoGiaList.find((so) => so.id === soId);
+                const recalculatedProducts = await recalculatePromotionEligibilitySOBG(
+                  newList,
+                  soId,
+                  customerCode,
+                  selectedSo
+                );
+                setProductList(recalculatedProducts);
+              } catch (err) {
+                console.warn('[SalesOrderBaoGiaForm][DELETE] Error recalculating promotions after delete:', err);
+                // Vẫn set list mới dù có lỗi recalculate
+                setProductList(newList);
+              }
+            } else {
+              // Nếu không có soId hoặc list rỗng, chỉ set list mới (không recalculate)
+              setProductList(newList);
+            }
           }}
         />
       </div>
