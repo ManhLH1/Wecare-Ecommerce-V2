@@ -19,6 +19,14 @@ const PAYMENT_TERMS_MAP: Record<string, string> = {
   "283640005": "Thanh toán trước khi nhận hàng",
 };
 
+// Map Điều chỉnh GTGT OptionSet value to VAT percentage (for crdfd_ieuchinhgtgt)
+const IEUCHINHGTGT_TO_VAT_MAP: Record<number, number> = {
+  191920000: 0,   // 0%
+  191920001: 5,   // 5%
+  191920002: 8,   // 8%
+  191920003: 10,  // 10%
+};
+
 const normalizePaymentTerm = (input?: string | number | null) : string | null => {
   // Treat null/undefined as missing; accept numeric 0 as valid input
   if (input === null || input === undefined) return null;
@@ -32,6 +40,11 @@ const normalizePaymentTerm = (input?: string | number | null) : string | null =>
   const digits = t.replace(/\D/g, "");
   if (digits && PAYMENT_TERMS_MAP[digits]) return digits;
   return t;
+};
+
+const getVatFromIeuChinhGtgt = (ieuchinhgtgtValue: number | null | undefined): number => {
+  if (ieuchinhgtgtValue === null || ieuchinhgtgtValue === undefined) return 0;
+  return IEUCHINHGTGT_TO_VAT_MAP[ieuchinhgtgtValue] ?? 0;
 };
 
 export default async function handler(
@@ -113,10 +126,47 @@ export default async function handler(
       "modifiedon",
     ].join(",");
 
-    // Expand only crdfd_Khachhang for name, avoid others to prevent errors
-    // Note: relationship name usually matches schema name, check case sensitivity if needed.
-    // Trying 'crdfd_Khachhang' first, if fails might need 'crdfd_khachhang'
-    const expand = "$expand=crdfd_Khachhang($select=crdfd_name,cr44a_makhachhang,crdfd_wecare_rewards)";
+    // Expand:
+    // - Customer (để lấy tên/mã khách hàng + rewards)
+    // - SOD báo giá (để tránh FE gọi thêm sobg-details)
+    const expandCustomer = "crdfd_Khachhang($select=crdfd_name,cr44a_makhachhang,crdfd_wecare_rewards)";
+    const sobgDetailsNav = "crdfd_sodbaogia_Maonhang_crdfd_sobaogia";
+    const sobgDetailsColumns = [
+      "crdfd_sodbaogiaid",
+      "createdon",
+      "crdfd_name",
+      "crdfd_Sanpham",
+      "crdfd_onvi",
+      "crdfd_soluong",
+      "crdfd_ongia",
+      "crdfd_giagoc",
+      "crdfd_giack1",
+      "crdfd_giack2",
+      "crdfd_chietkhau",
+      "crdfd_chietkhau2",
+      "crdfd_chietkhauvn",
+      "crdfd_tienchietkhau",
+      "crdfd_ieuchinhgtgt",
+      "crdfd_stton",
+      "crdfd_ngaygiaodukien",
+      "crdfd_duyetgia",
+      "crdfd_Duyetgiasup",
+      "crdfd_ghichu",
+      "crdfd_phu_phi_hoa_don",
+      "_crdfd_promotion_value",
+      "crdfd_promotiontext",
+      "_crdfd_sanpham_value",
+      "crdfd_masanpham",
+      "crdfd_manhomsanpham",
+      "_crdfd_maonhang_value",
+    ].join(",");
+    const sobgDetailsFilter = "statecode eq 0";
+    const sobgDetailsExpandProduct =
+      "crdfd_Sanpham($select=crdfd_name,crdfd_fullname,crdfd_masanpham)";
+    const expandDetails = `${sobgDetailsNav}($select=${sobgDetailsColumns};$filter=${encodeURIComponent(
+      sobgDetailsFilter
+    )};$expand=${sobgDetailsExpandProduct})`;
+    const expand = `$expand=${expandCustomer},${expandDetails}`;
 
     const query = `$select=${columns}&$filter=${encodeURIComponent(filter)}&${expand}&$orderby=createdon desc`;
 
@@ -125,89 +175,157 @@ export default async function handler(
     const response = await axios.get(endpoint, { headers });
 
     // Transform the data
-    const baogiaData = (response.data.value || []).map((item: any) => ({
-      id: item.crdfd_sobaogiaid || "",
-      name: item.crdfd_name || "",                    // Mã đơn hàng
-      soAuto: item.crdfd_soauto || "",
-      soCode: item.crdfd_socode || "",
-      tenDonHang: item.crdfd_tenonhang || "",
-      chietKhau: item.crdfd_chietkhau || 0,
-      chietKhauVND: item.crdfd_chietkhauvn || 0,
-      tienChietKhau: item.crdfd_tienchietkhau || 0,
-      ghiChu: item.crdfd_ghichu || "",
-      ghiChuKH: item.crdfd_ghichukh || "",
-      gtgt: item.crdfd_gtgt || 0,
-      tongTien: item.crdfd_tongtien || 0,
-      tongTienKhongVAT: item.crdfd_tongtienkhongvat || 0,
-      vat: item.crdfd_vat || null,
-      vatText: item.crdfd_vattext || "",
-      tenPromotion: item.crdfd_tenpromotion || "",
-      trangThaiBaoGia: item.crdfd_trangthaibaogia || null,
-      loaiHoaDon: item.crdfd_loaihoadon || null,
-      xuatHoaDon: item.crdfd_xuat_hoa_don || false,
+    const mapSobgDetail = (detail: any) => {
+      // Lấy productCode từ expanded product hoặc từ field trực tiếp
+      const productCode =
+        detail.crdfd_Sanpham?.crdfd_masanpham ||
+        detail.crdfd_masanpham ||
+        "";
 
-      // Payment terms processing (similar to sale-orders.ts)
-      dieuKhoanThanhToan: (() => {
-        // Try raw numeric option set value first
-        let rawPaymentTerm: any = item.crdfd_ieukhoanthanhtoan ?? null;
+      // Lấy tên sản phẩm từ expanded product (ưu tiên fullname)
+      const productName =
+        detail.crdfd_Sanpham?.crdfd_fullname ||
+        detail.crdfd_Sanpham?.crdfd_name ||
+        detail.crdfd_name ||
+        "";
 
-        // If raw not present, try the OData formatted value and normalize to key
-        const formattedPreferred = item["crdfd_ieukhoanthanhtoan@OData.Community.Display.V1.FormattedValue"];
-        if ((rawPaymentTerm === null || rawPaymentTerm === undefined || rawPaymentTerm === "") &&
-            formattedPreferred) {
-          const formatted = String(formattedPreferred || "");
-          // Try to find the key from the label
-          const foundKey = Object.keys(PAYMENT_TERMS_MAP).find(
-            (k) => PAYMENT_TERMS_MAP[k].toLowerCase() === formatted.toLowerCase()
-          );
-          rawPaymentTerm = foundKey || formatted;
-        }
+      const vat = getVatFromIeuChinhGtgt(detail.crdfd_ieuchinhgtgt);
 
-        // Ensure we return a normalized key where possible
-        return normalizePaymentTerm(rawPaymentTerm) || rawPaymentTerm || null;
-      })(),
+      // Tính toán giá đã giảm (giá CK 1 hoặc giá CK 2, ưu tiên giá CK 2)
+      const giack2 = detail.crdfd_giack2 != null ? detail.crdfd_giack2 : 0;
+      const giack1 = detail.crdfd_giack1 != null ? detail.crdfd_giack1 : 0;
+      const discountedPrice =
+        (giack2 > 0 ? giack2 : (giack1 > 0 ? giack1 : (detail.crdfd_ongia || detail.crdfd_giagoc || 0)));
+      const quantity = detail.crdfd_soluong || 0;
+      const subtotal = discountedPrice * quantity;
+      const vatAmount = (subtotal * vat) / 100;
+      const totalAmount = subtotal + vatAmount;
 
-      // Raw field for frontend compatibility
-      crdfd_ieukhoanthanhtoan: item.crdfd_ieukhoanthanhtoan ?? null,
-      crdfd_ieukhoanthanhtoan_raw: item.crdfd_ieukhoanthanhtoan ?? null,
-      crdfd_ieukhoanthanhtoan_label:
-        item["crdfd_ieukhoanthanhtoan@OData.Community.Display.V1.FormattedValue"] || null,
+      return {
+        id: detail.crdfd_sodbaogiaid || "",
+        stt: detail.crdfd_stton || 0,
+        productId: detail._crdfd_sanpham_value || "",
+        productCode,
+        productName,
+        productGroupCode: detail.crdfd_manhomsanpham || "",
+        unit: detail.crdfd_onvi || "",
+        quantity,
+        price: detail.crdfd_ongia || detail.crdfd_giagoc || 0,
+        surcharge: detail.crdfd_phu_phi_hoa_don || 0,
+        discount: detail.crdfd_tienchietkhau || 0,
+        discountedPrice,
+        vat,
+        subtotal,
+        vatAmount,
+        totalAmount,
+        approver: detail.crdfd_duyetgia || "",
+        deliveryDate: detail.crdfd_ngaygiaodukien || "",
+        note: detail.crdfd_ghichu || "",
+        approvePrice: !!detail.crdfd_duyetgia,
+        approveSupPrice: !!detail.crdfd_Duyetgiasup,
+        discountPercent: detail.crdfd_chietkhau || 0,
+        discountAmount: detail.crdfd_chietkhauvn || 0,
+        promotionText: detail.crdfd_promotiontext || "",
+        promotionId: detail._crdfd_promotion_value || undefined,
+        invoiceSurcharge: detail.crdfd_phu_phi_hoa_don || 0,
+        // Giữ raw field để FE normalize chiết khấu 2 như hiện tại
+        crdfd_chietkhau2: detail.crdfd_chietkhau2 ?? null,
+      };
+    };
 
-      crdfd_tongtien: item.crdfd_tongtien || 0, // Raw total amount field
+    const baogiaData = (response.data.value || []).map((item: any) => {
+      const expandedDetails = Array.isArray(item[sobgDetailsNav]) ? item[sobgDetailsNav] : [];
+      const mappedDetails = expandedDetails.map(mapSobgDetail);
 
-      // Map lookups (using expanded values for customer, others just ID)
-      chinhanhKH: {
-        id: item._crdfd_chinhanhkh_value || null,
-        name: "",
-      },
-      khachHang: {
-        id: item._crdfd_khachhang_value || null,
-        name: item.crdfd_Khachhang?.crdfd_name || "",
-        maKhachHang: item.crdfd_Khachhang?.cr44a_makhachhang || "",
-        rewards: item.crdfd_Khachhang?.crdfd_wecare_rewards || null,
-      },
-      nhanVienBanHang: {
-        id: item._crdfd_nhanvienbanhang_value || null,
-        name: "",
-      },
-      phapLyKhachHang: {
-        id: item._crdfd_phaplykhachhang_value || null,
-        name: "",
-      },
-      sobgMuaKem: {
-        id: item._crdfd_sobg_muakem_value || null,
-        name: "",
-      },
-      tenThuongMai: {
-        id: item._crdfd_tenthuongmai_value || null,
-        name: "",
-      },
+      return {
+        id: item.crdfd_sobaogiaid || "",
+        name: item.crdfd_name || "",                    // Mã đơn hàng
+        soAuto: item.crdfd_soauto || "",
+        soCode: item.crdfd_socode || "",
+        tenDonHang: item.crdfd_tenonhang || "",
+        chietKhau: item.crdfd_chietkhau || 0,
+        chietKhauVND: item.crdfd_chietkhauvn || 0,
+        tienChietKhau: item.crdfd_tienchietkhau || 0,
+        ghiChu: item.crdfd_ghichu || "",
+        ghiChuKH: item.crdfd_ghichukh || "",
+        gtgt: item.crdfd_gtgt || 0,
+        tongTien: item.crdfd_tongtien || 0,
+        tongTienKhongVAT: item.crdfd_tongtienkhongvat || 0,
+        vat: item.crdfd_vat || null,
+        vatText: item.crdfd_vattext || "",
+        tenPromotion: item.crdfd_tenpromotion || "",
+        trangThaiBaoGia: item.crdfd_trangthaibaogia || null,
+        loaiHoaDon: item.crdfd_loaihoadon || null,
+        xuatHoaDon: item.crdfd_xuat_hoa_don || false,
 
-      statecode: item.statecode || 0,
-      statuscode: item.statuscode || 0,
-      createdon: item.createdon || "",
-      modifiedon: item.modifiedon || "",
-    }));
+        // Payment terms processing (similar to sale-orders.ts)
+        dieuKhoanThanhToan: (() => {
+          // Try raw numeric option set value first
+          let rawPaymentTerm: any = item.crdfd_ieukhoanthanhtoan ?? null;
+
+          // If raw not present, try the OData formatted value and normalize to key
+          const formattedPreferred = item["crdfd_ieukhoanthanhtoan@OData.Community.Display.V1.FormattedValue"];
+          if ((rawPaymentTerm === null || rawPaymentTerm === undefined || rawPaymentTerm === "") &&
+              formattedPreferred) {
+            const formatted = String(formattedPreferred || "");
+            // Try to find the key from the label
+            const foundKey = Object.keys(PAYMENT_TERMS_MAP).find(
+              (k) => PAYMENT_TERMS_MAP[k].toLowerCase() === formatted.toLowerCase()
+            );
+            rawPaymentTerm = foundKey || formatted;
+          }
+
+          // Ensure we return a normalized key where possible
+          return normalizePaymentTerm(rawPaymentTerm) || rawPaymentTerm || null;
+        })(),
+
+        // Raw field for frontend compatibility
+        crdfd_ieukhoanthanhtoan: item.crdfd_ieukhoanthanhtoan ?? null,
+        crdfd_ieukhoanthanhtoan_raw: item.crdfd_ieukhoanthanhtoan ?? null,
+        crdfd_ieukhoanthanhtoan_label:
+          item["crdfd_ieukhoanthanhtoan@OData.Community.Display.V1.FormattedValue"] || null,
+
+        crdfd_tongtien: item.crdfd_tongtien || 0, // Raw total amount field
+
+        // Map lookups (using expanded values for customer, others just ID)
+        chinhanhKH: {
+          id: item._crdfd_chinhanhkh_value || null,
+          name: "",
+        },
+        khachHang: {
+          id: item._crdfd_khachhang_value || null,
+          name: item.crdfd_Khachhang?.crdfd_name || "",
+          maKhachHang: item.crdfd_Khachhang?.cr44a_makhachhang || "",
+          rewards: item.crdfd_Khachhang?.crdfd_wecare_rewards || null,
+        },
+        nhanVienBanHang: {
+          id: item._crdfd_nhanvienbanhang_value || null,
+          name: "",
+        },
+        phapLyKhachHang: {
+          id: item._crdfd_phaplykhachhang_value || null,
+          name: "",
+        },
+        sobgMuaKem: {
+          id: item._crdfd_sobg_muakem_value || null,
+          name: "",
+        },
+        tenThuongMai: {
+          id: item._crdfd_tenthuongmai_value || null,
+          name: "",
+        },
+
+        statecode: item.statecode || 0,
+        statuscode: item.statuscode || 0,
+        createdon: item.createdon || "",
+        modifiedon: item.modifiedon || "",
+
+        // Include SOD báo giá trong response để FE không phải gọi thêm API
+        details: mappedDetails,
+        // Giữ key theo đúng relationship để tương thích nếu FE muốn đọc raw
+        crdfd_sodbaogia_Maonhang_crdfd_sobaogia: mappedDetails,
+      };
+    });
 
     res.status(200).json(baogiaData);
   } catch (error: any) {

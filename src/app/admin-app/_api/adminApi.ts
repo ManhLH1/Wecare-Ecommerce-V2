@@ -58,6 +58,12 @@ export interface SaleOrder {
   crdfd_ieukhoanthanhtoan?: string;
   crdfd_tongtien?: number; // Tổng tiền (raw field)
   createdon?: string;
+  /**
+   * SOD đã được expand từ endpoint `sale-orders` (để tránh gọi thêm `sale-order-details`).
+   * Backend hiện trả cả 2 key để tương thích.
+   */
+  details?: SaleOrderDetail[];
+  crdfd_SaleOrderDetail_SOcode_crdfd_Sale_O?: SaleOrderDetail[];
 }
 
 export interface Warehouse {
@@ -190,9 +196,14 @@ export const fetchUnits = async (productCode?: string): Promise<Unit[]> => {
 };
 
 // Fetch sale orders
-export const fetchSaleOrders = async (customerId?: string): Promise<SaleOrder[]> => {
+export const fetchSaleOrders = async (
+  customerId?: string,
+  forceRefresh?: boolean
+): Promise<SaleOrder[]> => {
   try {
-    const params = customerId ? { customerId } : {};
+    const params: Record<string, string> = {};
+    if (customerId) params.customerId = customerId;
+    if (forceRefresh) params.forceRefresh = '1';
     const response = await axios.get(`${BASE_URL}/sale-orders`, { params });
     return response.data;
   } catch (error) {
@@ -712,16 +723,26 @@ export interface SOBaoGia {
     rewards?: string | null;
   };
   createdon?: string;
+  /**
+   * SOD báo giá đã được expand từ endpoint `get-sale-order-baogia`
+   * để tránh gọi thêm `sobg-details`.
+   */
+  details?: SaleOrderDetail[];
+  crdfd_sodbaogia_Maonhang_crdfd_sobaogia?: SaleOrderDetail[];
 }
 
 /**
  * Fetch danh sách SO Báo Giá theo customerId
  * Filter: Trạng thái = "Đang báo giá", Status = Active
  */
-export const fetchSOBaoGia = async (customerId?: string): Promise<SOBaoGia[]> => {
+export const fetchSOBaoGia = async (
+  customerId?: string,
+  forceRefresh?: boolean
+): Promise<SOBaoGia[]> => {
   try {
-    const params: any = {};
+    const params: Record<string, string> = {};
     if (customerId) params.customerId = customerId;
+    if (forceRefresh) params.forceRefresh = '1';
     const response = await axios.get(`${BASE_URL}/get-sale-order-baogia`, { params });
     return response.data;
   } catch (error) {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import ProductEntryForm from './ProductEntryForm';
 import ProductTable from './ProductTable';
 import Dropdown from './Dropdown';
@@ -8,7 +9,8 @@ import Dropdown from './Dropdown';
 // Lazy load ImportModal - only loaded when needed
 const ImportModal = lazy(() => import('./ImportModal'));
 import { useCustomers, useSaleOrderBaoGia } from '../_hooks/useDropdownData';
-import { saveSOBGDetails, fetchSOBGDetails, SaleOrderDetail, fetchPromotionOrders, fetchPromotionOrdersSOBG, fetchSpecialPromotionOrders, applySOBGPromotionOrder, PromotionOrderItem, SOBaoGia, fetchProductPromotions } from '../_api/adminApi';
+import { fetchSOBaoGia, saveSOBGDetails, fetchSOBGDetails, SaleOrderDetail, fetchPromotionOrders, fetchPromotionOrdersSOBG, fetchSpecialPromotionOrders, applySOBGPromotionOrder, PromotionOrderItem, SOBaoGia, fetchProductPromotions } from '../_api/adminApi';
+import { queryKeys } from '../_hooks/useReactQueryData';
 import { APPROVERS_LIST } from '../../../constants/constants';
 import { showToast } from '../../../components/ToastManager';
 import { getItem } from '../../../utils/SecureStorage';
@@ -79,6 +81,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   const { customers, loading: customersLoading } = useCustomers(customerSearch);
   // Load SOBG instead of SO
   const { soBaoGiaList, loading: soLoading } = useSaleOrderBaoGia(customerId || undefined);
+  const queryClient = useQueryClient();
 
   const [product, setProduct] = useState('');
   const [productCode, setProductCode] = useState('');
@@ -273,9 +276,26 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         return;
       }
 
+      // Quan trọng: tránh gọi `sobg-details` khi `soBaoGiaList` còn đang load (sẽ tạo 2 API call song song).
+      // Chờ list về rồi ưu tiên dùng dữ liệu đã `$expand`.
+      if (soLoading) {
+        setIsLoadingDetails(true);
+        return;
+      }
+
       setIsLoadingDetails(true);
       try {
-        const details = await fetchSOBGDetails(soId, customerId);
+        const currentSo = soBaoGiaList.find((so) => so.id === soId);
+        const expandedDetails =
+          (currentSo as any)?.details ??
+          (currentSo as any)?.crdfd_sodbaogia_Maonhang_crdfd_sobaogia;
+
+        // Ưu tiên dùng details đã expand; chỉ fallback gọi API details nếu backend không trả kèm.
+        const details: SaleOrderDetail[] =
+          Array.isArray(expandedDetails)
+            ? expandedDetails
+            : await fetchSOBGDetails(soId, customerId);
+
         // Map SaleOrderDetail to ProductItem
         const mappedProducts: ProductItem[] = details.map((detail: SaleOrderDetail) => {
           // Sử dụng giá trị đã tính từ API thay vì tính lại
@@ -342,7 +362,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     };
 
     loadSOBGDetails();
-  }, [soId, customerId]);
+  }, [soId, customerId, soLoading, soBaoGiaList]);
 
   // ============================================================
   // Hàm recalculate promotion eligibility cho TẤT CẢ items
@@ -664,7 +684,15 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
 
     try {
       setIsLoadingDetails(true);
-      const details = await fetchSOBGDetails(soId, customerId);
+      // Refresh list SOBG (đã expand SOD) để tránh gọi thêm `sobg-details`
+      const refreshedOrders = await fetchSOBaoGia(customerId || undefined, true);
+      queryClient.setQueryData(queryKeys.soBaoGia(customerId || undefined), refreshedOrders);
+      const currentSo = refreshedOrders.find((so: any) => so.id === soId);
+      const details: SaleOrderDetail[] =
+        (currentSo as any)?.details ??
+        (currentSo as any)?.crdfd_sodbaogia_Maonhang_crdfd_sobaogia ??
+        [];
+
       const mappedProducts: ProductItem[] = details.map((detail: SaleOrderDetail) => {
         const subtotal = detail.subtotal ?? ((detail.discountedPrice || detail.price) * detail.quantity);
         const vatAmount = detail.vatAmount ?? (subtotal * detail.vat / 100);

@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
 import ProductEntryForm from './ProductEntryForm';
 import ProductTable from './ProductTable';
 import Dropdown from './Dropdown';
 import { useCustomers, useSaleOrders } from '../_hooks/useDropdownData';
-import { fetchSaleOrderDetails, SaleOrderDetail, saveSaleOrderDetails, updateInventory, fetchInventory, fetchUnits, fetchPromotionOrders, fetchSpecialPromotionOrders, applyPromotionOrder, PromotionOrderItem, InventoryInfo, fetchProductPromotions, Promotion } from '../_api/adminApi';
+import { fetchSaleOrders, fetchSaleOrderDetails, SaleOrderDetail, saveSaleOrderDetails, updateInventory, fetchInventory, fetchUnits, fetchPromotionOrders, fetchSpecialPromotionOrders, applyPromotionOrder, PromotionOrderItem, InventoryInfo, fetchProductPromotions, Promotion } from '../_api/adminApi';
+import { queryKeys } from '../_hooks/useReactQueryData';
 import { APPROVERS_LIST } from '../../../constants/constants';
 import { showToast } from '../../../components/ToastManager';
 import { getItem } from '../../../utils/SecureStorage';
@@ -386,6 +388,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const { customers, loading: customersLoading } = useCustomers(customerSearch);
   // Load SO - if customerId is selected, filter by customer, otherwise load all
   const { saleOrders, loading: soLoading, error: soError } = useSaleOrders(customerId || undefined);
+  const queryClient = useQueryClient();
   const [product, setProduct] = useState('');
   const [productCode, setProductCode] = useState('');
   const [productGroupCode, setProductGroupCode] = useState('');
@@ -564,9 +567,33 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         return;
       }
 
+      // Quan trọng: tránh gọi `sale-order-details` khi `sale-orders` còn đang load (sẽ gây 2 API call cùng lúc).
+      // Chờ `saleOrders` về rồi dùng dữ liệu đã `$expand`.
+      if (soLoading) {
+        setIsLoadingDetails(true);
+        return;
+      }
+
+      // Nếu đã load xong mà không có SO nào thì clear details
+      if (!soLoading && (!saleOrders || saleOrders.length === 0)) {
+        setProductList([]);
+        setIsLoadingDetails(false);
+        return;
+      }
+
       setIsLoadingDetails(true);
       try {
-        const details = await fetchSaleOrderDetails(soId);
+        const currentSo = saleOrders.find((so) => so.crdfd_sale_orderid === soId);
+        const expandedDetails =
+          (currentSo as any)?.details ??
+          (currentSo as any)?.crdfd_SaleOrderDetail_SOcode_crdfd_Sale_O;
+
+        // Ưu tiên dùng details đã expand; chỉ fallback gọi API details nếu backend không trả kèm.
+        const details: SaleOrderDetail[] =
+          Array.isArray(expandedDetails)
+            ? expandedDetails
+            : await fetchSaleOrderDetails(soId);
+
         // Map SaleOrderDetail to ProductTableItem
         const mappedProducts: ProductTableItem[] = details.map((detail: SaleOrderDetail) => {
           const subtotal = (detail.discountedPrice || detail.price) * detail.quantity;
@@ -641,7 +668,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     };
 
     loadSaleOrderDetails();
-  }, [soId]);
+  }, [soId, customerId, soLoading, saleOrders]);
 
   // NOTE: promotion-orders API should only be called when user explicitly requests promotions
   // (on Save or when clicking the special promotions button). The previous auto-fetch
@@ -1132,7 +1159,15 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       // CHỈ reload nếu tất cả sản phẩm đã save thành công
       if (!result.partialSuccess && result.totalFailed === 0) {
         try {
-          const updatedDetails = await fetchSaleOrderDetails(soId);
+          // Refresh sale-orders (đã expand SOD) để tránh gọi thêm `sale-order-details`
+          const refreshedOrders = await fetchSaleOrders(customerId || undefined, true);
+          queryClient.setQueryData(queryKeys.saleOrders(customerId || undefined), refreshedOrders);
+          const currentSo = refreshedOrders.find((so) => so.crdfd_sale_orderid === soId);
+          const updatedDetails: SaleOrderDetail[] =
+            (currentSo as any)?.details ??
+            (currentSo as any)?.crdfd_SaleOrderDetail_SOcode_crdfd_Sale_O ??
+            [];
+
           const mappedProducts: ProductTableItem[] = updatedDetails.map((detail: SaleOrderDetail) => {
             const subtotal = (detail.discountedPrice || detail.price) * detail.quantity;
             const vatAmount = (subtotal * detail.vat) / 100;
@@ -1654,7 +1689,15 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           // Use promo.value (effective value chosen) as the value to save.
           if ((result && result.success) && typeof promo.value === 'number') {
             try {
-              const sodDetails = await fetchSaleOrderDetails(soId);
+              // Refresh sale-orders (đã expand SOD) để tránh gọi thêm `sale-order-details`
+              const refreshedOrders = await fetchSaleOrders(customerId || undefined, true);
+              queryClient.setQueryData(queryKeys.saleOrders(customerId || undefined), refreshedOrders);
+              const currentSo = refreshedOrders.find((so) => so.crdfd_sale_orderid === soId);
+              const sodDetails: SaleOrderDetail[] =
+                (currentSo as any)?.details ??
+                (currentSo as any)?.crdfd_SaleOrderDetail_SOcode_crdfd_Sale_O ??
+                [];
+
               if (Array.isArray(sodDetails) && sodDetails.length > 0) {
                 const productsToSave = sodDetails
                   .filter((d: any) => {

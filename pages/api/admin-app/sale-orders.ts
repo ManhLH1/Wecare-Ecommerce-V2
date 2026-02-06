@@ -20,6 +20,14 @@ const PAYMENT_TERMS_MAP: Record<string, string> = {
   "283640005": "Thanh toán trước khi nhận hàng",
 };
 
+// Map Điều chỉnh GTGT OptionSet value to VAT percentage (for crdfd_ieuchinhgtgt)
+const IEUCHINHGTGT_TO_VAT_MAP: Record<number, number> = {
+  191920000: 0,   // 0%
+  191920001: 5,   // 5%
+  191920002: 8,   // 8%
+  191920003: 10,  // 10%
+};
+
 const normalizePaymentTerm = (input?: string | number | null) : string | null => {
   // Treat null/undefined as missing; accept numeric 0 as valid input
   if (input === null || input === undefined) return null;
@@ -35,6 +43,11 @@ const normalizePaymentTerm = (input?: string | number | null) : string | null =>
   return t;
 };
 
+const getVatFromIeuChinhGtgt = (ieuchinhgtgtValue: number | null | undefined): number => {
+  if (ieuchinhgtgtValue === null || ieuchinhgtgtValue === undefined) return 0;
+  return IEUCHINHGTGT_TO_VAT_MAP[ieuchinhgtgtValue] ?? 0;
+};
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -44,13 +57,17 @@ export default async function handler(
   }
 
   try {
-    const { customerId } = req.query;
+    const { customerId, forceRefresh } = req.query;
+    const shouldBypassCache = forceRefresh === "1" || forceRefresh === "true";
     
     // Check cache first (use short cache as sale orders change frequently)
+    // Lưu ý: khi cần refresh ngay sau mutation (save/apply promotion), FE có thể truyền forceRefresh=1 để bypass cache.
     const cacheKey = getCacheKey("sale-orders", { customerId });
-    const cachedResponse = getCachedResponse(cacheKey, true); // Use short cache (1 min)
-    if (cachedResponse !== undefined) {
-      return res.status(200).json(cachedResponse);
+    if (!shouldBypassCache) {
+      const cachedResponse = getCachedResponse(cacheKey, true); // Use short cache (1 min)
+      if (cachedResponse !== undefined) {
+        return res.status(200).json(cachedResponse);
+      }
     }
 
     const headers = {
@@ -87,10 +104,37 @@ export default async function handler(
 
     // Select payment term field - prefer `crdfd_dieu_khoan_thanh_toan`
     const columns = "crdfd_sale_orderid,crdfd_name,crdfd_so_code,crdfd_so_auto,cr1bb_vattext,cr1bb_loaihoaon,crdfd_loai_don_hang,crdfd_dieu_khoan_thanh_toan,crdfd_tongtien,createdon";
+    
+    // Expand SOD với các columns cần thiết (giống sale-order-details.ts)
+    const expandRelationship = "crdfd_SaleOrderDetail_SOcode_crdfd_Sale_O";
+    const sodColumns = [
+      "crdfd_saleorderdetailid",
+      "createdon",
+      "crdfd_tensanphamtext",
+      "crdfd_onvionhang",
+      "crdfd_productnum",
+      "crdfd_gia",
+      "crdfd_phuphi_hoadon",
+      "crdfd_chieckhau",
+      "crdfd_giagoc",
+      "crdfd_ieuchinhgtgt",
+      "crdfd_stton",
+      "crdfd_tongtienchuavat",
+      "crdfd_tongtiencovat",
+      "crdfd_duyetgia",
+      "crdfd_ngaygiaodukientonghop",
+      "_crdfd_sanpham_value",
+      "crdfd_masanpham",
+      "crdfd_manhomsp",
+    ].join(",");
+    
+    const sodFilter = "statecode eq 0";
+    const expandQuery = `$select=${sodColumns};$filter=${encodeURIComponent(sodFilter)}`;
+    
     // Sort by Created On (createdon) descending as per Power BI logic
     const query = `$select=${columns}&$filter=${encodeURIComponent(
       filter
-    )}&$orderby=createdon desc&$top=100`;
+    )}&$orderby=createdon desc&$top=100&$expand=${expandRelationship}(${expandQuery})`;
 
     const endpoint = `${BASE_URL}${SALE_ORDER_TABLE}?${query}`;
 
@@ -100,10 +144,46 @@ export default async function handler(
       axiosClient.get(endpoint, { headers })
     );
 
+    // Map SOD data từ expanded relationship
+    const mapSaleOrderDetail = (sodItem: any) => {
+      const productId = sodItem._crdfd_sanpham_value;
+      const productCode = sodItem.crdfd_masanpham || undefined;
+
+      // Compute canonical subtotal/vat/total (giống sale-order-details.ts)
+      const vatPercent = getVatFromIeuChinhGtgt(sodItem.crdfd_ieuchinhgtgt);
+      const quantity = sodItem.crdfd_productnum || sodItem.crdfd_soluong || 0;
+      const unitDiscountedPrice = sodItem.crdfd_tongtienchuavat && quantity > 0
+        ? (sodItem.crdfd_tongtienchuavat / quantity)
+        : (sodItem.crdfd_gia || sodItem.crdfd_giagoc || 0);
+      const subtotalComputed = sodItem.crdfd_tongtienchuavat ?? (unitDiscountedPrice * quantity);
+      const vatComputed = sodItem.crdfd_thue ?? Math.round((subtotalComputed * (vatPercent || 0)) / 100);
+      const totalComputed = sodItem.crdfd_tongtiencovat ?? (subtotalComputed + vatComputed);
+
+      return {
+        id: sodItem.crdfd_saleorderdetailid || "",
+        stt: sodItem.crdfd_stton || 0,
+        productName: sodItem.crdfd_tensanphamtext || sodItem.crdfd_tensanpham || "",
+        unit: sodItem.crdfd_onvionhang || sodItem.crdfd_donvi || "",
+        quantity: quantity,
+        price: sodItem.crdfd_giagoc || 0,
+        surcharge: sodItem.crdfd_phuphi_hoadon || sodItem.crdfd_phuphi || 0,
+        discount: sodItem.crdfd_chieckhau ? sodItem.crdfd_chieckhau * 100 : 0,
+        discountedPrice: sodItem.crdfd_gia || sodItem.crdfd_giagoc || 0,
+        vat: vatPercent,
+        subtotal: Math.round(subtotalComputed),
+        vatAmount: Math.round(vatComputed),
+        totalAmount: Math.round(totalComputed),
+        approver: sodItem.crdfd_duyetgia || "",
+        deliveryDate: sodItem.crdfd_ngaygiaodukientonghop || "",
+        productCode: productCode,
+        productId: productId,
+        productGroupCode: sodItem.crdfd_manhomsp || undefined,
+      };
+    };
+
     const saleOrders = (response.data.value || []).map((item: any) => {
       // Try different possible field names for ID
       const id = item.crdfd_sale_orderid || item.crdfd_sale_orderid || item.crdfd_sale_order_id || '';
-
 
       // Prefer raw numeric option set value on the preferred field only.
       let rawPaymentTerm: any = item.crdfd_dieu_khoan_thanh_toan ?? null;
@@ -118,6 +198,9 @@ export default async function handler(
 
       // Ensure we return a normalized key where possible (e.g., '0','14','283640005', etc.)
       const normalizedPaymentTerm = normalizePaymentTerm(rawPaymentTerm) || rawPaymentTerm || "";
+
+      // Map SOD từ expanded relationship
+      const saleOrderDetails = (item[expandRelationship] || []).map(mapSaleOrderDetail);
 
       return {
         crdfd_sale_orderid: id,
@@ -138,6 +221,10 @@ export default async function handler(
           null,
         crdfd_tongtien: item.crdfd_tongtien || 0, // Raw total amount field
         createdon: item.createdon || item.createdon || item.CreatedOn || item.created_on, // Creation date for business logic
+        // Include SOD trong response
+        details: saleOrderDetails,
+        // Giữ backward compatibility với format cũ (nếu frontend đã dùng)
+        crdfd_SaleOrderDetail_SOcode_crdfd_Sale_O: saleOrderDetails,
       };
     });
 
