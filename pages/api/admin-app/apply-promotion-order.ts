@@ -163,10 +163,13 @@ export default async function handler(
           if (!effectiveVndOrPercent) {
             effectiveVndOrPercent = promoData.crdfd_vn;
           }
-          if (!effectiveProductCodes && promoData.crdfd_masanpham_multiple) {
+          // FIX 1: Properly check for empty/whitespace product codes before fetching from CRM
+          const hasEffectiveProductCodes = effectiveProductCodes && String(effectiveProductCodes).trim() !== '';
+          if (!hasEffectiveProductCodes && promoData?.crdfd_masanpham_multiple) {
             effectiveProductCodes = promoData.crdfd_masanpham_multiple;
           }
-          if (!effectiveProductGroupCodes && promoData.cr1bb_manhomsp_multiple) {
+          const hasEffectiveProductGroupCodes = effectiveProductGroupCodes && String(effectiveProductGroupCodes).trim() !== '';
+          if (!hasEffectiveProductGroupCodes && promoData?.cr1bb_manhomsp_multiple) {
             effectiveProductGroupCodes = promoData.cr1bb_manhomsp_multiple;
           }
           // promoData may include applicable payment terms (multi-select); keep it available
@@ -175,6 +178,55 @@ export default async function handler(
       } catch (err) {
         console.warn('[ApplyPromotion] Could not fetch promotion details to enrich request (pre-create):', (err as any)?.message || err);
       }
+    }
+
+    // FIX 2: KIỂM TRA - Nếu CK2 = true nhưng không có product/group filter → REJECT
+    if (effectiveChietKhau2) {
+      console.log('[ApplyPromotion] CK2 Validation - Step 1: Initial check', {
+        effectiveProductCodes,
+        effectiveProductGroupCodes,
+        promoData_crdfd_masanpham_multiple: promoData?.crdfd_masanpham_multiple,
+        promoData_cr1bb_manhomsp_multiple: promoData?.cr1bb_manhomsp_multiple
+      });
+
+      const hasProductFilter = effectiveProductCodes && String(effectiveProductCodes).trim() !== '';
+      const hasGroupFilter = effectiveProductGroupCodes && String(effectiveProductGroupCodes).trim() !== '';
+
+      console.log('[ApplyPromotion] CK2 Validation - Step 2: Before CRM fetch', {
+        hasProductFilter,
+        hasGroupFilter
+      });
+
+      // Lấy từ CRM nếu frontend không gửi
+      if (!hasProductFilter && promoData?.crdfd_masanpham_multiple) {
+        effectiveProductCodes = promoData.crdfd_masanpham_multiple;
+        console.log('[ApplyPromotion] CK2 Validation - Fetched product codes from CRM:', effectiveProductCodes);
+      }
+      if (!hasGroupFilter && promoData?.cr1bb_manhomsp_multiple) {
+        effectiveProductGroupCodes = promoData.cr1bb_manhomsp_multiple;
+        console.log('[ApplyPromotion] CK2 Validation - Fetched group codes from CRM:', effectiveProductGroupCodes);
+      }
+
+      // Re-check sau khi lấy từ CRM
+      const finalHasProductFilter = effectiveProductCodes && String(effectiveProductCodes).trim() !== '';
+      const finalHasGroupFilter = effectiveProductGroupCodes && String(effectiveProductGroupCodes).trim() !== '';
+
+      console.log('[ApplyPromotion] CK2 Validation - Step 3: After CRM fetch', {
+        finalHasProductFilter,
+        finalHasGroupFilter,
+        effectiveProductCodes_length: effectiveProductCodes ? String(effectiveProductCodes).length : 0,
+        effectiveProductGroupCodes_length: effectiveProductGroupCodes ? String(effectiveProductGroupCodes).length : 0
+      });
+
+      if (!finalHasProductFilter && !finalHasGroupFilter) {
+        console.error('[ApplyPromotion] CK2 Validation FAILED - No product or group filters found');
+        return res.status(400).json({
+          error: 'Promotion chiết khấu 2 yêu cầu phải có danh sách sản phẩm hoặc nhóm sản phẩm áp dụng',
+          detail: 'Promotion CK2 phải có crdfd_masanpham_multiple hoặc cr1bb_manhomsp_multiple từ CRM'
+        });
+      }
+
+      console.log('[ApplyPromotion] ✓ CK2 Validation PASSED - Product/group filters are present');
     }
 
     // Special-case promotions: force apply as line-level discount (pre-VAT) for known promotion names
@@ -272,51 +324,50 @@ export default async function handler(
       });
     }
 
-    // Nếu đã có record, reuse và không tạo mới
+    // Khai báo createdOrderXPromotionId trước để có thể reuse hoặc tạo mới
+    let createdOrderXPromotionId: string | undefined;
+
+    // Nếu đã có record, reuse và vẫn chạy CK2 logic cho SODs
     if (existingOrderXPromotionId) {
       console.log(`[ApplyPromotion] Reusing existing Orders x Promotion: ${existingOrderXPromotionId}`);
-      return res.status(200).json({
-        success: true,
-        message: 'Promotion đã được áp dụng trước đó',
-        orderXPromotionId: existingOrderXPromotionId,
-        reused: true,
-      });
-    }
-
-    // Extra safety: re-check total before creating Orders x Promotion using UI-provided total
-    try {
-      if (promoData && promoData.cr1bb_tongtienapdung !== null && promoData.cr1bb_tongtienapdung !== undefined) {
-        const minTotalSafety = Number(promoData.cr1bb_tongtienapdung) || 0;
-        if (minTotalSafety > 0) {
-          const uiTotalRaw = req.body.orderTotal ?? req.body.uiTotal ?? req.body.totalAmount ?? req.body.crdfd_tongtien;
-          if (uiTotalRaw === null || uiTotalRaw === undefined || uiTotalRaw === "") {
-            return res.status(400).json({ error: `Missing order total from UI to validate promotion minimum (safety check).` });
-          }
-          const uiTotalNum = typeof uiTotalRaw === "number"
-            ? uiTotalRaw
-            : Number(String(uiTotalRaw).replace(/[^\d.-]+/g, ""));
-          if (isNaN(uiTotalNum)) {
-            return res.status(400).json({ error: "Invalid order total provided from UI for promotion safety validation." });
-          }
-          if (uiTotalNum < minTotalSafety) {
-            return res.status(400).json({ error: `Promotion \"${promotionName}\" không được áp dụng vì đơn hàng chưa đạt điều kiện tổng tiền.` });
+      createdOrderXPromotionId = existingOrderXPromotionId;
+      // KHÔNG return ở đây - tiếp tục chạy CK2 logic
+    } else {
+      // Extra safety: re-check total before creating Orders x Promotion using UI-provided total
+      try {
+        if (promoData && promoData.cr1bb_tongtienapdung !== null && promoData.cr1bb_tongtienapdung !== undefined) {
+          const minTotalSafety = Number(promoData.cr1bb_tongtienapdung) || 0;
+          if (minTotalSafety > 0) {
+            const uiTotalRaw = req.body.orderTotal ?? req.body.uiTotal ?? req.body.totalAmount ?? req.body.crdfd_tongtien;
+            if (uiTotalRaw === null || uiTotalRaw === undefined || uiTotalRaw === "") {
+              return res.status(400).json({ error: `Missing order total from UI to validate promotion minimum (safety check).` });
+            }
+            const uiTotalNum = typeof uiTotalRaw === "number"
+              ? uiTotalRaw
+              : Number(String(uiTotalRaw).replace(/[^\d.-]+/g, ""));
+            if (isNaN(uiTotalNum)) {
+              return res.status(400).json({ error: "Invalid order total provided from UI for promotion safety validation." });
+            }
+            if (uiTotalNum < minTotalSafety) {
+              return res.status(400).json({ error: `Promotion \"${promotionName}\" không được áp dụng vì đơn hàng chưa đạt điều kiện tổng tiền.` });
+            }
           }
         }
+      } catch (err: any) {
+        console.error('[ApplyPromotion] Safety total re-check failed, aborting apply:', err?.message || err, err?.response?.data);
+        return res.status(500).json({ error: "Lỗi khi kiểm tra lại tổng tiền đơn hàng trước khi áp dụng promotion" });
       }
-    } catch (err: any) {
-      console.error('[ApplyPromotion] Safety total re-check failed, aborting apply:', err?.message || err, err?.response?.data);
-      return res.status(500).json({ error: "Lỗi khi kiểm tra lại tổng tiền đơn hàng trước khi áp dụng promotion" });
-    }
 
-    const createOrderXPromotionEndpoint = `${BASE_URL}${ORDERS_X_PROMOTION_TABLE}`;
-    const createResponse = await axios.post(
-      createOrderXPromotionEndpoint,
-      ordersXPromotionPayload,
-      { headers }
-    );
-    // Get the created record ID from response headers
-    const createdOrderXPromotionId = createResponse.headers["odata-entityid"]
-      ?.match(/\(([^)]+)\)/)?.[1];
+      const createOrderXPromotionEndpoint = `${BASE_URL}${ORDERS_X_PROMOTION_TABLE}`;
+      const createResponse = await axios.post(
+        createOrderXPromotionEndpoint,
+        ordersXPromotionPayload,
+        { headers }
+      );
+      // Get the created record ID from response headers
+      createdOrderXPromotionId = createResponse.headers["odata-entityid"]
+        ?.match(/\(([^)]+)\)/)?.[1];
+    }
 
     // 2. Special direct discount promotions - no header updates needed
 
@@ -357,6 +408,14 @@ export default async function handler(
       }
     }
 
+    // DEBUG: Log before entering CK2 condition
+    console.log('[ApplyPromotion] DEBUG CK2 Entry:', {
+      effectiveChietKhau2,
+      isSpecialPromotion,
+      disallowedByPaymentTerms,
+      willEnterCK2: effectiveChietKhau2 && !isSpecialPromotion && !disallowedByPaymentTerms
+    });
+
     if (effectiveChietKhau2 && !isSpecialPromotion && !disallowedByPaymentTerms) {
       try {
         // Lấy danh sách SOD của SO
@@ -374,16 +433,57 @@ export default async function handler(
         const sodList = sodResponse.data.value || [];
 
         // Normalize effective product codes/groups into arrays (trim, remove empties)
-        const productCodeListRaw = effectiveProductCodes
-          ? (Array.isArray(effectiveProductCodes) ? effectiveProductCodes : String(effectiveProductCodes).split(","))
-          : [];
-        const productCodeList = productCodeListRaw.map((c: any) => String(c || '').trim()).filter((c: string) => c !== '');
-        const productGroupCodeListRaw = effectiveProductGroupCodes
-          ? (Array.isArray(effectiveProductGroupCodes) ? effectiveProductGroupCodes : String(effectiveProductGroupCodes).split(","))
-          : [];
-        const productGroupCodeList = productGroupCodeListRaw.map((c: any) => String(c || '').trim()).filter((c: string) => c !== '');
+        // DEBUG: Log input values before processing
+        console.log('[ApplyPromotion] DEBUG Input Values:', {
+          effectiveProductCodes,
+          effectiveProductCodes_type: typeof effectiveProductCodes,
+          effectiveProductGroupCodes,
+          effectiveProductGroupCodes_type: typeof effectiveProductGroupCodes
+        });
+
+        // Parse product codes - support both array and comma-separated string
+        const parseCodeList = (input: any): string[] => {
+          if (!input) return [];
+          if (Array.isArray(input)) {
+            console.log('[ApplyPromotion] parseCodeList: input is array', input);
+            return input.map((c: any) => String(c || '').trim()).filter((c: string) => c !== '');
+          }
+          const str = String(input).trim();
+          if (str === '') return [];
+          console.log('[ApplyPromotion] parseCodeList: input is string', str);
+          // Try JSON parse first (in case CRM returns JSON array string)
+          try {
+            const parsed = JSON.parse(str);
+            if (Array.isArray(parsed)) {
+              console.log('[ApplyPromotion] parseCodeList: parsed JSON array', parsed);
+              return parsed.map((c: any) => String(c || '').trim()).filter((c: string) => c !== '');
+            }
+          } catch {
+            // Not JSON, try comma/semicolon/pipe separator
+          }
+          // Split by common delimiters
+          return str.split(/[,;|\/]+/).map((c: string) => c.trim()).filter((c: string) => c !== '');
+        };
+        const productCodeList = parseCodeList(effectiveProductCodes);
+        const productGroupCodeList = parseCodeList(effectiveProductGroupCodes);
         const productCodeListNorm = productCodeList.map(s => s.toUpperCase());
         const productGroupCodeListNorm = productGroupCodeList.map(s => s.toUpperCase());
+
+        // DEBUG: Log parsed results
+        console.log('[ApplyPromotion] DEBUG Parsed Results:', {
+          productCodeList,
+          productCodeListNorm,
+          productGroupCodeList,
+          productGroupCodeListNorm
+        });
+
+        // DEBUG: Log filter lists
+        console.log('[ApplyPromotion] CK2 Filter Lists:', {
+          productCodeListNorm,
+          productGroupCodeListNorm,
+          effectiveProductCodes,
+          effectiveProductGroupCodes
+        });
 
         const percentCodesForCalc = [OPTION_PERCENT, "%"];
         const effectiveVndOrPercentStr = effectiveVndOrPercent !== undefined && effectiveVndOrPercent !== null ? String(effectiveVndOrPercent).trim() : "";
@@ -400,19 +500,79 @@ export default async function handler(
           }
         }
 
-        // Prepare SODs to update (match by product codes/groups if provided)
+        // FIX 3: Prepare SODs to update - ONLY match products in the filter lists
+        // CK2 should ONLY apply to products that match crdfd_masanpham_multiple or cr1bb_manhomsp_multiple
         const sodsToUpdate: any[] = [];
+        console.log(`[ApplyPromotion] Filtering ${sodList.length} SODs for CK2 application...`);
+
+        // Helper function to normalize product codes for comparison
+        const normalizeCode = (code: string): string => {
+          return String(code || '').trim().toUpperCase().replace(/[\s\-_]/g, '');
+        };
+
+        // Normalize filter lists for better matching
+        const productCodeListNormalized = productCodeListNorm.map(normalizeCode);
+        const productGroupCodeListNormalized = productGroupCodeListNorm.map(normalizeCode);
+
+        // Create Set for fast lookup (exact match only) - OUTSIDE the loop for performance
+        const productCodeSet = new Set(productCodeListNormalized);
+        const productGroupCodeSet = new Set(productGroupCodeListNormalized);
+
+        console.log('[ApplyPromotion] Normalized filter lists:', {
+          original_productCodes: productCodeListNorm,
+          normalized_productCodes: productCodeListNormalized,
+          original_groupCodes: productGroupCodeListNorm,
+          normalized_groupCodes: productGroupCodeListNormalized,
+          productCodeSet: Array.from(productCodeSet),
+          productGroupCodeSet: Array.from(productGroupCodeSet)
+        });
+
         for (const sod of sodList) {
           const sodProductCodeRaw = sod.crdfd_masanpham || '';
           const sodProductGroupCodeRaw = sod.crdfd_manhomsp || '';
           const sodProductCode = String(sodProductCodeRaw).trim().toUpperCase();
           const sodProductGroupCode = String(sodProductGroupCodeRaw).trim().toUpperCase();
-          const matchesProduct = productCodeListNorm.length === 0 || productCodeListNorm.some((code: string) => sodProductCode.includes(code));
-          const matchesGroup = productGroupCodeListNorm.length === 0 || productGroupCodeListNorm.some((code: string) => sodProductGroupCode.includes(code));
-          if (productCodeListNorm.length === 0 && productGroupCodeListNorm.length === 0) {
+          const sodProductCodeNormalized = normalizeCode(sodProductCodeRaw);
+          const sodProductGroupCodeNormalized = normalizeCode(sodProductGroupCodeRaw);
+
+          // DEBUG: Log matching details for each SOD
+          const sodSetHas = productCodeSet.has(sodProductCodeNormalized);
+          const sodIncludesAny = productCodeListNormalized.some((code: string) =>
+            sodProductCodeNormalized.includes(code) && sodProductCodeNormalized.length > code.length
+          );
+          const matchesProduct = productCodeSet.size > 0 && (sodSetHas || sodIncludesAny);
+
+          // DEBUG: Log detailed matching info
+          console.log(`[ApplyPromotion] DEBUG Matching SOD ${sod.crdfd_saleorderdetailid}:`, {
+            product_code_raw: sodProductCodeRaw,
+            product_code_normalized: sodProductCodeNormalized,
+            productCodeSet: Array.from(productCodeSet),
+            sodSetHas,
+            sodIncludesAny,
+            productCodeListNormalized,
+            matchesProduct
+          });
+
+          const matchesGroup = productGroupCodeSet.size > 0 && (
+            productGroupCodeSet.has(sodProductGroupCodeNormalized) ||
+            productGroupCodeListNormalized.some((code: string) => sodProductGroupCodeNormalized.includes(code) && sodProductGroupCodeNormalized.length > code.length)
+          );
+
+          console.log(`[ApplyPromotion] SOD ${sod.crdfd_saleorderdetailid}:`, {
+            product_raw: sodProductCodeRaw,
+            product_normalized: sodProductCodeNormalized,
+            group_raw: sodProductGroupCodeRaw,
+            group_normalized: sodProductGroupCodeNormalized,
+            matchesProduct,
+            matchesGroup
+          });
+
+          // Only add to update list if it matches at least one filter
+          if (matchesProduct || matchesGroup) {
             sodsToUpdate.push(sod);
-          } else if (matchesProduct || matchesGroup) {
-            sodsToUpdate.push(sod);
+            console.log(`[ApplyPromotion] ✓ SOD ${sod.crdfd_saleorderdetailid} WILL receive CK2`);
+          } else {
+            console.log(`[ApplyPromotion] ✗ SOD ${sod.crdfd_saleorderdetailid} SKIPPED (no match)`);
           }
         }
         const updatedSodIds = new Set<string>();
@@ -437,7 +597,12 @@ export default async function handler(
         }
 
         if (updatedSodCount > 0) {
-          await recalculateOrderTotals(soId, headers);
+          try {
+            await recalculateOrderTotals(soId, headers);
+          } catch (recalcErr: any) {
+            // CK2 đã được ghi thành công, lỗi recalc không ảnh hưởng đến kết quả
+            console.warn('[ApplyPromotion] ⚠️ recalculateOrderTotals failed (CK2 đã được ghi):', recalcErr?.message || recalcErr);
+          }
         }
       } catch (err: any) {
         console.warn('[ApplyPromotion] SOD update block failed:', err?.message || err);
@@ -451,11 +616,13 @@ export default async function handler(
     // because header-level discount storage is managed elsewhere or not desired.
     console.log('[ApplyPromotion] Skipping Sale Order header update for crdfd_chietkhau2 per configuration.');
 
+    const isReused = !!existingOrderXPromotionId;
     res.status(200).json({
       success: true,
       ordersXPromotionId: createdOrderXPromotionId,
       updatedSodCount,
-      message: `Đã áp dụng promotion "${promotionName}" cho đơn hàng${chietKhau2 ? ` và cập nhật chiết khấu 2 cho ${updatedSodCount} sản phẩm` : ""}`,
+      reused: isReused,
+      message: `Đã áp dụng promotion "${promotionName}" cho đơn hàng${effectiveChietKhau2 ? ` và cập nhật chiết khấu 2 cho ${updatedSodCount} sản phẩm` : ""}`,
     });
   } catch (error: any) {
     console.error("Error applying promotion order:", error);
@@ -481,19 +648,18 @@ export default async function handler(
  */
 async function recalculateOrderTotals(soId: string, headers: Record<string, string>) {
   try {
-    // Lấy tất cả SOD của đơn hàng
-    const sodFilters = [
-      "statecode eq 0",
-      `_crdfd_madonhang_value eq ${soId}`,
-    ];
-
-    const sodQuery = `$filter=${encodeURIComponent(
-      sodFilters.join(" and ")
-    )}&$select=crdfd_saleorderdetailid,crdfd_giack2,crdfd_vat`;
+    // Fetch all active SODs and filter client-side (CRM filter on lookup field may fail)
+    const sodQuery = `$filter=statecode%20eq%200&$select=crdfd_saleorderdetailid,crdfd_socode,crdfd_giack2,crdfd_vat,crdfd_soluong`;
 
     const sodEndpoint = `${BASE_URL}${SOD_TABLE}?${sodQuery}`;
     const sodResponse = await axios.get(sodEndpoint, { headers });
-    const sodList = sodResponse.data.value || [];
+    const allSods = sodResponse.data.value || [];
+
+    // Filter client-side: chỉ lấy SOD thuộc đơn hàng này
+    const sodList = allSods.filter((sod: any) => {
+      const sodSoCode = String(sod.crdfd_socode || '').trim();
+      return sodSoCode === soId || sodSoCode === soId.toLowerCase();
+    });
 
     // Tính lại tổng
     let totalSubtotal = 0;
@@ -617,11 +783,16 @@ async function updateSodChietKhau2(
   }
 
   const updateEndpoint = `${BASE_URL}${SOD_TABLE}(${sodId})`;
+  console.log('[ApplyPromotion][updateSodChietKhau2] Attempting to write CK2:', {
+    sodId,
+    updatePayload: JSON.stringify(updatePayload).substring(0, 200)
+  });
   try {
     const resp = await axios.patch(updateEndpoint, updatePayload, { headers });
+    console.log('[ApplyPromotion][updateSodChietKhau2] ✅ CK2 written successfully:', sodId, resp.status);
     return { success: true, status: resp.status, data: resp.data || null };
   } catch (err: any) {
-    console.error('[ApplyPromotion][updateSodChietKhau2] failed patch SOD', sodId, err?.response?.data || err?.message || err);
+    console.error('[ApplyPromotion][updateSodChietKhau2] ❌ failed patch SOD', sodId, err?.response?.data || err?.message || err);
     return { success: false, error: err?.response?.data || err?.message || String(err) };
   }
 }
