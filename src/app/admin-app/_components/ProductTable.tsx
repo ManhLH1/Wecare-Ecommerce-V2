@@ -67,6 +67,11 @@ interface ProductTableProps {
   customerIndustry?: number | null;
   onDelete?: (product: ProductTableItem) => void; // Callback khi xóa sản phẩm
   onUpdate?: (product: ProductTableItem) => Promise<void>; // Callback khi update sản phẩm đã lưu
+  /**
+   * Reload lại danh sách từ backend sau khi deactivate detail.
+   * Tại sao: list hiện tại có thể là dữ liệu expand/cache → cần refetch để sync.
+   */
+  onReloadAfterDeactivate?: () => Promise<void> | void;
   soId?: string; // SO ID để update
   warehouseName?: string; // Warehouse name
   isVatOrder?: boolean; // Is VAT order
@@ -188,7 +193,7 @@ async function recalculatePromotionEligibility(
       const promotions = promotionsByCode.get(item.productCode) || [];
 
 
-    // Filter promotions: percent-based và meets total condition
+      // Filter promotions: percent-based và meets total condition
       const candidates = promotions.filter(p => {
         const isPercent = vndCodeEquals(p, 191920000);
         // Xử lý null/undefined/string "null" đúng cách
@@ -355,6 +360,7 @@ function ProductTable({
   customerIndustry,
   onDelete,
   onUpdate,
+  onReloadAfterDeactivate,
   soId,
   warehouseName,
   isVatOrder,
@@ -370,8 +376,9 @@ function ProductTable({
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmingProduct, setConfirmingProduct] = useState<ProductTableItem | null>(null);
   const [deactivating, setDeactivating] = useState(false);
+  const [deletingProductIds, setDeletingProductIds] = useState<Set<string>>(new Set());
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     const productToDelete = products.find((p) => p.id === id);
     if (productToDelete) {
       // If product has been saved to CRM (isSodCreated) ask for confirmation and deactivate first
@@ -381,19 +388,42 @@ function ProductTable({
 
       const performRemoval = async (prod?: ProductTableItem) => {
         try {
-          // Call parent onDelete để handle recalculate promotion và set products
-          // Parent sẽ filter, recalculate và set products mới
-          if (onDelete) {
-            // Parent (SalesOrderBaoGiaForm) sẽ handle filter, recalculate và set products
-            await onDelete(prod || productToDelete);
-            // KHÔNG set products ở đây vì parent đã set rồi qua prop products
-          } else {
-            // Nếu không có onDelete từ parent, tự filter và recalculate ở đây
-            const productsAfterDelete = products.filter((p) => p.id !== id);
-            setProducts(productsAfterDelete);
-            // Nếu không có onDelete từ parent, tự recalculate ở đây
-            setProducts(productsAfterDelete);
+          console.log('[ProductTable][DELETE] Starting deletion for product:', {
+            id,
+            productCode: productToDelete.productCode,
+            isSodCreated: productToDelete.isSodCreated,
+          });
 
+          // Set loading state
+          setDeletingProductIds(prev => {
+            const next = new Set(prev);
+            next.add(id);
+            return next;
+          });
+
+          // LUÔN filter sản phẩm ra khỏi list trước
+          const productsAfterDelete = products.filter((p) => p.id !== id);
+          console.log('[ProductTable][DELETE] Filtered products:', {
+            beforeCount: products.length,
+            afterCount: productsAfterDelete.length,
+          });
+
+          // Set products ngay lập tức để UI responsive
+          setProducts(productsAfterDelete);
+
+          // Sau đó gọi parent onDelete để handle logic bổ sung (inventory release, recalculate promotions, etc.)
+          if (onDelete) {
+            console.log('[ProductTable][DELETE] Calling parent onDelete callback');
+            try {
+              await onDelete(prod || productToDelete);
+              console.log('[ProductTable][DELETE] Parent onDelete completed successfully');
+            } catch (err: any) {
+              console.error('[ProductTable][DELETE] Error in parent onDelete:', err);
+              // Nếu parent onDelete fail, vẫn giữ products đã filter
+            }
+          } else {
+            console.log('[ProductTable][DELETE] No parent onDelete, handling recalculate locally');
+            // Nếu không có onDelete từ parent, tự recalculate ở đây
             // ============================================================
             // QUAN TRỌNG: Recalculate promotion eligibility sau khi xóa sản phẩm
             // Khi xóa sản phẩm, tổng tiền đơn giảm → các items còn lại có thể
@@ -406,7 +436,7 @@ function ProductTable({
                 onRecalculatePromotions(productsAfterDelete).then(recalculated => {
                   setProducts(recalculated);
                 }).catch(err => {
-                  console.warn('[ProductTable][Delete] Error recalculating promotions:', err);
+                  console.warn('[ProductTable][DELETE] Error recalculating promotions:', err);
                   setProducts(productsAfterDelete);
                 });
               } else {
@@ -416,7 +446,10 @@ function ProductTable({
                   customerCode || '',
                   saleOrders
                 ).then(recalculated => {
-                  // Chỉ update nếu có thay đổi (có items được loại bỏ promotion)
+                  // Luôn update products sau khi xóa, dù có thay đổi promotion hay không
+                  setProducts(recalculated);
+
+                  // Log nếu có thay đổi về promotion
                   const hasChanges = recalculated.some((p, idx) => {
                     const original = productsAfterDelete[idx];
                     return original && (
@@ -430,22 +463,31 @@ function ProductTable({
                       productCodeDeleted: productToDelete.productCode,
                       hasPromotionChanges: true,
                     });
-                    setProducts(recalculated);
                   }
                 }).catch(err => {
                   console.warn('[ProductTable][DELETE] Error recalculating promotions after delete:', err);
+                  // Nếu có lỗi recalculate, vẫn set products đã filter (không có promotion changes)
+                  setProducts(productsAfterDelete);
                 });
               }
             }
           }
         } catch (err: any) {
-          console.warn('Error in performRemoval:', err);
+          console.error('[ProductTable][DELETE] Error in performRemoval:', err);
+        } finally {
+          // Clear loading state
+          setDeletingProductIds(prev => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+          console.log('[ProductTable][DELETE] Deletion completed, loading state cleared');
         }
       };
 
       if (!isSaved) {
-        // Unsaved products: remove immediately without confirmation
-        performRemoval();
+        // Unsaved products: remove with loading state
+        await performRemoval();
         return;
       }
       // Saved products: show custom confirmation modal
@@ -470,7 +512,7 @@ function ProductTable({
     const discountPercent = product.discountPercent || 0;
     const discountAmount = basePrice * (discountPercent / 100);
     const discountedPriceCalc = basePrice - discountAmount;
-    
+
     // Tính subtotal từ discountedPriceCalc (KHÔNG có surcharge)
     const newSubtotal = Math.round(newQuantity * discountedPriceCalc);
     const newVatAmount = Math.round((newSubtotal * product.vat) / 100);
@@ -514,11 +556,11 @@ function ProductTable({
         const recalculatedProducts = onRecalculatePromotions
           ? await onRecalculatePromotions(productsWithNewQty)
           : await recalculatePromotionEligibility(
-              productsWithNewQty,
-              soId,
-              customerCode || '',
-              saleOrders
-            );
+            productsWithNewQty,
+            soId,
+            customerCode || '',
+            saleOrders
+          );
         setProducts(recalculatedProducts);
       } catch (err) {
         console.warn('[ProductTable][QuantityChange] Error recalculating promotions:', err);
@@ -605,7 +647,15 @@ function ProductTable({
 
   const handleConfirmModalYes = async () => {
     if (!confirmingProduct) return;
+
+    // Set loading state
+    setDeletingProductIds(prev => {
+      const next = new Set(prev);
+      next.add(confirmingProduct.id);
+      return next;
+    });
     setDeactivating(true);
+
     try {
       const apiEndpoint = isSOBG ? '/api/admin-app/deactivate-sobg-detail' : '/api/admin-app/deactivate-sale-order-detail';
       const resp = await fetch(apiEndpoint, {
@@ -636,10 +686,23 @@ function ProductTable({
           setProducts(products.filter(p => p.id !== confirmingProduct.id));
         }
       }
+
+      // Reload lại danh sách từ backend để đảm bảo sync (đặc biệt khi list đang dùng expand/cache)
+      try {
+        await onReloadAfterDeactivate?.();
+      } catch (err) {
+        console.warn('[ProductTable] Reload after deactivate failed:', err);
+      }
     } catch (err: any) {
       console.error('Error deactivating product:', err);
       showToast.error(err?.message || 'Lỗi khi vô hiệu hoá sản phẩm');
     } finally {
+      // Clear loading state
+      setDeletingProductIds(prev => {
+        const next = new Set(prev);
+        next.delete(confirmingProduct.id);
+        return next;
+      });
       setDeactivating(false);
       setShowConfirmModal(false);
       setConfirmingProduct(null);
@@ -899,8 +962,13 @@ function ProductTable({
                           className="admin-app-delete-btn-compact"
                           onClick={() => handleDelete(product.id)}
                           title="Xóa"
+                          disabled={deletingProductIds.has(product.id)}
+                          style={{
+                            cursor: deletingProductIds.has(product.id) ? 'not-allowed' : 'pointer',
+                            opacity: deletingProductIds.has(product.id) ? 0.6 : 1,
+                          }}
                         >
-                          ×
+                          {deletingProductIds.has(product.id) ? '...' : '×'}
                         </button>
                       </div>
                     </td>

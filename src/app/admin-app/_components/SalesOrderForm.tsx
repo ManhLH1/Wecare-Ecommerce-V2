@@ -354,6 +354,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const [customerSearch, setCustomerSearch] = useState('');
   const [so, setSo] = useState('');
   const [soId, setSoId] = useState('');
+  // Dùng để force reload details ngay cả khi user chọn lại đúng cùng 1 SO (soId không đổi)
+  const [soReloadSeq, setSoReloadSeq] = useState(0);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
@@ -571,11 +573,11 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           (currentSo as any)?.details ??
           (currentSo as any)?.crdfd_SaleOrderDetail_SOcode_crdfd_Sale_O;
 
-        // Ưu tiên dùng details đã expand; chỉ fallback gọi API details nếu backend không trả kèm.
-        const details: SaleOrderDetail[] =
-          Array.isArray(expandedDetails)
-            ? expandedDetails
-            : await fetchSaleOrderDetails(soId);
+        // Nếu user vừa chọn lại SO (soReloadSeq thay đổi), luôn gọi API để lấy record mới.
+        const shouldForceRefetch = soReloadSeq > 0;
+        const details: SaleOrderDetail[] = shouldForceRefetch
+          ? await fetchSaleOrderDetails(soId)
+          : (Array.isArray(expandedDetails) ? expandedDetails : await fetchSaleOrderDetails(soId));
 
         const normalizeApproveNote = (note: string | undefined, approverId: string | undefined) => {
           const rawNote = note || '';
@@ -667,7 +669,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     };
 
     loadSaleOrderDetails();
-  }, [soId, customerId, soLoading, saleOrders]);
+  }, [soId, soReloadSeq, customerId, soLoading, saleOrders]);
 
   // NOTE: promotion-orders API should only be called when user explicitly requests promotions
   // (on Save or when clicking the special promotions button). The previous auto-fetch
@@ -2653,6 +2655,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
                   value={soId}
                   onChange={(value, option) => {
                     setSoId(value);
+                    setSoReloadSeq((v) => v + 1);
                     setSo(option?.label || '');
                     // Clear các selected khi đổi SO
                     clearFormOnSoChange();
@@ -2840,6 +2843,77 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           customerCode={customerCode}
           paymentTerms={selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan}
           saleOrders={saleOrders}
+          onReloadAfterDeactivate={async () => {
+            if (!soId) return;
+            setIsLoadingDetails(true);
+            try {
+              const details = await fetchSaleOrderDetails(soId);
+              const mappedProducts: ProductTableItem[] = details.map((detail: SaleOrderDetail) => {
+                const subtotal = (detail.discountedPrice || detail.price) * detail.quantity;
+                const vatAmount = (subtotal * detail.vat) / 100;
+                return {
+                  id: detail.id,
+                  stt: detail.stt,
+                  productCode: detail.productCode,
+                  productId: detail.productId,
+                  productGroupCode: detail.productGroupCode,
+                  productName: detail.productName,
+                  discount2: (() => {
+                    const raw =
+                      (detail as any).crdfd_chieckhau2 ??
+                      (detail as any).crdfd_chietkhau2 ??
+                      (detail as any).chietKhau2 ??
+                      (detail as any).discount2 ??
+                      0;
+                    const num = Number(raw) || 0;
+                    if (num > 0 && num < 0.05) return Math.round(num * 1000) / 10;
+                    if (num > 0 && num <= 1) return Math.round(num * 100) / 100;
+                    return Math.round(num * 10) / 10;
+                  })(),
+                  discount2Enabled: Boolean(
+                    (detail as any).crdfd_chieckhau2 ??
+                      (detail as any).crdfd_chietkhau2 ??
+                      (detail as any).chietKhau2 ??
+                      (detail as any).discount2
+                  ),
+                  unit: detail.unit,
+                  quantity: detail.quantity,
+                  price: detail.price,
+                  priceNoVat: null,
+                  surcharge: detail.surcharge,
+                  discount: detail.discount,
+                  discountedPrice: detail.discountedPrice,
+                  vat: detail.vat,
+                  subtotal,
+                  vatAmount,
+                  totalAmount: detail.totalAmount ?? (subtotal + vatAmount),
+                  approver: detail.approver,
+                  deliveryDate: detail.deliveryDate || '',
+                  warehouse: warehouse,
+                  note: detail.note,
+                  approvePrice: detail.approvePrice,
+                  approveSupPrice: detail.approveSupPrice,
+                  discountPercent: detail.discountPercent,
+                  discountAmount: detail.discountAmount,
+                  discountRate: detail.discountRate,
+                  promotionText: detail.promotionText,
+                  promotionId: detail.promotionId,
+                  eligibleForPromotion:
+                    (detail.discountPercent ?? 0) > 0 || (detail.discountAmount ?? 0) > 0 || Boolean(detail.promotionId),
+                  invoiceSurcharge: detail.invoiceSurcharge,
+                  isSodCreated: true,
+                  isModified: false,
+                  originalQuantity: detail.quantity,
+                };
+              });
+              mappedProducts.sort((a, b) => (b.stt || 0) - (a.stt || 0));
+              setProductList(mappedProducts);
+            } catch (err) {
+              console.warn('[SalesOrderForm] Reload SOD details after deactivate failed:', err);
+            } finally {
+              setIsLoadingDetails(false);
+            }
+          }}
           onDelete={async (product) => {
             // Giải phóng hàng khi xóa sản phẩm (chỉ cho sản phẩm chưa được save vào CRM)
             if (!product.isSodCreated && product.productCode && product.warehouse && product.quantity > 0) {

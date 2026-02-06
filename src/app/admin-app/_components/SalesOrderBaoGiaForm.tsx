@@ -71,6 +71,8 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   const [customerRegion, setCustomerRegion] = useState<string>('');
   const [so, setSo] = useState('');
   const [soId, setSoId] = useState('');
+  // Dùng để force reload details ngay cả khi user chọn lại đúng cùng 1 SOBG (soId không đổi)
+  const [soReloadSeq, setSoReloadSeq] = useState(0);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
@@ -306,11 +308,11 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           (currentSo as any)?.details ??
           (currentSo as any)?.crdfd_sodbaogia_Maonhang_crdfd_sobaogia;
 
-        // Ưu tiên dùng details đã expand; chỉ fallback gọi API details nếu backend không trả kèm.
-        const details: SaleOrderDetail[] =
-          Array.isArray(expandedDetails)
-            ? expandedDetails
-            : await fetchSOBGDetails(soId, customerId);
+        // Nếu user vừa chọn lại SOBG (soReloadSeq thay đổi), luôn gọi API để lấy record mới.
+        const shouldForceRefetch = soReloadSeq > 0;
+        const details: SaleOrderDetail[] = shouldForceRefetch
+          ? await fetchSOBGDetails(soId, customerId)
+          : (Array.isArray(expandedDetails) ? expandedDetails : await fetchSOBGDetails(soId, customerId));
 
         // Map SaleOrderDetail to ProductItem
         const mappedProducts: ProductItem[] = details.map((detail: SaleOrderDetail) => {
@@ -378,7 +380,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     };
 
     loadSOBGDetails();
-  }, [soId, customerId, soLoading, soBaoGiaList]);
+  }, [soId, soReloadSeq, customerId, soLoading, soBaoGiaList]);
 
   // ============================================================
   // Hàm recalculate promotion eligibility cho TẤT CẢ items
@@ -1428,7 +1430,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           promotionName: promo.name,
           promotionValue: promo.value,
           vndOrPercent: promo.vndOrPercent,
-          chietKhau2: promo.chietKhau2 === 191920001,
+          chietKhau2: promo.chietKhau2 === 191920001 || String(promo.chietKhau2).toLowerCase() === 'true',
           productCodes: promo.productCodes,
           productGroupCodes: promo.productGroupCodes,
           orderTotal: currentOrderTotal, // pass UI-calculated total for server-side re-check
@@ -1818,6 +1820,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
                   value={soId}
                   onChange={(value, option) => {
                     setSoId(value);
+                    setSoReloadSeq((v) => v + 1);
                     setSo(option?.label || '');
                     // Clear các selected khi đổi SOBG
                     clearFormOnSoChange();
@@ -1947,6 +1950,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           soId={soId}
           warehouseName={warehouse}
           isVatOrder={!isNonVatSelected}
+          onReloadAfterDeactivate={handleRefreshSOBGDetails}
           onUpdate={handleUpdateProduct} // Inline Edit Support
           invoiceType={selectedSo?.loaiHoaDon} // Pass invoiceType for surcharge column
           vatChoice={selectedSo?.vat} // Pass vatChoice for surcharge column
@@ -1968,7 +1972,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           onDelete={async (product) => {
             // Logic xóa
             const newList = productList.filter(p => p.id !== product.id);
-            
+
             // ============================================================
             // QUAN TRỌNG: Recalculate promotion eligibility sau khi xóa sản phẩm
             // Khi xóa sản phẩm, tổng tiền đơn giảm → các items còn lại có thể

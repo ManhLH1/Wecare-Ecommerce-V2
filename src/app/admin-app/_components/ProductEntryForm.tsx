@@ -132,30 +132,7 @@ const preloadCommonProductData = async (customerCode?: string, vatText?: string,
     // Preload data for top products in background
     const preloadPromises = topProducts.slice(0, 5).map(async (productCode: string) => {
       try {
-        // Preload inventory for default warehouse (will be cached)
-        const warehouses = JSON.parse(localStorage.getItem('wecare_warehouses') || '[]');
-        const defaultWarehouse = warehouses.find((w: any) => w.crdfd_name?.toLowerCase().includes('hồ chí minh'))?.crdfd_khowecareid;
-
-        if (defaultWarehouse) {
-          // Preload inventory data
-          const [inventoryResult, khoBinhDinhResult] = await Promise.all([
-            fetchInventory(productCode, defaultWarehouse, false),
-            fetchInventory(productCode, defaultWarehouse, true)
-          ]);
-
-          const cacheKey = `inventory-${productCode}-${defaultWarehouse}-${vatText || ''}-${false}`;
-          productDataCache.set(cacheKey, {
-            inventoryResult,
-            khoBinhDinhResult,
-            theoretical: (vatText?.toLowerCase().includes('có vat') ? khoBinhDinhResult?.theoreticalStock : inventoryResult?.theoreticalStock) || 0,
-            reserved: (vatText?.toLowerCase().includes('có vat') ? khoBinhDinhResult?.reservedQuantity : inventoryResult?.reservedQuantity) || 0,
-            available: (vatText?.toLowerCase().includes('có vat') ? khoBinhDinhResult?.availableToSell : inventoryResult?.availableToSell) ||
-                     ((vatText?.toLowerCase().includes('có vat') ? khoBinhDinhResult?.theoreticalStock : inventoryResult?.theoreticalStock) || 0) -
-                     ((vatText?.toLowerCase().includes('có vat') ? khoBinhDinhResult?.reservedQuantity : inventoryResult?.reservedQuantity) || 0),
-            bypassWarning: ''
-          });
-        }
-
+        // Chỉ preload PRICE, KHÔNG cache tồn kho để mỗi lần chọn sản phẩm luôn gọi API inventory mới nhất.
         // Preload price data
         const priceResult = await fetchProductPrice(productCode, customerCode, undefined, undefined, undefined);
         const priceCacheKey = `price-${productCode}::${customerCode}::${vatPercent || 0}::${vatText || ''}::0::`;
@@ -462,6 +439,13 @@ function ProductEntryForm({
   const isCriticalDataLoading = useMemo(() => {
     return priceLoading || inventoryLoading || (promotionLoading && enablePromotionAutoFetch);
   }, [priceLoading, inventoryLoading, promotionLoading, enablePromotionAutoFetch]);
+
+  // Ngày giao trên UI đang lưu dạng dd/mm/yyyy (được auto-calc). Thiếu ngày giao => không cho add.
+  const hasValidDeliveryDate = useMemo(() => {
+    const trimmed = (deliveryDate || '').trim();
+    if (!trimmed) return false;
+    return /^\d{2}\/\d{2}\/\d{4}$/.test(trimmed);
+  }, [deliveryDate]);
 
   // Đơn hàng gấp chỉ được bật khi tồn kho >= số lượng và số lượng != null
   const isUrgentOrderDisabled = useMemo(() => {
@@ -1043,6 +1027,24 @@ function ProductEntryForm({
       return true;
     }
 
+    // Bắt buộc: có sản phẩm + kho (cả text và id) trước khi cho add
+    if (!selectedProductCode) {
+      return true;
+    }
+    if (!warehouse || !warehouseId) {
+      return true;
+    }
+
+    // Bắt buộc: đã load được tồn kho để tính ngày giao/giữ hàng
+    if (inventoryLoading || !inventoryLoaded) {
+      return true;
+    }
+
+    // Bắt buộc: phải có ngày giao (auto-calc theo leadtime)
+    if (!hasValidDeliveryDate) {
+      return true;
+    }
+
     // Duyệt giá => bắt buộc chọn Người duyệt
     if (approvePrice && !approver) {
       return true;
@@ -1159,9 +1161,13 @@ function ProductEntryForm({
     isFormDisabled,
     approvePrice,
     approver,
+    hasValidDeliveryDate,
+    inventoryLoading,
+    inventoryLoaded,
     quantity,
     price,
     selectedProduct,
+    selectedProductCode,
     selectedProductGroupCode,
     customerName,
     orderType,
@@ -1169,6 +1175,7 @@ function ProductEntryForm({
     vatText,
     vatPercent,
     warehouse,
+    warehouseId,
     inventoryTheoretical,
     getRequestedBaseQuantity,
     priceLoading, // Thêm priceLoading vào dependency để đảm bảo buttonsDisabled được tính lại khi đang load giá
@@ -1189,6 +1196,26 @@ function ProductEntryForm({
     if (isCriticalDataLoading) {
       const reason = 'Đang tải dữ liệu sản phẩm...';
       return reason;
+    }
+
+    if (!selectedProductCode) {
+      return 'Vui lòng chọn sản phẩm';
+    }
+
+    if (!warehouse || !warehouseId) {
+      return 'Vui lòng chọn kho';
+    }
+
+    if (inventoryLoading) {
+      return 'Đang tải tồn kho...';
+    }
+
+    if (!inventoryLoaded) {
+      return 'Chưa tải được tồn kho';
+    }
+
+    if (!hasValidDeliveryDate) {
+      return 'Chưa tính được ngày giao';
     }
 
     // Duyệt giá => bắt buộc chọn Người duyệt
@@ -1291,10 +1318,14 @@ function ProductEntryForm({
     isCriticalDataLoading,
     approvePrice,
     approver,
+    hasValidDeliveryDate,
+    inventoryLoading,
+    inventoryLoaded,
     selectedProductCode,
     selectedProductGroupCode,
     customerName,
     warehouse,
+    warehouseId,
     quantity,
     priceWarningMessage,
     vatText,
@@ -1426,7 +1457,16 @@ function ProductEntryForm({
   // Load inventory when product code & warehouse change, or when refresh key changes
   useEffect(() => {
     loadInventory();
-  }, [selectedProductCode, warehouse, vatText, vatPercent, setStockQuantity, shouldBypassInventoryCheck, selectedProductGroupCode, inventoryRefreshKey]);
+  }, [
+    selectedProductCode,
+    warehouseId, // QUAN TRỌNG: loadInventory() dùng warehouseId để fetch, nên cần trigger khi warehouseId được auto-sync
+    warehouse,
+    vatText,
+    vatPercent,
+    shouldBypassInventoryCheck,
+    selectedProductGroupCode,
+    inventoryRefreshKey,
+  ]);
 
   // Expose reload function to parent via window object (temporary solution)
   useEffect(() => {
@@ -2232,6 +2272,20 @@ function ProductEntryForm({
 
     setIsProcessingAdd(true);
     try {
+      // Guard: phải có tồn kho + ngày giao trước khi add
+      if (!warehouse || !warehouseId) {
+        showToast.warning('Vui lòng chọn kho trước');
+        return;
+      }
+      if (inventoryLoading || !inventoryLoaded) {
+        showToast.warning('Chưa tải được tồn kho. Vui lòng đợi hoặc reload tồn kho.');
+        return;
+      }
+      if (!hasValidDeliveryDate) {
+        showToast.warning('Chưa tính được ngày giao. Vui lòng đợi hệ thống tính leadtime.');
+        return;
+      }
+
       const ok = await checkInventoryBeforeAction();
       if (!ok) {
         setIsProcessingAdd(false);
@@ -3256,6 +3310,8 @@ function ProductEntryForm({
                 userSelectedUnitRef.current = false; // Reset khi chọn sản phẩm mới
                 userHasManuallySelectedUnitRef.current = false;
                 hasSetUnitFromApiRef.current = false; // Reset khi chọn sản phẩm mới
+                // Mỗi lần chọn sản phẩm mới → force reload tồn kho để luôn lấy dữ liệu mới nhất
+                setInventoryRefreshKey(prev => prev + 1);
               }}
               placeholder={isFormDisabled ? "Chọn khách hàng & SO trước" : "Tìm theo mã / tên sản phẩm..."}
               loading={productsLoading}

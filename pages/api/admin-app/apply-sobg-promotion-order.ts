@@ -120,9 +120,9 @@ export default async function handler(
           if (!currentTotal || currentTotal === 0) {
             const sodFilters = [
               "statecode eq 0",
-              `_crdfd_sobaogia_value eq ${sobgId}`,
+              `_crdfd_maonhang_value eq ${sobgId}`,
             ];
-            const sodQuery = `$filter=${encodeURIComponent(sodFilters.join(" and "))}&$select=crdfd_ongia,crdfd_soluong,crdfd_vat,crdfd_thue`;
+            const sodQuery = `$filter=${encodeURIComponent(sodFilters.join(" and "))}&$select=crdfd_ongia,crdfd_soluong`;
             const sodEndpoint = `${BASE_URL}${SOBG_DETAIL_TABLE}?${sodQuery}`;
             const sodResponse = await axios.get(sodEndpoint, { headers });
             const sodList = sodResponse.data.value || [];
@@ -130,11 +130,9 @@ export default async function handler(
             currentTotal = 0;
             for (const sod of sodList) {
               const quantity = Number(sod.crdfd_soluong) || 0;
-              const unitPrice = Number(sod.crdfd_ongia) || 0; // Use gia (display price)
-              const vatPercent = Number(sod.crdfd_vat) || Number(sod.crdfd_thue) || 0; // VAT percentage
+              const unitPrice = Number(sod.crdfd_ongia) || 0; // Use gia (display price)    
               const lineSubtotal = unitPrice * quantity;
-              const lineVat = (lineSubtotal * vatPercent) / 100;
-              currentTotal += lineSubtotal + lineVat;
+              currentTotal += lineSubtotal;
             }
           }
 
@@ -171,8 +169,8 @@ export default async function handler(
       "crdfd_Promotion@odata.bind": `/crdfd_promotions(${promotionId})`,
       crdfd_type: "Order",
       crdfd_loai: loai,
-      // NOTE: crdfd_chieckhau2 is NOT a field on crdfd_sobaogiaxpromotions in CRM metadata.
-      // The SOD (crdfd_sodbaogias) records will receive crdfd_chieckhau2 when applying chiết khấu 2.
+      // NOTE: crdfd_chietkhau2 is NOT a field on crdfd_sobaogiaxpromotions in CRM metadata.
+      // The SOD (crdfd_sodbaogias) records will receive crdfd_chietkhau2 when applying chiết khấu 2.
       statecode: 0, // Active
     };
 
@@ -183,9 +181,9 @@ export default async function handler(
         if (minTotalCheck > 0) {
           const sodFiltersCheck = [
             "statecode eq 0",
-            `_crdfd_sobaogia_value eq ${sobgId}`,
+            `_crdfd_maonhang_value eq ${sobgId}`,
           ];
-          const sodQueryCheck = `$filter=${encodeURIComponent(sodFiltersCheck.join(" and "))}&$select=crdfd_ongia,crdfd_soluong,crdfd_vat,crdfd_thue`;
+          const sodQueryCheck = `$filter=${encodeURIComponent(sodFiltersCheck.join(" and "))}&$select=crdfd_ongia,crdfd_soluong`;
           const sodEndpointCheck = `${BASE_URL}${SOBG_DETAIL_TABLE}?${sodQueryCheck}`;
           const sodRespCheck = await axios.get(sodEndpointCheck, { headers });
           const sodListCheck = sodRespCheck.data.value || [];
@@ -193,10 +191,8 @@ export default async function handler(
           for (const sod of sodListCheck) {
             const quantity = Number(sod.crdfd_soluong) || 0;
             const unitPrice = Number(sod.crdfd_ongia) || 0;
-            const vatPercent = Number(sod.crdfd_vat) || Number(sod.crdfd_thue) || 0;
             const lineSubtotal = unitPrice * quantity;
-            const lineVat = (lineSubtotal * vatPercent) / 100;
-            currentTotalCheck += lineSubtotal + lineVat;
+            currentTotalCheck += lineSubtotal;
           }
           if (currentTotalCheck < minTotalCheck) {
             return res.status(400).json({ error: `Promotion \"${promotionName}\" không được áp dụng vì SOBG chưa đạt điều kiện tổng tiền.` });
@@ -236,41 +232,64 @@ export default async function handler(
       // If creation/check fails, continue — later logic depends on createdOrderXPromotionId possibly undefined
     }
 
-    // If chietKhau2 flag not provided or false in request, try to fetch promotion record to determine real flag/value/product filters
+    // CRITICAL FIX: ALWAYS fetch promotion details when ANY parameter is missing
+    // This ensures CK2 is properly detected even when called from save-sobg-details.ts with null params
     let effectiveChietKhau2 = Boolean(chietKhau2);
     let effectivePromotionValue = promotionValue;
     let effectiveVndOrPercent = vndOrPercent;
     let effectiveProductCodes = productCodes;
     let effectiveProductGroupCodes = productGroupCodes;
 
-    // Re-use promoData from validation if needed
-    if ((!effectiveChietKhau2 || !effectiveProductCodes) && !promoData) {
+    // Force fetch if ANY critical parameter is missing (not just when chietKhau2 is false)
+    const needsFetch = !promoData ||
+      chietKhau2 === null || chietKhau2 === undefined ||
+      !promotionValue ||
+      !vndOrPercent ||
+      !productCodes;
+
+    if (needsFetch) {
       try {
         const promoEndpoint = `${BASE_URL}crdfd_promotions(${promotionId})?$select=crdfd_value,crdfd_vn,cr1bb_chietkhau2,crdfd_masanpham_multiple,cr1bb_manhomsp_multiple,cr1bb_ieukhoanthanhtoanapdung`;
         const promoResp = await axios.get(promoEndpoint, { headers });
         promoData = promoResp.data;
+
+        console.log('[ApplySOBGPromotion] Fetched promotion details:', {
+          promotionId,
+          cr1bb_chietkhau2: promoData?.cr1bb_chietkhau2,
+          crdfd_value: promoData?.crdfd_value,
+          crdfd_vn: promoData?.crdfd_vn,
+          crdfd_masanpham_multiple: promoData?.crdfd_masanpham_multiple,
+          cr1bb_manhomsp_multiple: promoData?.cr1bb_manhomsp_multiple
+        });
+
         if (promoData) {
+          // ALWAYS use fetched data to override null/missing request params
           // Determine flag (Dynamics stores OptionSet number for chietkhau2)
-          if (!effectiveChietKhau2) {
-            effectiveChietKhau2 = (promoData.cr1bb_chietkhau2 === 191920001) || Boolean(promoData.cr1bb_chietkhau2 === '191920001');
-          }
-          if (!effectivePromotionValue) {
+          const fetchedCK2 = (promoData.cr1bb_chietkhau2 === 191920001) || Boolean(promoData.cr1bb_chietkhau2 === '191920001');
+          effectiveChietKhau2 = chietKhau2 !== null && chietKhau2 !== undefined ? Boolean(chietKhau2) : fetchedCK2;
+
+          if (!effectivePromotionValue || effectivePromotionValue === 0) {
             const rawVal = promoData.crdfd_value;
             const parsed = typeof rawVal === 'number' ? rawVal : (rawVal ? Number(rawVal) : 0);
-            effectivePromotionValue = !isNaN(parsed) ? parsed : effectivePromotionValue;
+            effectivePromotionValue = !isNaN(parsed) ? parsed : 0;
           }
+
           if (!effectiveVndOrPercent) {
             effectiveVndOrPercent = promoData.crdfd_vn;
           }
+
           if (!effectiveProductCodes && promoData.crdfd_masanpham_multiple) {
             effectiveProductCodes = promoData.crdfd_masanpham_multiple;
           }
+
           if (!effectiveProductGroupCodes && promoData.cr1bb_manhomsp_multiple) {
             effectiveProductGroupCodes = promoData.cr1bb_manhomsp_multiple;
           }
         }
       } catch (err) {
-        console.warn('[ApplySOBGPromotion] Could not fetch promotion details to enrich request:', (err as any)?.message || err);
+        console.error('[ApplySOBGPromotion] ❌ CRITICAL: Could not fetch promotion details:', (err as any)?.message || err);
+        // If we can't fetch promotion details, we cannot proceed safely
+        throw new Error('Không thể lấy thông tin promotion từ CRM');
       }
     }
 
@@ -295,10 +314,23 @@ export default async function handler(
 
     // 2. Special direct discount promotions - no header updates needed
 
-    // 3. Nếu là chiết khấu 2 (chietKhau2 = true) và không phải direct discount promotion, cập nhật crdfd_chieckhau2 và giá trên các SOD báo giá matching
+    // 3. Nếu là chiết khấu 2 (chietKhau2 = true) và không phải direct discount promotion, cập nhật crdfd_chietkhau2 và giá trên các SOD báo giá matching
     let updatedSodCount = 0;
     // Before applying line-level chiết khấu 2 for SOBG, verify promotion's payment terms (if any) match SOBG's payment term.
     let disallowedByPaymentTermsSobg = false;
+
+    // DEBUG: Log CK2 decision factors
+    console.log('[ApplySOBGPromotion] CK2 Decision Factors:', {
+      effectiveChietKhau2,
+      isSpecialPromotionSobg,
+      promotionId,
+      promotionName,
+      promotionValue: effectivePromotionValue,
+      vndOrPercent: effectiveVndOrPercent,
+      productCodes: effectiveProductCodes,
+      productGroupCodes: effectiveProductGroupCodes
+    });
+
     if (effectiveChietKhau2 && !isSpecialPromotionSobg) {
       try {
         const sobgEndpoint = `${BASE_URL}${SOBG_HEADER_TABLE}(${sobgId})?$select=crdfd_dieu_khoan_thanh_toan,crdfd_ieukhoanthanhtoan`;
@@ -315,15 +347,25 @@ export default async function handler(
         };
         const sobgTokens = splitAndNormalizeSobg(sobgPaymentRaw);
         const promoTokens = splitAndNormalizeSobg(promoPaymentRaw);
+
+        console.log('[ApplySOBGPromotion] Payment Terms Check:', {
+          sobgPaymentRaw,
+          promoPaymentRaw,
+          sobgTokens,
+          promoTokens
+        });
+
         if (promoTokens.length > 0 && sobgTokens.length > 0) {
           const intersect = promoTokens.filter(t => sobgTokens.includes(t));
           if (intersect.length === 0) {
             disallowedByPaymentTermsSobg = true;
-            console.log(`[ApplySOBGPromotion] Promotion ${promotionId} chietKhau2 not applied due to payment term mismatch (promo=${promoPaymentRaw} sobg=${sobgPaymentRaw})`);
+            console.log(`[ApplySOBGPromotion] ❌ Promotion ${promotionId} chietKhau2 not applied due to payment term mismatch (promo=${promoPaymentRaw} sobg=${sobgPaymentRaw})`);
+          } else {
+            console.log(`[ApplySOBGPromotion] ✅ Payment terms matched:`, intersect);
           }
         } else if (promoPaymentRaw && String(promoPaymentRaw).trim() !== "" && sobgTokens.length === 0) {
           disallowedByPaymentTermsSobg = true;
-          console.log(`[ApplySOBGPromotion] Promotion ${promotionId} chietKhau2 not applied: SOBG missing payment term (promo=${promoPaymentRaw})`);
+          console.log(`[ApplySOBGPromotion] ❌ Promotion ${promotionId} chietKhau2 not applied: SOBG missing payment term (promo=${promoPaymentRaw})`);
         }
       } catch (err: any) {
         console.warn('[ApplySOBGPromotion] Failed to fetch SOBG for payment term check:', err?.message || err);
@@ -334,7 +376,7 @@ export default async function handler(
       // Lấy danh sách SOD báo giá của SOBG
       const sodFilters = [
         "statecode eq 0",
-        `_crdfd_sobaogia_value eq ${sobgId}`,
+        `_crdfd_maonhang_value eq ${sobgId}`,
       ];
 
       const sodQuery = `$filter=${encodeURIComponent(
@@ -359,6 +401,24 @@ export default async function handler(
       const productCodeListNorm = productCodeList.map(s => s.toUpperCase());
       const productGroupCodeListNorm = productGroupCodeList.map(s => s.toUpperCase());
 
+      // DEBUG: Log promotion filters and first few SOD codes
+      console.log('[ApplySOBGPromotion] ===== MATCHING DEBUG START =====');
+      console.log('[ApplySOBGPromotion] Raw effectiveProductCodes:', effectiveProductCodes);
+      console.log('[ApplySOBGPromotion] Raw effectiveProductGroupCodes:', effectiveProductGroupCodes);
+      console.log('[ApplySOBGPromotion] Parsed productCodeList length:', productCodeList.length);
+      console.log('[ApplySOBGPromotion] Parsed productGroupCodeList length:', productGroupCodeList.length);
+      console.log('[ApplySOBGPromotion] Normalized productCodeListNorm length:', productCodeListNorm.length);
+      console.log('[ApplySOBGPromotion] Normalized productGroupCodeListNorm length:', productGroupCodeListNorm.length);
+      console.log('[ApplySOBGPromotion] First 20 promotion product codes:', productCodeListNorm.slice(0, 20));
+      console.log('[ApplySOBGPromotion] First 10 promotion group codes:', productGroupCodeListNorm.slice(0, 10));
+      console.log('[ApplySOBGPromotion] Total SODs to check:', sodList.length);
+      console.log('[ApplySOBGPromotion] First 10 SOD codes:', sodList.slice(0, 10).map((s: any) => ({
+        id: s.crdfd_sodbaogiaid,
+        code: s.crdfd_masanpham,
+        group: s.crdfd_manhomsanpham
+      })));
+      console.log('[ApplySOBGPromotion] ===== MATCHING DEBUG END =====');
+
       // Tính toán giá trị chiết khấu 2 (đã được tính ở trên)
       // chietKhau2Value đã được tính: VNĐ thì là số tiền, % thì là decimal (0.05 = 5%)
 
@@ -372,11 +432,23 @@ export default async function handler(
         const sodProductCode = String(sodProductCodeRaw).trim().toUpperCase();
         const sodProductGroupCode = String(sodProductGroupCodeRaw).trim().toUpperCase();
 
-        // Check if SOD báo giá matches any product code or product group code (case-insensitive, contains)
-        const matchesProduct = productCodeListNorm.length === 0 || productCodeListNorm.some((code: string) => sodProductCode.includes(code));
-        const matchesGroup = productGroupCodeListNorm.length === 0 || productGroupCodeListNorm.some((code: string) => sodProductGroupCode.includes(code));
+        // Check if SOD's single product code/group exists in promotion's multiple codes list
+        // Promotion has: crdfd_masanpham_multiple = "SP-001,SP-002,SP-003"
+        // SOD has: crdfd_masanpham = "SP-001"
+        // Match if SOD's code is in promotion's list
 
-        if (productCodeListNorm.length === 0 && productGroupCodeListNorm.length === 0) {
+        // If promotion has NO filters (both empty), match all SODs
+        const hasNoFilters = productCodeListNorm.length === 0 && productGroupCodeListNorm.length === 0;
+
+        // Calculate matches for debugging
+        const matchesProduct = productCodeListNorm.length > 0 &&
+          sodProductCode !== '' &&
+          productCodeListNorm.includes(sodProductCode);
+        const matchesGroup = productGroupCodeListNorm.length > 0 &&
+          sodProductGroupCode !== '' &&
+          productGroupCodeListNorm.includes(sodProductGroupCode);
+
+        if (hasNoFilters) {
           sodsToUpdate.push(sod);
         } else if (matchesProduct || matchesGroup) {
           sodsToUpdate.push(sod);
@@ -393,7 +465,16 @@ export default async function handler(
           });
         }
       }
-      // Cập nhật từng SOD báo giá với crdfd_chieckhau2
+
+      console.log('[ApplySOBGPromotion] SOD Matching Summary:', {
+        totalSODs: sodList.length,
+        matchedSODs: sodsToUpdate.length,
+        productCodeFilters: productCodeList,
+        productGroupCodeFilters: productGroupCodeList,
+        debugMatchDetails: debugMatchDetails.slice(0, 10) // First 10 for brevity
+      });
+
+      // Cập nhật từng SOD báo giá với crdfd_chietkhau2
       // Tối ưu: update theo batch + giới hạn concurrency để tránh await tuần tự (rất chậm khi nhiều dòng)
       const UPDATE_BATCH_SIZE = 5;
       for (let i = 0; i < sodsToUpdate.length; i += UPDATE_BATCH_SIZE) {
@@ -422,6 +503,11 @@ export default async function handler(
           }
         }
       }
+
+      console.log('[ApplySOBGPromotion] ✅ CK2 Update Complete:', {
+        updatedSodCount,
+        totalMatched: sodsToUpdate.length
+      });
 
       // Sau khi cập nhật chiết khấu 2, tính lại tổng đơn hàng SOBG
       if (updatedSodCount > 0) {
@@ -486,9 +572,9 @@ async function recalculateSOBGTotalsForCK1(
     if (!currentTotal || currentTotal === 0) {
       const sodFilters = [
         "statecode eq 0",
-        `_crdfd_sobaogia_value eq ${sobgId}`,
+        `_crdfd_maonhang_value eq ${sobgId}`,
       ];
-      const sodQuery = `$filter=${encodeURIComponent(sodFilters.join(" and "))}&$select=crdfd_ongia,crdfd_soluong,crdfd_vat,crdfd_thue`;
+      const sodQuery = `$filter=${encodeURIComponent(sodFilters.join(" and "))}&$select=crdfd_ongia,crdfd_soluong`;
       const sodEndpoint = `${BASE_URL}${SOBG_DETAIL_TABLE}?${sodQuery}`;
       const sodResponse = await axios.get(sodEndpoint, { headers });
       const sodList = sodResponse.data.value || [];
@@ -498,11 +584,9 @@ async function recalculateSOBGTotalsForCK1(
       for (const sod of sodList) {
         const quantity = Number(sod.crdfd_soluong) || 0;
         const unitPrice = Number(sod.crdfd_ongia) || 0;
-        const vatPercent = Number(sod.crdfd_vat) || Number(sod.crdfd_thue) || 0;
         const lineSubtotal = unitPrice * quantity;
-        const lineVat = (lineSubtotal * vatPercent) / 100;
         currentSubtotal += lineSubtotal;
-        currentTotal += lineSubtotal + lineVat;
+        currentTotal += lineSubtotal;
       }
     }
 
@@ -513,7 +597,7 @@ async function recalculateSOBGTotalsForCK1(
     const ck1Promotions = opResp.data.value || [];
 
     // Tính tổng CK1 từ tất cả promotions CK1
-    // Lưu ý: SOBG không có field crdfd_chieckhau2 trong Orders x Promotion
+    // Lưu ý: SOBG không có field crdfd_chietkhau2 trong Orders x Promotion
     // Nên ta cần fetch từ promotion records để lấy giá trị
     let totalCK1Discount = 0;
 
@@ -527,7 +611,7 @@ async function recalculateSOBGTotalsForCK1(
         const promoEndpoint = `${BASE_URL}crdfd_promotions(${promotionId})?$select=crdfd_value,crdfd_vn,cr1bb_chietkhau2`;
         const promoResp = await axios.get(promoEndpoint, { headers });
         const promoData = promoResp.data;
-        
+
         // Chỉ tính nếu là CK1 (không phải CK2)
         const isCK2 = promoData.cr1bb_chietkhau2 === 191920001 || String(promoData.cr1bb_chietkhau2) === '191920001';
         if (isCK2) continue; // Skip CK2
@@ -550,7 +634,7 @@ async function recalculateSOBGTotalsForCK1(
 
     // Tính lại tổng
     const newTotal = Math.max(0, currentTotal - totalCK1Discount);
-    
+
     // Tính lại subtotal tỷ lệ (giữ nguyên tỷ lệ VAT)
     const ratio = currentTotal > 0 ? newTotal / currentTotal : 1;
     const newSubtotal = Math.round(currentSubtotal * ratio);
@@ -563,7 +647,7 @@ async function recalculateSOBGTotalsForCK1(
 
     const updateEndpoint = `${BASE_URL}${SOBG_HEADER_TABLE}(${sobgId})`;
     await axios.patch(updateEndpoint, updatePayload, { headers });
-    
+
     console.log('[ApplySOBGPromotion][recalculateSOBGTotalsForCK1] ✅ Đã tính lại tổng SOBG cho CK1:', {
       sobgId,
       currentTotal,
@@ -586,7 +670,7 @@ async function recalculateSOBGTotals(sobgId: string, headers: Record<string, str
     // Lấy tất cả SOD báo giá của SOBG
     const sodFilters = [
       "statecode eq 0",
-      `_crdfd_sobaogia_value eq ${sobgId}`,
+      `_crdfd_maonhang_value eq ${sobgId}`,
     ];
 
     const sodQuery = `$filter=${encodeURIComponent(
@@ -636,8 +720,8 @@ async function recalculateSOBGTotals(sobgId: string, headers: Record<string, str
 }
 
 /**
- * Helper function to update crdfd_chieckhau2 and crdfd_giack2 on a SOD báo giá record
- * Cập nhật crdfd_chieckhau2 và tính lại crdfd_giack2 dựa trên giá gốc
+ * Helper function to update crdfd_chietkhau2 and crdfd_giack2 on a SOD báo giá record
+ * Cập nhật crdfd_chietkhau2 và tính lại crdfd_giack2 dựa trên giá gốc
  */
 async function updateSodBaoGiaChietKhau2(
   sodId: string,
@@ -648,8 +732,23 @@ async function updateSodBaoGiaChietKhau2(
 ) {
   const updatePayload: any = {};
 
-  // Store raw promotion value into crdfd_chieckhau2 (as requested).
-  updatePayload.crdfd_chieckhau2 = promotionValue || 0;
+  // CRITICAL FIX: Store crdfd_chietkhau2 in correct format based on vndOrPercent
+  // - If '%': store as decimal (e.g., 5% → 0.05)
+  // - If 'VNĐ': store as absolute amount (e.g., 50000)
+  // This matches the format used in save-sobg-details.ts line 1079
+
+  // Normalize vndOrPercent: handle both string and OptionSet values
+  // OptionSet: 191920000 = %, 191920001 = VNĐ
+  const vndOrPercentNorm = String(vndOrPercent || '').trim();
+  const vndOrPercentNum = Number(vndOrPercent);
+  const isPercent = vndOrPercentNorm === '%' || vndOrPercentNorm === '191920000' || vndOrPercentNum === 191920000;
+
+  if (isPercent) {
+    updatePayload.crdfd_chietkhau2 = (promotionValue || 0) / 100;
+  } else {
+    updatePayload.crdfd_chietkhau2 = promotionValue || 0;
+  }
+
   // If promotionId provided, bind the lookup on the SOD báo giá
   if (promotionId) {
     const normalizedPromotionId = String(promotionId).replace(/^{|}$/g, '').trim();
@@ -662,7 +761,7 @@ async function updateSodBaoGiaChietKhau2(
   // - If percent ('%'), convert promotionValue (e.g., 5) -> 0.05 for calculation
   // - If VNĐ, use promotionValue directly as amount to subtract
   let chietKhau2ForCalc: number;
-  if (vndOrPercent === "%") {
+  if (isPercent) { // Use the normalized 'isPercent' here
     chietKhau2ForCalc = (promotionValue || 0) / 100;
   } else {
     chietKhau2ForCalc = promotionValue || 0;
@@ -670,7 +769,7 @@ async function updateSodBaoGiaChietKhau2(
 
   // Tính crdfd_giack2 dựa trên giá gốc và chietKhau2ForCalc
   // Cần lấy giá gốc (crdfd_giagoc) để tính giá sau chiết khấu 2
-  const getSodEndpoint = `${BASE_URL}${SOBG_DETAIL_TABLE}(${sodId})?$select=crdfd_giagoc,crdfd_ongia`;
+  const getSodEndpoint = `${BASE_URL}${SOBG_DETAIL_TABLE}(${sodId})?$select=crdfd_giagoc,crdfd_ongia,crdfd_ieuchinhgtgt`;
   const sodResponse = await axios.get(getSodEndpoint, { headers });
   const sodData = sodResponse.data;
 
@@ -715,12 +814,38 @@ async function updateSodBaoGiaChietKhau2(
     updatePayload.crdfd_giack2 = giaCK2;
   }
 
+  console.log('[ApplySOBGPromotion][updateSodBaoGiaChietKhau2] Calculation:', {
+    sodId,
+    promotionValue,
+    vndOrPercent,
+    vatPercent,
+    basePriceBeforeVat,
+    chietKhau2ForCalc,
+    giaCK2,
+    updatePayload
+  });
+
   const updateEndpoint = `${BASE_URL}${SOBG_DETAIL_TABLE}(${sodId})`;
+  console.log('[ApplySOBGPromotion][updateSodBaoGiaChietKhau2] About to PATCH:', {
+    endpoint: updateEndpoint,
+    payload: updatePayload
+  });
+
   try {
     const resp = await axios.patch(updateEndpoint, updatePayload, { headers });
+    console.log('[ApplySOBGPromotion][updateSodBaoGiaChietKhau2] ✅ PATCH SUCCESS:', {
+      sodId,
+      status: resp.status,
+      statusText: resp.statusText
+    });
     return { success: true, status: resp.status };
   } catch (err: any) {
-    console.error('[ApplySOBGPromotion][updateSodBaoGiaChietKhau2] failed patch SOD báo giá', sodId, err?.response?.data || err?.message || err);
+    console.error('[ApplySOBGPromotion][updateSodBaoGiaChietKhau2] ❌ PATCH FAILED:', {
+      sodId,
+      endpoint: updateEndpoint,
+      payload: updatePayload,
+      error: err?.response?.data || err?.message || err
+    });
     return { success: false, error: err?.response?.data || err?.message || String(err) };
   }
 }
