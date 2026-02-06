@@ -414,13 +414,23 @@ export default async function handler(
       if (updatedSodCount > 0) {
         await recalculateSOBGTotals(sobgId, headers);
       }
+    } else {
+      // CK1: Tính lại tổng đơn hàng sau khi áp dụng chiết khấu 1
+      if (!isSpecialPromotionSobg) {
+        try {
+          await recalculateSOBGTotalsForCK1(sobgId, effectivePromotionValue, effectiveVndOrPercent, headers);
+        } catch (err: any) {
+          // CK1 đã được ghi thành công, lỗi recalc không ảnh hưởng đến kết quả
+          console.warn('[ApplySOBGPromotion] ⚠️ recalculateSOBGTotalsForCK1 failed (CK1 đã được ghi):', err?.message || err);
+        }
+      }
     }
 
     res.status(200).json({
       success: true,
       sobgOrdersXPromotionId: createdOrderXPromotionId,
       updatedSodCount,
-      message: `Đã áp dụng promotion "${promotionName}" cho SO báo giá${chietKhau2 ? ` và cập nhật chiết khấu 2 cho ${updatedSodCount} sản phẩm` : ""}`,
+      message: `Đã áp dụng promotion "${promotionName}" cho SO báo giá${effectiveChietKhau2 ? ` và cập nhật chiết khấu 2 cho ${updatedSodCount} sản phẩm` : ""}`,
     });
   } catch (error: any) {
     console.error("Error applying SOBG promotion order:", error);
@@ -438,6 +448,120 @@ export default async function handler(
       error: "Error applying SOBG promotion order",
       details: error.message,
     });
+  }
+}
+
+/**
+ * Helper function to recalculate SOBG totals after applying chiết khấu 1 (CK1)
+ * Tính lại tổng đơn hàng SOBG sau khi áp dụng CK1 từ tất cả Orders x Promotion (CK1)
+ */
+async function recalculateSOBGTotalsForCK1(
+  sobgId: string,
+  promotionValue: number,
+  vndOrPercent: string,
+  headers: Record<string, string>
+) {
+  try {
+    // Fetch SOBG hiện tại để lấy tổng tiền
+    const sobgEndpoint = `${BASE_URL}${SOBG_HEADER_TABLE}(${sobgId})?$select=crdfd_tongtien,crdfd_tongtienkhongvat`;
+    const sobgResp = await axios.get(sobgEndpoint, { headers });
+    const sobgData = sobgResp.data || {};
+    let currentTotal = Number(sobgData.crdfd_tongtien) || 0;
+    let currentSubtotal = Number(sobgData.crdfd_tongtienkhongvat) || 0;
+
+    // Nếu không có tổng từ header, tính từ SODs
+    if (!currentTotal || currentTotal === 0) {
+      const sodFilters = [
+        "statecode eq 0",
+        `_crdfd_sobaogia_value eq ${sobgId}`,
+      ];
+      const sodQuery = `$filter=${encodeURIComponent(sodFilters.join(" and "))}&$select=crdfd_ongia,crdfd_soluong,crdfd_vat,crdfd_thue`;
+      const sodEndpoint = `${BASE_URL}${SOBG_DETAIL_TABLE}?${sodQuery}`;
+      const sodResponse = await axios.get(sodEndpoint, { headers });
+      const sodList = sodResponse.data.value || [];
+
+      currentTotal = 0;
+      currentSubtotal = 0;
+      for (const sod of sodList) {
+        const quantity = Number(sod.crdfd_soluong) || 0;
+        const unitPrice = Number(sod.crdfd_ongia) || 0;
+        const vatPercent = Number(sod.crdfd_vat) || Number(sod.crdfd_thue) || 0;
+        const lineSubtotal = unitPrice * quantity;
+        const lineVat = (lineSubtotal * vatPercent) / 100;
+        currentSubtotal += lineSubtotal;
+        currentTotal += lineSubtotal + lineVat;
+      }
+    }
+
+    // Fetch tất cả Orders x Promotion (CK1) của SOBG này và fetch promotion details
+    const opQuery = `$filter=_crdfd_sobaogia_value eq ${sobgId} and crdfd_type eq 'Order' and statecode eq 0&$select=crdfd_loai,_crdfd_promotion_value`;
+    const opEndpoint = `${BASE_URL}${SOBG_ORDERS_X_PROMOTION_TABLE}?${opQuery}`;
+    const opResp = await axios.get(opEndpoint, { headers });
+    const ck1Promotions = opResp.data.value || [];
+
+    // Tính tổng CK1 từ tất cả promotions CK1
+    // Lưu ý: SOBG không có field crdfd_chieckhau2 trong Orders x Promotion
+    // Nên ta cần fetch từ promotion records để lấy giá trị
+    let totalCK1Discount = 0;
+
+    // Tính từ tất cả CK1 promotions (bao gồm promotion hiện tại vừa được tạo)
+    // Fetch promotion details để lấy giá trị
+    for (const op of ck1Promotions) {
+      const promotionId = op._crdfd_promotion_value;
+      if (!promotionId) continue;
+
+      try {
+        const promoEndpoint = `${BASE_URL}crdfd_promotions(${promotionId})?$select=crdfd_value,crdfd_vn,cr1bb_chietkhau2`;
+        const promoResp = await axios.get(promoEndpoint, { headers });
+        const promoData = promoResp.data;
+        
+        // Chỉ tính nếu là CK1 (không phải CK2)
+        const isCK2 = promoData.cr1bb_chietkhau2 === 191920001 || String(promoData.cr1bb_chietkhau2) === '191920001';
+        if (isCK2) continue; // Skip CK2
+
+        const promoValue = Number(promoData.crdfd_value) || 0;
+        const promoVn = promoData.crdfd_vn;
+        const promoLoai = op.crdfd_loai || (promoVn === 191920000 ? "Phần trăm" : "Tiền");
+
+        if (promoLoai === "Phần trăm") {
+          const discountPercent = promoValue > 1 ? promoValue / 100 : promoValue;
+          totalCK1Discount += currentTotal * discountPercent;
+        } else {
+          totalCK1Discount += promoValue;
+        }
+      } catch (err) {
+        console.warn('[ApplySOBGPromotion][recalculateSOBGTotalsForCK1] Failed to fetch promotion details:', promotionId, err);
+        // Continue với promotion khác
+      }
+    }
+
+    // Tính lại tổng
+    const newTotal = Math.max(0, currentTotal - totalCK1Discount);
+    
+    // Tính lại subtotal tỷ lệ (giữ nguyên tỷ lệ VAT)
+    const ratio = currentTotal > 0 ? newTotal / currentTotal : 1;
+    const newSubtotal = Math.round(currentSubtotal * ratio);
+
+    // Update SOBG
+    const updatePayload = {
+      crdfd_tongtien: Math.round(newTotal),
+      crdfd_tongtienkhongvat: newSubtotal,
+    };
+
+    const updateEndpoint = `${BASE_URL}${SOBG_HEADER_TABLE}(${sobgId})`;
+    await axios.patch(updateEndpoint, updatePayload, { headers });
+    
+    console.log('[ApplySOBGPromotion][recalculateSOBGTotalsForCK1] ✅ Đã tính lại tổng SOBG cho CK1:', {
+      sobgId,
+      currentTotal,
+      totalCK1Discount,
+      newTotal,
+      newSubtotal,
+      ck1PromotionsCount: ck1Promotions.length
+    });
+  } catch (error) {
+    console.error("Error recalculating SOBG totals for CK1:", error);
+    throw error;
   }
 }
 
