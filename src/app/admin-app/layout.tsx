@@ -6,6 +6,14 @@ import AdminAuthGuard from './_components/AdminAuthGuard';
 import QueryProvider from './_components/QueryProvider';
 import { preloadCriticalStyles } from './_utils/lazyStyles';
 import { usePathname } from 'next/navigation';
+import { Lexend } from 'next/font/google';
+import { cn } from '@/lib/utils';
+
+const lexend = Lexend({
+  subsets: ['latin', 'vietnamese'],
+  display: 'swap',
+  variable: '--font-lexend',
+});
 
 export default function AdminAppLayout({
   children,
@@ -26,7 +34,7 @@ export default function AdminAppLayout({
   if (isLoginPage) {
     return (
       <QueryProvider>
-        <div className="admin-app-container">
+        <div className={cn('admin-app-container', lexend.variable)}>
           {children}
         </div>
       </QueryProvider>
@@ -35,7 +43,7 @@ export default function AdminAppLayout({
 
   return (
     <QueryProvider>
-      <div className="admin-app-container">
+      <div className={cn('admin-app-container', lexend.variable)}>
         <AdminAuthGuard>
           {children}
         </AdminAuthGuard>

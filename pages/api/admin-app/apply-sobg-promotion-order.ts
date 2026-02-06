@@ -394,19 +394,32 @@ export default async function handler(
         }
       }
       // Cập nhật từng SOD báo giá với crdfd_chieckhau2
-      for (const sod of sodsToUpdate) {
-        try {
-          const sodId = sod.crdfd_sodbaogiaid;
-          const updated = await updateSodBaoGiaChietKhau2(
-            sodId,
-            promotionId, // bind promotion lookup on SOD báo giá
-            promotionValue,
-            vndOrPercent,
-            headers
-          );
-          updatedSodCount++;
-        } catch (err: any) {
-          console.error('[ApplySOBGPromotion] Error updating single SOD báo giá:', sod?.crdfd_sodbaogiaid, err?.message || err);
+      // Tối ưu: update theo batch + giới hạn concurrency để tránh await tuần tự (rất chậm khi nhiều dòng)
+      const UPDATE_BATCH_SIZE = 5;
+      for (let i = 0; i < sodsToUpdate.length; i += UPDATE_BATCH_SIZE) {
+        const batch = sodsToUpdate.slice(i, i + UPDATE_BATCH_SIZE);
+        const results = await Promise.allSettled(
+          batch.map(async (sod) => {
+            const sodId = sod.crdfd_sodbaogiaid;
+            if (!sodId) return { sodId, ok: false };
+            const updated = await updateSodBaoGiaChietKhau2(
+              sodId,
+              promotionId, // bind promotion lookup on SOD báo giá
+              promotionValue,
+              vndOrPercent,
+              headers
+            );
+            const ok = !!(updated && (updated.success || updated.status === 204 || updated.status === 200));
+            return { sodId, ok };
+          })
+        );
+
+        for (const r of results) {
+          if (r.status === 'fulfilled') {
+            if (r.value.ok) updatedSodCount++;
+          } else {
+            console.error('[ApplySOBGPromotion] Error updating SOD báo giá batch item:', r.reason?.message || r.reason);
+          }
         }
       }
 

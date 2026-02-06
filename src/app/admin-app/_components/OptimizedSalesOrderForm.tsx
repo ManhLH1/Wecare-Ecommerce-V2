@@ -195,7 +195,7 @@ export default function OptimizedSalesOrderForm({
               <button
                 onClick={handleSubmitOrder}
                 disabled={isSubmitting || batchLoading}
-                className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                className="bg-wecare-blue text-white px-6 py-2 rounded-md hover:bg-wecare-blue-dark disabled:opacity-50"
               >
                 {isSubmitting ? 'Đang xử lý...' : 'Tạo Đơn Hàng'}
               </button>

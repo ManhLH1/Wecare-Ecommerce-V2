@@ -770,8 +770,16 @@ function ProductEntryForm({
   const { warehouses, loading: warehousesLoading } = useWarehouses(customerId);
 
   // Get warehouse code from selected warehouse
-  const selectedWarehouseData = warehouses.find(w => w.crdfd_name === warehouse);
-  const warehouseCode = selectedWarehouseData?.crdfd_makho;
+  const normalizedSelectedWarehouseName = (warehouse || '').trim().toLowerCase();
+  const selectedWarehouseData = warehouses.find((w) => (w.crdfd_name || '').trim().toLowerCase() === normalizedSelectedWarehouseName);
+  const warehouseCode =
+    selectedWarehouseData?.crdfd_makho ||
+    // Fallback nhẹ: nếu tên kho đã có nhưng không match chính xác (khác dấu/chấm), đoán theo keyword phổ biến
+    (normalizedSelectedWarehouseName.includes('hồ chí minh') || normalizedSelectedWarehouseName.includes('tp. hồ chí minh') || normalizedSelectedWarehouseName.includes('hcm')
+      ? 'KHOHCM'
+      : normalizedSelectedWarehouseName.includes('bình định') || normalizedSelectedWarehouseName.includes('bd')
+        ? 'KHOBD'
+        : undefined);
 
   // Fetch accounting stock (Tồn LT kế toán)
   useEffect(() => {
@@ -2665,8 +2673,18 @@ function ProductEntryForm({
 
   // Auto-calculate deliveryDate similar to ngay_giao logic (simplified)
   useEffect(() => {
-    // Only calculate if we have essential data: selected product, basic customer info, and inventory is loaded with real data
-    if (!selectedProduct || !customerId || inventoryLoading || !inventoryLoaded) {
+    // Chỉ tính khi các dữ liệu nền đã load xong:
+    // - Tồn kho (inventoryLoaded)
+    // - Đơn vị (unitsLoading=false, và nếu có units thì phải có unitId)
+    // - Kho (warehousesLoading=false, có warehouseCode từ danh sách kho)
+    if (!selectedProduct || !customerId) return;
+    if (inventoryLoading || !inventoryLoaded) return;
+    if (unitsLoading) return;
+    if (warehousesLoading) return;
+
+    const isUnitReady = units.length === 0 || Boolean(unitId);
+    const isWarehouseReady = Boolean(warehouseCode);
+    if (!isUnitReady || !isWarehouseReady) {
       return;
     }
 
@@ -2755,7 +2773,7 @@ function ProductEntryForm({
 
       setDeliveryDate(fallbackDate);
     }
-  }, [selectedPromotionId, promotions, selectedPromotion, customerIndustry, customerName, quantity, unitId, units, inventoryTheoretical, selectedProduct, stockQuantity, districtLeadtime, inventoryLoading, inventoryLoaded, warehouse]);
+  }, [selectedPromotionId, promotions, selectedPromotion, customerIndustry, customerName, quantity, unitId, units, unitsLoading, inventoryTheoretical, selectedProduct, stockQuantity, districtLeadtime, inventoryLoading, inventoryLoaded, warehouse, warehousesLoading, warehouseCode]);
 
   // Track deliveryDate prop changes from parent
   useEffect(() => {
@@ -3021,11 +3039,15 @@ function ProductEntryForm({
   }, [approvePrice, setApprover, apiPrice]);
 
   return (
-    <div className="admin-app-card-compact">
+    <div className="admin-app-card-compact admin-app-product-section">
       <div className="admin-app-card-title-row" style={{ alignItems: 'center', gap: '12px' }}>
         <h3 className="admin-app-card-title">Thông tin sản phẩm</h3>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <label className={`admin-app-chip-toggle ${urgentOrder ? 'is-active' : ''} ${isUrgentOrderDisabled ? 'is-disabled' : ''}`} style={{ marginRight: 8 }}>
+          <label
+            className={`admin-app-chip-toggle ${urgentOrder ? 'is-active' : ''} ${isUrgentOrderDisabled ? 'is-disabled' : ''}`}
+            style={{ marginRight: 8 }}
+            title="Đơn hàng gấp: ưu tiên xử lý nhanh hơn. Hệ thống có thể giới hạn nếu tồn kho không đủ."
+          >
             <input
               type="checkbox"
               checked={urgentOrder}
@@ -3034,7 +3056,10 @@ function ProductEntryForm({
             />
             <span title={isUrgentOrderDisabled && !isFormDisabled && quantity !== null && quantity !== undefined && inventoryTheoretical !== undefined && inventoryTheoretical < quantity ? `Không thể đặt đơn hàng gấp khi tồn kho (${inventoryTheoretical?.toLocaleString()}) < số lượng (${quantity?.toLocaleString()})` : ''}>Đơn hàng gấp</span>
           </label>
-          <label className={`admin-app-chip-toggle ${approvePrice ? 'is-active' : ''} ${isFormDisabled ? 'is-disabled' : ''}`}>
+          <label
+            className={`admin-app-chip-toggle ${approvePrice ? 'is-active' : ''} ${isFormDisabled ? 'is-disabled' : ''}`}
+            title="Duyệt giá: bật khi cần nhập giá thủ công và chọn người duyệt."
+          >
             <input
               type="checkbox"
               checked={approvePrice}
@@ -3046,84 +3071,6 @@ function ProductEntryForm({
             />
             <span>Duyệt giá</span>
           </label>
-          {showInlineActions && (
-            <div className="admin-app-card-actions-block">
-              <div className="admin-app-card-actions">
-                <button
-                  type="button"
-                  className="admin-app-mini-btn admin-app-mini-btn-secondary"
-                  onClick={handleResetAllWithConfirm}
-                  disabled={isSaving || isAdding || isLoadingDetails}
-                  title="Reset toàn bộ form"
-                >
-                  ↺ Reset
-                </button>
-                  <button
-                    type="button"
-                    className="admin-app-mini-btn admin-app-mini-btn-ghost"
-                  onClick={() => {
-                      if (typeof onOpenDiscount2 === 'function') {
-                        try {
-                          // Compute current line total (subtotal + VAT) to include in promotion eligibility check
-                          // Prefer the current price input value when computing line totals for promotions.
-                          const parsedPriceForLine = parseFloat(String(price)) || 0;
-                          const priceNumForLine = parsedPriceForLine > 0 ? parsedPriceForLine : ((basePriceForDiscount && basePriceForDiscount > 0) ? basePriceForDiscount : 0);
-                          const promoPctForLine = discountPercent || promotionDiscountPercent || 0;
-                          const discountedUnitForLine = priceNumForLine * (1 - (promoPctForLine > 0 ? promoPctForLine / 100 : 0));
-                          const lineSubtotalForPromo = Math.round(discountedUnitForLine * (quantity || 0));
-                          const lineVatForPromo = Math.round((lineSubtotalForPromo * (vatPercent || 0)) / 100);
-                          const lineTotalForPromo = lineSubtotalForPromo + lineVatForPromo;
-                          const parentOrderTotal = (orderTotal || 0) + lineTotalForPromo;
-                          onOpenDiscount2(parentOrderTotal);
-                        } catch (err) {
-                          // Fallback to calling without override
-                          onOpenDiscount2();
-                        }
-                      } else {
-                        showToast.info('Chức năng chiết khấu 2 chưa sẵn sàng.');
-                      }
-                    }}
-                    disabled={!onOpenDiscount2}
-                    title="Chiết khấu 2"
-                    style={{ marginLeft: 6 }}
-                  >
-                    💰
-                  </button>
-                  <button
-                    type="button"
-                    className="admin-app-mini-btn admin-app-mini-btn-ghost"
-                    onClick={() => {
-                      if (typeof onOpenSpecialPromotions === 'function') {
-                        onOpenSpecialPromotions();
-                      } else {
-                        showToast.info('Chức năng khuyến mãi đặc biệt chưa sẵn sàng.');
-                      }
-                    }}
-                    disabled={!onOpenSpecialPromotions}
-                    title="Khuyến mãi đặc biệt"
-                    style={{ marginLeft: 6 }}
-                  >
-                    🎁
-                  </button>
-                <button
-                  type="button"
-                  className="admin-app-mini-btn admin-app-mini-btn-primary"
-                  onClick={handleSaveWithInventoryCheck}
-                  disabled={isSaving || !hasUnsavedProducts}
-                  title={!hasUnsavedProducts ? "Chưa có sản phẩm mới cần lưu" : "Lưu đơn hàng"}
-                >
-                  {isSaving ? (
-                    <>
-                      <div className="admin-app-spinner admin-app-spinner-small" style={{ marginRight: '4px' }}></div>
-                      Đang lưu...
-                    </>
-                  ) : (
-                    '💾 Lưu'
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
       <div className="admin-app-form-compact">
@@ -3279,6 +3226,7 @@ function ProductEntryForm({
                   dropdownTooltip: code ? `Mã SP: ${code}` : undefined,
                   dropdownMetaText: code || undefined,
                   dropdownCopyText: code || undefined,
+                  dropdownSubLabel: `${code ? `Mã: ${code}` : 'Mã: —'}${p.crdfd_unitname ? ` • ĐV: ${p.crdfd_unitname}` : ''}`,
                   ...p,
                 };
               })}
@@ -3309,11 +3257,12 @@ function ProductEntryForm({
                 userHasManuallySelectedUnitRef.current = false;
                 hasSetUnitFromApiRef.current = false; // Reset khi chọn sản phẩm mới
               }}
-              placeholder={isFormDisabled ? "Chọn KH và SO trước" : "Chọn sản phẩm"}
+              placeholder={isFormDisabled ? "Chọn khách hàng & SO trước" : "Tìm theo mã / tên sản phẩm..."}
               loading={productsLoading}
               searchable
               onSearch={setProductSearch}
               disabled={isFormDisabled}
+              ariaLabel={typeof productLabel === 'string' ? productLabel : 'Sản phẩm'}
             />
             {/* Show inventory message for selected warehouse (preferred source) */}
             {inventoryLoaded && inventoryMessage && (
@@ -3431,9 +3380,10 @@ function ProductEntryForm({
                 // effect when `unitId` or `pricesFromApi` changes. Removing the forced
                 // reload avoids redundant API calls when only the unit selection changes.
               }}
-              placeholder={isFormDisabled ? "Chọn KH và SO trước" : "Chọn đơn vị"}
+              placeholder={isFormDisabled ? "Chọn khách hàng & SO trước" : (!hasSelectedProduct ? "Chọn sản phẩm trước" : "Chọn đơn vị")}
               loading={unitsLoading}
-              disabled={isFormDisabled}
+              disabled={isFormDisabled || !hasSelectedProduct}
+              ariaLabel="Đơn vị"
             />
           </div>
 
@@ -3450,9 +3400,10 @@ function ProductEntryForm({
                 setWarehouseId(value);
                 setWarehouse(option?.label || '');
               }}
-              placeholder={isFormDisabled ? "Chọn KH và SO trước" : "Chọn kho"}
+              placeholder={isFormDisabled ? "Chọn khách hàng & SO trước" : (!hasSelectedProduct ? "Chọn sản phẩm trước" : "Chọn kho")}
               loading={warehousesLoading}
-              disabled={isFormDisabled}
+              disabled={isFormDisabled || !hasSelectedProduct}
+              ariaLabel="Kho"
             />
           </div>
 
@@ -3811,21 +3762,102 @@ function ProductEntryForm({
             );
           })()}
 
-          {/* Ghi chú - Thu nhỏ và đặt sau Tổng tiền */}
-          <div className="admin-app-field-compact admin-app-field-note" style={{ minWidth: '120px' }}>
-            <label className="admin-app-label-inline">Ghi chú</label>
-            <div className="admin-app-input-wrapper">
-              <input
-                type="text"
-                className="admin-app-input admin-app-input-compact admin-app-input-small"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Ghi chú"
+          {/* Ghi chú - textarea, optional, max 500 ký tự */}
+          <div className="admin-app-field-compact admin-app-field-note" style={{ minWidth: '180px' }}>
+            <label className="admin-app-label-inline">Ghi chú (tuỳ chọn)</label>
+            <div className="admin-app-input-wrapper" style={{ height: 'auto', alignItems: 'stretch' }}>
+              <textarea
+                className="admin-app-input"
+                value={note || ''}
+                onChange={(e) => {
+                  const next = (e.target.value || '').slice(0, 500);
+                  setNote(next);
+                }}
+                placeholder="Ví dụ: giao gấp trước 16h, đổi lô, lưu ý đóng gói..."
                 disabled={isFormDisabled}
+                maxLength={500}
+                rows={3}
               />
+            </div>
+            <div className="admin-app-note-counter" aria-live="polite">
+              <span>Nhập ngắn gọn để dễ tra soát.</span>
+              <span>{(note || '').length}/500</span>
             </div>
           </div>
 
+        </div>
+
+        {/* Actions: Reset & Lưu nằm bottom-right để đúng thói quen ERP */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+          {showInlineActions && (
+            <>
+              <button
+                type="button"
+                className="admin-app-mini-btn admin-app-mini-btn-ghost"
+                onClick={() => {
+                  if (typeof onOpenDiscount2 === 'function') {
+                    try {
+                      // Tại sao: truyền tổng tiền tạm tính để check điều kiện chiết khấu 2 nhanh, giảm sai sót
+                      const parsedPriceForLine = parseFloat(String(price)) || 0;
+                      const priceNumForLine = parsedPriceForLine > 0 ? parsedPriceForLine : ((basePriceForDiscount && basePriceForDiscount > 0) ? basePriceForDiscount : 0);
+                      const promoPctForLine = discountPercent || promotionDiscountPercent || 0;
+                      const discountedUnitForLine = priceNumForLine * (1 - (promoPctForLine > 0 ? promoPctForLine / 100 : 0));
+                      const lineSubtotalForPromo = Math.round(discountedUnitForLine * (quantity || 0));
+                      const lineVatForPromo = Math.round((lineSubtotalForPromo * (vatPercent || 0)) / 100);
+                      const lineTotalForPromo = lineSubtotalForPromo + lineVatForPromo;
+                      const parentOrderTotal = (orderTotal || 0) + lineTotalForPromo;
+                      onOpenDiscount2(parentOrderTotal);
+                    } catch {
+                      onOpenDiscount2();
+                    }
+                  } else {
+                    showToast.info('Chức năng chiết khấu 2 chưa sẵn sàng.');
+                  }
+                }}
+                disabled={!onOpenDiscount2}
+                title="Chiết khấu 2"
+              >
+                💰 Chiết khấu 2
+              </button>
+              <button
+                type="button"
+                className="admin-app-mini-btn admin-app-mini-btn-ghost"
+                onClick={() => {
+                  if (typeof onOpenSpecialPromotions === 'function') onOpenSpecialPromotions();
+                  else showToast.info('Chức năng khuyến mãi đặc biệt chưa sẵn sàng.');
+                }}
+                disabled={!onOpenSpecialPromotions}
+                title="Khuyến mãi đặc biệt"
+              >
+                🎁 KM đặc biệt
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            className="admin-app-mini-btn admin-app-mini-btn-secondary"
+            onClick={handleResetAllWithConfirm}
+            disabled={isSaving || isAdding || isLoadingDetails}
+            title="Reset toàn bộ form"
+          >
+            ↺ Reset
+          </button>
+          <button
+            type="button"
+            className="admin-app-mini-btn admin-app-mini-btn-primary"
+            onClick={handleSaveWithInventoryCheck}
+            disabled={isSaving || !hasUnsavedProducts}
+            title={!hasUnsavedProducts ? "Chưa có sản phẩm mới cần lưu" : "Lưu đơn hàng"}
+          >
+            {isSaving ? (
+              <>
+                <div className="admin-app-spinner admin-app-spinner-small" style={{ marginRight: '4px' }}></div>
+                Đang lưu...
+              </>
+            ) : (
+              '💾 Lưu'
+            )}
+          </button>
         </div>
       </div>
 

@@ -229,6 +229,13 @@ const DISTRICT_TABLE = "cr1bb_quanhuyens"; // Quận/Huyện
 
 const GUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Map GUID người duyệt -> tên hiển thị (để ghi xuống crdfd_notes dạng dễ đọc)
+// Lưu ý: approver là GUID lookup `crdfd_employees`, còn note nên là text dễ đọc cho user.
+const APPROVER_ID_TO_NAME: Record<string, string> = {
+  "c45a4395-8b66-485e-185c-08d910334fac": "Huỳnh Minh Trung",
+  "5d5dc7fd-8820-ee11-9966-6045bd1f9e5b": "Phạm Thị Mỹ Hương (Nhà máy)",
+};
+
 const OWNER_LOOKUP_CANDIDATES = [
   // Most likely custom lookup logical names
   "crdfd_ownerid",
@@ -1868,9 +1875,16 @@ export default async function handler(
               }
             }
 
-            // Add note (ghi chú) if available
-        if (product.note) {
-          payload.crdfd_notes = product.note;
+        // Add note (ghi chú)
+        // Tại sao: tránh lưu "Duyệt giá bởi <GUID>" vào CRM (khó đọc), chuyển sang "Duyệt giá bởi <tên>".
+        const approverId = (product.approver || "").toString().trim();
+        const approverName = (approverId && APPROVER_ID_TO_NAME[approverId]) || approverId || "";
+        const noteToSave =
+          product.approvePrice && approverName
+            ? `Duyệt giá bởi ${approverName}`
+            : (product.note || "");
+        if (noteToSave) {
+          payload.crdfd_notes = noteToSave;
         }
 
         // Add delivery date if available

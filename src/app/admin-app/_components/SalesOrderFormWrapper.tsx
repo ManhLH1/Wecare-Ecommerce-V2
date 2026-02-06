@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense, ComponentType } from 'react';
 import { getStoredUser, logout } from '../_utils/implicitAuthService';
 import { useRouter } from 'next/navigation';
+import AdminLogo from './AdminLogo';
 
 // Lazy load components để cải thiện initial load time
 const SalesOrderForm = React.lazy(() => import('./SalesOrderForm')) as ComponentType<{ hideHeader?: boolean }>;
@@ -38,6 +39,7 @@ function SalesOrderFormWrapper() {
         {/* Left Section: Brand & Title */}
         <div className="admin-app-header-left">
           <div className="admin-app-header-brand">
+            <AdminLogo tone="onBrand" />
             <div className="admin-app-title">
               {activeForm === 'SO' ? 'Tạo đơn bán chi tiết' : 'Tạo đơn báo giá chi tiết'}
             </div>

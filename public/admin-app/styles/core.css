@@ -3,8 +3,18 @@
 /* Layout */
 .admin-app-container {
   min-height: 100vh;
-  background-color: #f7fafc;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #F8F9FA; /* Off White */
+  font-family: var(--font-roboto), Roboto, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #343A40; /* Charcoal */
+
+  /* Brand tokens */
+  --wecare-blue: #3492ab;
+  --wecare-green: #4CAF50;
+  --wecare-off-white: #F8F9FA;
+  --wecare-light-grey: #E9ECEF;
+  --wecare-medium-grey: #6C757D;
+  --wecare-charcoal: #343A40;
+  --wecare-blue-dark: #236E84;
 }
 
 .admin-app-main {
@@ -15,11 +25,12 @@
 
 /* Form Sections */
 .admin-app-form-section {
-  background: white;
+  background: var(--wecare-off-white);
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 26px rgba(22, 69, 83, 0.06);
   margin-bottom: 16px;
   overflow: hidden;
+  border: 1px solid var(--wecare-light-grey);
 }
 
 .admin-app-form-row {
@@ -66,8 +77,8 @@
 
 .admin-app-input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: var(--wecare-blue);
+  box-shadow: 0 0 0 3px rgba(52, 146, 171, 0.14);
 }
 
 .admin-app-input-compact {
@@ -106,25 +117,25 @@
 }
 
 .admin-app-btn-primary {
-  background-color: #3b82f6;
+  background-color: var(--wecare-blue);
   color: white;
-  border-color: #3b82f6;
+  border-color: var(--wecare-blue);
 }
 
 .admin-app-btn-primary:hover {
-  background-color: #2563eb;
-  border-color: #2563eb;
+  background-color: var(--wecare-blue-dark);
+  border-color: var(--wecare-blue-dark);
 }
 
 .admin-app-btn-secondary {
-  background-color: white;
-  color: #374151;
-  border-color: #d1d5db;
+  background-color: transparent;
+  color: var(--wecare-blue);
+  border-color: var(--wecare-blue);
 }
 
 .admin-app-btn-secondary:hover {
-  background-color: #f9fafb;
-  border-color: #9ca3af;
+  background-color: rgba(52, 146, 171, 0.08);
+  border-color: var(--wecare-blue-dark);
 }
 
 .admin-app-btn-small {
@@ -153,7 +164,7 @@
   width: 20px;
   height: 20px;
   border: 2px solid #e5e7eb;
-  border-top: 2px solid #3b82f6;
+  border-top: 2px solid var(--wecare-blue);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }

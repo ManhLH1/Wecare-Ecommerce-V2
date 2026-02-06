@@ -78,7 +78,14 @@ export default function AdminLoginForm() {
     <div className="admin-app-login-container">
       <div className="admin-app-login-card">
         <div className="admin-app-login-header">
-          <h1 className="admin-app-login-title">Admin Sale App</h1>
+          <img
+            src="/Logo-Wecare.png"
+            alt="Wecare"
+            className="admin-app-login-logo"
+            loading="eager"
+            decoding="async"
+          />
+          <h1 className="admin-app-login-title">Wecare Admin Sale App</h1>
           <p className="admin-app-login-subtitle">Đăng nhập với Microsoft Account</p>
         </div>
 

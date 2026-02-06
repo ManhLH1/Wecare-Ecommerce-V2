@@ -108,6 +108,15 @@ export interface Promotion {
   vn?: string;
   startDate?: string;
   endDate?: string;
+  /**
+   * Danh sách mã sản phẩm áp dụng (backend trả dạng string, thường là chuỗi có phân tách).
+   * Tại sao optional: một số promotion có thể không ràng buộc sản phẩm.
+   */
+  productCodes?: string;
+  /**
+   * Danh sách mã nhóm sản phẩm áp dụng (nếu có).
+   */
+  productGroupCodes?: string;
   promotionTypeText?: string;
   totalAmountCondition?: string;
   quantityCondition?: string;
@@ -305,6 +314,34 @@ export const fetchProductPromotions = async (
     return response.data;
   } catch (error) {
     console.error('Error fetching promotions:', error);
+    return [];
+  }
+};
+
+/**
+ * Fetch promotions cho NHIỀU productCodes trong 1 request.
+ * Tại sao: tránh gọi tuần tự từng sản phẩm (rất chậm khi đơn có nhiều dòng).
+ * Lưu ý: Backend `pages/api/admin-app/promotions.ts` đã support `productCode` dạng comma-separated.
+ */
+export const fetchProductPromotionsBatch = async (
+  productCodes: string[],
+  customerCode?: string,
+  region?: string,
+  paymentTerms?: string
+): Promise<Promotion[]> => {
+  const codes = (productCodes || []).map((c) => String(c || '').trim()).filter(Boolean);
+  if (codes.length === 0) return [];
+
+  try {
+    const params: Record<string, string> = { productCode: codes.join(',') };
+    if (customerCode) params.customerCode = customerCode;
+    if (region) params.region = region;
+    if (paymentTerms) params.paymentTerms = paymentTerms;
+
+    const response = await axios.get(`${BASE_URL}/promotions`, { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching promotions (batch):', error);
     return [];
   }
 };

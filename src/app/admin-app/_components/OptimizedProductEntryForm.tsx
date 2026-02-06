@@ -158,7 +158,7 @@ export default function OptimizedProductEntryForm({
           onChange={(e) => handleProductSearch(e.target.value)}
           className="w-full px-3 py-2 border rounded-md"
         />
-        {loading && <div className="text-sm text-blue-600 mt-1">Đang tải...</div>}
+        {loading && <div className="text-sm text-wecare-blue mt-1">Đang tải...</div>}
       </div>
 
       {/* Selected Product Info */}

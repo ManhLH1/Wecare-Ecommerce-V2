@@ -17,6 +17,12 @@ const KHO_BD_TABLE = "crdfd_kho_binh_dinhs";
 const QUOTE_DETAIL_TABLE = "crdfd_baogiachitiets";
 const CUSTOMER_TABLE = "crdfd_customers";
 
+// Map GUID người duyệt -> tên hiển thị (để ghi xuống crdfd_ghichu dạng dễ đọc)
+const APPROVER_ID_TO_NAME: Record<string, string> = {
+  "c45a4395-8b66-485e-185c-08d910334fac": "Huỳnh Minh Trung",
+  "5d5dc7fd-8820-ee11-9966-6045bd1f9e5b": "Phạm Thị Mỹ Hương (Nhà máy)",
+};
+
 // Batch lookup Product IDs and Names
 async function batchLookupProductIds(productCodes: string[], headers: any): Promise<Map<string, { id: string | null; name: string | null }>> {
     const result = new Map<string, { id: string | null; name: string | null }>();
@@ -1078,7 +1084,13 @@ export default async function handler(
                 "crdfd_phu_phi_hoa_don": product.surcharge || 0,
                 "crdfd_stton": Number(product.stt) || 0,
                 "crdfd_promotiontext": product.promotionText || "",
-                "crdfd_ghichu": product.note || "",
+                // Tại sao: tránh lưu "Duyệt giá bởi <GUID>" -> lưu "Duyệt giá bởi <tên>"
+                "crdfd_ghichu": (() => {
+                  const approverId = (product.approver || "").toString().trim();
+                  const approverName = (approverId && APPROVER_ID_TO_NAME[approverId]) || approverId || "";
+                  if (product.approvePrice && approverName) return `Duyệt giá bởi ${approverName}`;
+                  return product.note || "";
+                })(),
                 ...(promotionId ? { "crdfd_Promotion@odata.bind": `/crdfd_promotions(${promotionId})` } : {}),
             };
 

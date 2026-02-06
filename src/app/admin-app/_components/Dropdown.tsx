@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useMemo, type ChangeEvent, type CSSProperties } from 'react';
+import { useId, useMemo, useRef, useState, useEffect, type ChangeEvent, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 
 // Helper function to remove Vietnamese diacritics (bỏ dấu)
@@ -71,6 +71,10 @@ interface DropdownProps {
   onSearch?: (search: string) => void;
   disabled?: boolean;
   className?: string;
+  /** A11y: dùng khi không có label liên kết được với trigger */
+  ariaLabel?: string;
+  /** A11y: trỏ tới id của label bên ngoài */
+  ariaLabelledBy?: string;
 }
 
 export default function Dropdown({
@@ -83,13 +87,20 @@ export default function Dropdown({
   onSearch,
   disabled = false,
   className = '',
+  ariaLabel,
+  ariaLabelledBy,
 }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedValue, setCopiedValue] = useState<string | null>(null);
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const reactId = useId();
+  const listboxId = `dd-listbox-${reactId}`;
 
   const [menuVars, setMenuVars] = useState<{
     top: number;
@@ -121,6 +132,7 @@ export default function Dropdown({
         setSearchTerm('');
         setMenuVars(null);
         setCopiedValue(null);
+        setActiveIndex(-1);
       }
     };
 
@@ -189,6 +201,7 @@ export default function Dropdown({
     setSearchTerm('');
     setMenuVars(null);
     setCopiedValue(null);
+    setActiveIndex(-1);
   };
 
   const copyToClipboard = async (text: string) => {
@@ -276,6 +289,54 @@ export default function Dropdown({
       .map(({ _normalizedLabel, _normalizedMeta, ...opt }) => opt); // Remove normalized fields from result
   }, [searchable, searchTerm, normalizedOptions, options]);
 
+  const selectedIndex = useMemo(() => {
+    if (!value) return -1;
+    return filteredOptions.findIndex((opt) => opt.value === value);
+  }, [filteredOptions, value]);
+
+  const clampIndex = (next: number) => {
+    const max = filteredOptions.length - 1;
+    if (max < 0) return -1;
+    return Math.max(0, Math.min(max, next));
+  };
+
+  const scrollOptionIntoView = (index: number) => {
+    const menuEl = menuRef.current;
+    if (!menuEl) return;
+    const el = menuEl.querySelector<HTMLElement>(`[data-dd-option-index="${index}"]`);
+    if (!el) return;
+    el.scrollIntoView({ block: 'nearest' });
+  };
+
+  const resetMenuState = () => {
+    setSearchTerm('');
+    setMenuVars(null);
+    setCopiedValue(null);
+    setActiveIndex(-1);
+  };
+
+  const openMenu = () => {
+    if (disabled) return;
+    // Khi mở: ưu tiên highlight option đang chọn, fallback option đầu.
+    const initial = selectedIndex >= 0 ? selectedIndex : (filteredOptions.length > 0 ? 0 : -1);
+    setActiveIndex(initial);
+    // Focus ô search nếu có, để nhập nhanh.
+    if (searchable) {
+      window.setTimeout(() => searchInputRef.current?.focus(), 0);
+    }
+    window.setTimeout(() => scrollOptionIntoView(initial), 0);
+  };
+
+  const closeMenu = () => {
+    resetMenuState();
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    // Nếu options thay đổi (do search), giữ activeIndex trong range.
+    setActiveIndex((prev) => clampIndex(prev < 0 ? (filteredOptions.length > 0 ? 0 : -1) : prev));
+  }, [filteredOptions.length, isOpen]);
+
   const portalStyle: CSSProperties | undefined = menuVars
     ? ({
       ['--dd-top' as any]: `${menuVars.top}px`,
@@ -285,12 +346,65 @@ export default function Dropdown({
     } as CSSProperties)
     : undefined;
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (disabled) return;
+
+    if (!isOpen) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        setIsOpen(true);
+        openMenu();
+      }
+      return;
+    }
+
+    // isOpen = true
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      setIsOpen(false);
+      closeMenu();
+      triggerRef.current?.focus();
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((prev) => {
+        const next = clampIndex((prev < 0 ? 0 : prev + 1));
+        window.setTimeout(() => scrollOptionIntoView(next), 0);
+        return next;
+      });
+      return;
+    }
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((prev) => {
+        const next = clampIndex((prev < 0 ? 0 : prev - 1));
+        window.setTimeout(() => scrollOptionIntoView(next), 0);
+        return next;
+      });
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const opt = filteredOptions[activeIndex];
+      if (opt) handleSelect(opt);
+      return;
+    }
+  };
+
   const menu = isOpen
     ? createPortal(
       <div
         ref={menuRef}
         className="admin-app-dropdown-menu admin-app-dropdown-menu-portal"
         style={portalStyle}
+        role="listbox"
+        id={listboxId}
+        aria-label={ariaLabel ? `${ariaLabel} - danh sách` : undefined}
+        onKeyDown={handleKeyDown}
       >
         {searchable && (
           <div className="admin-app-dropdown-search">
@@ -300,7 +414,10 @@ export default function Dropdown({
               placeholder="Tìm kiếm..."
               value={searchTerm}
               onChange={handleSearchChange}
+              onKeyDown={handleKeyDown}
               autoFocus
+              ref={searchInputRef}
+              aria-label="Tìm kiếm"
             />
           </div>
         )}
@@ -314,13 +431,16 @@ export default function Dropdown({
           <div className="admin-app-dropdown-empty">Không có dữ liệu</div>
         ) : (
           <div className="admin-app-dropdown-options">
-            {filteredOptions.map((option) => (
+            {filteredOptions.map((option, idx) => (
               <div
                 key={option.value}
-                className={`admin-app-dropdown-option ${value === option.value ? 'selected' : ''
-                  }`}
+                className={`admin-app-dropdown-option ${value === option.value ? 'selected' : ''} ${activeIndex >= 0 && filteredOptions[activeIndex]?.value === option.value ? 'is-active' : ''}`}
                 onClick={() => handleSelect(option)}
                 title={option.dropdownTooltip}
+                role="option"
+                aria-selected={value === option.value}
+                data-dd-option-index={idx}
+                onMouseEnter={() => setActiveIndex(idx)}
               >
                 <div className="admin-app-dropdown-option-content">
                   <span className="admin-app-dropdown-option-label">
@@ -380,10 +500,21 @@ export default function Dropdown({
         ref={triggerRef}
         onClick={() => {
           if (disabled) return;
-          setIsOpen((v) => !v);
+          setIsOpen((v) => {
+            const next = !v;
+            if (next) openMenu();
+            else closeMenu();
+            return next;
+          });
         }}
         disabled={disabled}
         title={triggerTitle}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-controls={listboxId}
+        aria-label={ariaLabel}
+        aria-labelledby={ariaLabelledBy}
+        onKeyDown={handleKeyDown}
       >
         <span className="admin-app-dropdown-value">
           {selectedOption ? selectedOption.label : placeholder}

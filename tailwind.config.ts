@@ -10,7 +10,9 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
+        // Wecare: Body dùng Roboto, Heading dùng Lexend (inject qua next/font ở từng layout)
+        sans: ['var(--font-roboto)', 'Roboto', 'system-ui', 'sans-serif'],
+        heading: ['var(--font-lexend)', 'var(--font-roboto)', 'Roboto', 'system-ui', 'sans-serif'],
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
@@ -24,6 +26,19 @@ const config: Config = {
       },
       colors: {
         customBlue: '#3899B4', 
+        // Wecare brand palette (dùng ưu tiên cho /admin-app)
+        wecare: {
+          blue: '#3492ab',
+          'blue-light': '#7FBACB',
+          'blue-pale': '#C5E0E8',
+          'blue-dark': '#236E84',
+          'blue-deep': '#164553',
+          green: '#4CAF50',
+          'off-white': '#F8F9FA',
+          'light-grey': '#E9ECEF',
+          'medium-grey': '#6C757D',
+          charcoal: '#343A40',
+        },
       },
       width: {
         'screen/2': '80vw', 

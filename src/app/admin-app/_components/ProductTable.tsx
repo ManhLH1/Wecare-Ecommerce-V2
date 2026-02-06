@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState, useCallback } from 'react';
 import { showToast } from '../../../components/ToastManager';
-import { fetchPromotionOrders, fetchProductPromotions, PromotionOrderItem, Promotion } from '../_api/adminApi';
+import { fetchPromotionOrders, fetchProductPromotions, fetchProductPromotionsBatch, PromotionOrderItem, Promotion } from '../_api/adminApi';
 
 // Helper function để check percent-based promotion
 const vndCodeEquals = (p: any, code: number) => {
@@ -154,37 +154,41 @@ async function recalculatePromotionEligibility(
       nonPromoItems: nonPromoItems.map(p => ({ code: p.productCode, name: p.productName?.substring(0, 20), eligible: p.eligibleForPromotion })),
     });
 
-    // Gọi fetchProductPromotions cho TỪNG product để lấy promotions (bao gồm cả CK1 và CK2)
+    // Tối ưu: gọi promotions 1 lần cho tất cả productCodes (tránh N request tuần tự)
+    const uniqueCodes = Array.from(
+      new Set(
+        allItems
+          .map((i) => i.productCode)
+          .filter((c): c is string => typeof c === 'string' && c.trim().length > 0)
+      )
+    );
+
+    const promotionsAll = await fetchProductPromotionsBatch(
+      uniqueCodes,
+      customerCodeValue || undefined,
+      undefined, // region
+      paymentTermsValue
+    );
+
+    const promotionsByCode = new Map<string, Promotion[]>();
+    for (const code of uniqueCodes) {
+      // Giữ behavior hiện tại: backend filter dùng contains(), nên ở client cũng match theo substring
+      promotionsByCode.set(
+        code,
+        (promotionsAll || []).filter((p) => String(p.productCodes || '').includes(code))
+      );
+    }
+
     const promotionMap = new Map<string, { discountPercent: number; promotionId: string }>();
     let promotionsFetched = 0;
-
-    console.debug('[ProductTable][RECALC] Fetching promotions for each product...');
 
     for (const item of allItems) {
       if (!item.productCode) continue;
 
-      // Gọi fetchProductPromotions cho từng product
-      const promotions = await fetchProductPromotions(
-        item.productCode,
-        customerCodeValue || undefined,
-        undefined, // region
-        paymentTermsValue
-      );
+      const promotions = promotionsByCode.get(item.productCode) || [];
 
-      console.debug('[ProductTable][RECALC] Promotions for product:', {
-        productCode: item.productCode,
-        promotionsCount: promotions.length,
-        promotions: promotions.map(p => ({
-          id: p.id,
-          name: p.name?.substring(0, 40),
-          value: p.value,
-          valueWithVat: p.valueWithVat,  // QUAN TRỌNG: Debug valueWithVat
-          vn: p.vn,
-          totalAmountCondition: p.totalAmountCondition,
-        })),
-      });
 
-      // Filter promotions: percent-based và meets total condition
+    // Filter promotions: percent-based và meets total condition
       const candidates = promotions.filter(p => {
         const isPercent = vndCodeEquals(p, 191920000);
         // Xử lý null/undefined/string "null" đúng cách

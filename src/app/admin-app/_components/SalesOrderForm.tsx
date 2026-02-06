@@ -7,7 +7,7 @@ import ProductEntryForm from './ProductEntryForm';
 import ProductTable from './ProductTable';
 import Dropdown from './Dropdown';
 import { useCustomers, useSaleOrders } from '../_hooks/useDropdownData';
-import { fetchSaleOrders, fetchSaleOrderDetails, SaleOrderDetail, saveSaleOrderDetails, updateInventory, fetchInventory, fetchUnits, fetchPromotionOrders, fetchSpecialPromotionOrders, applyPromotionOrder, PromotionOrderItem, InventoryInfo, fetchProductPromotions, Promotion } from '../_api/adminApi';
+import { fetchSaleOrders, fetchSaleOrderDetails, SaleOrderDetail, saveSaleOrderDetails, updateInventory, fetchInventory, fetchUnits, fetchPromotionOrders, fetchSpecialPromotionOrders, applyPromotionOrder, PromotionOrderItem, InventoryInfo, fetchProductPromotions, fetchProductPromotionsBatch, Promotion } from '../_api/adminApi';
 import { queryKeys } from '../_hooks/useReactQueryData';
 import { APPROVERS_LIST } from '../../../constants/constants';
 import { showToast } from '../../../components/ToastManager';
@@ -125,7 +125,14 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       return sum + lineSubtotal + lineVat;
     }, 0);
 
-    console.debug('[SalesOrderForm][RECALC] Starting recalculation:', {
+    const isDebug =
+      typeof window !== 'undefined' &&
+      window.localStorage?.getItem('admin_app_debug_recalc') === '1';
+    const debug = (...args: unknown[]) => {
+      if (isDebug) console.debug(...args);
+    };
+
+    debug('[SalesOrderForm][RECALC] Starting recalculation:', {
       promoItemCount: promoItems.length,
       nonPromoItemCount: nonPromoItems.length,
       totalOrderAmount,
@@ -136,41 +143,52 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     try {
       // Collect tất cả items
       const allItems = [...nonPromoItems, ...promoItems];
-      console.debug('[SalesOrderForm][RECALC] All items for promotions:', {
+      debug('[SalesOrderForm][RECALC] All items for promotions:', {
         totalProducts: allItems.length,
         promoItems: promoItems.map(p => ({ code: p.productCode, name: p.productName?.substring(0, 20), eligible: p.eligibleForPromotion })),
         nonPromoItems: nonPromoItems.map(p => ({ code: p.productCode, name: p.productName?.substring(0, 20), eligible: p.eligibleForPromotion })),
       });
 
-      // Gọi fetchProductPromotions cho TỪNG product để lấy promotions (bao gồm cả CK1 và CK2)
+      // Tối ưu: gọi promotions 1 lần cho tất cả productCodes (tránh N request tuần tự)
+      const uniqueCodes = Array.from(
+        new Set(
+          allItems
+            .map((i) => i.productCode)
+            .filter((c): c is string => typeof c === 'string' && c.trim().length > 0)
+        )
+      );
+
+      const paymentTermsValue =
+        selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan;
+
+      debug('[SalesOrderForm][RECALC] Fetching promotions (batch):', {
+        uniqueProducts: uniqueCodes.length,
+        paymentTerms: paymentTermsValue,
+      });
+
+      const promotionsAll = await fetchProductPromotionsBatch(
+        uniqueCodes,
+        customerCodeValue || undefined,
+        undefined, // region
+        paymentTermsValue
+      );
+
+      const promotionsByCode = new Map<string, Promotion[]>();
+      for (const code of uniqueCodes) {
+        // Giữ behavior hiện tại: backend filter dùng contains(), nên ở client cũng match theo substring
+        promotionsByCode.set(
+          code,
+          (promotionsAll || []).filter((p) => String(p.productCodes || '').includes(code))
+        );
+      }
+
       const promotionMap = new Map<string, { discountPercent: number; promotionId: string }>();
       let promotionsFetched = 0;
-
-      console.debug('[SalesOrderForm][RECALC] Fetching promotions for each product...');
 
       for (const item of allItems) {
         if (!item.productCode) continue;
 
-        // Gọi fetchProductPromotions cho từng product
-        const promotions = await fetchProductPromotions(
-          item.productCode,
-          customerCodeValue || undefined,
-          undefined, // region
-          selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan
-        );
-
-        console.debug('[SalesOrderForm][RECALC] Promotions for product:', {
-          productCode: item.productCode,
-          promotionsCount: promotions.length,
-          promotions: promotions.map(p => ({
-            id: p.id,
-            name: p.name?.substring(0, 40),
-            value: p.value,
-            valueWithVat: p.valueWithVat,  // QUAN TRỌNG: Debug valueWithVat
-            chietKhau2: p.chietKhau2,
-            totalAmountCondition: p.totalAmountCondition,
-          })),
-        });
+        const promotions = promotionsByCode.get(item.productCode) || [];
 
         // Filter promotions: percent-based và meets total condition
         const candidates = promotions.filter(p => {
@@ -183,34 +201,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           // Nếu minTotal = 0 hoặc NaN → coi như không có điều kiện tối thiểu → luôn đáp ứng
           const meetsTotal = !minTotal || minTotal === 0 || isNaN(minTotal) || totalOrderAmount >= minTotal;
 
-          console.debug('[SalesOrderForm][RECALC] Checking promotion for item:', {
-            productCode: item.productCode,
-            promoId: p.id,
-            promoName: p.name?.substring(0, 30),
-            isPercent,
-            vndOrPercent: p.vn,
-            rawCondition: rawCond,
-            minTotal,
-            totalOrderAmount,
-            meetsTotal,
-            willBeIncluded: isPercent && meetsTotal,
-          });
-
           return isPercent && meetsTotal;
-        });
-
-        console.debug('[SalesOrderForm][RECALC] Filtered candidates for product:', {
-          productCode: item.productCode,
-          promotionsCount: promotions.length,
-          candidatesCount: candidates.length,
-          totalOrderAmount,
-          candidates: candidates.map(c => ({
-            id: c.id,
-            name: c.name?.substring(0, 30),
-            value: c.value,
-            valueWithVat: c.valueWithVat,  // QUAN TRỌNG: Debug valueWithVat
-            minTotal: c.totalAmountCondition,
-          })),
         });
 
         // Lấy promotion có giá trị cao nhất
@@ -230,20 +221,12 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             discountPercent,
             promotionId: bestPromo.id
           });
-
-          console.debug('[SalesOrderForm][RECALC] Best promotion for product:', {
-            productCode: item.productCode,
-            promotionId: bestPromo.id,
-            name: bestPromo.name?.substring(0, 40),
-            discountPercent,
-            chietKhau2: bestPromo.chietKhau2,
-          });
         }
 
         promotionsFetched++;
       }
 
-      console.debug('[SalesOrderForm][RECALC] Final promotionMap:', {
+      debug('[SalesOrderForm][RECALC] Final promotionMap:', {
         mapSize: promotionMap.size,
         totalProducts: allItems.length,
         promotionsFetched,
@@ -594,6 +577,22 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             ? expandedDetails
             : await fetchSaleOrderDetails(soId);
 
+        const normalizeApproveNote = (note: string | undefined, approverId: string | undefined) => {
+          const rawNote = note || '';
+          const prefix = 'Duyệt giá bởi ';
+          if (!rawNote.startsWith(prefix)) return rawNote;
+
+          // Backward-compatible: dữ liệu cũ có thể đang lưu GUID thay vì tên
+          const maybeId = rawNote.slice(prefix.length).trim();
+          const nameFromNoteId = APPROVERS_LIST.find((a) => a.id === maybeId)?.name;
+          if (nameFromNoteId) return `${prefix}${nameFromNoteId}`;
+
+          const nameFromApprover = APPROVERS_LIST.find((a) => a.id === approverId)?.name;
+          if (approverId && maybeId === approverId && nameFromApprover) return `${prefix}${nameFromApprover}`;
+
+          return rawNote;
+        };
+
         // Map SaleOrderDetail to ProductTableItem
         const mappedProducts: ProductTableItem[] = details.map((detail: SaleOrderDetail) => {
           const subtotal = (detail.discountedPrice || detail.price) * detail.quantity;
@@ -633,7 +632,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             approver: detail.approver,
             deliveryDate: detail.deliveryDate || '',
             warehouse: warehouse, // Lấy từ state warehouse
-            note: detail.note,
+            note: normalizeApproveNote(detail.note, detail.approver),
             approvePrice: detail.approvePrice,
             approveSupPrice: detail.approveSupPrice,
             discountPercent: detail.discountPercent,
@@ -912,10 +911,10 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     const maxStt = productList.length > 0 ? Math.max(...productList.map((p) => p.stt || 0)) : 0;
     const newStt = maxStt + 1;
 
-    // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [người duyệt]", ngược lại lấy từ input
-    const formattedNote = approvePrice && approver
-      ? `Duyệt giá bởi ${approver}`
-      : note;
+    // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [tên người duyệt]"
+    // Tại sao: approver đang là GUID (lookup Employee). Note cần hiển thị tên để dễ đọc.
+    const approverName = APPROVERS_LIST.find((a) => a.id === approver)?.name ?? approver;
+    const formattedNote = approvePrice && approverName ? `Duyệt giá bởi ${approverName}` : note;
 
     // Xác định promotionId để sử dụng:
     // Ưu tiên: overrides.promotionId > inferredPromotionId
@@ -1067,10 +1066,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       // Map chỉ các sản phẩm mới (chưa có trong SOD) to API format
       // Không gửi ID vì đây là sản phẩm mới, chưa có trong CRM
       const productsToSave = newProducts.map((item) => {
-        // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [người duyệt]", ngược lại lấy từ item.note
-        const formattedNote = item.approvePrice && item.approver
-          ? `Duyệt giá bởi ${item.approver}`
-          : item.note || '';
+        // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [tên người duyệt]"
+        const approverName = APPROVERS_LIST.find((a) => a.id === item.approver)?.name ?? item.approver;
+        const formattedNote = item.approvePrice && approverName ? `Duyệt giá bởi ${approverName}` : item.note || '';
 
         return {
           id: undefined, // Không gửi ID cho sản phẩm mới - sẽ được tạo mới trong CRM
@@ -1838,10 +1836,9 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     const selectedSo = saleOrders.find((so) => so.crdfd_sale_orderid === soId);
     const isVatOrder = selectedVatText?.toLowerCase().includes('có vat') || false;
 
-    // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [người duyệt]", ngược lại lấy từ item.note
-    const formattedNote = product.approvePrice && product.approver
-      ? `Duyệt giá bởi ${product.approver}`
-      : product.note || '';
+    // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [tên người duyệt]"
+    const approverName = APPROVERS_LIST.find((a) => a.id === product.approver)?.name ?? product.approver;
+    const formattedNote = product.approvePrice && approverName ? `Duyệt giá bởi ${approverName}` : product.note || '';
 
     try {
       const customerLoginIdRaw = getItem('id');

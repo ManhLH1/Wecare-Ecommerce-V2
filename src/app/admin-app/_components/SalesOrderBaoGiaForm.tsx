@@ -77,6 +77,22 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   const [isOrderInfoCollapsed, setIsOrderInfoCollapsed] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
+  const normalizeApproveNote = (note: string | undefined, approverId: string | undefined) => {
+    const rawNote = note || '';
+    const prefix = 'Duyệt giá bởi ';
+    if (!rawNote.startsWith(prefix)) return rawNote;
+
+    // Backward-compatible: dữ liệu cũ có thể đang lưu GUID thay vì tên
+    const maybeId = rawNote.slice(prefix.length).trim();
+    const nameFromNoteId = APPROVERS_LIST.find((a) => a.id === maybeId)?.name;
+    if (nameFromNoteId) return `${prefix}${nameFromNoteId}`;
+
+    const nameFromApprover = APPROVERS_LIST.find((a) => a.id === approverId)?.name;
+    if (approverId && maybeId === approverId && nameFromApprover) return `${prefix}${nameFromApprover}`;
+
+    return rawNote;
+  };
+
   // Fetch data for dropdowns
   const { customers, loading: customersLoading } = useCustomers(customerSearch);
   // Load SOBG instead of SO
@@ -323,7 +339,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             approver: detail.approver || '',
             deliveryDate: detail.deliveryDate || '',
             warehouse: warehouse, // Lấy từ state warehouse
-            note: detail.note || '',
+            note: normalizeApproveNote(detail.note, detail.approver),
             approvePrice: detail.approvePrice || false,
             approveSupPrice: detail.approveSupPrice || false,
             discountPercent: detail.discountPercent || 0,
@@ -408,7 +424,9 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         // Filter promotions: percent-based và meets total condition
         const candidates = promotions.filter(p => {
           // Check nếu là percent-based (vn = 191920000 hoặc "%")
-          const isPercent = p.vn === 191920000 || String(p.vn || '').toLowerCase() === '%';
+          // Lưu ý: `p.vn` là string (OptionSet code dạng "191920000") hoặc "%", nên normalize về string trước
+          const vnStr = String(p.vn ?? '').trim();
+          const isPercent = vnStr === '191920000' || vnStr.toLowerCase() === '%';
           const rawCond = p.totalAmountCondition ?? null;
           const minTotal = rawCond !== null ? Number(rawCond) : 0;
           const meetsTotal = !minTotal || minTotal === 0 || isNaN(minTotal) || totalOrderAmount >= minTotal;
@@ -590,10 +608,10 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     const maxStt = productList.length > 0 ? Math.max(...productList.map((p) => p.stt || 0)) : 0;
     const newStt = maxStt + 1;
 
-    // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [người duyệt]", ngược lại lấy từ input
-    const formattedNote = approvePrice && approver
-      ? `Duyệt giá bởi ${approver}`
-      : note;
+    // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [tên người duyệt]"
+    // Tại sao: approver đang là GUID (lookup Employee). Note cần hiển thị tên để dễ đọc.
+    const approverName = APPROVERS_LIST.find((a) => a.id === approver)?.name ?? approver;
+    const formattedNote = approvePrice && approverName ? `Duyệt giá bởi ${approverName}` : note;
 
     const newProduct: ProductItem = {
       id: `${Date.now()}-${newStt}`,
@@ -717,7 +735,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           approver: detail.approver || '',
           deliveryDate: detail.deliveryDate || '',
           warehouse: warehouse,
-          note: detail.note || '',
+          note: normalizeApproveNote(detail.note, detail.approver),
           approvePrice: detail.approvePrice || false,
           approveSupPrice: detail.approveSupPrice || false,
           discountPercent: detail.discountPercent || 0,
@@ -777,7 +795,8 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       const isVatOrder = selectedVatText?.toLowerCase().includes('có vat') || false;
 
       const productsToSave = unsavedProducts.map((item) => {
-        const formattedNote = item.approvePrice && item.approver ? `Duyệt giá bởi ${item.approver}` : item.note || '';
+        const approverName = APPROVERS_LIST.find((a) => a.id === item.approver)?.name ?? item.approver;
+        const formattedNote = item.approvePrice && approverName ? `Duyệt giá bởi ${approverName}` : item.note || '';
         return {
           id: undefined,
           productId: item.productId,
@@ -1107,10 +1126,9 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     const selectedSo = soBaoGiaList.find((so) => so.id === soId);
     const isVatOrder = selectedVatText?.toLowerCase().includes('có vat') || false;
 
-    // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [người duyệt]", ngược lại lấy từ item.note
-    const formattedNote = product.approvePrice && product.approver
-      ? `Duyệt giá bởi ${product.approver}`
-      : product.note || '';
+    // Format note: nếu có duyệt giá thì format "Duyệt giá bởi [tên người duyệt]"
+    const approverName = APPROVERS_LIST.find((a) => a.id === product.approver)?.name ?? product.approver;
+    const formattedNote = product.approvePrice && approverName ? `Duyệt giá bởi ${approverName}` : product.note || '';
 
     try {
       const customerLoginIdRaw = getItem('id');

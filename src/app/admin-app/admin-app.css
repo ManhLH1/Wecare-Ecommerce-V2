@@ -2,9 +2,183 @@
 
 .admin-app-container {
   min-height: 100vh;
-  background: radial-gradient(circle at top left, #eef4ff 0, #f7f9fc 45%, #f5f5f5 100%);
-  font-family: 'Segoe UI', 'Roboto', 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  background: #F8F9FA; /* Off White theo brand */
+  font-family: var(--font-roboto), 'Roboto', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  color: #343A40; /* Charcoal */
   isolation: isolate;
+}
+
+/* Typography: Heading dùng Lexend trong phạm vi /admin-app */
+.admin-app-container h1,
+.admin-app-container h2,
+.admin-app-container h3,
+.admin-app-container h4,
+.admin-app-container h5,
+.admin-app-container h6,
+.admin-app-login-title,
+.admin-app-title,
+.admin-app-title-compact,
+.admin-app-section-title,
+.admin-app-card-title {
+  font-family: var(--font-lexend), var(--font-roboto), 'Roboto', system-ui, sans-serif;
+}
+
+/* Brand tokens (scope admin) */
+.admin-app-container {
+  --wecare-blue: #3492ab;
+  --wecare-green: #4CAF50;
+  --wecare-off-white: #F8F9FA;
+  --wecare-light-grey: #E9ECEF;
+  --wecare-medium-grey: #6C757D;
+  --wecare-charcoal: #343A40;
+  --wecare-blue-light: #7FBACB;
+  --wecare-blue-pale: #C5E0E8;
+  --wecare-blue-dark: #236E84;
+  --wecare-blue-deep: #164553;
+}
+
+/* Logo: dùng bản trắng trên nền brand bằng filter (không cần file logo trắng riêng) */
+.admin-app-logo-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.admin-app-logo {
+  height: 22px;
+  width: auto;
+  display: block;
+}
+
+.admin-app-logo--on-brand {
+  filter: brightness(0) invert(1);
+}
+
+/* ===== Product section redesign (Thông tin sản phẩm) ===== */
+.admin-app-product-section .admin-app-card-title-row {
+  padding-bottom: 8px;
+  border-bottom: 2px solid rgba(52, 146, 171, 0.18); /* wecare blue pale underline */
+  margin-bottom: 12px;
+}
+
+.admin-app-product-section .admin-app-card-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+
+.admin-app-product-section .admin-app-label-inline {
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: var(--wecare-medium-grey, #6C757D) !important;
+  pointer-events: auto; /* A11y: cho phép click/selection */
+  white-space: normal;
+  height: auto;
+  min-height: 0;
+  line-height: 1.4;
+}
+
+.admin-app-product-section .admin-app-input,
+.admin-app-product-section .admin-app-dropdown-trigger {
+  font-size: 16px;
+  color: var(--wecare-charcoal, #343A40);
+}
+
+.admin-app-product-section .admin-app-form-compact {
+  gap: 16px;
+}
+
+.admin-app-product-section .admin-app-form-row-compact {
+  gap: 16px;
+}
+
+.admin-app-product-section .admin-app-field-note textarea.admin-app-input {
+  height: auto;
+  min-height: 72px;
+  resize: vertical;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.admin-app-product-section .admin-app-note-counter {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--wecare-medium-grey, #6C757D);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-app-dropdown-option.is-active {
+  background: rgba(52, 146, 171, 0.10);
+}
+
+/* ===== Wecare Panel / Button primitives (Admin) ===== */
+.admin-app-form-section,
+.admin-app-section,
+.admin-app-card-compact,
+.admin-app-sale-orders-table,
+.admin-app-table-compact-wrapper {
+  background: var(--wecare-off-white);
+  border: 1px solid var(--wecare-light-grey);
+}
+
+.admin-app-label,
+.admin-app-label-inline,
+.admin-app-table td,
+.admin-app-table-compact td {
+  color: var(--wecare-charcoal);
+}
+
+.admin-app-hint,
+.admin-app-hint-compact,
+.admin-app-loading-text,
+.admin-app-spinner-text,
+.admin-app-summary-label,
+.admin-app-table-count {
+  color: var(--wecare-medium-grey);
+}
+
+/* Inputs: focus theo Wecare Blue */
+.admin-app-input:focus,
+.admin-app-form-input:focus,
+.admin-app-dropdown.is-open .admin-app-dropdown-trigger {
+  border-color: var(--wecare-blue);
+  box-shadow: 0 0 0 3px rgba(52, 146, 171, 0.14);
+}
+
+/* Buttons theo spec */
+.admin-app-btn-primary {
+  background: var(--wecare-blue);
+  color: white;
+  border-color: var(--wecare-blue);
+}
+.admin-app-btn-primary:hover:not(:disabled) {
+  background: var(--wecare-blue-dark);
+  border-color: var(--wecare-blue-dark);
+}
+
+.admin-app-btn-secondary {
+  background: transparent;
+  color: var(--wecare-blue);
+  border-color: var(--wecare-blue);
+}
+.admin-app-btn-secondary:hover:not(:disabled) {
+  background: rgba(52, 146, 171, 0.08);
+  border-color: var(--wecare-blue-dark);
+  color: var(--wecare-blue-dark);
+}
+
+.admin-app-btn-positive {
+  background: var(--wecare-green);
+  color: white;
+  border-color: var(--wecare-green);
+}
+.admin-app-btn-positive:hover:not(:disabled) {
+  background: #3f9f43;
+  border-color: #3f9f43;
 }
 
 /* Login Page Styles */
@@ -14,7 +188,7 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: radial-gradient(circle at top left, #eef4ff 0, #f7f9fc 45%, #f5f5f5 100%);
+  background: #F8F9FA;
 }
 
 .admin-app-login-card {
@@ -36,15 +210,22 @@
 .admin-app-login-title {
   font-size: 28px;
   font-weight: 700;
-  color: #0f172a;
+  color: #343A40;
   margin: 0 0 8px 0;
   letter-spacing: -0.5px;
 }
 
 .admin-app-login-subtitle {
   font-size: 15px;
-  color: #64748b;
+  color: #6C757D;
   margin: 0;
+}
+
+.admin-app-login-logo {
+  height: 34px;
+  width: auto;
+  margin: 0 auto 14px auto;
+  display: block;
 }
 
 .admin-app-login-form {
@@ -84,8 +265,8 @@
 
 .admin-app-form-input:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  border-color: var(--wecare-blue);
+  box-shadow: 0 0 0 3px rgba(52, 146, 171, 0.16);
 }
 
 .admin-app-form-input:disabled {
@@ -180,9 +361,10 @@
 .admin-app-default-login-button {
   width: 100%;
   padding: 12px 24px;
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  /* Secondary action: outline theo Wecare Blue */
+  background: transparent;
   color: white;
-  border: none;
+  border: 2px solid var(--wecare-blue);
   border-radius: 8px;
   font-size: 15px;
   font-weight: 500;
@@ -192,12 +374,13 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  color: var(--wecare-blue);
+  box-shadow: none;
 }
 
 .admin-app-default-login-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+  background: rgba(52, 146, 171, 0.08);
+  box-shadow: 0 4px 12px rgba(22, 69, 83, 0.10);
   transform: translateY(-1px);
 }
 
@@ -214,7 +397,8 @@
 .admin-app-login-button {
   width: 100%;
   padding: 14px 24px;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  /* Primary action: solid Wecare Blue */
+  background: var(--wecare-blue);
   color: white;
   border: none;
   border-radius: 8px;
@@ -226,13 +410,13 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 4px 12px rgba(52, 146, 171, 0.22);
   margin-top: 8px;
 }
 
 .admin-app-login-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
-  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+  background: var(--wecare-blue-dark);
+  box-shadow: 0 6px 16px rgba(22, 69, 83, 0.22);
   transform: translateY(-1px);
 }
 
@@ -249,8 +433,8 @@
 .admin-app-spinner {
   width: 18px;
   height: 18px;
-  border: 2px solid rgba(37, 99, 235, 0.2);
-  border-top-color: #2563eb;
+  border: 2px solid rgba(52, 146, 171, 0.22);
+  border-top-color: var(--wecare-blue);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   display: inline-block;
@@ -373,61 +557,61 @@
   max-width: 1280px;
   margin: 0 auto;
   padding: 8px 12px 12px;
-  /* Accent theme (default) */
-  --admin-accent-1: #6366f1;
-  --admin-accent-2: #8b5cf6;
-  --admin-accent-shadow: rgba(99, 102, 241, 0.25);
-  --admin-accent-shadow-hover: rgba(99, 102, 241, 0.35);
-  --admin-accent-bar: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
-  --admin-accent-soft: rgba(99, 102, 241, 0.10);
+  /* Accent theme: chuẩn hoá theo Wecare (strict) */
+  --admin-accent-1: var(--wecare-blue);
+  --admin-accent-2: var(--wecare-blue-dark);
+  --admin-accent-shadow: rgba(52, 146, 171, 0.22);
+  --admin-accent-shadow-hover: rgba(52, 146, 171, 0.32);
+  --admin-accent-bar: linear-gradient(90deg, var(--wecare-blue) 0%, var(--wecare-blue-dark) 100%);
+  --admin-accent-soft: rgba(52, 146, 171, 0.10);
   /* Compact header buttons */
-  --admin-hbtn-save-bg: #2563eb;
-  --admin-hbtn-save-hover: #1d4ed8;
-  --admin-hbtn-submit-bg: #10b981;
-  --admin-hbtn-submit-hover: #059669;
-  --admin-hbtn-create-bg: #6366f1;
-  --admin-hbtn-create-hover: #4f46e5;
+  --admin-hbtn-save-bg: var(--wecare-blue);
+  --admin-hbtn-save-hover: var(--wecare-blue-dark);
+  --admin-hbtn-submit-bg: var(--wecare-green);
+  --admin-hbtn-submit-hover: #3f9f43; /* shade nhẹ của green để hover */
+  --admin-hbtn-create-bg: var(--wecare-blue);
+  --admin-hbtn-create-hover: var(--wecare-blue-deep);
   /* Mini primary button (inside card actions) */
-  --admin-mini-primary-bg: #2563eb;
-  --admin-mini-primary-hover: #1d4ed8;
+  --admin-mini-primary-bg: var(--wecare-blue);
+  --admin-mini-primary-hover: var(--wecare-blue-dark);
 }
 
 /* Mode: SO (Sales Order) */
 .admin-app-wrapper.admin-app-mode-so {
-  --admin-accent-1: #0284c7;
-  --admin-accent-2: #2563eb;
-  --admin-accent-shadow: rgba(37, 99, 235, 0.22);
-  --admin-accent-shadow-hover: rgba(37, 99, 235, 0.32);
-  --admin-accent-bar: linear-gradient(90deg, #0284c7 0%, #2563eb 60%, #22c55e 100%);
-  --admin-accent-soft: rgba(37, 99, 235, 0.10);
-  /* SO: slightly cooler palette */
-  --admin-hbtn-save-bg: #2563eb;
-  --admin-hbtn-save-hover: #1d4ed8;
-  --admin-hbtn-submit-bg: #0ea5e9;
-  --admin-hbtn-submit-hover: #0284c7;
-  --admin-hbtn-create-bg: #22c55e;
-  --admin-hbtn-create-hover: #16a34a;
-  --admin-mini-primary-bg: #2563eb;
-  --admin-mini-primary-hover: #1d4ed8;
+  /* Strict brand: SO/SOBG không đổi palette để giữ nhất quán thương hiệu */
+  --admin-accent-1: var(--wecare-blue);
+  --admin-accent-2: var(--wecare-blue-dark);
+  --admin-accent-shadow: rgba(52, 146, 171, 0.22);
+  --admin-accent-shadow-hover: rgba(52, 146, 171, 0.32);
+  --admin-accent-bar: linear-gradient(90deg, var(--wecare-blue) 0%, var(--wecare-blue-dark) 100%);
+  --admin-accent-soft: rgba(52, 146, 171, 0.10);
+  --admin-hbtn-save-bg: var(--wecare-blue);
+  --admin-hbtn-save-hover: var(--wecare-blue-dark);
+  --admin-hbtn-submit-bg: var(--wecare-green);
+  --admin-hbtn-submit-hover: #3f9f43;
+  --admin-hbtn-create-bg: var(--wecare-blue);
+  --admin-hbtn-create-hover: var(--wecare-blue-deep);
+  --admin-mini-primary-bg: var(--wecare-blue);
+  --admin-mini-primary-hover: var(--wecare-blue-dark);
 }
 
 /* Mode: SOBG (Sales Order Báo Giá) */
 .admin-app-wrapper.admin-app-mode-sobg {
-  --admin-accent-1: #7c3aed;
-  --admin-accent-2: #db2777;
-  --admin-accent-shadow: rgba(124, 58, 237, 0.22);
-  --admin-accent-shadow-hover: rgba(124, 58, 237, 0.32);
-  --admin-accent-bar: linear-gradient(90deg, #7c3aed 0%, #db2777 55%, #f59e0b 100%);
-  --admin-accent-soft: rgba(124, 58, 237, 0.10);
-  /* SOBG: warmer purple/pink palette */
-  --admin-hbtn-save-bg: #7c3aed;
-  --admin-hbtn-save-hover: #6d28d9;
-  --admin-hbtn-submit-bg: #db2777;
-  --admin-hbtn-submit-hover: #be185d;
-  --admin-hbtn-create-bg: #f59e0b;
-  --admin-hbtn-create-hover: #d97706;
-  --admin-mini-primary-bg: #7c3aed;
-  --admin-mini-primary-hover: #6d28d9;
+  /* Strict brand: SO/SOBG không đổi palette để giữ nhất quán thương hiệu */
+  --admin-accent-1: var(--wecare-blue);
+  --admin-accent-2: var(--wecare-blue-dark);
+  --admin-accent-shadow: rgba(52, 146, 171, 0.22);
+  --admin-accent-shadow-hover: rgba(52, 146, 171, 0.32);
+  --admin-accent-bar: linear-gradient(90deg, var(--wecare-blue) 0%, var(--wecare-blue-dark) 100%);
+  --admin-accent-soft: rgba(52, 146, 171, 0.10);
+  --admin-hbtn-save-bg: var(--wecare-blue);
+  --admin-hbtn-save-hover: var(--wecare-blue-dark);
+  --admin-hbtn-submit-bg: var(--wecare-green);
+  --admin-hbtn-submit-hover: #3f9f43;
+  --admin-hbtn-create-bg: var(--wecare-blue);
+  --admin-hbtn-create-hover: var(--wecare-blue-deep);
+  --admin-mini-primary-bg: var(--wecare-blue);
+  --admin-mini-primary-hover: var(--wecare-blue-dark);
 }
 
 /* Form Type Toggle */
@@ -435,10 +619,10 @@
   display: flex;
   gap: 3px;
   padding: 2px;
-  background: rgba(241, 245, 249, 0.8);
+  background: rgba(255, 255, 255, 0.14);
   border-radius: 6px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: none;
   width: fit-content;
 }
 
@@ -447,7 +631,7 @@
   border-radius: 3px;
   border: none;
   background: transparent;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.85);
   cursor: pointer;
   font-size: 9px;
   font-weight: 600;
@@ -459,15 +643,15 @@
 }
 
 .admin-app-toggle-btn:hover:not(.admin-app-toggle-btn-active) {
-  background: rgba(255, 255, 255, 0.6);
-  color: #475569;
+  background: rgba(255, 255, 255, 0.14);
+  color: white;
 }
 
 .admin-app-toggle-btn-active {
-  background: linear-gradient(135deg, var(--admin-accent-1) 0%, var(--admin-accent-2) 100%);
+  background: rgba(255, 255, 255, 0.22);
   color: white;
   font-weight: 600;
-  box-shadow: 0 1px 4px var(--admin-accent-shadow);
+  box-shadow: none;
   transform: translateY(-1px);
 }
 
@@ -482,10 +666,11 @@
   justify-content: space-between;
   align-items: center;
   padding: 4px 8px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%);
+  /* Panels/Headers: brand background + white text */
+  background: var(--wecare-blue);
   border-radius: 4px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 1px 1px rgba(15, 23, 42, 0.02);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 10px 24px rgba(22, 69, 83, 0.18);
+  border: 1px solid var(--wecare-blue-dark);
   backdrop-filter: blur(12px);
   margin-bottom: 6px;
   position: relative;
@@ -502,8 +687,8 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: var(--admin-accent-bar);
-  opacity: 0.5;
+  background: rgba(255, 255, 255, 0.22);
+  opacity: 1;
 }
 
 /* Subtle accent in compact UI cards to help visually distinguish modes */
@@ -538,17 +723,14 @@
 .admin-app-title {
   font-size: 11px;
   font-weight: 700;
-  background: linear-gradient(135deg, #0f172a 0%, #475569 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: white;
   letter-spacing: -0.2px;
   line-height: 1.1;
 }
 
 .admin-app-subtitle {
   font-size: 8px;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.85);
   font-weight: 500;
   letter-spacing: 0.01em;
   line-height: 1.1;
@@ -572,10 +754,10 @@
   align-items: center;
   gap: 4px;
   padding: 2px 6px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%);
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 4px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: none;
   transition: all 0.2s ease;
   max-width: 200px;
 }
@@ -631,7 +813,7 @@
 .admin-app-user-name {
   font-size: 9px;
   font-weight: 600;
-  color: #0f172a;
+  color: white;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -640,7 +822,7 @@
 
 .admin-app-user-email {
   font-size: 7px;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.82);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1033,7 +1215,7 @@
   border: 1.5px solid #d0d7e2;
   border-radius: 8px;
   font-size: 15px;
-  color: #0f172a;
+  color: var(--wecare-charcoal, #343A40);
   background: white;
   transition: all 0.2s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
@@ -1041,6 +1223,10 @@
   height: 42px;
   box-sizing: border-box;
   line-height: 1.5;
+}
+
+.admin-app-input::placeholder {
+  color: var(--wecare-medium-grey, #6C757D);
 }
 
 .admin-app-input-number,
@@ -1055,8 +1241,9 @@
 
 .admin-app-input:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2), 0 2px 6px rgba(15, 23, 42, 0.12);
+  border-color: var(--wecare-blue, #3492ab);
+  border-width: 2px;
+  box-shadow: 0 0 0 3px rgba(52, 146, 171, 0.16), 0 2px 6px rgba(22, 69, 83, 0.12);
 }
 
 .admin-app-input-wide {
@@ -1227,7 +1414,7 @@
 }
 
 .admin-app-table thead {
-  background: linear-gradient(120deg, #0ea5e9 0%, #2563eb 40%, #22c55e 100%);
+  background: var(--wecare-blue);
   color: white;
   position: sticky;
   top: 0;
@@ -1253,8 +1440,8 @@
 }
 
 .admin-app-table tbody tr:hover {
-  background: #f1f5f9;
-  box-shadow: inset 4px 0 0 #22c55e;
+  background: #F8F9FA;
+  box-shadow: inset 4px 0 0 var(--wecare-green);
 }
 
 .admin-app-table td {
@@ -1861,9 +2048,10 @@ html, body, #__next {
   align-items: center;
   justify-content: space-between;
   padding: 0 8px;
-  background: white;
-  border-bottom: 1px solid #e2e8f0;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  background: var(--wecare-blue);
+  color: white;
+  border-bottom: 1px solid var(--wecare-blue-dark);
+  box-shadow: 0 8px 20px rgba(22, 69, 83, 0.14);
   flex-shrink: 0;
 }
 
@@ -1876,7 +2064,7 @@ html, body, #__next {
 .admin-app-title-compact {
   font-size: 13px;
   font-weight: 700;
-  color: #0f172a;
+  color: white;
   letter-spacing: -0.2px;
   line-height: 1;
 }
@@ -1886,9 +2074,9 @@ html, body, #__next {
   border-radius: 6px;
   font-size: 9px;
   font-weight: 600;
-  background: #f1f5f9;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   line-height: 1.4;
 }
 
@@ -3356,7 +3544,7 @@ html, body, #__next {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: linear-gradient(120deg, #0ea5e9 0%, #2563eb 40%, #22c55e 100%);
+  background: var(--wecare-blue);
   color: white;
 }
 

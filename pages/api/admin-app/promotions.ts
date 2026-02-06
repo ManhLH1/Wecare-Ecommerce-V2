@@ -1,6 +1,8 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import axios from "axios";
 import { getAccessToken } from "../getAccessToken";
+import { getCacheKey, getCachedResponse, setCachedResponse, shouldCacheResponse } from "./_utils/cache";
+import { deduplicateRequest, getDedupKey } from "./_utils/requestDeduplication";
 
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
 const PROMOTION_TABLE = "crdfd_promotions";
@@ -122,40 +124,65 @@ export default async function handler(
       return res.status(400).json({ error: "productCode is required" });
     }
 
-    const token = await getAccessToken();
-    if (!token) {
-      return res.status(401).json({ error: "Failed to obtain access token" });
+    // Cache + dedup để giảm load khi frontend gọi nhiều lần (đặc biệt khi recalc promotion)
+    const cacheKey = getCacheKey("promotions", {
+      productCode,
+      customerCode,
+      customerCodes,
+      region,
+      paymentTerms,
+    });
+    const cached = getCachedResponse(cacheKey, true); // short cache
+    if (cached !== undefined) {
+      return res.status(200).json(cached);
     }
 
-    const headers = {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      "OData-MaxVersion": "4.0",
-      "OData-Version": "4.0",
-      Prefer: "odata.maxpagesize=200",
-    };
+    const dedupKey = getDedupKey("promotions", {
+      productCode,
+      customerCode,
+      customerCodes,
+      region,
+      paymentTerms,
+    });
 
-    const filters: string[] = [
-      "statecode eq 0",
-      "crdfd_promotion_deactive eq 'Active'",
-    ];
+    const promotions = await deduplicateRequest(dedupKey, async () => {
+      const token = await getAccessToken();
+      if (!token) {
+        // Throw để nhảy xuống catch phía ngoài (giữ response behavior nhất quán)
+        const err: any = new Error("Failed to obtain access token");
+        err.statusCode = 401;
+        throw err;
+      }
 
-    // Time window: start_date <= now AND (no end_date OR end_date >= now)
-    const nowIso = new Date().toISOString();
-    filters.push(`crdfd_start_date le ${nowIso}`);
-    filters.push(`(crdfd_end_date ge ${nowIso} or crdfd_end_date eq null)`);
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "OData-MaxVersion": "4.0",
+        "OData-Version": "4.0",
+        Prefer: "odata.maxpagesize=200",
+      };
 
-    // Support multiple product codes (comma separated)
-    const productCodes = productCode
-      .split(",")
-      .map((c) => c.trim())
-      .filter(Boolean);
-    if (productCodes.length > 0) {
-      const productFilter = productCodes
-        .map((code) => `contains(crdfd_masanpham_multiple,'${escapeODataValue(code)}')`)
-        .join(" or ");
-      filters.push(`(${productFilter})`);
-    }
+      const filters: string[] = [
+        "statecode eq 0",
+        "crdfd_promotion_deactive eq 'Active'",
+      ];
+
+      // Time window: start_date <= now AND (no end_date OR end_date >= now)
+      const nowIso = new Date().toISOString();
+      filters.push(`crdfd_start_date le ${nowIso}`);
+      filters.push(`(crdfd_end_date ge ${nowIso} or crdfd_end_date eq null)`);
+
+      // Support multiple product codes (comma separated)
+      const productCodes = productCode
+        .split(",")
+        .map((c) => c.trim())
+        .filter(Boolean);
+      if (productCodes.length > 0) {
+        const productFilter = productCodes
+          .map((code) => `contains(crdfd_masanpham_multiple,'${escapeODataValue(code)}')`)
+          .join(" or ");
+        filters.push(`(${productFilter})`);
+      }
 
     const customerCodesArray: string[] = [];
     if (customerCode && typeof customerCode === "string" && customerCode.trim()) {
@@ -379,8 +406,16 @@ export default async function handler(
       };
     });
 
-    // Return annotated promotions array (backwards-compatible: still an array)
-    res.status(200).json(promotions);
+      // Return annotated promotions array (backwards-compatible: still an array)
+      return promotions;
+    });
+
+    // Cache nhẹ để giảm tải (promotions ít thay đổi tức thời)
+    if (shouldCacheResponse(200, promotions)) {
+      setCachedResponse(cacheKey, promotions, true, 30 * 1000); // 30s TTL
+    }
+
+    return res.status(200).json(promotions);
   } catch (error: any) {
     console.error("Error fetching promotions:", error);
 
@@ -400,7 +435,12 @@ export default async function handler(
       });
     }
 
-    res.status(500).json({
+    // Custom statusCode (ví dụ token lỗi) - fallback về 500 nếu không có
+    if (error?.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+
+    return res.status(500).json({
       error: "Error fetching promotions",
       details: error.message,
     });

@@ -632,23 +632,12 @@ export default async function handler(
     // "special" promotions regardless of product code constraints.
     const allFetchedPromotions = fetchedPromotions.slice();
 
-    // Helper function to check if promotion is CK1 (not CK2)
-    const isChietKhauau1 = (promo: AvailablePromotion) => {
-      // CK1 = promotions WITHOUT chietKhau2 flag, or with chietKhau2 = false/0/"false"/"0"
-      const isCK2 = normalizeChietKhau2(promo.chietKhau2);
-      console.log(`[DEBUG isChietKhauau1] promo: ${promo.name?.substring(0, 30)}, chietKhau2: ${promo.chietKhau2}, isCK2: ${isCK2}, result: ${!isCK2}`);
-      return !isCK2;
-    };
-
-    // Narrow available promotions to those of type 'Order' for normal processing
-    // BUT vẫn giữ lại CK1 promotions (chietKhau2 = false) với type khác để frontend có thể apply
-    let availablePromotions = fetchedPromotions.filter(p => {
-      const typeOrder = String(p.type || '').toLowerCase() === 'order';
-      const isCK1 = isChietKhauau1(p);
-      const result = typeOrder || isCK1;
-      console.log(`[DEBUG filter] promo: ${p.name?.substring(0, 30)}, type: ${p.type}, typeOrder: ${typeOrder}, isCK1: ${isCK1}, result: ${result}`);
-      // Giữ lại: promotions "Order" HOẶC promotions CK1 (chietKhau2 = false)
-      return result;
+    // Chỉ lấy promotions "Order" có chiết khấu 2 (CK2).
+    // Yêu cầu: KHÔNG trả về promotions có `chietKhau2: false`.
+    let availablePromotions = fetchedPromotions.filter((p) => {
+      const typeOrder = String(p.type || "").toLowerCase() === "order";
+      const isCK2 = normalizeChietKhau2(p.chietKhau2);
+      return typeOrder && isCK2;
     });
 
     // Debug logging
@@ -724,9 +713,13 @@ export default async function handler(
     ];
 
     // Match special promotions by case-insensitive substring to tolerate minor name differences
-    let specialPromotions = allFetchedPromotionsAnnotated.filter(p => {
-      const name = String(p.name || '').trim().toLowerCase();
-      return SPECIAL_PROMOTION_NAMES.some(sp => name.includes(String(sp).trim().toLowerCase()));
+    // Lưu ý: vẫn filter CK2 để đảm bảo không trả về `chietKhau2:false`.
+    let specialPromotions = allFetchedPromotionsAnnotated.filter((p) => {
+      if (!normalizeChietKhau2(p.chietKhau2)) return false;
+      const name = String(p.name || "").trim().toLowerCase();
+      return SPECIAL_PROMOTION_NAMES.some((sp) =>
+        name.includes(String(sp).trim().toLowerCase())
+      );
     });
 
     // If some special promotions are missing from the initial fetch (due to filters like customerCode/totalAmount/time window),
@@ -773,7 +766,10 @@ export default async function handler(
           }));
 
           // Annotate these extra promos with payment terms as earlier
-          const extraAnnotated = annotateWithPaymentTerms(extraPromos);
+          // Filter CK2 ngay từ đây để không merge nhầm CK1
+          const extraAnnotated = annotateWithPaymentTerms(
+            extraPromos.filter((p: any) => normalizeChietKhau2(p.chietKhau2))
+          );
           // Merge any missing ones
           for (const ep of extraAnnotated) {
             if (!specialPromotions.some(p => p.id === ep.id)) {
@@ -786,12 +782,8 @@ export default async function handler(
       }
     }
 
-    // If there are available promotions that include chiết khấu 2 (line discounts),
-    // do not surface special promotions (specials should not be shown when chietKhau2 promotions exist).
-    const hasChietKhau2 = availablePromotions.some(p => Boolean(p.chietKhau2));
-    if (hasChietKhau2) {
-      specialPromotions = [];
-    }
+    // Vì đã filter CK2 ở trên, `specialPromotions` chỉ là subset của CK2.
+    // Không cần ẩn specials theo điều kiện CK2 nữa.
 
     // Debug logging
     console.log(`Final available promotions (max value): ${promotionOrderMax.length}`);

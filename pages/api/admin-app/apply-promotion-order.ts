@@ -577,22 +577,35 @@ export default async function handler(
         }
         const updatedSodIds = new Set<string>();
         console.log('[ApplyPromotion] SODs matched for update:', sodsToUpdate.length, 'soId=', soId, 'productCodes=', productCodeListNorm, 'productGroups=', productGroupCodeListNorm);
-        for (const sod of sodsToUpdate) {
-          try {
-            const sodId = sod.crdfd_saleorderdetailid;
-            if (updatedSodIds.has(sodId)) continue;
-            const updated = await updateSodChietKhau2(
-              sodId,
-              promotionValueForCalc,
-              effectiveVndOrPercent,
-              headers
-            );
-            if (updated && (updated.success || updated.status === 204 || updated.status === 200)) {
-              updatedSodCount++;
-              updatedSodIds.add(sodId);
+        // Tối ưu: update theo batch + giới hạn concurrency để tránh await tuần tự (rất chậm khi nhiều dòng)
+        const UPDATE_BATCH_SIZE = 5;
+        for (let i = 0; i < sodsToUpdate.length; i += UPDATE_BATCH_SIZE) {
+          const batch = sodsToUpdate.slice(i, i + UPDATE_BATCH_SIZE);
+          const results = await Promise.allSettled(
+            batch.map(async (sod) => {
+              const sodId = sod.crdfd_saleorderdetailid;
+              if (!sodId || updatedSodIds.has(sodId)) return { sodId, ok: false };
+              const updated = await updateSodChietKhau2(
+                sodId,
+                promotionValueForCalc,
+                effectiveVndOrPercent,
+                headers
+              );
+              const ok = !!(updated && (updated.success || updated.status === 204 || updated.status === 200));
+              return { sodId, ok };
+            })
+          );
+
+          for (const r of results) {
+            if (r.status === 'fulfilled') {
+              const { sodId, ok } = r.value;
+              if (ok && sodId && !updatedSodIds.has(sodId)) {
+                updatedSodCount++;
+                updatedSodIds.add(sodId);
+              }
+            } else {
+              console.error('[ApplyPromotion] Error updating SOD batch item:', r.reason?.message || r.reason);
             }
-          } catch (err: any) {
-            console.error('[ApplyPromotion] Error updating single SOD:', sod?.crdfd_saleorderdetailid, err?.message || err);
           }
         }
 
