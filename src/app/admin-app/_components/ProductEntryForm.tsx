@@ -280,6 +280,7 @@ interface ProductEntryFormProps {
   disableInventoryReserve?: boolean; // Tắt tính năng giữ hàng tự động (dùng cho SOBG)
   disableCreatedOnCheck?: boolean; // Tắt kiểm tra hạn thêm sản phẩm theo createdOn (dùng cho SOBG)
   orderTotal?: number; // Tổng tiền toàn đơn (dùng để check Promotion Order & phân bổ chiết khấu VNĐ)
+  currentProducts?: Array<{ productCode?: string; productGroupCode?: string; price: number; quantity: number; vat?: number }>; // Danh sách sản phẩm hiện tại trong đơn (dùng để tính tổng tiền match với promotion)
   onOpenSpecialPromotions?: () => Promise<void> | void;
   onOpenDiscount2?: (orderTotalOverride?: number) => Promise<void> | void;
   enablePromotionAutoFetch?: boolean;
@@ -359,6 +360,7 @@ function ProductEntryForm({
   disableInventoryReserve = false,
   disableCreatedOnCheck = false,
   orderTotal,
+  currentProducts,
   onOpenSpecialPromotions,
   onOpenDiscount2,
   onPriceNoVatChange,
@@ -2358,20 +2360,96 @@ function ProductEntryForm({
           const sel = selectedPromotion || promotions[0];
           if (sel) {
             // KIỂM TRA ĐIỀU KIỆN TỔNG TIỀN (totalAmountCondition) TRƯỚC KHI ÁP DỤNG PROMOTION
-            // Nếu promotion có điều kiện tổng tiền tối thiểu, chỉ áp dụng khi tổng đơn >= điều kiện
-            // Tính estimatedOrderTotal tương tự SalesOrderForm: currentOrderTotal + newProductTotalEstimate
+            // QUAN TRỌNG: Tính tổng tiền chỉ từ các sản phẩm có trong cr1bb_manhomsp_multiple và crdfd_masanpham_multiple
             const minTotalCondition = Number(sel.totalAmountCondition || 0) || 0;
-            // Dùng orderTotal (tổng hiện tại) + totalAmount (sản phẩm đang thêm, CHƯA có discount)
-            const estimatedOrderTotal = Number(orderTotal || 0) + Number(totalAmount || 0);
-            const meetsTotalCondition = minTotalCondition === 0 || estimatedOrderTotal >= minTotalCondition;
+            
+            // Helper function: Tính tổng tiền từ các sản phẩm match với promotion
+            const calculateTotalForPromotion = (
+              products: Array<{ productCode?: string; productGroupCode?: string; price: number; quantity: number; vat?: number }>,
+              promotion: Promotion,
+              newProduct?: { productCode?: string; productGroupCode?: string; price: number; quantity: number; vat?: number }
+            ): number => {
+              const promoAny = promotion as any;
+              const productCodesStr = promotion.productCodes || promoAny.crdfd_masanpham_multiple || '';
+              const productGroupCodesStr = promotion.productGroupCodes || promoAny.cr1bb_manhomsp_multiple || '';
+              
+              // Parse danh sách mã sản phẩm và mã nhóm sản phẩm (comma-separated)
+              const allowedProductCodes = productCodesStr
+                .split(',')
+                .map((c: string) => c.trim())
+                .filter(Boolean);
+              const allowedProductGroupCodes = productGroupCodesStr
+                .split(',')
+                .map((c: string) => c.trim())
+                .filter(Boolean);
+              
+              // Nếu promotion không có điều kiện về sản phẩm/nhóm sản phẩm → tính tổng tất cả
+              const hasProductFilter = allowedProductCodes.length > 0 || allowedProductGroupCodes.length > 0;
+              
+              let total = 0;
+              
+              // Tính tổng từ các sản phẩm hiện tại trong đơn
+              if (products && products.length > 0) {
+                total += products.reduce((sum, item) => {
+                  const matchesProductCode = !hasProductFilter || 
+                    (item.productCode && allowedProductCodes.includes(item.productCode));
+                  const matchesProductGroupCode = !hasProductFilter || 
+                    (item.productGroupCode && allowedProductGroupCodes.includes(item.productGroupCode));
+                  
+                  if (matchesProductCode || matchesProductGroupCode) {
+                    const basePrice = item.price;
+                    const lineSubtotal = basePrice * (item.quantity || 0);
+                    const lineVat = Math.round((lineSubtotal * (item.vat ?? 0)) / 100);
+                    return sum + lineSubtotal + lineVat;
+                  }
+                  return sum;
+                }, 0);
+              }
+              
+              // Thêm sản phẩm đang thêm vào tổng nếu match với promotion
+              if (newProduct) {
+                const matchesProductCode = !hasProductFilter || 
+                  (newProduct.productCode && allowedProductCodes.includes(newProduct.productCode));
+                const matchesProductGroupCode = !hasProductFilter || 
+                  (newProduct.productGroupCode && allowedProductGroupCodes.includes(newProduct.productGroupCode));
+                
+                if (matchesProductCode || matchesProductGroupCode) {
+                  const basePrice = newProduct.price;
+                  const lineSubtotal = basePrice * (newProduct.quantity || 0);
+                  const lineVat = Math.round((lineSubtotal * (newProduct.vat ?? 0)) / 100);
+                  total += lineSubtotal + lineVat;
+                }
+              }
+              
+              return total;
+            };
+            
+            // Tính tổng tiền từ các sản phẩm match với promotion
+            const newProductForCalc = {
+              productCode: selectedProductCode,
+              productGroupCode: selectedProductGroupCode,
+              price: Number(price) || 0,
+              quantity: quantity || 0,
+              vat: vatPercent || 0,
+            };
+            const totalForThisPromotion = calculateTotalForPromotion(
+              currentProducts || [],
+              sel,
+              newProductForCalc
+            );
+            
+            const meetsTotalCondition = minTotalCondition === 0 || totalForThisPromotion >= minTotalCondition;
 
             console.debug('[ProductEntryForm][PROMO DEBUG] Promotion condition check:', {
               promotionId: sel.id,
               promotionName: sel.name,
               totalAmountCondition: minTotalCondition,
-              orderTotal: orderTotal,
-              totalAmount: totalAmount,
-              estimatedOrderTotal,
+              productCodes: sel.productCodes || (sel as any).crdfd_masanpham_multiple,
+              productGroupCodes: sel.productGroupCodes || (sel as any).cr1bb_manhomsp_multiple,
+              currentProductsCount: currentProducts?.length || 0,
+              newProductCode: selectedProductCode,
+              newProductGroupCode: selectedProductGroupCode,
+              totalForThisPromotion,
               meetsTotalCondition,
             });
 
@@ -2617,7 +2695,77 @@ function ProductEntryForm({
     // so editing quantity or VAT updates applicability immediately.
     if (selected) {
       const minTotal = Number(selected.totalAmountCondition || 0) || 0;
-      const effectiveTotal = Number(orderTotal || 0) + Number(totalAmount || 0);
+      
+      // Helper function: Tính tổng tiền từ các sản phẩm match với promotion
+      const calculateTotalForPromotion = (
+        products: Array<{ productCode?: string; productGroupCode?: string; price: number; quantity: number; vat?: number }>,
+        promotion: Promotion,
+        newProduct?: { productCode?: string; productGroupCode?: string; price: number; quantity: number; vat?: number }
+      ): number => {
+        const promoAny = promotion as any;
+        const productCodesStr = promotion.productCodes || promoAny.crdfd_masanpham_multiple || '';
+        const productGroupCodesStr = promotion.productGroupCodes || promoAny.cr1bb_manhomsp_multiple || '';
+        
+        const allowedProductCodes = productCodesStr
+          .split(',')
+          .map((c: string) => c.trim())
+          .filter(Boolean);
+        const allowedProductGroupCodes = productGroupCodesStr
+          .split(',')
+          .map((c: string) => c.trim())
+          .filter(Boolean);
+        
+        const hasProductFilter = allowedProductCodes.length > 0 || allowedProductGroupCodes.length > 0;
+        
+        let total = 0;
+        
+        if (products && products.length > 0) {
+          total += products.reduce((sum, item) => {
+            const matchesProductCode = !hasProductFilter || 
+              (item.productCode && allowedProductCodes.includes(item.productCode));
+            const matchesProductGroupCode = !hasProductFilter || 
+              (item.productGroupCode && allowedProductGroupCodes.includes(item.productGroupCode));
+            
+            if (matchesProductCode || matchesProductGroupCode) {
+              const basePrice = item.price;
+              const lineSubtotal = basePrice * (item.quantity || 0);
+              const lineVat = Math.round((lineSubtotal * (item.vat ?? 0)) / 100);
+              return sum + lineSubtotal + lineVat;
+            }
+            return sum;
+          }, 0);
+        }
+        
+        if (newProduct) {
+          const matchesProductCode = !hasProductFilter || 
+            (newProduct.productCode && allowedProductCodes.includes(newProduct.productCode));
+          const matchesProductGroupCode = !hasProductFilter || 
+            (newProduct.productGroupCode && allowedProductGroupCodes.includes(newProduct.productGroupCode));
+          
+          if (matchesProductCode || matchesProductGroupCode) {
+            const basePrice = newProduct.price;
+            const lineSubtotal = basePrice * (newProduct.quantity || 0);
+            const lineVat = Math.round((lineSubtotal * (newProduct.vat ?? 0)) / 100);
+            total += lineSubtotal + lineVat;
+          }
+        }
+        
+        return total;
+      };
+      
+      const newProductForCalc = {
+        productCode: selectedProductCode,
+        productGroupCode: selectedProductGroupCode,
+        price: Number(price) || 0,
+        quantity: quantity || 0,
+        vat: vatPercent || 0,
+      };
+      const effectiveTotal = calculateTotalForPromotion(
+        currentProducts || [],
+        selected,
+        newProductForCalc
+      );
+      
       if (minTotal > 0 && effectiveTotal < minTotal) {
         setPromotionDiscountPercent(0);
         // Không reset discountPercent nếu đang dùng "Theo chiết khấu" với duyệt giá

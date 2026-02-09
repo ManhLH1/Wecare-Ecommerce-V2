@@ -110,10 +110,53 @@ async function recalculatePromotionEligibility(
   const promoItems = currentProducts.filter(item => item.eligibleForPromotion);
   const nonPromoItems = currentProducts.filter(item => !item.eligibleForPromotion);
 
+  // 2. Helper function: Tính tổng tiền từ các sản phẩm match với promotion
+  // Chỉ tính tổng từ sản phẩm có productCode trong crdfd_masanpham_multiple
+  // hoặc productGroupCode trong cr1bb_manhomsp_multiple của promotion
+  const calculateTotalForPromotion = (
+    products: ProductTableItem[],
+    promotion: Promotion
+  ): number => {
+    const promoAny = promotion as any;
+    const productCodesStr = promotion.productCodes || promoAny.crdfd_masanpham_multiple || '';
+    const productGroupCodesStr = promotion.productGroupCodes || promoAny.cr1bb_manhomsp_multiple || '';
+    
+    // Parse danh sách mã sản phẩm và mã nhóm sản phẩm (comma-separated)
+    const allowedProductCodes = productCodesStr
+      .split(',')
+      .map((c: string) => c.trim())
+      .filter(Boolean);
+    const allowedProductGroupCodes = productGroupCodesStr
+      .split(',')
+      .map((c: string) => c.trim())
+      .filter(Boolean);
+    
+    // Nếu promotion không có điều kiện về sản phẩm/nhóm sản phẩm → tính tổng tất cả
+    const hasProductFilter = allowedProductCodes.length > 0 || allowedProductGroupCodes.length > 0;
+    
+    return products.reduce((sum, item) => {
+      // Kiểm tra item có match với promotion không
+      const matchesProductCode = !hasProductFilter || 
+        (item.productCode && allowedProductCodes.includes(item.productCode));
+      const matchesProductGroupCode = !hasProductFilter || 
+        (item.productGroupCode && allowedProductGroupCodes.includes(item.productGroupCode));
+      
+      // Chỉ tính tổng nếu item match với promotion
+      if (matchesProductCode || matchesProductGroupCode) {
+        const basePrice = item.price;
+        const lineSubtotal = basePrice * (item.quantity || 0);
+        const lineVat = Math.round((lineSubtotal * (item.vat ?? 0)) / 100);
+        return sum + lineSubtotal + lineVat;
+      }
+      return sum;
+    }, 0);
+  };
+
   // 2. Tính TỔNG TẤT CẢ items dùng BASE PRICE (giá gốc) để check điều kiện promotion
   // QUAN TRỌNG: Dùng price (giá gốc) để tính tổng, KHÔNG dùng discountedPrice
   // Vì điều kiện promotion (totalAmountCondition) áp dụng cho GIÁ TRỊ ĐƠN HÀNG GỐC,
   // sau đó mới tính discount cho từng item
+  // LƯU Ý: Tổng này chỉ dùng cho fallback, mỗi promotion sẽ tính tổng riêng dựa trên sản phẩm match
   const totalOrderAmount = currentProducts.reduce((sum, item) => {
     // Dùng price (giá gốc), không phải discountedPrice
     const basePrice = item.price;
@@ -201,8 +244,13 @@ async function recalculatePromotionEligibility(
         const rawCond = p.totalAmountCondition ?? null;
         // Chỉ convert sang number nếu là giá trị truthy, ngược lại coi như 0
         const minTotal = rawCond !== null ? Number(rawCond) : 0;
+        
+        // QUAN TRỌNG: Tính tổng tiền chỉ từ các sản phẩm match với promotion
+        // (có trong cr1bb_manhomsp_multiple hoặc crdfd_masanpham_multiple)
+        const totalForThisPromotion = calculateTotalForPromotion(currentProducts, p);
+        
         // Nếu minTotal = 0 hoặc NaN → coi như không có điều kiện tối thiểu → luôn đáp ứng
-        const meetsTotal = !minTotal || minTotal === 0 || isNaN(minTotal) || totalOrderAmount >= minTotal;
+        const meetsTotal = !minTotal || minTotal === 0 || isNaN(minTotal) || totalForThisPromotion >= minTotal;
         return isPercent && meetsTotal;
       });
 

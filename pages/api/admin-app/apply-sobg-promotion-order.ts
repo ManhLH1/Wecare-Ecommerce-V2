@@ -101,48 +101,105 @@ export default async function handler(
     }
 
     // Check total amount condition
+    // CRITICAL: Calculate total ONLY for products matching promotion's product/group filters
     if (promoData && promoData.cr1bb_tongtienapdung !== null && promoData.cr1bb_tongtienapdung !== undefined) {
       const minTotal = Number(promoData.cr1bb_tongtienapdung) || 0;
       if (minTotal > 0) {
-        // Prefer aggregated SOBG header totals (consistent with frontend) and fall back to summing SOD lines.
         try {
+          // Get promotion's product and group filters
+          const promoProductCodes = promoData.crdfd_masanpham_multiple;
+          const promoGroupCodes = promoData.cr1bb_manhomsp_multiple;
+
+          // Parse filter lists
+          const parseCodeList = (input: any): string[] => {
+            if (!input) return [];
+            if (Array.isArray(input)) {
+              return input.map((c: any) => String(c || '').trim()).filter((c: string) => c !== '');
+            }
+            const str = String(input).trim();
+            if (str === '') return [];
+            try {
+              const parsed = JSON.parse(str);
+              if (Array.isArray(parsed)) {
+                return parsed.map((c: any) => String(c || '').trim()).filter((c: string) => c !== '');
+              }
+            } catch {
+              // Not JSON, try comma/semicolon/pipe separator
+            }
+            return str.split(/[,;|\/]+/).map((c: string) => c.trim()).filter((c: string) => c !== '');
+          };
+
+          const productCodeList = parseCodeList(promoProductCodes);
+          const productGroupCodeList = parseCodeList(promoGroupCodes);
+          const productCodeListNorm = productCodeList.map(s => s.toUpperCase());
+          const productGroupCodeListNorm = productGroupCodeList.map(s => s.toUpperCase());
+
+          console.log('[ApplySOBGPromotion] Total validation filters:', {
+            productCodeList,
+            productGroupCodeList,
+            minTotal
+          });
+
+          // Fetch all SODs with product/group info
+          const sodFilters = [
+            "statecode eq 0",
+            `_crdfd_maonhang_value eq ${sobgId}`,
+          ];
+          const sodQuery = `$filter=${encodeURIComponent(sodFilters.join(" and "))}&$select=crdfd_ongia,crdfd_soluong,crdfd_masanpham,crdfd_manhomsanpham`;
+          const sodEndpoint = `${BASE_URL}${SOBG_DETAIL_TABLE}?${sodQuery}`;
+          const sodResponse = await axios.get(sodEndpoint, { headers });
+          const sodList = sodResponse.data.value || [];
+
+          // Calculate total ONLY for matching products
           let currentTotal = 0;
-          try {
-            const headerEndpoint = `${BASE_URL}${SOBG_HEADER_TABLE}(${sobgId})?$select=crdfd_tongtien,crdfd_tongtiencovat,crdfd_tongtienkhongvat`;
-            const headerResp = await axios.get(headerEndpoint, { headers });
-            const headerData = headerResp.data || {};
-            currentTotal = Number(headerData.crdfd_tongtiencovat ?? headerData.crdfd_tongtien ?? headerData.crdfd_tongtienkhongvat) || 0;
-          } catch (hdrErr) {
-            // Ignore header fetch errors and fall back to SOD summation
-            currentTotal = 0;
-          }
+          let matchedCount = 0;
+          const hasNoFilters = productCodeListNorm.length === 0 && productGroupCodeListNorm.length === 0;
 
-          if (!currentTotal || currentTotal === 0) {
-            const sodFilters = [
-              "statecode eq 0",
-              `_crdfd_maonhang_value eq ${sobgId}`,
-            ];
-            const sodQuery = `$filter=${encodeURIComponent(sodFilters.join(" and "))}&$select=crdfd_ongia,crdfd_soluong`;
-            const sodEndpoint = `${BASE_URL}${SOBG_DETAIL_TABLE}?${sodQuery}`;
-            const sodResponse = await axios.get(sodEndpoint, { headers });
-            const sodList = sodResponse.data.value || [];
+          for (const sod of sodList) {
+            const sodProductCodeRaw = sod.crdfd_masanpham || '';
+            const sodProductGroupCodeRaw = sod.crdfd_manhomsanpham || '';
+            const sodProductCode = String(sodProductCodeRaw).trim().toUpperCase();
+            const sodProductGroupCode = String(sodProductGroupCodeRaw).trim().toUpperCase();
 
-            currentTotal = 0;
-            for (const sod of sodList) {
+            // Check if SOD matches promotion filters
+            let isMatch = false;
+            if (hasNoFilters) {
+              // No filters = apply to all products
+              isMatch = true;
+            } else {
+              const matchesProduct = productCodeListNorm.length > 0 &&
+                sodProductCode !== '' &&
+                productCodeListNorm.includes(sodProductCode);
+              const matchesGroup = productGroupCodeListNorm.length > 0 &&
+                sodProductGroupCode !== '' &&
+                productGroupCodeListNorm.includes(sodProductGroupCode);
+              isMatch = matchesProduct || matchesGroup;
+            }
+
+            if (isMatch) {
               const quantity = Number(sod.crdfd_soluong) || 0;
-              const unitPrice = Number(sod.crdfd_ongia) || 0; // Use gia (display price)    
+              const unitPrice = Number(sod.crdfd_ongia) || 0;
               const lineSubtotal = unitPrice * quantity;
               currentTotal += lineSubtotal;
+              matchedCount++;
             }
           }
 
+          console.log('[ApplySOBGPromotion] Total validation result:', {
+            totalSODs: sodList.length,
+            matchedSODs: matchedCount,
+            currentTotal,
+            minTotal,
+            passes: currentTotal >= minTotal
+          });
+
           if (currentTotal < minTotal) {
             return res.status(400).json({
-              error: `Promotion "${promotionName}" yêu cầu SOBG tối thiểu ${minTotal.toLocaleString('vi-VN')}đ. Tổng tiền hiện tại: ${Math.round(currentTotal).toLocaleString('vi-VN')}đ`
+              error: `Promotion "${promotionName}" yêu cầu tổng tiền sản phẩm áp dụng tối thiểu ${minTotal.toLocaleString('vi-VN')}đ. Tổng tiền hiện tại: ${Math.round(currentTotal).toLocaleString('vi-VN')}đ (${matchedCount} sản phẩm)`
             });
           }
         } catch (err: any) {
-          console.error('[ApplySOBGPromotion] Could not calculate SOBG total for validation:', {
+          console.error('[ApplySOBGPromotion] Could not calculate filtered total for validation:', {
             sobgId,
             error: err?.message || err,
             response: err?.response?.data,
@@ -175,27 +232,81 @@ export default async function handler(
     };
 
     // Safety re-check before creating Orders x Promotion (prevent accidental create when condition not met)
+    // CRITICAL: Also filter by product/group codes like main validation
     try {
       if (promoData && promoData.cr1bb_tongtienapdung !== null && promoData.cr1bb_tongtienapdung !== undefined) {
         const minTotalCheck = Number(promoData.cr1bb_tongtienapdung) || 0;
         if (minTotalCheck > 0) {
+          // Get promotion filters
+          const promoProductCodes = promoData.crdfd_masanpham_multiple;
+          const promoGroupCodes = promoData.cr1bb_manhomsp_multiple;
+
+          // Parse filter lists (reuse logic from main validation)
+          const parseCodeList = (input: any): string[] => {
+            if (!input) return [];
+            if (Array.isArray(input)) {
+              return input.map((c: any) => String(c || '').trim()).filter((c: string) => c !== '');
+            }
+            const str = String(input).trim();
+            if (str === '') return [];
+            try {
+              const parsed = JSON.parse(str);
+              if (Array.isArray(parsed)) {
+                return parsed.map((c: any) => String(c || '').trim()).filter((c: string) => c !== '');
+              }
+            } catch {
+              // Not JSON, try comma/semicolon/pipe separator
+            }
+            return str.split(/[,;|\/]+/).map((c: string) => c.trim()).filter((c: string) => c !== '');
+          };
+
+          const productCodeList = parseCodeList(promoProductCodes);
+          const productGroupCodeList = parseCodeList(promoGroupCodes);
+          const productCodeListNorm = productCodeList.map(s => s.toUpperCase());
+          const productGroupCodeListNorm = productGroupCodeList.map(s => s.toUpperCase());
+
           const sodFiltersCheck = [
             "statecode eq 0",
             `_crdfd_maonhang_value eq ${sobgId}`,
           ];
-          const sodQueryCheck = `$filter=${encodeURIComponent(sodFiltersCheck.join(" and "))}&$select=crdfd_ongia,crdfd_soluong`;
+          const sodQueryCheck = `$filter=${encodeURIComponent(sodFiltersCheck.join(" and "))}&$select=crdfd_ongia,crdfd_soluong,crdfd_masanpham,crdfd_manhomsanpham`;
           const sodEndpointCheck = `${BASE_URL}${SOBG_DETAIL_TABLE}?${sodQueryCheck}`;
           const sodRespCheck = await axios.get(sodEndpointCheck, { headers });
           const sodListCheck = sodRespCheck.data.value || [];
+
           let currentTotalCheck = 0;
+          const hasNoFilters = productCodeListNorm.length === 0 && productGroupCodeListNorm.length === 0;
+
           for (const sod of sodListCheck) {
-            const quantity = Number(sod.crdfd_soluong) || 0;
-            const unitPrice = Number(sod.crdfd_ongia) || 0;
-            const lineSubtotal = unitPrice * quantity;
-            currentTotalCheck += lineSubtotal;
+            const sodProductCodeRaw = sod.crdfd_masanpham || '';
+            const sodProductGroupCodeRaw = sod.crdfd_manhomsanpham || '';
+            const sodProductCode = String(sodProductCodeRaw).trim().toUpperCase();
+            const sodProductGroupCode = String(sodProductGroupCodeRaw).trim().toUpperCase();
+
+            // Check if SOD matches promotion filters
+            let isMatch = false;
+            if (hasNoFilters) {
+              isMatch = true;
+            } else {
+              const matchesProduct = productCodeListNorm.length > 0 &&
+                sodProductCode !== '' &&
+                productCodeListNorm.includes(sodProductCode);
+              const matchesGroup = productGroupCodeListNorm.length > 0 &&
+                sodProductGroupCode !== '' &&
+                productGroupCodeListNorm.includes(sodProductGroupCode);
+              isMatch = matchesProduct || matchesGroup;
+            }
+
+            if (isMatch) {
+              const quantity = Number(sod.crdfd_soluong) || 0;
+              const unitPrice = Number(sod.crdfd_ongia) || 0;
+              const lineSubtotal = unitPrice * quantity;
+              currentTotalCheck += lineSubtotal;
+            }
           }
+
           if (currentTotalCheck < minTotalCheck) {
-            return res.status(400).json({ error: `Promotion \"${promotionName}\" không được áp dụng vì SOBG chưa đạt điều kiện tổng tiền.` });
+            return res.status(400).json({ error: `Promotion \"${promotionName}\" không được áp dụng vì tổng tiền sản phẩm áp dụng chưa đạt điều kiện.` });
           }
         }
       }

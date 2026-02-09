@@ -99,32 +99,131 @@ export default async function handler(
       return res.status(400).json({ error: "Không thể lấy thông tin promotion để kiểm tra điều kiện" });
     }
 
-    // Check total amount condition - use UI-provided total (do NOT fetch SODs)
-    // The UI must provide one of: `orderTotal`, `uiTotal`, `totalAmount`, or `crdfd_tongtien`.
+    // Check total amount condition
+    // CRITICAL: Calculate total ONLY for products matching promotion's product/group filters
+    // Fallback to UI-provided total if backend calculation fails
     if (promoData && promoData.cr1bb_tongtienapdung !== null && promoData.cr1bb_tongtienapdung !== undefined) {
       const minTotal = Number(promoData.cr1bb_tongtienapdung) || 0;
       if (minTotal > 0) {
-        const uiTotalRaw = req.body.orderTotal ?? req.body.uiTotal ?? req.body.totalAmount ?? req.body.crdfd_tongtien;
-        if (uiTotalRaw === null || uiTotalRaw === undefined || uiTotalRaw === "") {
-          return res.status(400).json({
-            error: `Missing order total from UI to validate promotion minimum. Promotion requires ${minTotal.toLocaleString('vi-VN')}đ.`
+        let currentTotal = 0;
+        let calculationSource = 'unknown';
+
+        try {
+          // Get promotion's product and group filters
+          const promoProductCodes = promoData.crdfd_masanpham_multiple;
+          const promoGroupCodes = promoData.cr1bb_manhomsp_multiple;
+
+          // Parse filter lists
+          const parseCodeList = (input: any): string[] => {
+            if (!input) return [];
+            if (Array.isArray(input)) {
+              return input.map((c: any) => String(c || '').trim()).filter((c: string) => c !== '');
+            }
+            const str = String(input).trim();
+            if (str === '') return [];
+            try {
+              const parsed = JSON.parse(str);
+              if (Array.isArray(parsed)) {
+                return parsed.map((c: any) => String(c || '').trim()).filter((c: string) => c !== '');
+              }
+            } catch {
+              // Not JSON, try comma/semicolon/pipe separator
+            }
+            return str.split(/[,;|\/]+/).map((c: string) => c.trim()).filter((c: string) => c !== '');
+          };
+
+          const productCodeList = parseCodeList(promoProductCodes);
+          const productGroupCodeList = parseCodeList(promoGroupCodes);
+          const productCodeListNorm = productCodeList.map(s => s.toUpperCase());
+          const productGroupCodeListNorm = productGroupCodeList.map(s => s.toUpperCase());
+
+          console.log('[ApplyPromotion] Total validation filters:', {
+            productCodeList,
+            productGroupCodeList,
+            minTotal
           });
+
+          // Fetch all SODs with product/group info
+          const sodFilters = [
+            "statecode eq 0",
+            `_crdfd_socode_value eq ${soId}`,
+          ];
+          const sodQuery = `$filter=${encodeURIComponent(sodFilters.join(" and "))}&$select=crdfd_gia,crdfd_soluong,crdfd_masanpham,crdfd_manhomsp`;
+          const sodEndpoint = `${BASE_URL}${SOD_TABLE}?${sodQuery}`;
+          const sodResponse = await axios.get(sodEndpoint, { headers });
+          const sodList = sodResponse.data.value || [];
+
+          // Calculate total ONLY for matching products
+          let matchedCount = 0;
+          const hasNoFilters = productCodeListNorm.length === 0 && productGroupCodeListNorm.length === 0;
+
+          for (const sod of sodList) {
+            const sodProductCodeRaw = sod.crdfd_masanpham || '';
+            const sodProductGroupCodeRaw = sod.crdfd_manhomsp || '';
+            const sodProductCode = String(sodProductCodeRaw).trim().toUpperCase();
+            const sodProductGroupCode = String(sodProductGroupCodeRaw).trim().toUpperCase();
+
+            // Check if SOD matches promotion filters
+            let isMatch = false;
+            if (hasNoFilters) {
+              // No filters = apply to all products
+              isMatch = true;
+            } else {
+              const matchesProduct = productCodeListNorm.length > 0 &&
+                sodProductCode !== '' &&
+                productCodeListNorm.includes(sodProductCode);
+              const matchesGroup = productGroupCodeListNorm.length > 0 &&
+                sodProductGroupCode !== '' &&
+                productGroupCodeListNorm.includes(sodProductGroupCode);
+              isMatch = matchesProduct || matchesGroup;
+            }
+
+            if (isMatch) {
+              const quantity = Number(sod.crdfd_soluong) || 0;
+              const unitPrice = Number(sod.crdfd_gia) || 0;
+              const lineSubtotal = unitPrice * quantity;
+              currentTotal += lineSubtotal;
+              matchedCount++;
+            }
+          }
+
+          calculationSource = 'backend';
+          console.log('[ApplyPromotion] Total validation result (backend):', {
+            totalSODs: sodList.length,
+            matchedSODs: matchedCount,
+            currentTotal,
+            minTotal,
+            passes: currentTotal >= minTotal
+          });
+        } catch (err: any) {
+          console.warn('[ApplyPromotion] Backend total calculation failed, falling back to UI total:', err?.message || err);
+
+          // Fallback to UI-provided total
+          const uiTotalRaw = req.body.orderTotal ?? req.body.uiTotal ?? req.body.totalAmount ?? req.body.crdfd_tongtien;
+          if (uiTotalRaw === null || uiTotalRaw === undefined || uiTotalRaw === "") {
+            return res.status(400).json({
+              error: `Missing order total from UI and backend calculation failed. Promotion requires ${minTotal.toLocaleString('vi-VN')}đ.`
+            });
+          }
+
+          const uiTotalNum = typeof uiTotalRaw === "number"
+            ? uiTotalRaw
+            : Number(String(uiTotalRaw).replace(/[^\d.-]+/g, ""));
+
+          if (isNaN(uiTotalNum)) {
+            return res.status(400).json({
+              error: `Invalid order total provided from UI for promotion validation.`
+            });
+          }
+
+          currentTotal = uiTotalNum;
+          calculationSource = 'ui-fallback';
+          console.log('[ApplyPromotion] Using UI total as fallback:', currentTotal);
         }
 
-        // Normalize UI total to number (accept strings with thousand separators)
-        const uiTotalNum = typeof uiTotalRaw === "number"
-          ? uiTotalRaw
-          : Number(String(uiTotalRaw).replace(/[^\d.-]+/g, ""));
-
-        if (isNaN(uiTotalNum)) {
+        if (currentTotal < minTotal) {
           return res.status(400).json({
-            error: `Invalid order total provided from UI for promotion validation.`
-          });
-        }
-
-        if (uiTotalNum < minTotal) {
-          return res.status(400).json({
-            error: `Promotion "${promotionName}" yêu cầu đơn hàng tối thiểu ${minTotal.toLocaleString('vi-VN')}đ. Tổng tiền hiện tại (UI): ${Math.round(uiTotalNum).toLocaleString('vi-VN')}đ`
+            error: `Promotion "${promotionName}" yêu cầu tổng tiền sản phẩm áp dụng tối thiểu ${minTotal.toLocaleString('vi-VN')}đ. Tổng tiền hiện tại: ${Math.round(currentTotal).toLocaleString('vi-VN')}đ (nguồn: ${calculationSource})`
           });
         }
       }
@@ -333,23 +432,100 @@ export default async function handler(
       createdOrderXPromotionId = existingOrderXPromotionId;
       // KHÔNG return ở đây - tiếp tục chạy CK2 logic
     } else {
-      // Extra safety: re-check total before creating Orders x Promotion using UI-provided total
+      // Extra safety: re-check total before creating Orders x Promotion
+      // CRITICAL: Also filter by product/group codes like main validation
       try {
         if (promoData && promoData.cr1bb_tongtienapdung !== null && promoData.cr1bb_tongtienapdung !== undefined) {
           const minTotalSafety = Number(promoData.cr1bb_tongtienapdung) || 0;
           if (minTotalSafety > 0) {
-            const uiTotalRaw = req.body.orderTotal ?? req.body.uiTotal ?? req.body.totalAmount ?? req.body.crdfd_tongtien;
-            if (uiTotalRaw === null || uiTotalRaw === undefined || uiTotalRaw === "") {
-              return res.status(400).json({ error: `Missing order total from UI to validate promotion minimum (safety check).` });
+            let currentTotalSafety = 0;
+
+            try {
+              // Get promotion filters
+              const promoProductCodes = promoData.crdfd_masanpham_multiple;
+              const promoGroupCodes = promoData.cr1bb_manhomsp_multiple;
+
+              // Parse filter lists (reuse logic from main validation)
+              const parseCodeList = (input: any): string[] => {
+                if (!input) return [];
+                if (Array.isArray(input)) {
+                  return input.map((c: any) => String(c || '').trim()).filter((c: string) => c !== '');
+                }
+                const str = String(input).trim();
+                if (str === '') return [];
+                try {
+                  const parsed = JSON.parse(str);
+                  if (Array.isArray(parsed)) {
+                    return parsed.map((c: any) => String(c || '').trim()).filter((c: string) => c !== '');
+                  }
+                } catch {
+                  // Not JSON, try comma/semicolon/pipe separator
+                }
+                return str.split(/[,;|\/]+/).map((c: string) => c.trim()).filter((c: string) => c !== '');
+              };
+
+              const productCodeList = parseCodeList(promoProductCodes);
+              const productGroupCodeList = parseCodeList(promoGroupCodes);
+              const productCodeListNorm = productCodeList.map(s => s.toUpperCase());
+              const productGroupCodeListNorm = productGroupCodeList.map(s => s.toUpperCase());
+
+              const sodFiltersCheck = [
+                "statecode eq 0",
+                `_crdfd_socode_value eq ${soId}`,
+              ];
+              const sodQueryCheck = `$filter=${encodeURIComponent(sodFiltersCheck.join(" and "))}&$select=crdfd_gia,crdfd_soluong,crdfd_masanpham,crdfd_manhomsp`;
+              const sodEndpointCheck = `${BASE_URL}${SOD_TABLE}?${sodQueryCheck}`;
+              const sodRespCheck = await axios.get(sodEndpointCheck, { headers });
+              const sodListCheck = sodRespCheck.data.value || [];
+
+              const hasNoFilters = productCodeListNorm.length === 0 && productGroupCodeListNorm.length === 0;
+
+              for (const sod of sodListCheck) {
+                const sodProductCodeRaw = sod.crdfd_masanpham || '';
+                const sodProductGroupCodeRaw = sod.crdfd_manhomsp || '';
+                const sodProductCode = String(sodProductCodeRaw).trim().toUpperCase();
+                const sodProductGroupCode = String(sodProductGroupCodeRaw).trim().toUpperCase();
+
+                // Check if SOD matches promotion filters
+                let isMatch = false;
+                if (hasNoFilters) {
+                  isMatch = true;
+                } else {
+                  const matchesProduct = productCodeListNorm.length > 0 &&
+                    sodProductCode !== '' &&
+                    productCodeListNorm.includes(sodProductCode);
+                  const matchesGroup = productGroupCodeListNorm.length > 0 &&
+                    sodProductGroupCode !== '' &&
+                    productGroupCodeListNorm.includes(sodProductGroupCode);
+                  isMatch = matchesProduct || matchesGroup;
+                }
+
+                if (isMatch) {
+                  const quantity = Number(sod.crdfd_soluong) || 0;
+                  const unitPrice = Number(sod.crdfd_gia) || 0;
+                  const lineSubtotal = unitPrice * quantity;
+                  currentTotalSafety += lineSubtotal;
+                }
+              }
+            } catch (backendErr: any) {
+              console.warn('[ApplyPromotion] Safety check backend calculation failed, falling back to UI total:', backendErr?.message || backendErr);
+
+              // Fallback to UI total
+              const uiTotalRaw = req.body.orderTotal ?? req.body.uiTotal ?? req.body.totalAmount ?? req.body.crdfd_tongtien;
+              if (uiTotalRaw === null || uiTotalRaw === undefined || uiTotalRaw === "") {
+                return res.status(400).json({ error: `Missing order total from UI to validate promotion minimum (safety check).` });
+              }
+              const uiTotalNum = typeof uiTotalRaw === "number"
+                ? uiTotalRaw
+                : Number(String(uiTotalRaw).replace(/[^\d.-]+/g, ""));
+              if (isNaN(uiTotalNum)) {
+                return res.status(400).json({ error: "Invalid order total provided from UI for promotion safety validation." });
+              }
+              currentTotalSafety = uiTotalNum;
             }
-            const uiTotalNum = typeof uiTotalRaw === "number"
-              ? uiTotalRaw
-              : Number(String(uiTotalRaw).replace(/[^\d.-]+/g, ""));
-            if (isNaN(uiTotalNum)) {
-              return res.status(400).json({ error: "Invalid order total provided from UI for promotion safety validation." });
-            }
-            if (uiTotalNum < minTotalSafety) {
-              return res.status(400).json({ error: `Promotion \"${promotionName}\" không được áp dụng vì đơn hàng chưa đạt điều kiện tổng tiền.` });
+
+            if (currentTotalSafety < minTotalSafety) {
+              return res.status(400).json({ error: `Promotion \"${promotionName}\" không được áp dụng vì tổng tiền sản phẩm áp dụng chưa đạt điều kiện.` });
             }
           }
         }
