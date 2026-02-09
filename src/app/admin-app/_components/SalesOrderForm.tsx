@@ -679,8 +679,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
 
         let details: SaleOrderDetail[] = detailsFromState;
         if (shouldForceRefetch) {
-          const refreshedOrders = await fetchSaleOrders(customerId, true);
-          setSaleOrders(refreshedOrders);
+          const refreshedOrders = await fetchSaleOrders(customerId || undefined, true);
+          queryClient.setQueryData(queryKeys.saleOrders(customerId || undefined), refreshedOrders);
           const refreshedSo = refreshedOrders.find((so) => so.crdfd_sale_orderid === soId);
           const refreshedExpanded =
             (refreshedSo as any)?.crdfd_SaleOrderDetail_SOcode_crdfd_Sale_O ??
@@ -3057,8 +3057,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             try {
               // Refetch sale-orders (đã expand SOD) để đồng bộ cả header + details từ backend,
               // thay vì gọi riêng sale-order-details.
-              const refreshedOrders = await fetchSaleOrders(customerId, true);
-              setSaleOrders(refreshedOrders);
+              const refreshedOrders = await fetchSaleOrders(customerId || undefined, true);
+              queryClient.setQueryData(queryKeys.saleOrders(customerId || undefined), refreshedOrders);
               const currentSoRefreshed = refreshedOrders.find(so => so.crdfd_sale_orderid === soId);
               const expandedDetailsRefreshed =
                 (currentSoRefreshed as any)?.crdfd_SaleOrderDetail_SOcode_crdfd_Sale_O ??
