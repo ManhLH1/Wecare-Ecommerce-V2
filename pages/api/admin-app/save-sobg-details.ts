@@ -1075,7 +1075,15 @@ export default async function handler(
                     }
                 })(),
                 "crdfd_chietkhau": product.discountPercent ? product.discountPercent / 100 : 0,
-                "crdfd_chietkhauvn": product.discountAmount ?? 0,
+                // QUAN TRỌNG: Chỉ lưu discountAmount vào crdfd_chietkhauvn khi là promotion VND-based
+                // (không phải percent-based promotion)
+                "crdfd_chietkhauvn": (() => {
+                    const discountPercent = product.discountPercent ?? 0;
+                    const discountAmount = product.discountAmount ?? 0;
+                    // VND-based: discountPercent = 0 và discountAmount > 0
+                    const isVndPromotion = (discountPercent === 0 || discountPercent === undefined || discountPercent === null) && discountAmount > 0;
+                    return isVndPromotion ? discountAmount : (discountAmount > 0 && discountPercent === 0 ? discountAmount : 0);
+                })(),
                 "crdfd_chietkhau2": product.discount2 ? product.discount2 / 100 : 0,
                 "crdfd_chietkhau_phanhang": getDiscountRateFromPrices(product),
                 "crdfd_giack1": product.originalPrice ?? product.price ?? 0,

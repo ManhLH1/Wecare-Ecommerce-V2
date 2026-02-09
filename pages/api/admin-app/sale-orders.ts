@@ -28,7 +28,7 @@ const IEUCHINHGTGT_TO_VAT_MAP: Record<number, number> = {
   191920003: 10,  // 10%
 };
 
-const normalizePaymentTerm = (input?: string | number | null) : string | null => {
+const normalizePaymentTerm = (input?: string | number | null): string | null => {
   // Treat null/undefined as missing; accept numeric 0 as valid input
   if (input === null || input === undefined) return null;
   const t = String(input).trim();
@@ -59,7 +59,7 @@ export default async function handler(
   try {
     const { customerId, forceRefresh } = req.query;
     const shouldBypassCache = forceRefresh === "1" || forceRefresh === "true";
-    
+
     // Check cache first (use short cache as sale orders change frequently)
     // Lưu ý: khi cần refresh ngay sau mutation (save/apply promotion), FE có thể truyền forceRefresh=1 để bypass cache.
     const cacheKey = getCacheKey("sale-orders", { customerId });
@@ -82,7 +82,7 @@ export default async function handler(
     // - Trạng thái giao nhận 1 = 'Chưa giao' (crdfd_trangthaigiaonhan1 eq 191920000)
     // - Active data = Active (crdfd_activedata eq false or crdfd_activedata eq 0)
     let filter = "statecode eq 0";
-    
+
     // Filter by customer
     if (customerId && typeof customerId === "string") {
       // Validate if customerId is a GUID (Dynamics CRM format)
@@ -95,16 +95,16 @@ export default async function handler(
         filter += ` and crdfd_makhachhang eq '${customerId}'`;
       }
     }
-    
+
     // Filter: Trạng thái giao nhận 1 = 'Chưa giao' (191920000)
     filter += ` and crdfd_trangthaigiaonhan1 eq 191920000`;
-    
+
     // Filter: Active data = Active (0 = false = Active)
     filter += ` and crdfd_activedata eq false`;
 
     // Select payment term field - prefer `crdfd_dieu_khoan_thanh_toan`
     const columns = "crdfd_sale_orderid,crdfd_name,crdfd_so_code,crdfd_so_auto,cr1bb_vattext,cr1bb_loaihoaon,crdfd_loai_don_hang,crdfd_dieu_khoan_thanh_toan,crdfd_tongtien,createdon";
-    
+
     // Expand SOD với các columns cần thiết (giống sale-order-details.ts)
     const expandRelationship = "crdfd_SaleOrderDetail_SOcode_crdfd_Sale_O";
     const sodColumns = [
@@ -116,6 +116,7 @@ export default async function handler(
       "crdfd_gia",
       "crdfd_phuphi_hoadon",
       "crdfd_chieckhau",
+      "crdfd_chieckhauvn",
       "crdfd_giagoc",
       "crdfd_ieuchinhgtgt",
       "crdfd_stton",
@@ -127,10 +128,10 @@ export default async function handler(
       "crdfd_masanpham",
       "crdfd_manhomsp",
     ].join(",");
-    
+
     const sodFilter = "statecode eq 0";
     const expandQuery = `$select=${sodColumns};$filter=${encodeURIComponent(sodFilter)}`;
-    
+
     // Sort by Created On (createdon) descending as per Power BI logic
     const query = `$select=${columns}&$filter=${encodeURIComponent(
       filter
@@ -178,6 +179,8 @@ export default async function handler(
         productCode: productCode,
         productId: productId,
         productGroupCode: sodItem.crdfd_manhomsp || undefined,
+        discountAmount: sodItem.crdfd_chieckhauvn || 0,
+        crdfd_chieckhauvn: sodItem.crdfd_chieckhauvn || 0,
       };
     };
 
@@ -191,7 +194,7 @@ export default async function handler(
       // If raw not present, try the OData formatted value for either attribute and normalize to key
       const formattedPreferred = item["crdfd_dieu_khoan_thanh_toan@OData.Community.Display.V1.FormattedValue"];
       if ((rawPaymentTerm === null || rawPaymentTerm === undefined || rawPaymentTerm === "") &&
-          formattedPreferred) {
+        formattedPreferred) {
         const formatted = String(formattedPreferred || "");
         rawPaymentTerm = normalizePaymentTerm(formatted) || formatted;
       }
@@ -234,20 +237,20 @@ export default async function handler(
     res.status(200).json(saleOrders);
   } catch (error: any) {
     console.error("Error fetching sale orders:", error);
-    
+
     // Log full error details for debugging
     if (error.response) {
       console.error("Error response status:", error.response.status);
       console.error("Error response data:", JSON.stringify(error.response.data, null, 2));
       console.error("Error response headers:", error.response.headers);
-      
+
       return res.status(error.response.status || 500).json({
         error: "Error fetching sale orders",
         details: error.response.data?.error?.message || error.response.data?.error || error.message,
         fullError: error.response.data,
       });
     }
-    
+
     res.status(500).json({
       error: "Error fetching sale orders",
       details: error.message,

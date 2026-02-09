@@ -78,6 +78,7 @@ export default async function handler(
       "crdfd_gia",
       "crdfd_phuphi_hoadon",
       "crdfd_chieckhau",
+      "crdfd_chieckhauvn",     // Chiết khấu VNĐ
       "crdfd_giagoc",
       "crdfd_ieuchinhgtgt",    // Điều chỉnh GTGT OptionSet để map sang VAT %
       "crdfd_stton",           // Stt đơn
@@ -163,6 +164,8 @@ export default async function handler(
         productCode: productCode, // Thêm productCode
         productId: productId, // Thêm productId
         productGroupCode: item.crdfd_manhomsp || undefined, // Thêm productGroupCode
+        discountAmount: item.crdfd_chieckhauvn || 0, // Chiết khấu VNĐ
+        crdfd_chieckhauvn: item.crdfd_chieckhauvn || 0, // Giá trị chiết khấu VNĐ từ CRM (để hiển thị trong ProductTable)
       };
     });
 

@@ -717,6 +717,25 @@ function ProductEntryForm({
   // Tỉ lệ chiết khấu
   const discountRates = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '20'];
 
+  // Helper function để check loại promotion (percent vs VND)
+  const vndCodeEquals = (p: any, code: number) => {
+    if (p === null || p === undefined) return false;
+    const v = p.vn ?? p.vndOrPercent ?? p.crdfd_vn;
+    if (v === undefined || v === null || v === '') return false;
+    const vs = String(v).trim();
+    return vs == String(code);
+  };
+
+  const isPercentPromotion = (p: Promotion | null | undefined): boolean => {
+    if (!p) return false;
+    return vndCodeEquals(p, 191920000);
+  };
+
+  const isVndPromotion = (p: Promotion | null | undefined): boolean => {
+    if (!p) return false;
+    return vndCodeEquals(p, 191920001);
+  };
+
   const normalizePromotionId = (id: any) => {
     if (id === null || id === undefined) return '';
     return String(id).trim();
@@ -2190,9 +2209,9 @@ function ProductEntryForm({
   }, [approvePrice, priceEntryMethod, discountPercent, basePriceForDiscount, discountRate]);
 
   // Calculate totals with promotion discount
-  const recomputeTotals = (priceValue: string | number, qty: number, promoDiscountPct: number, vatPct: number) => {
+  const recomputeTotals = (priceValue: string | number, qty: number, promoDiscountPct: number, vatPct: number, promoDiscountAmount: number = 0) => {
     // Use basePriceForDiscount (price from API before API discountRate) when available,
-    // so "Giá đã giảm" = basePriceForDiscount × (1 - promoDiscountPct/100).
+    // so "Giá đã giảm" = basePriceForDiscount × (1 - promoDiscountPct/100) - promoDiscountAmount.
     // Prefer the value currently shown in the price input (priceValue) when computing
     // the discounted price, falling back to basePriceForDiscount only if the input is empty/zero.
     const parsedPriceValue = parseFloat(String(priceValue).replace(/,/g, '')) || 0;
@@ -2201,7 +2220,8 @@ function ProductEntryForm({
       : ((basePriceForDiscount && basePriceForDiscount > 0) ? basePriceForDiscount : 0);
 
     const discountFactor = 1 - (promoDiscountPct > 0 ? promoDiscountPct / 100 : 0);
-    let effectivePrice = rawPriceNum * discountFactor;
+    // QUAN TRỌNG: Với VND-based promotion, trừ discountAmount sau khi tính percent discount
+    let effectivePrice = rawPriceNum * discountFactor - (promoDiscountAmount || 0);
 
 
     const vatTextLower = (vatText || '').toLowerCase();
@@ -2224,14 +2244,18 @@ function ProductEntryForm({
   const handleQuantityChange = (value: number | null) => {
     const next = value && value > 0 ? value : 0;
     setQuantity(next);
-    recomputeTotals(price, next, discountPercent || promotionDiscountPercent, vatPercent);
+    recomputeTotals(price, next, discountPercent || promotionDiscountPercent, vatPercent, discountAmount || 0);
   };
 
   // Format price for display with thousand separators
+  // QUAN TRỌNG: Chỉ format số, không thêm % vào giá tiền
   const formatPriceForDisplay = (priceValue: string): string => {
     if (!priceValue || priceValue.trim() === '') return '';
-    const numValue = Number(priceValue.replace(/,/g, ''));
+    // Loại bỏ tất cả ký tự không phải số (bao gồm cả % nếu có)
+    const cleaned = String(priceValue).replace(/[^\d.,]/g, '').replace(/,/g, '');
+    const numValue = Number(cleaned);
     if (isNaN(numValue) || numValue === 0) return '';
+    // Format với dấu phẩy phân cách hàng nghìn, không có %
     return numValue.toLocaleString('vi-VN');
   };
 
@@ -2244,12 +2268,12 @@ function ProductEntryForm({
       cleaned = parts[0] + '.' + parts.slice(1).join('');
     }
     setPrice(cleaned);
-    recomputeTotals(cleaned, quantity, discountPercent || promotionDiscountPercent, vatPercent);
+    recomputeTotals(cleaned, quantity, discountPercent || promotionDiscountPercent, vatPercent, discountAmount || 0);
   };
 
   const handleVatChange = (value: number) => {
     setVatPercent(value);
-    recomputeTotals(price, quantity, discountPercent || promotionDiscountPercent, value);
+    recomputeTotals(price, quantity, discountPercent || promotionDiscountPercent, value, discountAmount || 0);
   };
 
   const handleAddWithInventoryCheck = async () => {
@@ -2460,24 +2484,126 @@ function ProductEntryForm({
               console.debug('[ProductEntryForm][PROMO DEBUG] Condition NOT met, discount = 0');
             } else {
               // Đủ điều kiện -> tính discount từ promotion
-              computedDiscountPercent = derivePromotionPercent(sel);
-              // If promotion is VND-based, compute money value based on VAT context
-              const vatTextLower = (vatText || '').toLowerCase();
-              const isVatOrderForPromo = vatTextLower.includes('có vat') || vatPercent > 0;
-              const moneyCandidates = isVatOrderForPromo
-                ? [sel.valueWithVat, sel.value, sel.value2, sel.value3, sel.valueBuyTogether]
-                : [sel.valueNoVat, sel.valueWithVat, sel.value, sel.value2, sel.value3, sel.valueBuyTogether];
-              for (const c of moneyCandidates) {
-                const num = Number(c);
-                if (!isNaN(num) && num > 0) {
-                  computedDiscountAmount = num;
-                  break;
+              // QUAN TRỌNG: Phân biệt percent-based và VND-based promotion
+              const isPercent = isPercentPromotion(sel);
+              const isVnd = isVndPromotion(sel);
+              
+              console.debug('[ProductEntryForm][PROMO DEBUG] Promotion type check:', {
+                promotionId: sel.id,
+                promotionName: sel.name,
+                vn: sel.vn,
+                vnType: typeof sel.vn,
+                vndOrPercent: (sel as any).vndOrPercent,
+                crdfd_vn: (sel as any).crdfd_vn,
+                isPercent,
+                isVnd,
+                value: sel.value,
+                valueType: typeof sel.value,
+              });
+              
+              if (isPercent) {
+                // Percent-based promotion: tính discountPercent
+                computedDiscountPercent = derivePromotionPercent(sel);
+                computedDiscountAmount = 0; // Percent-based không dùng discountAmount
+              } else if (isVnd) {
+                // VND-based promotion: tính discountAmount
+                computedDiscountPercent = 0; // VND-based không dùng discountPercent
+                const selAny = sel as any;
+                const vatTextLower = (vatText || '').toLowerCase();
+                const isVatOrderForPromo = vatTextLower.includes('có vat') || vatPercent > 0;
+                
+                // QUAN TRỌNG: Với VND-based promotion, value có thể là number hoặc string
+                // Ưu tiên lấy trực tiếp từ sel.value (đã được parse từ API)
+                if (sel.value !== null && sel.value !== undefined && sel.value !== '') {
+                  const valueNum = typeof sel.value === 'number' ? sel.value : Number(sel.value);
+                  if (!isNaN(valueNum) && valueNum > 0) {
+                    computedDiscountAmount = valueNum;
+                    console.debug('[ProductEntryForm][PROMO DEBUG] VND-based - using sel.value directly:', {
+                      selValue: sel.value,
+                      valueNum,
+                      computedDiscountAmount,
+                    });
+                  }
                 }
-              }
-              // If percent was derived (non-zero), zero out money value to avoid double-applying
-              if (computedDiscountPercent > 0) {
+                
+                // Nếu sel.value không có, thử các field khác
+                if (!computedDiscountAmount || computedDiscountAmount === 0) {
+                  // Ưu tiên: valueWithVat/valueNoVat > value2/value3 > crdfd_value (raw)
+                  const moneyCandidates = isVatOrderForPromo
+                    ? [selAny.valueWithVat, selAny.value2, selAny.value3, selAny.valueBuyTogether, selAny.crdfd_value]
+                    : [selAny.valueNoVat, selAny.valueWithVat, selAny.value2, selAny.value3, selAny.valueBuyTogether, selAny.crdfd_value];
+                  
+                  console.debug('[ProductEntryForm][PROMO DEBUG] VND-based - checking other candidates:', {
+                    promotionId: sel.id,
+                    vn: sel.vn,
+                    value: sel.value,
+                    valueType: typeof sel.value,
+                    valueWithVat: selAny.valueWithVat,
+                    valueNoVat: selAny.valueNoVat,
+                    value2: selAny.value2,
+                    value3: selAny.value3,
+                    crdfd_value: selAny.crdfd_value,
+                    moneyCandidates,
+                    isVatOrderForPromo,
+                  });
+                  
+                  for (const c of moneyCandidates) {
+                    if (c === sel.value) continue; // Đã check rồi
+                    const num = Number(c);
+                    if (!isNaN(num) && num > 0) {
+                      computedDiscountAmount = num;
+                      console.debug('[ProductEntryForm][PROMO DEBUG] VND-based - found valid value from candidates:', {
+                        candidate: c,
+                        parsed: num,
+                        computedDiscountAmount,
+                      });
+                      break;
+                    }
+                  }
+                }
+                
+                // Nếu vẫn chưa có giá trị, thử parse trực tiếp từ crdfd_value
+                if (!computedDiscountAmount || computedDiscountAmount === 0) {
+                  const directValue = Number(selAny.crdfd_value) || 0;
+                  if (directValue > 0) {
+                    computedDiscountAmount = directValue;
+                    console.debug('[ProductEntryForm][PROMO DEBUG] VND-based - fallback to crdfd_value:', {
+                      crdfd_value: selAny.crdfd_value,
+                      directValue,
+                      computedDiscountAmount,
+                    });
+                  }
+                }
+                
+                console.debug('[ProductEntryForm][PROMO DEBUG] VND-based discountAmount final:', {
+                  promotionId: sel.id,
+                  promotionName: sel.name,
+                  vn: sel.vn,
+                  value: sel.value,
+                  valueType: typeof sel.value,
+                  crdfd_value: selAny.crdfd_value,
+                  computedDiscountAmount,
+                  isVatOrderForPromo,
+                });
+              } else {
+                // Không xác định được loại promotion -> không áp dụng
+                computedDiscountPercent = 0;
                 computedDiscountAmount = 0;
+                console.warn('[ProductEntryForm][PROMO DEBUG] Unknown promotion type:', {
+                  promotionId: sel.id,
+                  vn: sel.vn,
+                  vndOrPercent: (sel as any).vndOrPercent,
+                  crdfd_vn: (sel as any).crdfd_vn,
+                });
               }
+              
+              console.debug('[ProductEntryForm][PROMO DEBUG] Discount calculated:', {
+                promotionId: sel.id,
+                isPercent,
+                isVnd,
+                computedDiscountPercent,
+                computedDiscountAmount,
+              });
             }
           }
         } else {
@@ -2499,6 +2625,14 @@ function ProductEntryForm({
 
       // Use manually selected discount rate if available, otherwise use API discount rate
       const finalDiscountRate = discountRate !== '1' ? Number(discountRate) : selectedPriceFromApi?.discountRate;
+
+      console.debug('[ProductEntryForm][PROMO DEBUG] Calling onAdd with:', {
+        promotionId: currentPromoId,
+        finalDiscountPercent,
+        computedDiscountAmount,
+        finalDiscountRate,
+        skipApplyingSelectedPromotion,
+      });
 
       onAdd({
         promotionId: currentPromoId,
@@ -2611,8 +2745,16 @@ function ProductEntryForm({
   };
 
   // Derive promotion discount percent from selected promotion
+  // QUAN TRỌNG: Chỉ tính cho percent-based promotions (vn = 191920000)
+  // VND-based promotions (vn = 191920001) sẽ được xử lý riêng bằng computedDiscountAmount
   const derivePromotionPercent = (promo?: Promotion | null) => {
     if (!promo) return 0;
+
+    // QUAN TRỌNG: Chỉ tính percent cho percent-based promotions
+    // Nếu là VND-based promotion, return 0 (sẽ dùng computedDiscountAmount thay thế)
+    if (!isPercentPromotion(promo)) {
+      return 0;
+    }
 
     // Nếu khuyến mãi chỉ áp dụng cho đơn Không VAT (saleInventoryOnly = true)
     // thì bỏ qua khi đơn hiện tại là Có VAT
@@ -2659,16 +2801,26 @@ function ProductEntryForm({
       if (isNaN(num)) continue;
       if (num > 0 && num < 0.05) {
         // Very small fraction -> percent with one decimal (0.027 -> 2.7)
-        return Math.round(num * 1000) / 10;
+        const percent = Math.round(num * 1000) / 10;
+        // QUAN TRỌNG: Chỉ trả về nếu là phần trăm hợp lệ (0-100)
+        if (percent >= 0 && percent <= 100) {
+          return percent;
+        }
       }
       if (num > 0 && num <= 1) {
         // Larger decimal likely percent-with-decimals (0.94 -> 0.94)
-        return Math.round(num * 100) / 100;
+        const percent = Math.round(num * 100) / 100;
+        // QUAN TRỌNG: Chỉ trả về nếu là phần trăm hợp lệ (0-100)
+        if (percent >= 0 && percent <= 100) {
+          return percent;
+        }
       }
-      if (num > 0) {
-        // Percent-like value (>1), keep one decimal
+      if (num > 0 && num <= 100) {
+        // Percent-like value (>1 và <=100), keep one decimal
+        // QUAN TRỌNG: Chỉ chấp nhận giá trị từ 1-100 để tránh nhầm với giá tiền VND
         return Math.round(num * 10) / 10;
       }
+      // Nếu giá trị > 100, có thể là giá tiền VND bị nhầm -> bỏ qua
     }
     return 0;
   };
@@ -2681,8 +2833,9 @@ function ProductEntryForm({
     if (approvePrice) {
       setPromotionDiscountPercent(0);
       setDiscountPercent(0);
+      setDiscountAmount(0);
       setPromotionText('');
-      recomputeTotals(price, quantity, 0, vatPercent);
+      recomputeTotals(price, quantity, 0, vatPercent, 0);
       return;
     }
 
@@ -2774,7 +2927,7 @@ function ProductEntryForm({
         }
         setPromotionText(selected?.name || '');
         setPromotionWarning(`Chương trình yêu cầu tổng đơn tối thiểu ${minTotal.toLocaleString('vi-VN')} đ`);
-        recomputeTotals(price, quantity, 0, vatPercent);
+        recomputeTotals(price, quantity, 0, vatPercent, 0);
         return;
       }
     }
@@ -2792,17 +2945,67 @@ function ProductEntryForm({
       const orderTermLabel = getPaymentTermLabelClient(paymentTerms);
       const friendlyMsg = `Cảnh báo: Điều khoản thanh toán không khớp: chương trình yêu cầu "${promoReqLabel}", đơn hàng là "${orderTermLabel}"`;
       setPromotionWarning(friendlyMsg);
-      recomputeTotals(price, quantity, 0, vatPercent);
+      recomputeTotals(price, quantity, 0, vatPercent, 0);
     } else {
       const promoPct = derivePromotionPercent(selected);
-      setPromotionDiscountPercent(promoPct);
+      // QUAN TRỌNG: Đảm bảo discountPercent không bao giờ > 100 (tránh nhầm với giá tiền VND)
+      const validPromoPct = promoPct > 100 ? 0 : promoPct;
+      setPromotionDiscountPercent(validPromoPct);
       // Không override discountPercent nếu đang dùng "Theo chiết khấu" với duyệt giá
       if (!(approvePrice && priceEntryMethod === 'Theo chiết khấu')) {
-        setDiscountPercent(promoPct); // propagate to parent state
+        setDiscountPercent(validPromoPct); // propagate to parent state
       }
       setPromotionText(selected?.name || '');
       setPromotionWarning(null);
-      recomputeTotals(price, quantity, promoPct || discountPercent, vatPercent);
+      
+      // QUAN TRỌNG: Tính discountAmount cho VND-based promotion ngay khi chọn promotion
+      // để hiển thị "Giá đã giảm" đúng trong UI
+      const selAny = selected as any;
+      const isVnd = isVndPromotion(selected);
+      let promoDiscountAmt = 0;
+      
+      if (isVnd && selected) {
+        // VND-based promotion: tính discountAmount từ value
+        if (selected.value !== null && selected.value !== undefined && selected.value !== '') {
+          const valueNum = typeof selected.value === 'number' ? selected.value : Number(selected.value);
+          if (!isNaN(valueNum) && valueNum > 0) {
+            promoDiscountAmt = valueNum;
+          }
+        }
+        
+        // Nếu sel.value không có, thử các field khác
+        if (!promoDiscountAmt || promoDiscountAmt === 0) {
+          const vatTextLower = (vatText || '').toLowerCase();
+          const isVatOrderForPromo = vatTextLower.includes('có vat') || vatPercent > 0;
+          const moneyCandidates = isVatOrderForPromo
+            ? [selAny.valueWithVat, selAny.value2, selAny.value3, selAny.valueBuyTogether, selAny.crdfd_value]
+            : [selAny.valueNoVat, selAny.valueWithVat, selAny.value2, selAny.value3, selAny.valueBuyTogether, selAny.crdfd_value];
+          
+          for (const c of moneyCandidates) {
+            if (c === selected.value) continue;
+            const num = Number(c);
+            if (!isNaN(num) && num > 0) {
+              promoDiscountAmt = num;
+              break;
+            }
+          }
+        }
+        
+        // Nếu vẫn chưa có, thử crdfd_value
+        if (!promoDiscountAmt || promoDiscountAmt === 0) {
+          const directValue = Number(selAny.crdfd_value) || 0;
+          if (directValue > 0) {
+            promoDiscountAmt = directValue;
+          }
+        }
+        
+        setDiscountAmount(promoDiscountAmt); // Set vào state để recomputeTotals sử dụng
+      } else {
+        // Percent-based promotion: không dùng discountAmount
+        setDiscountAmount(0);
+      }
+      
+      recomputeTotals(price, quantity, promoPct || discountPercent, vatPercent, promoDiscountAmt);
     }
   }, [selectedPromotionId, promotions, approvePrice, orderTotal, price, quantity, vatPercent]);
 
@@ -2842,10 +3045,10 @@ function ProductEntryForm({
     return () => { cancelled = true; };
   }, [soId, customerCode, orderTotal, selectedPromotionId, selectedProductCode, selectedProductGroupCode]);
 
-  // Recompute totals when discount percent changes elsewhere
+  // Recompute totals when discount percent or discount amount changes elsewhere
   useEffect(() => {
-    recomputeTotals(price, quantity, discountPercent || promotionDiscountPercent, vatPercent);
-  }, [discountPercent]);
+    recomputeTotals(price, quantity, discountPercent || promotionDiscountPercent, vatPercent, discountAmount || 0);
+  }, [discountPercent, discountAmount]);
 
   // Force VAT = 0 for Non-VAT orders even if product VAT > 0
   useEffect(() => {
@@ -3185,9 +3388,10 @@ function ProductEntryForm({
     } else {
       // KHI BẬT "DUYỆT GIÁ": Chiết khấu 1 = 0 (không tính chiết khấu từ promotion)
       setDiscountPercent(0);
+      setDiscountAmount(0);
       setPromotionDiscountPercent(0);
       // Recompute totals với chiết khấu = 0
-      recomputeTotals(price, quantity, 0, vatPercent);
+      recomputeTotals(price, quantity, 0, vatPercent, 0);
 
       // Set default approver based on customer nganhnghe
       // - crdfd_nganhnghe != 191920004 → Phạm Thị Mỹ Hương
@@ -3339,7 +3543,9 @@ function ProductEntryForm({
                         setDiscountPercent(0);
                       } else {
                         const num = Number(value);
-                        setDiscountPercent(isNaN(num) ? 0 : num);
+                        // QUAN TRỌNG: Đảm bảo discountPercent không bao giờ > 100 (tránh nhầm với giá tiền VND)
+                        const validNum = isNaN(num) ? 0 : (num > 100 ? 0 : num);
+                        setDiscountPercent(validNum);
                       }
                     }}
                     placeholder="Chọn..."
@@ -3368,7 +3574,9 @@ function ProductEntryForm({
                       value={discountPercent}
                       onChange={(e) => {
                         const v = e.target.value === '' ? 0 : Number(e.target.value);
-                        setDiscountPercent(isNaN(v) ? 0 : v);
+                        // QUAN TRỌNG: Đảm bảo discountPercent không bao giờ > 100 (tránh nhầm với giá tiền VND)
+                        const validV = isNaN(v) ? 0 : (v > 100 ? 0 : v);
+                        setDiscountPercent(validV);
                       }}
                       disabled={isFormDisabled}
                       placeholder="0"
@@ -3823,9 +4031,13 @@ function ProductEntryForm({
                             toNumber(promo.value3) ??
                             toNumber(promo.valueBuyTogether);
                         }
+                        // Check loại promotion để hiển thị đúng format
+                        const isVndPromo = isVndPromotion(promo);
                         const valueLabel =
                           displayValue !== null && displayValue !== undefined
-                            ? ` - ${displayValue}%`
+                            ? isVndPromo
+                              ? ` - ${displayValue.toLocaleString('vi-VN')} VNĐ`
+                              : ` - ${displayValue}%`
                             : '';
                         return (
                           <option key={normalizePromotionId(promo.id)} value={normalizePromotionId(promo.id)}>
@@ -3848,9 +4060,21 @@ function ProductEntryForm({
                       ⧉
                     </button>
                   </div>
-                  {(promotionDiscountPercent || discountPercent) > 0 && (
+                  {((promotionDiscountPercent || discountPercent) > 0 || (discountAmount || 0) > 0) && (
                     <span className="admin-app-badge-promotion">
-                      Giảm: {promotionDiscountPercent || discountPercent || 0}%
+                      Giảm: {(() => {
+                        const promo = selectedPromotion || promotions[0];
+                        const isVnd = promo ? isVndPromotion(promo) : false;
+                        const discountValue = promotionDiscountPercent || discountPercent || 0;
+                        const discountAmountValue = discountAmount || 0;
+                        
+                        if (isVnd && discountAmountValue > 0) {
+                          return `${discountAmountValue.toLocaleString('vi-VN')} VNĐ`;
+                        } else if (discountValue > 0) {
+                          return `${discountValue}%`;
+                        }
+                        return '0%';
+                      })()}
                     </span>
                   )}
                   {promotionWarning && (
@@ -3877,10 +4101,12 @@ function ProductEntryForm({
             const priceNum = parsedPriceDisplayed > 0 ? parsedPriceDisplayed : ((basePriceForDiscount && basePriceForDiscount > 0) ? basePriceForDiscount : 0);
 
             const promoDiscountPct = discountPercent || promotionDiscountPercent || 0;
+            const promoDiscountAmt = discountAmount || 0;
 
-            // Ignore API discountRate for "Giá đã giảm" — always compute using client-side promotion/discountPercent
+            // Ignore API discountRate for "Giá đã giảm" — always compute using client-side promotion/discountPercent/discountAmount
             const discountFactor = 1 - (promoDiscountPct > 0 ? promoDiscountPct / 100 : 0);
-            const discountedPrice = priceNum * discountFactor;
+            // QUAN TRỌNG: Với VND-based promotion, trừ discountAmount sau khi tính percent discount
+            const discountedPrice = priceNum * discountFactor - promoDiscountAmt;
             // Làm tròn đến 2 chữ số thập phân để hiển thị giống với cách tính trong recomputeTotals
             const roundedDiscountedPrice = Math.round(discountedPrice * 100) / 100;
 

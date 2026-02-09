@@ -120,7 +120,7 @@ async function recalculatePromotionEligibility(
     const promoAny = promotion as any;
     const productCodesStr = promotion.productCodes || promoAny.crdfd_masanpham_multiple || '';
     const productGroupCodesStr = promotion.productGroupCodes || promoAny.cr1bb_manhomsp_multiple || '';
-    
+
     // Parse danh sách mã sản phẩm và mã nhóm sản phẩm (comma-separated)
     const allowedProductCodes = productCodesStr
       .split(',')
@@ -130,17 +130,17 @@ async function recalculatePromotionEligibility(
       .split(',')
       .map((c: string) => c.trim())
       .filter(Boolean);
-    
+
     // Nếu promotion không có điều kiện về sản phẩm/nhóm sản phẩm → tính tổng tất cả
     const hasProductFilter = allowedProductCodes.length > 0 || allowedProductGroupCodes.length > 0;
-    
+
     return products.reduce((sum, item) => {
       // Kiểm tra item có match với promotion không
-      const matchesProductCode = !hasProductFilter || 
+      const matchesProductCode = !hasProductFilter ||
         (item.productCode && allowedProductCodes.includes(item.productCode));
-      const matchesProductGroupCode = !hasProductFilter || 
+      const matchesProductGroupCode = !hasProductFilter ||
         (item.productGroupCode && allowedProductGroupCodes.includes(item.productGroupCode));
-      
+
       // Chỉ tính tổng nếu item match với promotion
       if (matchesProductCode || matchesProductGroupCode) {
         const basePrice = item.price;
@@ -191,7 +191,10 @@ async function recalculatePromotionEligibility(
     return currentProducts;
   }
 
-  // 3. Fetch promotions cho TẤT CẢ items bằng fetchProductPromotions (cho cả CK1 và CK2)
+      // 3. Fetch promotions cho TẤT CẢ items bằng fetchProductPromotions (cho cả CK1 và CK2)
+      // 3. Fetch promotions cho TẤT CẢ items bằng fetchProductPromotions (cho cả CK1 và CK2)
+      // 3. Fetch promotions cho TẤT CẢ items bằng fetchProductPromotions (cho cả CK1 và CK2)
+      // 3. Fetch promotions cho TẤT CẢ items bằng fetchProductPromotions (cho cả CK1 và CK2)
   // Dùng promotions.ts API thay vì promotion-orders.ts
   try {
     // Collect tất cả items
@@ -230,8 +233,26 @@ async function recalculatePromotionEligibility(
     const promotionMap = new Map<string, { discountPercent: number; promotionId: string }>();
     let promotionsFetched = 0;
 
+    // Helper: normalize promotionId để so sánh an toàn
+    const normalizePromotionId = (id: string | undefined | null): string =>
+      (id ?? '').toString().trim().toLowerCase();
+
+    // Helper: xác định item đang dùng VND-based promotion (chiết khấu theo tiền, không theo %)
+    const isVndBasedItem = (item: ProductTableItem): boolean => {
+      const pct = Number(item.discountPercent ?? 0) || 0;
+      const amt = Number(item.discountAmount ?? item.discount ?? 0) || 0;
+      // VND-based: không có % nhưng có số tiền chiết khấu
+      return pct === 0 && amt > 0;
+    };
+
     for (const item of allItems) {
       if (!item.productCode) continue;
+
+      // Tôn trọng các dòng đang có khuyến mãi VND (discountAmount > 0, discountPercent = 0)
+      // → KHÔNG áp dụng lại promotion % cho các dòng này
+      if (isVndBasedItem(item)) {
+        continue;
+      }
 
       const promotions = promotionsByCode.get(item.productCode) || [];
 
@@ -244,11 +265,11 @@ async function recalculatePromotionEligibility(
         const rawCond = p.totalAmountCondition ?? null;
         // Chỉ convert sang number nếu là giá trị truthy, ngược lại coi như 0
         const minTotal = rawCond !== null ? Number(rawCond) : 0;
-        
+
         // QUAN TRỌNG: Tính tổng tiền chỉ từ các sản phẩm match với promotion
         // (có trong cr1bb_manhomsp_multiple hoặc crdfd_masanpham_multiple)
         const totalForThisPromotion = calculateTotalForPromotion(currentProducts, p);
-        
+
         // Nếu minTotal = 0 hoặc NaN → coi như không có điều kiện tối thiểu → luôn đáp ứng
         const meetsTotal = !minTotal || minTotal === 0 || isNaN(minTotal) || totalForThisPromotion >= minTotal;
         return isPercent && meetsTotal;
@@ -267,29 +288,43 @@ async function recalculatePromotionEligibility(
         })),
       });
 
-      // Lấy promotion có giá trị cao nhất
+      // Lấy promotion áp dụng cho item này:
+      // - ƯU TIÊN: promotionId đang gắn trên item (người dùng đã chọn tay) nếu vẫn hợp lệ
+      // - FALLBACK: promotion có giá trị cao nhất trong candidates
       if (candidates.length > 0) {
-        const bestPromo = candidates.reduce((best, current) => {
-          // QUAN TRỌNG: promotions.ts trả về valueWithVat cho CK1 VAT
-          // Dùng valueWithVat thay vì value khi value = 0
-          const bestVal = Number(best.valueWithVat || best.value) || 0;
-          const currVal = Number(current.valueWithVat || current.value) || 0;
-          return currVal > bestVal ? current : best;
-        }, candidates[0]);
+        const currentPromoIdNorm = normalizePromotionId(item.promotionId);
+
+        // Thử tìm promotion khớp với promotionId hiện tại (tôn trọng lựa chọn của user)
+        let chosenPromo =
+          currentPromoIdNorm
+            ? candidates.find(c => normalizePromotionId(c.id) === currentPromoIdNorm) || null
+            : null;
+
+        // Nếu không tìm thấy (hoặc item chưa có promotionId) → fallback chọn promotion tốt nhất
+        if (!chosenPromo) {
+          chosenPromo = candidates.reduce((best, current) => {
+            // QUAN TRỌNG: promotions.ts trả về valueWithVat cho CK1 VAT
+            // Dùng valueWithVat thay vì value khi value = 0
+            const bestVal = Number(best.valueWithVat || best.value) || 0;
+            const currVal = Number(current.valueWithVat || current.value) || 0;
+            return currVal > bestVal ? current : best;
+          }, candidates[0]);
+        }
 
         // QUAN TRỌNG: Dùng valueWithVat thay vì value khi value = 0
-        const discountPercent = Number(bestPromo.valueWithVat || bestPromo.value) || 0;
+        const discountPercent = Number(chosenPromo.valueWithVat || chosenPromo.value) || 0;
 
         promotionMap.set(item.productCode, {
           discountPercent,
-          promotionId: bestPromo.id
+          promotionId: chosenPromo.id
         });
 
-        console.debug('[ProductTable][RECALC] Best promotion for product:', {
+        console.debug('[ProductTable][RECALC] Chosen promotion for product:', {
           productCode: item.productCode,
-          promotionId: bestPromo.id,
-          name: bestPromo.name?.substring(0, 40),
+          promotionId: chosenPromo.id,
+          name: chosenPromo.name?.substring(0, 40),
           discountPercent,
+          fromExistingPromotionId: !!currentPromoIdNorm,
         });
       }
 
@@ -316,10 +351,31 @@ async function recalculatePromotionEligibility(
     const updatedProducts = currentProducts.map(item => {
       const promoInfo = promotionMap.get(item.productCode || '');
 
+      // Nếu item đang dùng khuyến mãi VND (discountAmount > 0, discountPercent = 0) → giữ nguyên, không sửa
+      const isVndBased = (() => {
+        const pct = Number(item.discountPercent ?? 0) || 0;
+        const amt = Number(item.discountAmount ?? item.discount ?? 0) || 0;
+        return pct === 0 && amt > 0;
+      })();
+      if (isVndBased) {
+        console.debug('[ProductTable][RECALC] Skip VND-based promotion item (keep as is):', {
+          productCode: item.productCode,
+          discountPercent: item.discountPercent,
+          discountAmount: item.discountAmount ?? item.discount,
+          promotionId: item.promotionId,
+        });
+        return item;
+      }
+
       // Case A: Item có trong promotionMap → ÁP DỤNG promotion
       if (promoInfo) {
-        // Nếu đã có promotion và discount giống nhau → giữ nguyên (tránh re-render không cần thiết)
-        if (item.eligibleForPromotion && item.discountPercent === promoInfo.discountPercent) {
+        // Nếu đã có promotion, discount giống nhau VÀ promotionId trùng → giữ nguyên (tránh re-render không cần thiết)
+        // Lưu ý: cần so sánh cả promotionId để tránh giữ lại promotion cũ khi backend đổi sang promotion mới nhưng % giống nhau
+        if (
+          item.eligibleForPromotion &&
+          item.discountPercent === promoInfo.discountPercent &&
+          item.promotionId === promoInfo.promotionId
+        ) {
           return item;
         }
 
@@ -352,7 +408,8 @@ async function recalculatePromotionEligibility(
         };
       }
 
-      // Case B: Item không có trong promotionMap → LOẠI BỎ promotion
+      // Case B: Item không có trong promotionMap → LOẠI BỎ promotion (%)
+      // LƯU Ý: KHÔNG đụng vào các dòng VND-based (đã return ở trên)
       if (item.eligibleForPromotion) {
         removedCount++;
         console.debug('[ProductTable][RECALC] Removed promotion from item:', {
@@ -928,44 +985,100 @@ function ProductTable({
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
                         {/* Discount value */}
                         <span>
-                          {product.discountPercent !== undefined && product.discountPercent !== null && product.discountPercent > 0
-                            ? `${(Number.isInteger(product.discountPercent) ? product.discountPercent : Number(product.discountPercent).toFixed(1))}%`
-                            : product.discountAmount !== undefined && product.discountAmount !== null && product.discountAmount > 0
-                              ? product.discountAmount.toLocaleString('vi-VN')
-                              : product.discount !== undefined && product.discount !== null && product.discount > 0
-                                ? product.discount.toLocaleString('vi-VN')
-                                : '-'}
+                          {(() => {
+                            // 1️⃣ Ưu tiên hiển thị chiết khấu %
+                            const pctSource =
+                              product.discountPercent !== undefined && product.discountPercent !== null
+                                ? product.discountPercent
+                                : product.discount !== undefined && product.discount !== null
+                                  ? product.discount
+                                  : null;
+
+                            const pctNum = pctSource !== null ? Number(pctSource) : 0;
+                            if (!Number.isNaN(pctNum) && pctNum > 0) {
+                              let pctLabel: string;
+                              if (Number.isInteger(pctNum)) {
+                                // Ví dụ: 5 -> "5"
+                                pctLabel = pctNum.toString();
+                              } else if (Math.abs(pctNum) < 1) {
+                                // Các giá trị nhỏ hơn 1%: hiển thị 2 chữ số thập phân
+                                // VD: 0.88 -> "0.88"
+                                pctLabel = pctNum.toFixed(2);
+                              } else {
+                                // Các giá trị >= 1%: hiển thị 1 chữ số thập phân
+                                // VD: 22.56 -> "22.6"
+                                pctLabel = pctNum.toFixed(1);
+                              }
+                              return `${pctLabel}%`;
+                            }
+
+                            // 2️⃣ Nếu không có %, hiển thị chiết khấu VNĐ (crdfd_chieckhauvn -> discountAmount)
+                            const amountRaw =
+                              product.discountAmount !== undefined &&
+                              product.discountAmount !== null &&
+                              Number(product.discountAmount) > 0
+                                ? Number(product.discountAmount)
+                                : 0;
+
+                            if (amountRaw > 0) {
+                              const roundedAmount = Math.round(amountRaw);
+                              return `${roundedAmount.toLocaleString('vi-VN')} VND`;
+                            }
+
+                            // 3️⃣ Không có discount nào
+                            return '';
+                          })()}
                         </span>
-                        {/* Promotion eligibility badge */}
-                        {product.eligibleForPromotion === true ? (
-                          <span
-                            style={{
-                              fontSize: '9px',
-                              padding: '1px 4px',
-                              backgroundColor: '#dcfce7',
-                              color: '#166534',
-                              borderRadius: '4px',
-                              whiteSpace: 'nowrap',
-                            }}
-                            title="Item đủ điều kiện khuyến mãi"
-                          >
-                            ✓ KM
-                          </span>
-                        ) : product.eligibleForPromotion === false ? (
-                          <span
-                            style={{
-                              fontSize: '9px',
-                              padding: '1px 4px',
-                              backgroundColor: '#f3f4f6',
-                              color: '#6b7280',
-                              borderRadius: '4px',
-                              whiteSpace: 'nowrap',
-                            }}
-                            title="Item không đủ điều kiện khuyến mãi"
-                          >
-                            - KM
-                          </span>
-                        ) : null}
+                        {/* Promotion eligibility badge - đổi màu theo loại CK (VND vs %) */}
+                        {(() => {
+                          const pctNum = Number(product.discountPercent ?? product.discount ?? 0) || 0;
+                          const vndAmount = Number(product.discountAmount ?? 0) || 0;
+                          const isVndBased = pctNum <= 0 && vndAmount > 0;
+
+                          if (product.eligibleForPromotion === true) {
+                            const bgColor = isVndBased ? '#eff6ff' : '#dcfce7'; // VND -> xanh dương nhạt, % -> xanh lá
+                            const textColor = isVndBased ? '#1d4ed8' : '#166534';
+                            const title = isVndBased
+                              ? 'Item đủ điều kiện khuyến mãi (VND)'
+                              : 'Item đủ điều kiện khuyến mãi (%)';
+                            const label = isVndBased ? '✓ KM VND' : '✓ KM %';
+                            return (
+                              <span
+                                style={{
+                                  fontSize: '9px',
+                                  padding: '1px 4px',
+                                  backgroundColor: bgColor,
+                                  color: textColor,
+                                  borderRadius: '4px',
+                                  whiteSpace: 'nowrap',
+                                }}
+                                title={title}
+                              >
+                                {label}
+                              </span>
+                            );
+                          }
+
+                          if (product.eligibleForPromotion === false) {
+                            return (
+                              <span
+                                style={{
+                                  fontSize: '9px',
+                                  padding: '1px 4px',
+                                  backgroundColor: '#f3f4f6',
+                                  color: '#6b7280',
+                                  borderRadius: '4px',
+                                  whiteSpace: 'nowrap',
+                                }}
+                                title="Item không đủ điều kiện khuyến mãi"
+                              >
+                                - KM
+                              </span>
+                            );
+                          }
+
+                          return null;
+                        })()}
                       </div>
                     </td>
                     <td className="admin-app-cell-right">{product.vat}%</td>

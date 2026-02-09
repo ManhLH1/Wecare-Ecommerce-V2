@@ -1702,9 +1702,72 @@ export default async function handler(
         // Reference to Sale Order using Navigation property with @odata.bind
         // Field name is crdfd_SOcode (with capital S and O), not crdfd_socode
         // Ensure subtotal/vat/total use the same calculation as UI 'Tổng' cell:
-        const computedSubtotal = product.subtotal ?? ((product.discountedPrice ?? product.price) * (product.quantity || 0));
-        const computedVatAmount = product.vatAmount ?? Math.round((computedSubtotal * (product.vat || 0)) / 100);
-        const computedTotal = product.totalAmount ?? (computedSubtotal + computedVatAmount);
+        
+        // Tính toán giá gốc và chiết khấu
+        const originalPrice = product.originalPrice ?? product.price;
+        const discountPercent = product.discountPercent ? product.discountPercent / 100 : 0;
+        const discountAmount = product.discountAmount ?? 0;
+        
+        // Xác định loại promotion: VND-based hay percent-based
+        // VND-based: discountPercent = 0 và discountAmount > 0
+        // Percent-based: discountPercent > 0 và discountAmount = 0 (hoặc có cả 2 nhưng chủ yếu là percent)
+        const isVndPromotion = (discountPercent === 0 || discountPercent === undefined || discountPercent === null) && discountAmount > 0;
+        
+        // QUAN TRỌNG: Tính lại giá sau chiết khấu từ giá gốc và chiết khấu VND
+        // Logic giống frontend (recomputeTotals): giá sau chiết khấu = giá gốc * (1 - discountPercent) - discountAmount
+        // Đảm bảo tính đúng cho cả promotion giảm giá VND
+        const calculatedDiscountedPrice = originalPrice * (1 - discountPercent) - discountAmount;
+        // Làm tròn đến 2 chữ số thập phân giống frontend (Math.round(calculatedDiscountedPrice * 100) / 100)
+        const finalDiscountedPrice = Math.max(0, Math.round(calculatedDiscountedPrice * 100) / 100);
+        
+        // LUÔN dùng giá đã tính lại từ backend để đảm bảo tính đúng
+        const effectiveDiscountedPrice = finalDiscountedPrice;
+        
+        // QUAN TRỌNG: LUÔN tính lại subtotal, VAT và total từ backend
+        // KHÔNG dùng giá trị từ frontend vì có thể chưa được cập nhật với chiết khấu VND
+        // Logic giống frontend (recomputeTotals): newSubtotal = qty * effectivePrice, sau đó làm tròn
+        const rawSubtotal = effectiveDiscountedPrice * (product.quantity || 0);
+        // Làm tròn subtotal đến 2 chữ số thập phân giống frontend
+        const computedSubtotal = Math.round(rawSubtotal * 100) / 100;
+        
+        const rawVat = (computedSubtotal * (product.vat || 0)) / 100;
+        // Làm tròn VAT đến 2 chữ số thập phân giống frontend
+        const computedVatAmount = Math.round(rawVat * 100) / 100;
+        
+        // Làm tròn total đến 2 chữ số thập phân giống frontend
+        const computedTotal = Math.round((computedSubtotal + computedVatAmount) * 100) / 100;
+        
+        // Log để debug promotion giảm giá VND
+        if (discountAmount > 0 || discountPercent > 0) {
+          console.log('[Save SOD] 💰 Promotion calculation:', {
+            productCode: product.productCode,
+            originalPrice,
+            discountPercent: discountPercent * 100 + '%',
+            discountAmount,
+            calculatedDiscountedPrice,
+            finalDiscountedPrice,
+            effectiveDiscountedPrice,
+            quantity: product.quantity,
+            vatPercent: product.vat,
+            computedSubtotal,
+            computedVatAmount,
+            computedTotal,
+            frontendSubtotal: product.subtotal,
+            frontendVatAmount: product.vatAmount,
+            frontendTotal: product.totalAmount,
+            calculation: {
+              step1: `effectivePrice = ${originalPrice} * (1 - ${discountPercent}) - ${discountAmount} = ${calculatedDiscountedPrice}`,
+              step2: `roundedPrice = Math.round(${calculatedDiscountedPrice} * 100) / 100 = ${finalDiscountedPrice}`,
+              step3: `subtotal = ${finalDiscountedPrice} * ${product.quantity} = ${rawSubtotal}`,
+              step4: `roundedSubtotal = Math.round(${rawSubtotal} * 100) / 100 = ${computedSubtotal}`,
+              step5: `vat = ${computedSubtotal} * ${product.vat}% = ${rawVat}`,
+              step6: `roundedVat = Math.round(${rawVat} * 100) / 100 = ${computedVatAmount}`,
+              step7: `total = ${computedSubtotal} + ${computedVatAmount} = ${computedSubtotal + computedVatAmount}`,
+              step8: `roundedTotal = Math.round(${computedSubtotal + computedVatAmount} * 100) / 100 = ${computedTotal}`
+            },
+            note: 'Backend ALWAYS recalculates to ensure VND discount is applied correctly'
+          });
+        }
 
         const payload: any = {
           [`crdfd_SOcode@odata.bind`]: `/crdfd_sale_orders(${soId})`,
@@ -1715,16 +1778,19 @@ export default async function handler(
           // so that reading code (sale-order-details) maps:
           // `price` -> crdfd_giagoc (đơn giá gốc)
           // `discountedPrice` -> crdfd_gia (đơn giá sau chiết khấu - hiển thị)
-          crdfd_gia: product.discountedPrice ?? product.price,   // Đơn giá sau chiết khấu (hiển thị)
-          crdfd_giagoc: product.originalPrice ?? product.price,  // Đơn giá gốc (trước chiết khấu)
+          // QUAN TRỌNG: Tính lại từ giá gốc và chiết khấu VND để đảm bảo tính đúng
+          crdfd_gia: effectiveDiscountedPrice,   // Đơn giá sau chiết khấu (đã tính lại)
+          crdfd_giagoc: originalPrice,  // Đơn giá gốc (trước chiết khấu)
           crdfd_ieuchinhgtgt: vatOptionSet,
           crdfd_stton: product.stt, // Stt đơn (correct field name)
           // Use computed values to guarantee 'Tổng' saved equals UI display (subtotal + VAT)
           crdfd_thue: computedVatAmount, // Thuế (GTGT amount)
           crdfd_tongtienchuavat: computedSubtotal,
           crdfd_tongtiencovat: computedTotal,
-          crdfd_chieckhau: product.discountPercent ? product.discountPercent / 100 : undefined, // Chuyển từ phần trăm (4%) sang thập phân (0.04)
-          crdfd_chieckhauvn: product.discountAmount ?? 0,
+          crdfd_chieckhau: discountPercent > 0 ? discountPercent : undefined, // Chuyển từ phần trăm (4%) sang thập phân (0.04)
+          // QUAN TRỌNG: Chỉ lưu discountAmount vào crdfd_chieckhauvn khi là promotion VND-based
+          // (không phải percent-based promotion)
+          crdfd_chieckhauvn: isVndPromotion ? discountAmount : (discountAmount > 0 && discountPercent === 0 ? discountAmount : 0),
           // Secondary discount (Chiết khấu 2) stored as decimal (e.g., 0.05 for 5%)
           crdfd_chieckhau2 : product.discount2 ? product.discount2 / 100 : 0,
           crdfd_chietkhau_phanhang: getDiscountRateFromPrices(product),

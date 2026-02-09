@@ -7,7 +7,7 @@ import ProductEntryForm from './ProductEntryForm';
 import ProductTable from './ProductTable';
 import Dropdown from './Dropdown';
 import { useCustomers, useSaleOrders } from '../_hooks/useDropdownData';
-import { fetchSaleOrders, fetchSaleOrderDetails, SaleOrderDetail, saveSaleOrderDetails, updateInventory, fetchInventory, fetchUnits, fetchPromotionOrders, fetchSpecialPromotionOrders, applyPromotionOrder, PromotionOrderItem, InventoryInfo, fetchProductPromotions, fetchProductPromotionsBatch, Promotion } from '../_api/adminApi';
+import { fetchSaleOrders, SaleOrderDetail, saveSaleOrderDetails, updateInventory, fetchInventory, fetchUnits, fetchPromotionOrders, fetchSpecialPromotionOrders, applyPromotionOrder, PromotionOrderItem, InventoryInfo, fetchProductPromotions, fetchProductPromotionsBatch, Promotion } from '../_api/adminApi';
 import { queryKeys } from '../_hooks/useReactQueryData';
 import { APPROVERS_LIST } from '../../../constants/constants';
 import { showToast } from '../../../components/ToastManager';
@@ -228,8 +228,26 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       const promotionMap = new Map<string, { discountPercent: number; promotionId: string }>();
       let promotionsFetched = 0;
 
+      // Helper: normalize promotionId để so sánh an toàn
+      const normalizePromotionId = (id: string | undefined | null): string =>
+        (id ?? '').toString().trim().toLowerCase();
+
+      // Helper: xác định item đang dùng VND-based promotion (chiết khấu theo tiền, không theo %)
+      const isVndBasedItem = (item: ProductTableItem): boolean => {
+        const pct = Number(item.discountPercent ?? 0) || 0;
+        const amt = Number(item.discountAmount ?? item.discount ?? 0) || 0;
+        // VND-based: không có % nhưng có số tiền chiết khấu
+        return pct === 0 && amt > 0;
+      };
+
       for (const item of allItems) {
         if (!item.productCode) continue;
+
+        // Tôn trọng các dòng đang có khuyến mãi VND (discountAmount > 0, discountPercent = 0)
+        // → KHÔNG áp dụng lại promotion % cho các dòng này
+        if (isVndBasedItem(item)) {
+          continue;
+        }
 
         const promotions = promotionsByCode.get(item.productCode) || [];
 
@@ -252,22 +270,35 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           return isPercent && meetsTotal;
         });
 
-        // Lấy promotion có giá trị cao nhất
+        // Lấy promotion áp dụng cho item này:
+        // - ƯU TIÊN: promotionId đang gắn trên item (người dùng đã chọn tay) nếu vẫn hợp lệ
+        // - FALLBACK: promotion có giá trị cao nhất trong candidates
         if (candidates.length > 0) {
-          const bestPromo = candidates.reduce((best, current) => {
-            // QUAN TRỌNG: promotions.ts trả về valueWithVat cho CK1 VAT
-            // Dùng valueWithVat thay vì value khi value = 0
-            const bestVal = Number(best.valueWithVat || best.value) || 0;
-            const currVal = Number(current.valueWithVat || current.value) || 0;
-            return currVal > bestVal ? current : best;
-          }, candidates[0]);
+          const currentPromoIdNorm = normalizePromotionId(item.promotionId);
+
+          // Thử tìm promotion khớp với promotionId hiện tại (tôn trọng lựa chọn của user)
+          let chosenPromo =
+            currentPromoIdNorm
+              ? candidates.find(c => normalizePromotionId(c.id) === currentPromoIdNorm) || null
+              : null;
+
+          // Nếu không tìm thấy (hoặc item chưa có promotionId) → fallback chọn promotion tốt nhất
+          if (!chosenPromo) {
+            chosenPromo = candidates.reduce((best, current) => {
+              // QUAN TRỌNG: promotions.ts trả về valueWithVat cho CK1 VAT
+              // Dùng valueWithVat thay vì value khi value = 0
+              const bestVal = Number(best.valueWithVat || best.value) || 0;
+              const currVal = Number(current.valueWithVat || current.value) || 0;
+              return currVal > bestVal ? current : best;
+            }, candidates[0]);
+          }
 
           // QUAN TRỌNG: Dùng valueWithVat thay vì value khi value = 0
-          const discountPercent = Number(bestPromo.valueWithVat || bestPromo.value) || 0;
+          const discountPercent = Number(chosenPromo.valueWithVat || chosenPromo.value) || 0;
 
           promotionMap.set(item.productCode, {
             discountPercent,
-            promotionId: bestPromo.id
+            promotionId: chosenPromo.id
           });
         }
 
@@ -299,18 +330,37 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           productName: item.productName?.substring(0, 30),
           currentEligibleForPromotion: item.eligibleForPromotion,
           currentDiscountPercent: item.discountPercent,
+          currentPromotionId: item.promotionId,
           hasPromoInfo: !!promoInfo,
           promoInfoDiscount: promoInfo?.discountPercent,
+          promoInfoPromotionId: promoInfo?.promotionId,
           inPromotionMap: !!promoInfo,
         });
 
+        // Nếu item đang dùng khuyến mãi VND (discountAmount > 0, discountPercent = 0) → giữ nguyên, không sửa
+        if (isVndBasedItem(item)) {
+          console.debug('[SalesOrderForm][RECALC] Skip VND-based promotion item (keep as is):', {
+            productCode: item.productCode,
+            discountPercent: item.discountPercent,
+            discountAmount: item.discountAmount ?? item.discount,
+            promotionId: item.promotionId,
+          });
+          return item;
+        }
+
         // Case A: Item có trong promotionMap → ÁP DỤNG promotion
         if (promoInfo) {
-          // Nếu đã có promotion và discount giống nhau → giữ nguyên
-          if (item.eligibleForPromotion && item.discountPercent === promoInfo.discountPercent) {
-            console.debug('[SalesOrderForm][RECALC] Item already has same promotion, skipping:', {
+          // Nếu đã có promotion, discount giống nhau VÀ promotionId trùng → giữ nguyên
+          // Lưu ý: cần so sánh cả promotionId để tránh giữ lại promotion cũ khi backend đổi sang promotion mới nhưng % giống nhau
+          if (
+            item.eligibleForPromotion &&
+            item.discountPercent === promoInfo.discountPercent &&
+            normalizePromotionId(item.promotionId) === normalizePromotionId(promoInfo.promotionId)
+          ) {
+            console.debug('[SalesOrderForm][RECALC] Item already has same promotion & id, skipping:', {
               productCode: item.productCode,
               discountPercent: item.discountPercent,
+              promotionId: item.promotionId,
             });
             return item;
           }
@@ -344,7 +394,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           };
         }
 
-        // Case B: Item không có trong promotionMap → LOẠI BỎ promotion
+        // Case B: Item không có trong promotionMap → LOẠI BỎ promotion (%)
+        // LƯU Ý: KHÔNG đụng vào các dòng VND-based (đã được return ở trên)
         if (item.eligibleForPromotion) {
           removedCount++;
           console.debug('[SalesOrderForm][RECALC] Removed promotion from item:', {
@@ -594,12 +645,6 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         return;
       }
 
-      // Validation: Customer must be selected (Safety check matching SOBG)
-      if (!customerId) {
-        setProductList([]);
-        return;
-      }
-
       // Quan trọng: tránh gọi `sale-order-details` khi `sale-orders` còn đang load (sẽ gây 2 API call cùng lúc).
       // Chờ `saleOrders` về rồi dùng dữ liệu đã `$expand`.
       if (soLoading) {
@@ -617,15 +662,31 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       setIsLoadingDetails(true);
       try {
         const currentSo = saleOrders.find((so) => so.crdfd_sale_orderid === soId);
+        // Ưu tiên dùng dữ liệu từ expanded relationship gốc `crdfd_SaleOrderDetail_SOcode_crdfd_Sale_O`
+        // Fallback sang field `details` nếu cần (backward-compatible).
         const expandedDetails =
-          (currentSo as any)?.details ??
-          (currentSo as any)?.crdfd_SaleOrderDetail_SOcode_crdfd_Sale_O;
+          (currentSo as any)?.crdfd_SaleOrderDetail_SOcode_crdfd_Sale_O ??
+          (currentSo as any)?.details;
 
-        // Nếu user vừa chọn lại SO (soReloadSeq thay đổi), luôn gọi API để lấy record mới.
-        const shouldForceRefetch = soReloadSeq > 0;
-        const details: SaleOrderDetail[] = shouldForceRefetch
-          ? await fetchSaleOrderDetails(soId)
-          : (Array.isArray(expandedDetails) ? expandedDetails : await fetchSaleOrderDetails(soId));
+        // Dữ liệu chi tiết đang có từ state (nếu sale-orders đã expand)
+        const detailsFromState: SaleOrderDetail[] = Array.isArray(expandedDetails)
+          ? expandedDetails
+          : [];
+
+        // Nếu user vừa chọn lại SO (soReloadSeq thay đổi) HOẶC chưa có details trong state
+        // → gọi lại API `sale-orders` với forceRefresh để lấy bản mới nhất (đã expand SOD).
+        const shouldForceRefetch = soReloadSeq > 0 || detailsFromState.length === 0;
+
+        let details: SaleOrderDetail[] = detailsFromState;
+        if (shouldForceRefetch) {
+          const refreshedOrders = await fetchSaleOrders(customerId, true);
+          setSaleOrders(refreshedOrders);
+          const refreshedSo = refreshedOrders.find((so) => so.crdfd_sale_orderid === soId);
+          const refreshedExpanded =
+            (refreshedSo as any)?.crdfd_SaleOrderDetail_SOcode_crdfd_Sale_O ??
+            (refreshedSo as any)?.details;
+          details = Array.isArray(refreshedExpanded) ? refreshedExpanded : [];
+        }
 
         const normalizeApproveNote = (note: string | undefined, approverId: string | undefined) => {
           const rawNote = note || '';
@@ -949,15 +1010,29 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         });
 
         if (candidates && candidates.length > 0) {
-          // Choose first matching (server already filters by productCodes when provided)
-          const pick = candidates[0];
+          // ƯU TIÊN: nếu child (ProductEntryForm) đã gửi overrides.promotionId (user chọn tay)
+          // và promotion đó vẫn hợp lệ trong candidates thì dùng đúng promotion đó.
+          const overridesPromoIdNorm = overrides?.promotionId
+            ? overrides.promotionId.trim().toLowerCase()
+            : '';
+
+          let pick =
+            overridesPromoIdNorm !== ''
+              ? candidates.find(c => String(c.id || '').trim().toLowerCase() === overridesPromoIdNorm) || null
+              : null;
+
+          // Nếu không tìm thấy (hoặc không có overrides) → fallback như cũ: chọn promotion đầu tiên (server đã filter)
+          if (!pick) {
+            pick = candidates[0];
+          }
+
           const num = Number(pick.value) || 0;
           if (!isNaN(num) && num > 0) {
             inferredDiscountPercent = num;
             currentItemEligibleForPromotion = true; // Item này có promotion!
           }
 
-          // Luôn dùng promotionId từ candidates nếu tìm thấy
+          // Luôn dùng promotionId từ promotion đã chọn
           inferredPromotionId = pick.id;
 
           // Tính lại tổng cho promotion được chọn để log
@@ -968,7 +1043,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           );
           
           const pickAny = pick as any;
-          console.debug('[SalesOrderForm][PROMO DEBUG] Found valid promotion for item:', {
+          console.debug('[SalesOrderForm][PROMO DEBUG] Found valid promotion for item (respect overrides):', {
             productCode,
             promotionId: pick.id,
             name: pick.name,
@@ -978,6 +1053,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             productCodes: pick.productCodes || pickAny.crdfd_masanpham_multiple,
             productGroupCodes: pick.productGroupCodes || pickAny.cr1bb_manhomsp_multiple,
             currentItemEligibleForPromotion,
+            usedOverridesPromotionId: overridesPromoIdNorm !== '',
           });
         } else {
           // Không tìm thấy promotion phù hợp cho item này
@@ -2979,7 +3055,18 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
             if (!soId) return;
             setIsLoadingDetails(true);
             try {
-              const details = await fetchSaleOrderDetails(soId);
+              // Refetch sale-orders (đã expand SOD) để đồng bộ cả header + details từ backend,
+              // thay vì gọi riêng sale-order-details.
+              const refreshedOrders = await fetchSaleOrders(customerId, true);
+              setSaleOrders(refreshedOrders);
+              const currentSoRefreshed = refreshedOrders.find(so => so.crdfd_sale_orderid === soId);
+              const expandedDetailsRefreshed =
+                (currentSoRefreshed as any)?.crdfd_SaleOrderDetail_SOcode_crdfd_Sale_O ??
+                (currentSoRefreshed as any)?.details;
+              const details: SaleOrderDetail[] = Array.isArray(expandedDetailsRefreshed)
+                ? expandedDetailsRefreshed
+                : [];
+
               const mappedProducts: ProductTableItem[] = details.map((detail: SaleOrderDetail) => {
                 const subtotal = (detail.discountedPrice || detail.price) * detail.quantity;
                 const vatAmount = (subtotal * detail.vat) / 100;
