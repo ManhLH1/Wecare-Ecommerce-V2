@@ -7,7 +7,23 @@ import ProductEntryForm from './ProductEntryForm';
 import ProductTable from './ProductTable';
 import Dropdown from './Dropdown';
 import { useCustomers, useSaleOrders } from '../_hooks/useDropdownData';
-import { fetchSaleOrders, SaleOrderDetail, saveSaleOrderDetails, updateInventory, fetchInventory, fetchUnits, fetchPromotionOrders, fetchSpecialPromotionOrders, applyPromotionOrder, PromotionOrderItem, InventoryInfo, fetchProductPromotions, fetchProductPromotionsBatch, Promotion } from '../_api/adminApi';
+import {
+  fetchSaleOrders,
+  fetchSaleOrderDetails,
+  SaleOrderDetail,
+  saveSaleOrderDetails,
+  updateInventory,
+  fetchInventory,
+  fetchUnits,
+  fetchPromotionOrders,
+  fetchSpecialPromotionOrders,
+  applyPromotionOrder,
+  PromotionOrderItem,
+  InventoryInfo,
+  fetchProductPromotions,
+  fetchProductPromotionsBatch,
+  Promotion,
+} from '../_api/adminApi';
 import { queryKeys } from '../_hooks/useReactQueryData';
 import { APPROVERS_LIST } from '../../../constants/constants';
 import { showToast } from '../../../components/ToastManager';
@@ -479,7 +495,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
   const [unit, setUnit] = useState('');
   const [unitId, setUnitId] = useState('');
   const [warehouse, setWarehouse] = useState('');
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState<number | null>(null);
   const [price, setPrice] = useState('');
   const [priceNoVat, setPriceNoVat] = useState<number | null>(null);
   const [subtotal, setSubtotal] = useState(0);
@@ -801,9 +817,10 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     // Validation: product, unit, quantity, price
     // Khi bật "Duyệt giá" cho phép giá = 0, khi không bật thì bắt buộc > 0
     const priceNum = parseFloat(price || '0') || 0;
+    const qty = quantity ?? 0;
     const hasValidPrice = approvePrice ? priceNum >= 0 : priceNum > 0;
 
-    if (!product || !unit || quantity <= 0 || !hasValidPrice) {
+    if (!product || !unit || qty <= 0 || !hasValidPrice) {
       console.warn('❌ Add Product Failed: Missing required fields', {
         product: !!product,
         unit: !!unit,
@@ -818,7 +835,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         showToast.error('Vui lòng chọn sản phẩm');
       } else if (!unit) {
         showToast.error('Vui lòng chọn đơn vị');
-      } else if (quantity <= 0) {
+      } else if (qty <= 0) {
         showToast.error('Số lượng phải lớn hơn 0');
       } else if (!hasValidPrice) {
         showToast.error('Vui lòng nhập giá');
@@ -904,7 +921,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     };
 
     // Tính subtotal và VAT ƯỚC TÍNH của sản phẩm mới (chưa discount)
-    const newProductSubtotalEstimate = Math.round(quantity * basePrice);
+    const newProductSubtotalEstimate = Math.round(qty * basePrice);
     const newProductVatEstimate = Math.round((newProductSubtotalEstimate * (vatPercent || 0)) / 100);
     const newProductTotalEstimate = newProductSubtotalEstimate + newProductVatEstimate;
     
@@ -913,7 +930,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       productCode: productCode,
       productGroupCode: productGroupCode,
       price: basePrice,
-      quantity: quantity,
+      quantity: qty,
       vat: vatPercent || 0,
     };
 
@@ -1106,7 +1123,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
     // Calculate amounts (round VAT per line)
     // IMPORTANT: Use discountedPriceCalc (not finalPrice) to match orderSummary calculation logic
     // Invoice surcharge is tracked separately in invoiceSurcharge field
-    const subtotalCalc = Math.round(quantity * discountedPriceCalc);
+    const subtotalCalc = Math.round(qty * discountedPriceCalc);
     const vatCalc = Math.round((subtotalCalc * (vatPercent || 0)) / 100);
     const totalCalc = subtotalCalc + vatCalc;
 
@@ -1136,7 +1153,7 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
       productName: product,
       productGroupCode: productGroupCode,
       unit: unit,
-      quantity,
+      quantity: qty,
       price: priceNum,
       priceNoVat: priceNoVat,
       surcharge: 0,
@@ -1364,10 +1381,17 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
           const refreshedOrders = await fetchSaleOrders(customerId || undefined, true);
           queryClient.setQueryData(queryKeys.saleOrders(customerId || undefined), refreshedOrders);
           const currentSo = refreshedOrders.find((so) => so.crdfd_sale_orderid === soId);
-          const updatedDetails: SaleOrderDetail[] =
+          let updatedDetails: SaleOrderDetail[] =
             (currentSo as any)?.details ??
             (currentSo as any)?.crdfd_SaleOrderDetail_SOcode_crdfd_Sale_O ??
             [];
+
+          // Fallback: nếu expanded details rỗng nhưng API báo có totalSaved > 0
+          // → gọi lại endpoint `sale-order-details` để chắc chắn lấy được SOD mới.
+          if ((!updatedDetails || updatedDetails.length === 0) && (result.totalSaved ?? 0) > 0) {
+            console.warn('[SalesOrderForm] Expanded SOD rỗng sau save, fallback gọi /sale-order-details');
+            updatedDetails = await fetchSaleOrderDetails(soId);
+          }
 
           const mappedProducts: ProductTableItem[] = updatedDetails.map((detail: SaleOrderDetail) => {
             const subtotal = (detail.discountedPrice || detail.price) * detail.quantity;

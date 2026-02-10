@@ -271,8 +271,8 @@ async function recalculateOrderTotalsForCK1(
     let totalCK1Discount = 0;
     for (const promo of ck1Promotions) {
       const value = Number(promo.crdfd_chieckhau2) || 0;
-      const loai = promo.crdfd_loai || '%';
-      if (loai === '%') {
+      const loai = promo.crdfd_loai || 'Phần trăm';
+      if (loai === 'Phần trăm') {
         totalCK1Discount += currentTotal * value;
       } else {
         totalCK1Discount += value;

@@ -1148,12 +1148,13 @@ async function updateInventoryAfterSale(
           });
         }
 
-        // ============ ATOMIC UPDATE: Trừ tồn kho lý thuyết VÀ tính lại số giữ tồn kho CÙNG LÚC ============
+        // ============ ATOMIC UPDATE: Trừ tồn kho lý thuyết VÀ giải phóng số giữ tồn kho CÙNG LÚC ============
         // Đảm bảo cả 2 field được update trong cùng 1 PATCH request để tránh race condition
         // - CurrentInventory -= quantity (trừ tồn kho lý thuyết) - CHỈ cho sản phẩm thường
-        // - ReservedQuantity -= quantity (tính lại số giữ tồn kho: giữ đặt = giữ đặt hàng - số lượng lên đơn)
+        // - ReservedQuantity -= quantity (giải phóng số giữ tồn kho: giữ đặt = giữ đặt hàng - số lượng lên đơn)
         // Ví dụ: Giữ đặt 40, save đơn 20 → Giữ đặt còn lại 20 (40 - 20 = 20)
         // Với nhóm đặc biệt: KHÔNG trừ tồn kho lý thuyết, chỉ giải phóng ReservedQuantity
+        // Lưu ý: ReservedQuantity đã được tăng ở bước giữ hàng, nên khi save đơn cần trừ lại
         const newReservedQuantity = Math.max(0, reservedQuantity - quantity);
 
         // Với nhóm đặc biệt: KHÔNG trừ tồn kho lý thuyết
@@ -1171,14 +1172,15 @@ async function updateInventoryAfterSale(
 
         // ATOMIC OPERATION: Update field(s) trong cùng 1 request
         // Dynamics 365 đảm bảo tính nguyên tố (atomic) cho mỗi PATCH request
-        const updatePayload: any = {
-          cr1bb_soluonglythuyetgiuathang: newReservedQuantity // Tính lại số giữ tồn kho (luôn update)
-        };
+        const updatePayload: any = {};
 
         // Chỉ update tồn kho lý thuyết nếu không phải sản phẩm đặc biệt
         if (newCurrentInventory !== undefined) {
           updatePayload.cr44a_soluongtonlythuyet = newCurrentInventory;
         }
+
+        // LUÔN update ReservedQuantity để giải phóng số lượng đã giữ hàng
+        updatePayload.cr1bb_soluonglythuyetgiuathang = newReservedQuantity;
 
         await apiClient.patch(
           updateInvEndpoint,
@@ -1237,32 +1239,84 @@ async function updateInventoryAfterSale(
 
         return conditionStr;
       }).join(' and ');
-      // CHỈ query các cột cần thiết: ID, số lượng đang giữ hàng, vị trí kho
-      // KHÔNG query tồn kho lý thuyết bỏ mua vì đơn VAT không cập nhật các cột này
-      const khoBDColumns = "crdfd_kho_binh_dinhid,cr1bb_soluonganggiuathang,crdfd_vitrikhofx";
+      // Query các cột cần thiết: ID, tồn kho lý thuyết bỏ mua, số lượng đang giữ hàng, vị trí kho
+      const khoBDColumns = "crdfd_kho_binh_dinhid,cr1bb_tonkholythuyetbomua,crdfd_tonkholythuyet,cr1bb_soluonganggiuathang,crdfd_vitrikhofx";
       const khoBDQuery = `$select=${khoBDColumns}&$filter=${encodeURIComponent(khoBDFilter)}&$top=1`;
       const khoBDEndpoint = `${KHO_BD_TABLE}?${khoBDQuery}`;
 
-      // RE-CHECK: Get fresh inventory value right before update
+      // RE-CHECK: Get fresh inventory value right before update (atomic operation)
       const khoBDResponse = await apiClient.get(khoBDEndpoint, { headers });
       const khoBDResults = khoBDResponse.data.value || [];
 
       if (khoBDResults.length > 0) {
         const khoBDRecord = khoBDResults[0];
+        // CurrentInventory = cr1bb_tonkholythuyetbomua (ưu tiên), fallback về crdfd_tonkholythuyet
+        let currentInventory = khoBDRecord.cr1bb_tonkholythuyetbomua ?? 0;
+        if (currentInventory === 0 && khoBDRecord.crdfd_tonkholythuyet) {
+          currentInventory = khoBDRecord.crdfd_tonkholythuyet ?? 0;
+        }
         const reservedQuantity = khoBDRecord.cr1bb_soluonganggiuathang ?? 0;
 
-        // ============ ĐƠN VAT: Chỉ cập nhật số lượng đang giữ hàng ============
-        // Đơn VAT KHÔNG cập nhật tồn kho lý thuyết bỏ mua (cr1bb_tonkholythuyetbomua hoặc crdfd_tonkholythuyet)
-        // Chỉ cập nhật ReservedQuantity -= quantity (giữ lại phần còn lại: giữ đặt = giữ đặt hàng - số lượng lên đơn)
+        // Kiểm tra xem có cần bypass tồn kho không
+        const ALLOWED_PRODUCT_GROUPS = ['NSP-00027', 'NSP-000872', 'NSP-000409', 'NSP-000474', 'NSP-000873'];
+        const isSpecialProduct = productGroupCode && ALLOWED_PRODUCT_GROUPS.includes(productGroupCode);
+
+        // Atomic check: CurrentInventory >= quantity (trừ khi skipStockCheck = true hoặc là sản phẩm đặc biệt)
+        // Lưu ý: Đơn VAT thường không cần check tồn kho, nhưng vẫn check nếu không phải sản phẩm đặc biệt và không có skipStockCheck
+        if (!skipStockCheck && !isSpecialProduct && currentInventory < quantity) {
+          const errorMessage = `Không đủ tồn kho để chốt đơn! Sản phẩm ${productCode} có tồn kho: ${currentInventory}, yêu cầu: ${quantity}`;
+          throw new Error(errorMessage);
+        }
+
+        if (skipStockCheck || isSpecialProduct) {
+          console.log('[Save SOD] Skipping stock check for final (Kho Bình Định):', {
+            productCode,
+            skipStockCheck,
+            isSpecialProduct,
+            productGroupCode,
+            currentInventory,
+            quantity
+          });
+        }
+
+        // ============ ATOMIC UPDATE: Trừ tồn kho lý thuyết bỏ mua VÀ giải phóng số giữ tồn kho CÙNG LÚC ============
+        // Đảm bảo cả 2 field được update trong cùng 1 PATCH request để tránh race condition
+        // - CurrentInventory -= quantity (trừ tồn kho lý thuyết bỏ mua) - CHỈ cho sản phẩm thường
+        // - ReservedQuantity -= quantity (giải phóng số giữ tồn kho: giữ đặt = giữ đặt hàng - số lượng lên đơn)
         // Ví dụ: Giữ đặt 40, save đơn 20 → Giữ đặt còn lại 20 (40 - 20 = 20)
+        // Với nhóm đặc biệt: KHÔNG trừ tồn kho lý thuyết bỏ mua, chỉ giải phóng ReservedQuantity
+        // Lưu ý: ReservedQuantity đã được tăng ở bước giữ hàng, nên khi save đơn cần trừ lại
         const newReservedQuantity = Math.max(0, reservedQuantity - quantity);
+
+        // Với nhóm đặc biệt: KHÔNG trừ tồn kho lý thuyết bỏ mua
+        let newCurrentInventory: number | undefined;
+        if (!isSpecialProduct) {
+          // Sản phẩm thường: trừ tồn kho lý thuyết bỏ mua
+          newCurrentInventory = currentInventory - quantity;
+        } else {
+          // Sản phẩm đặc biệt: giữ nguyên tồn kho lý thuyết bỏ mua
+          newCurrentInventory = undefined; // Không update field này
+          console.log(`[Save SOD] Nhóm đặc biệt ${productGroupCode} - Không trừ tồn kho lý thuyết bỏ mua, chỉ giải phóng ReservedQuantity`);
+        }
 
         const updateKhoBDEndpoint = `${KHO_BD_TABLE}(${khoBDRecord.crdfd_kho_binh_dinhid})`;
 
-        // CHỈ cập nhật ReservedQuantity, KHÔNG cập nhật tồn kho lý thuyết bỏ mua
-        const updatePayload: any = {
-          cr1bb_soluonganggiuathang: newReservedQuantity
-        };
+        // ATOMIC OPERATION: Update field(s) trong cùng 1 request
+        // Dynamics 365 đảm bảo tính nguyên tố (atomic) cho mỗi PATCH request
+        const updatePayload: any = {};
+
+        // Chỉ update tồn kho lý thuyết bỏ mua nếu không phải sản phẩm đặc biệt
+        if (newCurrentInventory !== undefined) {
+          // Update field CurrentInventory tương ứng (ưu tiên cr1bb_tonkholythuyetbomua)
+          if (khoBDRecord.cr1bb_tonkholythuyetbomua !== undefined) {
+            updatePayload.cr1bb_tonkholythuyetbomua = newCurrentInventory;
+          } else if (khoBDRecord.crdfd_tonkholythuyet !== undefined) {
+            updatePayload.crdfd_tonkholythuyet = newCurrentInventory;
+          }
+        }
+
+        // LUÔN update ReservedQuantity để giải phóng số lượng đã giữ hàng
+        updatePayload.cr1bb_soluonganggiuathang = newReservedQuantity;
 
         await apiClient.patch(
           updateKhoBDEndpoint,
@@ -1270,7 +1324,11 @@ async function updateInventoryAfterSale(
           { headers }
         );
 
-        console.log(`✅ [Inventory VAT] Update: ${productCode} - Giữ tồn: ${reservedQuantity} → ${newReservedQuantity} (KHÔNG cập nhật tồn kho lý thuyết bỏ mua)`);
+        if (isSpecialProduct) {
+          console.log(`✅ [Inventory VAT] Nhóm đặc biệt - Chỉ giải phóng ReservedQuantity: ${productCode} - Giữ tồn: ${reservedQuantity} → ${newReservedQuantity} (Tồn kho lý thuyết bỏ mua giữ nguyên: ${currentInventory})`);
+        } else {
+          console.log(`✅ [Inventory VAT] Atomic update: ${productCode} - Tồn kho lý thuyết bỏ mua: ${currentInventory} → ${newCurrentInventory}, Giữ tồn: ${reservedQuantity} → ${newReservedQuantity}`);
+        }
       }
     }
   } catch (error: any) {
@@ -1801,18 +1859,23 @@ export default async function handler(
           ...(shift !== null ? { cr1bb_ca: shift } : {}),
         };
 
+        // Normalize promotionId (nếu có) để tránh scope bug khiến một số sản phẩm không được save
+        const promotionIdClean = product.promotionId
+          ? String(product.promotionId).replace(/^{|}$/g, "").trim()
+          : null;
+
         // Assume promotion will be applied unless a validation marks it skipped
-        let promotionApplicableForThisProduct = !!product.promotionId; // Only applicable if promotionId exists
+        let promotionApplicableForThisProduct = !!promotionIdClean; // Only applicable if promotionId exists
 
-        // Set promotionId từ frontend (đã được validate và lookup từ phía client)
-        if (product.promotionId) {
-          const promotionIdClean = String(product.promotionId).replace(/^{|}$/g, '').trim();
-
-          // Fetch promotion (cached) to validate min-total condition and payment terms
+        // 1) Validate promotion (min total + payment terms) - chỉ khi có promotionId
+        if (promotionIdClean) {
           try {
             let promoData: any = promoCache[promotionIdClean];
             if (!promoData) {
-              const promoResp = await apiClient.get(`${PROMOTION_TABLE}(${promotionIdClean})?$select=cr1bb_tongtienapdung,cr1bb_ieukhoanthanhtoanapdung`, { headers });
+              const promoResp = await apiClient.get(
+                `${PROMOTION_TABLE}(${promotionIdClean})?$select=cr1bb_tongtienapdung,cr1bb_ieukhoanthanhtoanapdung`,
+                { headers }
+              );
               promoData = promoResp.data;
               promoCache[promotionIdClean] = promoData;
             }
@@ -1822,33 +1885,43 @@ export default async function handler(
             if (minTotalReq > 0 && Number(orderTotal) < minTotalReq) {
               // Skip applying promotion for this product (do not fail the whole save)
               promotionApplicableForThisProduct = false;
-              console.log(`[Save SOD] Skipping promotion ${promotionIdClean} for product ${product.productCode} due to min total (${minTotalReq})`);
+              console.log(
+                `[Save SOD] Skipping promotion ${promotionIdClean} for product ${product.productCode} due to min total (${minTotalReq})`
+              );
             }
 
             // Validate promotion applicability against order payment terms (if provided)
             if (promotionApplicableForThisProduct) {
-              const promoCheck = await isPromotionApplicableToPaymentTerm(promotionIdClean, effectivePaymentTerms, headers);
+              const promoCheck = await isPromotionApplicableToPaymentTerm(
+                promotionIdClean,
+                effectivePaymentTerms,
+                headers
+              );
               if (!promoCheck.applicable) {
                 // Skip applying promotion for this product (do not fail the whole save)
                 promotionApplicableForThisProduct = false;
-                console.log(`[Save SOD] Skipping promotion ${promotionIdClean} for product ${product.productCode} due to payment term mismatch: ${promoCheck.reason}`);
+                console.log(
+                  `[Save SOD] Skipping promotion ${promotionIdClean} for product ${product.productCode} due to payment term mismatch: ${promoCheck.reason}`
+                );
               }
             }
           } catch (err: any) {
+            // Lưu ý: vẫn return outcome chuẩn để batch không bị undefined
             return {
               success: false,
               product,
               error: `Lỗi khi kiểm tra chương trình khuyến mãi.`,
-              fullError: err?.message || err
+              fullError: err?.message || err,
             };
           }
+        }
 
-        // Set promotion lookup only if promotion was actually applied to this order and passed validations.
-        // Defensive check: verify an Orders x Promotion record exists linking this SO and Promotion.
-        let existingOrderXPromotionId: string | undefined = undefined;
-        let checkFailed = false;
-        try {
-            if (promotionApplicableForThisProduct) {
+        // 2) Set promotion lookup (Orders x Promotion) - chỉ khi promotion applicable
+        if (promotionIdClean && promotionApplicableForThisProduct) {
+          // Defensive check: verify an Orders x Promotion record exists linking this SO and Promotion.
+          let existingOrderXPromotionId: string | undefined = undefined;
+          let checkFailed = false;
+          try {
             const existingFilter = `_crdfd_so_value eq ${soId} and _crdfd_promotion_value eq ${promotionIdClean} and crdfd_type eq 'Order' and statecode eq 0`;
             const existingQuery = `$filter=${encodeURIComponent(existingFilter)}&$select=crdfd_ordersxpromotionid`;
             const existingEndpoint = `${BASE_URL}${ORDERS_X_PROMOTION_TABLE}?${existingQuery}`;
@@ -1856,90 +1929,130 @@ export default async function handler(
             const existingItems = existingResp.data?.value || [];
             if (existingItems.length > 0) {
               existingOrderXPromotionId = existingItems[0].crdfd_ordersxpromotionid;
-              console.log(`[Save SOD] Found existing Orders x Promotion: ${existingOrderXPromotionId} for promo ${promotionIdClean}`);
+              console.log(
+                `[Save SOD] Found existing Orders x Promotion: ${existingOrderXPromotionId} for promo ${promotionIdClean}`
+              );
             }
+          } catch (err: any) {
+            // QUAN TRỌNG: Nếu check thất bại, KHÔNG tạo mới → skip để tránh duplicate
+            console.error(
+              `[Save SOD] Failed to check existing Orders x Promotion for SO=${soId}, promo=${promotionIdClean}:`,
+              err?.message || err
+            );
+            checkFailed = true;
           }
-        } catch (err: any) {
-          // QUAN TRỌNG: Nếu check thất bại, KHÔNG tạo mới → skip để tránh duplicate
-          console.error(`[Save SOD] Failed to check existing Orders x Promotion for SO=${soId}, promo=${promotionIdClean}:`, err?.message || err);
-          checkFailed = true;
-        }
 
-        // Nếu check thất bại, skip tạo mới
-        if (checkFailed) {
-          console.warn(`[Save SOD] Skipping Orders x Promotion creation for SO=${soId}, promo=${promotionIdClean} due to check failure`);
-          payload.crdfd_promotiontext = "";
-        } else if (existingOrderXPromotionId) {
-          // Đã có record, reuse
-          payload[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${promotionIdClean})`;
-          payload.crdfd_promotiontext = product.promotionText || "";
-          console.log(`[Save SOD] ✅ Set promotion lookup for product ${product.productCode}: crdfd_Promotion@odata.bind = /crdfd_promotions(${promotionIdClean})`);
-        } else {
-          // Chưa có record, tạo mới
-          try {
-            const createPayload: any = {
-              [`crdfd_SO@odata.bind`]: `/crdfd_sale_orders(${soId})`,
-              [`crdfd_Promotion@odata.bind`]: `/crdfd_promotions(${promotionIdClean})`,
-              crdfd_type: 'Order',
-              statecode: 0,
-              crdfd_name: `SO ${soId} - Promo ${promotionIdClean}`
-            };
-                // Prefer using product.discountPercent for crdfd_chieckhau2 when available
-                if (product.discountPercent !== undefined && product.discountPercent !== null) {
-                  // product.discountPercent is expected as percentage (e.g., 5 -> 5%)
-                  createPayload.crdfd_chieckhau2 = Number(product.discountPercent) ? Number(product.discountPercent) / 100 : 0;
-                  createPayload.crdfd_loaical = 'Phần trăm';
-                } else {
-                  // Otherwise fetch promotion details (value + vnd/percent) if available to persist correct fields.
-                  try {
-                    let promoDetails = promoCache[promotionIdClean];
-                    if (!promoDetails) {
-                      const promoRespDetail = await apiClient.get(`${PROMOTION_TABLE}(${promotionIdClean})?$select=crdfd_value,crdfd_vn,cr1bb_chietkhau2`, { headers });
-                      promoDetails = promoRespDetail.data;
-                      promoCache[promotionIdClean] = promoDetails;
-                    }
+          // Nếu check thất bại, skip tạo mới + không set promotion lookup để tránh dữ liệu sai
+          if (checkFailed) {
+            console.warn(
+              `[Save SOD] Skipping Orders x Promotion creation for SO=${soId}, promo=${promotionIdClean} due to check failure`
+            );
+            payload.crdfd_promotiontext = "";
+          } else if (existingOrderXPromotionId) {
+            // Đã có record, reuse
+            payload[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${promotionIdClean})`;
+            payload.crdfd_promotiontext = product.promotionText || "";
+            console.log(
+              `[Save SOD] ✅ Set promotion lookup for product ${product.productCode}: crdfd_Promotion@odata.bind = /crdfd_promotions(${promotionIdClean})`
+            );
+          } else {
+            // Chưa có record, tạo mới
+            try {
+              const createPayload: any = {
+                [`crdfd_SO@odata.bind`]: `/crdfd_sale_orders(${soId})`,
+                [`crdfd_Promotion@odata.bind`]: `/crdfd_promotions(${promotionIdClean})`,
+                crdfd_type: "Order",
+                statecode: 0,
+                crdfd_name: `SO ${soId} - Promo ${promotionIdClean}`,
+              };
 
-                    // Normalize promotion value and type
-                    const rawVal = Number(promoDetails?.crdfd_value ?? product.discount2 ?? 0) || 0;
-                    const vndOrPercent = String(promoDetails?.crdfd_vn ?? '%').trim();
+              // Prefer using product.discountPercent for crdfd_chieckhau2 when available
+              if (product.discountPercent !== undefined && product.discountPercent !== null) {
+                // product.discountPercent is expected as percentage (e.g., 5 -> 5%)
+                createPayload.crdfd_chieckhau2 = Number(product.discountPercent)
+                  ? Number(product.discountPercent) / 100
+                  : 0;
+                createPayload.crdfd_loaical = "Phần trăm";
+              } else {
+                // Otherwise fetch promotion details (value + vnd/percent) if available to persist correct fields.
+                try {
+                  let promoDetails = promoCache[promotionIdClean];
+                  if (!promoDetails) {
+                    const promoRespDetail = await apiClient.get(
+                      `${PROMOTION_TABLE}(${promotionIdClean})?$select=crdfd_value,crdfd_vn,cr1bb_chietkhau2`,
+                      { headers }
+                    );
+                    promoDetails = promoRespDetail.data;
+                    promoCache[promotionIdClean] = promoDetails;
+                  }
 
-                    // crdfd_chieckhau2 on Orders x Promotion expects the numeric discount value:
-                    // - If percent type, store decimal (e.g., 5% -> 0.05)
-                    // - If VNĐ type, store absolute number
-                    if (vndOrPercent.toUpperCase() === 'VNĐ' || vndOrPercent.toUpperCase() === 'VND') {
-                      createPayload.crdfd_chieckhau2 = rawVal;
-                      createPayload.crdfd_loaical = 'Tiền';
-                    } else {
-                      createPayload.crdfd_chieckhau2 = rawVal / 100;
-                      createPayload.crdfd_loaical = 'Phần trăm';
-                    }
-                  } catch (err) {
-                    // Fallback: if we can't fetch promo details, persist provided product.discount2 as percent decimal
-                    if (product.discount2) {
-                      createPayload.crdfd_chieckhau2 = product.discount2 ? product.discount2 / 100 : 0;
-                      createPayload.crdfd_loaical = 'Phần trăm';
-                    }
+                  // Normalize promotion value and type
+                  const rawVal = Number(promoDetails?.crdfd_value ?? product.discount2 ?? 0) || 0;
+                  const vndOrPercent = String(promoDetails?.crdfd_vn ?? "%").trim();
+
+                  // crdfd_chieckhau2 on Orders x Promotion expects the numeric discount value:
+                  // - If percent type, store decimal (e.g., 5% -> 0.05)
+                  // - If VNĐ type, store absolute number
+                  if (vndOrPercent.toUpperCase() === "VNĐ" || vndOrPercent.toUpperCase() === "VND") {
+                    createPayload.crdfd_chieckhau2 = rawVal;
+                    createPayload.crdfd_loaical = "Tiền";
+                  } else {
+                    createPayload.crdfd_chieckhau2 = rawVal / 100;
+                    createPayload.crdfd_loaical = "Phần trăm";
+                  }
+                } catch (err) {
+                  // Fallback: if we can't fetch promo details, persist provided product.discount2 as percent decimal
+                  if (product.discount2) {
+                    createPayload.crdfd_chieckhau2 = product.discount2 ? product.discount2 / 100 : 0;
+                    createPayload.crdfd_loaical = "Phần trăm";
                   }
                 }
-                console.log('[Save SOD] Creating Orders x Promotion - payload:', JSON.stringify(createPayload));
-                const createResp = await apiClient.post(`${BASE_URL}${ORDERS_X_PROMOTION_TABLE}`, createPayload, { headers });
-                console.log('[Save SOD] Orders x Promotion create response status:', createResp.status, 'data:', createResp.data, 'headers:', createResp.headers);
-                const createdId = createResp.data?.crdfd_ordersxpromotionid || createResp.headers?.['odata-entityid']?.match?.(/\(([^)]+)\)/)?.[1] || null;
-                if (createdId) {
-                  payload[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${promotionIdClean})`;
-                  payload.crdfd_promotiontext = product.promotionText || "";
-                  console.log(`[Save SOD] ✅ Created Orders x Promotion (${createdId}) and set promotion lookup for product ${product.productCode}`);
-                } else {
-                  // Could not confirm creation, skip saving promotion lookup
-                  console.warn(`[Save SOD] ⚠️ Orders x Promotion creation returned no id for SO=${soId}, promo=${promotionIdClean}`);
-                  payload.crdfd_promotiontext = "";
-                }
-              } catch (createErr: any) {
-                console.error(`[Save SOD] ❌ Failed to create Orders x Promotion for SO=${soId}, promo=${promotionIdClean}:`, createErr?.message || createErr);
-                // Skip setting promotion to avoid write errors
+              }
+
+              console.log("[Save SOD] Creating Orders x Promotion - payload:", JSON.stringify(createPayload));
+              const createResp = await apiClient.post(
+                `${BASE_URL}${ORDERS_X_PROMOTION_TABLE}`,
+                createPayload,
+                { headers }
+              );
+              console.log(
+                "[Save SOD] Orders x Promotion create response status:",
+                createResp.status,
+                "data:",
+                createResp.data,
+                "headers:",
+                createResp.headers
+              );
+              const createdId =
+                createResp.data?.crdfd_ordersxpromotionid ||
+                createResp.headers?.["odata-entityid"]?.match?.(/\(([^)]+)\)/)?.[1] ||
+                null;
+              if (createdId) {
+                payload[`crdfd_Promotion@odata.bind`] = `/crdfd_promotions(${promotionIdClean})`;
+                payload.crdfd_promotiontext = product.promotionText || "";
+                console.log(
+                  `[Save SOD] ✅ Created Orders x Promotion (${createdId}) and set promotion lookup for product ${product.productCode}`
+                );
+              } else {
+                // Could not confirm creation, skip saving promotion lookup
+                console.warn(
+                  `[Save SOD] ⚠️ Orders x Promotion creation returned no id for SO=${soId}, promo=${promotionIdClean}`
+                );
                 payload.crdfd_promotiontext = "";
               }
+            } catch (createErr: any) {
+              console.error(
+                `[Save SOD] ❌ Failed to create Orders x Promotion for SO=${soId}, promo=${promotionIdClean}:`,
+                createErr?.message || createErr
+              );
+              // Skip setting promotion to avoid write errors
+              payload.crdfd_promotiontext = "";
             }
+          }
+        } else {
+          // Không có promotion hoặc không applicable → đảm bảo không set lookup/promotiontext rác
+          payload.crdfd_promotiontext = promotionApplicableForThisProduct ? (product.promotionText || "") : "";
+        }
 
         // Add note (ghi chú)
         // Tại sao: tránh lưu "Duyệt giá bởi <GUID>" vào CRM (khó đọc), chuyển sang "Duyệt giá bởi <tên>".
@@ -2147,12 +2260,35 @@ export default async function handler(
             console.log('[Save SOD] 🚀 Sending POST to:', createEndpoint);
             console.log('[Save SOD] 🚀 Creation Headers:', JSON.stringify(createHeaders, null, 2));
             console.log('[Save SOD] 🚀 Payload:', JSON.stringify(payload, null, 2));
+            console.log('[Save SOD] 🔍 Payload keys:', Object.keys(payload).join(', '));
+            console.log('[Save SOD] 🔍 Unit ID check:', { finalUnitId, hasUnitLookup: !!payload[`crdfd_onvi@odata.bind`] });
 
             const createResponse = await apiClient.post(createEndpoint, payload, {
               headers: createHeaders,
             });
-            detailId = createResponse.data.crdfd_saleorderdetailid;
-            console.log('[Save SOD] ✅ Created record ID:', detailId);
+            
+            // Log chi tiết response để debug
+            console.log('[Save SOD] 📥 Response status:', createResponse.status);
+            console.log('[Save SOD] 📥 Response headers:', JSON.stringify(createResponse.headers, null, 2));
+            console.log('[Save SOD] 📥 Response data:', JSON.stringify(createResponse.data, null, 2));
+            
+            // Dynamics có thể trả về ID trong body HOẶC trong header odata-entityid (204 No Content)
+            const createdIdFromBody = createResponse.data?.crdfd_saleorderdetailid;
+            const createdIdFromHeader =
+              createResponse.headers?.['odata-entityid']?.match?.(/\(([^)]+)\)/)?.[1] || null;
+
+            detailId = createdIdFromBody || createdIdFromHeader as string;
+            console.log('[Save SOD] ✅ Created record ID:', detailId, 'status:', createResponse.status, {
+              fromBody: createdIdFromBody,
+              fromHeader: createdIdFromHeader,
+            });
+
+            if (!detailId) {
+              // Nếu không lấy được ID → coi như lỗi để FE biết không có dòng nào được tạo
+              const errorMsg = `CRM trả về response (status: ${createResponse.status}) nhưng không có crdfd_saleorderdetailid / odata-entityid. Response data: ${JSON.stringify(createResponse.data)}`;
+              console.error('[Save SOD] ❌', errorMsg);
+              throw new Error(errorMsg);
+            }
           }
 
           // Stamp owner/created-by: ưu tiên systemuser, fallback về customer
@@ -2186,7 +2322,7 @@ export default async function handler(
             fullError: saveError.response?.data
           };
         }
-      };
+      });
 
       // Wait for all products in this batch to complete
       const batchResults = await Promise.allSettled(batchPromises);
@@ -2194,20 +2330,34 @@ export default async function handler(
       // Process results
       batchResults.forEach((result) => {
         if (result.status === 'fulfilled') {
-          const outcome = result.value!; // Non-null: fulfilled đảm bảo value tồn tại
+          const outcome: any = result.value;
+
+          // Guard: trong mọi trường hợp phải có outcome và field success
+          if (!outcome || typeof outcome.success === 'undefined') {
+            console.error('[Save SOD] ❌ Invalid outcome object from batch promise:', outcome);
+            failedProducts.push({
+              productCode: outcome?.product?.productCode ?? 'Unknown',
+              productName: outcome?.product?.productName ?? 'Unknown',
+              quantity: outcome?.product?.quantity ?? 0,
+              error: 'Invalid outcome from save operation (missing success flag)',
+              fullError: outcome,
+            });
+            return;
+          }
+
           if (outcome.success) {
-            savedDetails.push({ id: outcome.id, ...outcome.product });
+            savedDetails.push({ id: outcome.id, ...(outcome.product ?? {}) });
           } else {
             failedProducts.push({
-              productCode: outcome.product.productCode,
-              productName: outcome.product.productName,
-              quantity: outcome.product.quantity,
+              productCode: outcome.product?.productCode ?? 'Unknown',
+              productName: outcome.product?.productName ?? 'Unknown',
+              quantity: outcome.product?.quantity ?? 0,
               error: outcome.error,
               fullError: outcome.fullError
             });
           }
         } else {
-          // Promise rejected - this shouldn't happen with our error handling
+          // Promise rejected - this shouldn't happen với error handling hiện tại
           console.error('[Save SOD] Unexpected promise rejection:', result.reason);
           failedProducts.push({
             productCode: 'Unknown',
@@ -2218,9 +2368,10 @@ export default async function handler(
           });
         }
       });
-    },
+    }
 
-    progress.addStep(`Completed saving ${savedDetails.length} products (${failedProducts.length} failed)`));
+    // Log tổng quan: số sản phẩm xử lý = tổng requested - số failed (độc lập với savedDetails.length để tránh đếm sai do bug khác)
+    progress.addStep(`Completed saving ${products.length - failedProducts.length} products (${failedProducts.length} failed)`);
 
     // ============ IMMEDIATE RESPONSE - FAST SUCCESS PATH ============
     // Nếu có sản phẩm thất bại trong việc save, trả về ngay lập tức
@@ -2266,15 +2417,25 @@ export default async function handler(
     const totalTime = Date.now() - progress.startTime;
     progress.addStep(`Fast response sent in ${totalTime}ms`);
 
+    const successCount = savedDetails.length;
+    const failCount = failedProducts.length;
+
     res.status(200).json({
       success: true,
+      // Giữ message cũ để FE không phải đổi
       message: "Tạo đơn bán chi tiết thành công! Đang xử lý cập nhật tồn kho...",
       savedDetails,
       totalAmount: products.reduce((sum, p) => sum + p.totalAmount, 0),
       backgroundJobs: backgroundJobIds,
+      // Đồng bộ shape với response 207 để FE có thể dùng chung logic partialSuccess/totalFailed/totalSaved
+      partialSuccess: failCount > 0 && successCount > 0,
+      totalRequested: products.length,
+      totalSaved: successCount,
+      totalFailed: failCount,
       performance: {
         totalTimeMs: totalTime,
-        productsProcessed: savedDetails.length,
+        // Số sản phẩm xử lý = tổng requested - số failed (thay vì dùng savedDetails.length để tránh bị 0 do lỗi ngoài batch)
+        productsProcessed: products.length - failedProducts.length,
         productsFailed: failedProducts.length,
         totalRequested: products.length,
         progressSteps: progress.completedSteps,
@@ -2310,8 +2471,7 @@ export default async function handler(
     // Clean up old jobs periodically
     cleanupOldJobs();
     cleanupOldJobs();
-  }
-} catch (error: any) {
+  } catch (error: any) {
 
     // Check for timeout errors
     if (error.code === 'ECONNABORTED' || error.message?.includes('timeout') || error.message?.includes('TIMEOUT')) {

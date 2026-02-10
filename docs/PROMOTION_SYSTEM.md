@@ -208,7 +208,7 @@ crdfd_tongtien          = crdfd_tongtientruocthue + crdfd_tienthue
 | **Orders x PM** | `crdfd_ordersxpromotions` | `crdfd_sobaogiaxpromotions` |
 | **Giá SOD** | `crdfd_giagoc`, `crdfd_gia` | `crdfd_giagoc`, `crdfd_ongia` |
 | **Tổng tiền** | `crdfd_tongtientruocthue`, `crdfd_tienthue`, `crdfd_tongtien` | `crdfd_tongtienkhongvat`, `crdfd_tongtien` |
-| **Loại CK** | `crdfd_loai`: "%" hoặc "VNĐ" | `crdfd_loai`: "Phần trăm" hoặc "Tiền" |
+| **Loại CK** | `crdfd_loai`: "Phần trăm" hoặc "VNĐ" | `crdfd_loai`: "Phần trăm" hoặc "Tiền" |
 
 ---
 

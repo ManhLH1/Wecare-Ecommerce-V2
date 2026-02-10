@@ -83,7 +83,7 @@ const initialState: ProductEntryState = {
   deliveryDate: '',
   customerIndustry: null,
   customerDistrictKey: '',
-  note: '',
+  note: '1',
   approver: '',
   priceEntryMethod: 'Nhập thủ công',
   discountRate: '1',

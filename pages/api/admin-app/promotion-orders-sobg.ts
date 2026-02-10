@@ -164,6 +164,16 @@ const parseCodesToArray = (codes: any): string[] => {
 };
 
 /**
+ * Chuẩn hoá GUID (bỏ { }) và kiểm tra format để tránh gọi Dataverse với id rác gây 400
+ */
+const normalizeGuid = (id: any): string | null => {
+  if (!id) return null;
+  const s = String(id).trim().replace(/^{|}$/g, "");
+  const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  return guidRegex.test(s) ? s : null;
+};
+
+/**
  * Validate and format query parameters
  */
 const validateAndFormatQueryParams = (query: any) => {
@@ -598,9 +608,10 @@ export default async function handler(
     // mismatch between UI and server (frontend may compute totals differently).
     let effectiveTotalAmount: string | undefined = totalAmount;
     let headerPaymentTermNormalized: string | null = null;
-    if (soId) {
+    const soGuid = normalizeGuid(soId);
+    if (soGuid) {
       try {
-        const hdrEndpoint = `${BASE_URL}crdfd_sobaogias(${soId})?$select=crdfd_tongtiencovat,crdfd_tongtien,crdfd_tongtienkhongvat,crdfd_dieu_khoan_thanh_toan,crdfd_ieukhoanthanhtoan`;
+        const hdrEndpoint = `${BASE_URL}crdfd_sobaogias(${soGuid})?$select=crdfd_tongtiencovat,crdfd_tongtien,crdfd_tongtienkhongvat,crdfd_dieu_khoan_thanh_toan,crdfd_ieukhoanthanhtoan`;
         const hdrResp = await axios.get(hdrEndpoint, { headers });
         const hdr = hdrResp.data || {};
         const headerTotalNum = Number(hdr.crdfd_tongtiencovat ?? hdr.crdfd_tongtien ?? hdr.crdfd_tongtienkhongvat) || 0;
@@ -613,6 +624,9 @@ export default async function handler(
         // If header fetch fails, fall back to provided totalAmount/paymentTerms
         console.warn('[promotion-orders] Could not fetch SOBG header to derive totals/payment-terms:', (err as any)?.message || err);
       }
+    } else if (soId) {
+      // Tại sao: soId không phải GUID hợp lệ → gọi Dataverse chắc chắn 400, chỉ log nhẹ rồi bỏ qua
+      console.warn('[promotion-orders] Skip SOBG header fetch because soId is not a valid GUID:', soId);
     }
 
     // Step 3: Fetch existing promotion orders for the sales order

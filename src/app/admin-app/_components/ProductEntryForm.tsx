@@ -234,8 +234,8 @@ interface ProductEntryFormProps {
   soCreatedOn?: string; // Ngày tạo SO
   orderType?: number | null; // Loại đơn hàng OptionSet value (optional)
   vatText?: string; // VAT text từ SO ("Có VAT" hoặc "Không VAT")
-  quantity: number;
-  setQuantity: (value: number) => void;
+  quantity: number | null;
+  setQuantity: (value: number | null) => void;
   price: string;
   setPrice: (value: string) => void;
   subtotal: number;
@@ -2242,9 +2242,9 @@ function ProductEntryForm({
 
   // Calculate subtotal when quantity or price changes
   const handleQuantityChange = (value: number | null) => {
-    const next = value && value > 0 ? value : 0;
+    const next = value && value > 0 ? value : null;
     setQuantity(next);
-    recomputeTotals(price, next, discountPercent || promotionDiscountPercent, vatPercent, discountAmount || 0);
+    recomputeTotals(price, next || 0, (discountPercent || promotionDiscountPercent) || 0, vatPercent, discountAmount || 0);
   };
 
   // Format price for display with thousand separators
@@ -2268,12 +2268,12 @@ function ProductEntryForm({
       cleaned = parts[0] + '.' + parts.slice(1).join('');
     }
     setPrice(cleaned);
-    recomputeTotals(cleaned, quantity, discountPercent || promotionDiscountPercent, vatPercent, discountAmount || 0);
+    recomputeTotals(cleaned, quantity || 0, (discountPercent || promotionDiscountPercent) || 0, vatPercent, discountAmount || 0);
   };
 
   const handleVatChange = (value: number) => {
     setVatPercent(value);
-    recomputeTotals(price, quantity, discountPercent || promotionDiscountPercent, value, discountAmount || 0);
+    recomputeTotals(price, quantity || 0, (discountPercent || promotionDiscountPercent) || 0, value, discountAmount || 0);
   };
 
   const handleAddWithInventoryCheck = async () => {
@@ -2321,7 +2321,7 @@ function ProductEntryForm({
       // Reserve inventory trước khi add sản phẩm vào đơn nháp
       // Chỉ thực hiện nếu không bị disable (SOBG sẽ disable)
       // Sử dụng baseQuantity (theo đơn vị chuẩn) để reserve
-      if (!disableInventoryReserve && selectedProductCode && warehouse && quantity > 0) {
+      if (!disableInventoryReserve && selectedProductCode && warehouse && (quantity || 0) > 0) {
         try {
           const vatTextLower = (vatText || '').toLowerCase();
           const isVatOrder = vatTextLower.includes('có vat') || vatPercent > 0;
@@ -2835,7 +2835,7 @@ function ProductEntryForm({
       setDiscountPercent(0);
       setDiscountAmount(0);
       setPromotionText('');
-      recomputeTotals(price, quantity, 0, vatPercent, 0);
+      recomputeTotals(price, quantity || 0, 0, vatPercent, 0);
       return;
     }
 
@@ -2927,7 +2927,7 @@ function ProductEntryForm({
         }
         setPromotionText(selected?.name || '');
         setPromotionWarning(`Chương trình yêu cầu tổng đơn tối thiểu ${minTotal.toLocaleString('vi-VN')} đ`);
-        recomputeTotals(price, quantity, 0, vatPercent, 0);
+        recomputeTotals(price, quantity || 0, 0, vatPercent, 0);
         return;
       }
     }
@@ -2945,7 +2945,7 @@ function ProductEntryForm({
       const orderTermLabel = getPaymentTermLabelClient(paymentTerms);
       const friendlyMsg = `Cảnh báo: Điều khoản thanh toán không khớp: chương trình yêu cầu "${promoReqLabel}", đơn hàng là "${orderTermLabel}"`;
       setPromotionWarning(friendlyMsg);
-      recomputeTotals(price, quantity, 0, vatPercent, 0);
+      recomputeTotals(price, quantity || 0, 0, vatPercent, 0);
     } else {
       const promoPct = derivePromotionPercent(selected);
       // QUAN TRỌNG: Đảm bảo discountPercent không bao giờ > 100 (tránh nhầm với giá tiền VND)
@@ -3005,7 +3005,7 @@ function ProductEntryForm({
         setDiscountAmount(0);
       }
       
-      recomputeTotals(price, quantity, promoPct || discountPercent, vatPercent, promoDiscountAmt);
+      recomputeTotals(price, quantity || 0, (promoPct || discountPercent) || 0, vatPercent, promoDiscountAmt);
     }
   }, [selectedPromotionId, promotions, approvePrice, orderTotal, price, quantity, vatPercent]);
 
@@ -3047,7 +3047,7 @@ function ProductEntryForm({
 
   // Recompute totals when discount percent or discount amount changes elsewhere
   useEffect(() => {
-    recomputeTotals(price, quantity, discountPercent || promotionDiscountPercent, vatPercent, discountAmount || 0);
+    recomputeTotals(price, quantity || 0, (discountPercent || promotionDiscountPercent) || 0, vatPercent, discountAmount || 0);
   }, [discountPercent, discountAmount]);
 
   // Force VAT = 0 for Non-VAT orders even if product VAT > 0
@@ -3241,10 +3241,10 @@ function ProductEntryForm({
     fetchDistrictLeadtime();
   }, [customerDistrictKey, customerId]);
 
-  // Keep quantity disabled until product is selected, default to empty (0)
+  // Keep quantity disabled until product is selected, default to null
   useEffect(() => {
     if (!hasSelectedProduct) {
-      if (quantity !== 0) setQuantity(0);
+      if (quantity !== null) setQuantity(null);
       return;
     }
     // Don't auto-set quantity when product is selected, let user input
@@ -3391,7 +3391,7 @@ function ProductEntryForm({
       setDiscountAmount(0);
       setPromotionDiscountPercent(0);
       // Recompute totals với chiết khấu = 0
-      recomputeTotals(price, quantity, 0, vatPercent, 0);
+      recomputeTotals(price, quantity || 0, 0, vatPercent, 0);
 
       // Set default approver based on customer nganhnghe
       // - crdfd_nganhnghe != 191920004 → Phạm Thị Mỹ Hương
@@ -3843,7 +3843,7 @@ function ProductEntryForm({
               <input
                 type="number"
                 className="admin-app-input admin-app-input-compact admin-app-input-number admin-app-input-small"
-                value={quantity > 0 ? quantity : ''}
+                value={quantity && quantity > 0 ? quantity : ''}
                 onChange={(e) => {
                   const val = e.target.value === '' ? null : parseFloat(e.target.value);
                   handleQuantityChange(val);
@@ -4149,10 +4149,10 @@ function ProductEntryForm({
             // Công thức chi tiết
             let formula = `CÔNG THỨC TÍNH THÀNH TIỀN\n`;
             formula += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-            formula += `Số lượng: ${quantity.toLocaleString('vi-VN')}\n`;
+            formula += `Số lượng: ${(quantity || 0).toLocaleString('vi-VN')}\n`;
             formula += `Giá đơn vị (sau chiết khấu, chưa VAT): ${roundedDiscountedPrice.toLocaleString('vi-VN')} ₫\n\n`;
             formula += `Tính toán:\n`;
-            formula += `${quantity.toLocaleString('vi-VN')} × ${roundedDiscountedPrice.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} = ${subtotal.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            formula += `${(quantity || 0).toLocaleString('vi-VN')} × ${roundedDiscountedPrice.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} = ${subtotal.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
             return (
               <div className="admin-app-field-compact admin-app-field-total">

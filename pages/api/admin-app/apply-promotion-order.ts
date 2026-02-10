@@ -348,9 +348,9 @@ export default async function handler(
       // ignore
     }
 
-    // Determine loai (VNĐ / %)
+    // Determine loai (Tiền / Phần trăm)
     const isVnd = effectiveVndOrPercent === "VNĐ" || (typeof effectiveVndOrPercent === 'string' && effectiveVndOrPercent.toUpperCase() === "VND") || effectiveVndOrPercent === OPTION_VND;
-    const loai = isVnd ? "VNĐ" : "%";
+    const loai = isVnd ? "Tiền" : "Phần trăm";
 
     console.log('[ApplyPromotion] Effective values:', {
       promotionId,

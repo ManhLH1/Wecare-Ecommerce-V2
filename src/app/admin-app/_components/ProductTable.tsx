@@ -482,6 +482,7 @@ function ProductTable({
   const [confirmingProduct, setConfirmingProduct] = useState<ProductTableItem | null>(null);
   const [deactivating, setDeactivating] = useState(false);
   const [deletingProductIds, setDeletingProductIds] = useState<Set<string>>(new Set());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleDelete = async (id: string) => {
     const productToDelete = products.find((p) => p.id === id);
@@ -879,14 +880,48 @@ function ProductTable({
     <div className="admin-app-table-compact-wrapper">
       <div className="admin-app-table-compact-header">
         <h3 className="admin-app-table-title">Danh sách sản phẩm</h3>
-        {products.length > 0 && (
-          <>
-            <span className="admin-app-table-count">{products.length} sản phẩm</span>
-            <span className="admin-app-table-total" style={{ marginLeft: 12, fontWeight: 600 }}>
-              {totalOrderAmount.toLocaleString('vi-VN')} đ
-            </span>
-          </>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {products.length > 0 && (
+            <>
+              <span className="admin-app-table-count">{products.length} sản phẩm</span>
+              <span className="admin-app-table-total" style={{ fontWeight: 600 }}>
+                {totalOrderAmount.toLocaleString('vi-VN')} đ
+              </span>
+            </>
+          )}
+          {onReloadAfterDeactivate && (
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  setIsRefreshing(true);
+                  await onReloadAfterDeactivate();
+                } catch (err) {
+                  console.warn('[ProductTable] Refresh data failed:', err);
+                } finally {
+                  setIsRefreshing(false);
+                }
+              }}
+              disabled={isRefreshing}
+              style={{
+                marginLeft: 12,
+                padding: '4px 8px',
+                fontSize: 12,
+                borderRadius: 4,
+                border: '1px solid #d1d5db',
+                backgroundColor: isRefreshing ? '#e5e7eb' : '#f9fafb',
+                cursor: isRefreshing ? 'default' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                color: '#111827',
+              }}
+              title="Làm mới dữ liệu danh sách sản phẩm từ CRM"
+            >
+              {isRefreshing ? 'Đang làm mới...' : 'Làm mới'}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="admin-app-table-compact-container">

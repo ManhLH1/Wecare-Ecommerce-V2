@@ -57,6 +57,14 @@ export default async function handler(
   }
 
   try {
+    // Tắt HTTP-level caching cho API này để luôn lấy dữ liệu SO/SOD mới nhất sau khi save
+    // Tránh trường hợp browser/Next trả về 304 và dùng lại body cũ (không có SOD mới).
+    res.setHeader("Cache-Control", "no-store, max-age=0, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    // Đặt ETag luôn thay đổi để tránh 304 Not Modified
+    res.setHeader("ETag", `${Date.now()}-${Math.random()}`);
+
     const { customerId, forceRefresh } = req.query;
     const shouldBypassCache = forceRefresh === "1" || forceRefresh === "true";
 

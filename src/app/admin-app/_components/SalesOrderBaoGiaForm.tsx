@@ -9,7 +9,20 @@ import Dropdown from './Dropdown';
 // Lazy load ImportModal - only loaded when needed
 const ImportModal = lazy(() => import('./ImportModal'));
 import { useCustomers, useSaleOrderBaoGia } from '../_hooks/useDropdownData';
-import { fetchSOBaoGia, saveSOBGDetails, fetchSOBGDetails, SaleOrderDetail, fetchPromotionOrders, fetchPromotionOrdersSOBG, fetchSpecialPromotionOrders, applySOBGPromotionOrder, PromotionOrderItem, SOBaoGia, fetchProductPromotions } from '../_api/adminApi';
+import {
+  fetchSOBaoGia,
+  saveSOBGDetails,
+  fetchSOBGDetails,
+  SaleOrderDetail,
+  fetchPromotionOrders,
+  fetchPromotionOrdersSOBG,
+  fetchSpecialPromotionOrders,
+  applySOBGPromotionOrder,
+  PromotionOrderItem,
+  SOBaoGia,
+  fetchProductPromotions,
+  Promotion,
+} from '../_api/adminApi';
 import { queryKeys } from '../_hooks/useReactQueryData';
 import { APPROVERS_LIST } from '../../../constants/constants';
 import { showToast } from '../../../components/ToastManager';
@@ -56,6 +69,7 @@ interface ProductItem {
   isModified?: boolean; // Flag để đánh dấu dòng đã sửa
   originalQuantity?: number; // Lưu số lượng gốc để so sánh
   promotionId?: string; // Optional promotion lookup id
+  eligibleForPromotion?: boolean; // Item có đủ điều kiện promotion (dựa trên productCode + total amount condition)
 }
 
 interface SalesOrderBaoGiaFormProps {
@@ -78,6 +92,19 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   const [isAdding, setIsAdding] = useState(false);
   const [isOrderInfoCollapsed, setIsOrderInfoCollapsed] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  // Helper so sánh OptionSet VND / Percent cho promotions
+  // Tương tự logic ở SalesOrderForm: ưu tiên p.vn, fallback vndOrPercent, crdfd_vn
+  const vndCodeEquals = (p: any, code: number) => {
+    if (p === null || p === undefined) return false;
+    const v = p.vn ?? p.vndOrPercent ?? p.crdfd_vn;
+    // Xử lý null, undefined, empty string như không có giá trị
+    if (v === undefined || v === null || v === '') return false;
+    const vs = String(v).trim();
+    // Dùng == để cho phép so sánh string/number (vd "191920000" với 191920000)
+    // biome-ignore lint/style/useIsNan: cần dùng isNaN cho compare string-number
+    return vs == String(code);
+  };
 
   const normalizeApproveNote = (note: string | undefined, approverId: string | undefined) => {
     const rawNote = note || '';
@@ -107,7 +134,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   const [unit, setUnit] = useState('');
   const [unitId, setUnitId] = useState('');
   const [warehouse, setWarehouse] = useState('');
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState<number | null>(null);
   const [price, setPrice] = useState('');
   const [subtotal, setSubtotal] = useState(0);
   const [vatPercent, setVatPercent] = useState(0);
@@ -394,7 +421,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
   ): Promise<ProductItem[]> => {
     if (!sobgIdValue || currentProducts.length === 0) return currentProducts;
 
-    // 1. Tính TỔNG TẤT CẢ items dùng BASE PRICE (giá gốc) để check điều kiện promotion
+    // 1. Tính TỔNG TẤT CẢ items dùng BASE PRICE (giá gốc) để debug/check
     // QUAN TRỌNG: Dùng price (giá gốc) để tính tổng, KHÔNG dùng discountedPrice
     const totalOrderAmount = currentProducts.reduce((sum, item) => {
       const basePrice = item.price;
@@ -402,6 +429,44 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       const lineVat = Math.round((lineSubtotal * (item.vat ?? 0)) / 100);
       return sum + lineSubtotal + lineVat;
     }, 0);
+
+    // Helper: Tính tổng tiền chỉ từ các sản phẩm match với promotion (sản phẩm/nhóm sản phẩm)
+    const calculateTotalForPromotion = (
+      products: ProductItem[],
+      promotion: Promotion
+    ): number => {
+      const promoAny = promotion as any;
+      const productCodesStr = promotion.productCodes || promoAny.crdfd_masanpham_multiple || '';
+      const productGroupCodesStr = promotion.productGroupCodes || promoAny.cr1bb_manhomsp_multiple || '';
+
+      // Parse danh sách mã sản phẩm và mã nhóm sản phẩm (comma-separated)
+      const allowedProductCodes = productCodesStr
+        .split(',')
+        .map((c: string) => c.trim())
+        .filter(Boolean);
+      const allowedProductGroupCodes = productGroupCodesStr
+        .split(',')
+        .map((c: string) => c.trim())
+        .filter(Boolean);
+
+      // Nếu promotion không có điều kiện về sản phẩm/nhóm sản phẩm → tính tổng tất cả
+      const hasProductFilter = allowedProductCodes.length > 0 || allowedProductGroupCodes.length > 0;
+
+      return products.reduce((sum, item) => {
+        const matchesProductCode =
+          !hasProductFilter || (item.productCode && allowedProductCodes.includes(item.productCode));
+        const matchesProductGroupCode =
+          !hasProductFilter || (item.productGroupCode && allowedProductGroupCodes.includes(item.productGroupCode));
+
+        if (matchesProductCode || matchesProductGroupCode) {
+          const basePrice = item.price;
+          const lineSubtotal = basePrice * (item.quantity || 0);
+          const lineVat = Math.round((lineSubtotal * (item.vat ?? 0)) / 100);
+          return sum + lineSubtotal + lineVat;
+        }
+        return sum;
+      }, 0);
+    };
 
     console.debug('[SalesOrderBaoGiaForm][RECALC] Starting recalculation:', {
       totalProducts: currentProducts.length,
@@ -411,6 +476,14 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     // 2. Fetch promotions cho TẤT CẢ items bằng fetchProductPromotions
     try {
       const promotionMap = new Map<string, { discountPercent: number; promotionId: string }>();
+
+      // Helper: xác định item đang dùng VND-based promotion (chiết khấu theo tiền, không theo %)
+      const isVndBasedItem = (item: ProductItem): boolean => {
+        const pct = Number(item.discountPercent ?? 0) || 0;
+        const amt = Number(item.discountAmount ?? item.discount ?? 0) || 0;
+        // VND-based: không có % nhưng có số tiền chiết khấu
+        return pct === 0 && amt > 0;
+      };
 
       for (const item of currentProducts) {
         if (!item.productCode) continue;
@@ -423,15 +496,21 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan
         );
 
-        // Filter promotions: percent-based và meets total condition
+        // Filter promotions: percent-based và meets total condition (dựa trên tổng tiền của promotion)
         const candidates = promotions.filter(p => {
-          // Check nếu là percent-based (vn = 191920000 hoặc "%")
-          // Lưu ý: `p.vn` là string (OptionSet code dạng "191920000") hoặc "%", nên normalize về string trước
-          const vnStr = String(p.vn ?? '').trim();
-          const isPercent = vnStr === '191920000' || vnStr.toLowerCase() === '%';
+          // Check nếu là percent-based (vn/vndOrPercent = 191920000)
+          const isPercent = vndCodeEquals(p, 191920000);
+
+          // totalAmountCondition có thể null/undefined/string
           const rawCond = p.totalAmountCondition ?? null;
           const minTotal = rawCond !== null ? Number(rawCond) : 0;
-          const meetsTotal = !minTotal || minTotal === 0 || isNaN(minTotal) || totalOrderAmount >= minTotal;
+
+          // QUAN TRỌNG: tính tổng tiền CHỈ từ các sản phẩm thuộc promotion
+          const totalForThisPromotion = calculateTotalForPromotion(currentProducts, p as Promotion);
+
+          // Nếu minTotal = 0 hoặc NaN → coi như không có điều kiện tối thiểu → luôn đáp ứng
+          const meetsTotal =
+            !minTotal || minTotal === 0 || Number.isNaN(minTotal) || totalForThisPromotion >= minTotal;
 
           return isPercent && meetsTotal;
         });
@@ -458,8 +537,19 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       let removedCount = 0;
       const updatedProducts = currentProducts.map(item => {
         const promoInfo = promotionMap.get(item.productCode || '');
+        const pct = Number(item.discountPercent ?? 0) || 0;
+        const amt = Number(item.discountAmount ?? item.discount ?? 0) || 0;
+        const isVndBased = pct === 0 && amt > 0;
 
-        // Case A: Item có trong promotionMap → ÁP DỤNG promotion
+        // Nếu item đang dùng khuyến mãi VND (discountAmount > 0, discountPercent = 0) → giữ nguyên
+        if (isVndBased) {
+          return {
+            ...item,
+            eligibleForPromotion: true,
+          };
+        }
+
+        // Case A: Item có trong promotionMap → ÁP DỤNG promotion %
         if (promoInfo) {
           // Nếu đã có promotion và discount giống nhau → giữ nguyên
           if (item.discountPercent === promoInfo.discountPercent) {
@@ -492,6 +582,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             vatAmount,
             totalAmount,
             promotionId: promoInfo.promotionId,
+            eligibleForPromotion: true,
           };
         }
 
@@ -519,6 +610,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
             totalAmount,
             promotionId: undefined,
             promotionText: undefined,
+            eligibleForPromotion: false,
           };
         }
 
@@ -551,9 +643,10 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     });
     // Validation: product, unit, quantity, price (giá >= 0, khi duyệt giá cho phép giá = 0)
     const priceNum = parseFloat(price || '0') || 0;
+    const qty = quantity ?? 0;
     const hasValidPrice = approvePrice ? priceNum >= 0 : priceNum > 0;
 
-    if (!product || !unit || quantity <= 0 || !hasValidPrice) {
+    if (!product || !unit || qty <= 0 || !hasValidPrice) {
       console.warn('❌ Add Product Failed: Missing required fields', {
         product: !!product,
         unit: !!unit,
@@ -568,7 +661,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         showToast.error('Vui lòng chọn sản phẩm');
       } else if (!unit) {
         showToast.error('Vui lòng chọn đơn vị');
-      } else if (quantity <= 0) {
+      } else if (qty <= 0) {
         showToast.error('Số lượng phải lớn hơn 0');
       } else if (!hasValidPrice) {
         showToast.error(approvePrice ? 'Giá không được âm' : 'Vui lòng nhập giá');
@@ -602,7 +695,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
     // Calculate amounts
     // IMPORTANT: Use discountedPriceCalc (not finalPrice) to match orderSummary calculation logic
     // Invoice surcharge is tracked separately in invoiceSurcharge field
-    const subtotalCalc = Math.round(quantity * discountedPriceCalc);
+    const subtotalCalc = Math.round(qty * discountedPriceCalc);
     const vatCalc = Math.round((subtotalCalc * (vatPercent || 0)) / 100);
     const totalCalc = subtotalCalc + vatCalc;
 
@@ -622,7 +715,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       productName: product,
       productGroupCode: productGroupCode,
       unit: unit,
-      quantity,
+      quantity: qty,
       price: priceNum,
       priceNoVat: null,
       surcharge: 0,
@@ -631,7 +724,7 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       // discountedPrice should be: price after discount, before VAT and invoice surcharge
       discountedPrice: finalPrice, // Hiển thị với surcharge cho UI, nhưng tính toán dùng discountedPriceCalc
       discountPercent: usedDiscountPercent,
-      discountAmount: discountAmount,
+      discountAmount: usedDiscountAmount,
       discountRate: overrides?.discountRate,
       vat: vatPercent,
       subtotal: subtotalCalc,
@@ -649,6 +742,10 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
       invoiceSurcharge: invoiceSurchargeRate,
       createdOn: new Date().toISOString(),
       isSodCreated: false,
+      eligibleForPromotion:
+        (usedDiscountPercent ?? 0) > 0 ||
+        (usedDiscountAmount ?? 0) > 0 ||
+        Boolean(promoIdToUse),
     };
 
     // Thêm product mới vào danh sách tạm
@@ -760,6 +857,11 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
           isModified: false,
           originalQuantity: detail.quantity,
           promotionId: (detail as any).promotionId || undefined,
+          // Existing products: nếu có discount hoặc promotion thì được tính là eligible
+          eligibleForPromotion:
+            (detail.discountPercent ?? 0) > 0 ||
+            (detail.discountAmount ?? 0) > 0 ||
+            Boolean((detail as any).promotionId),
         };
       });
       mappedProducts.sort((a, b) => (b.stt || 0) - (a.stt || 0));

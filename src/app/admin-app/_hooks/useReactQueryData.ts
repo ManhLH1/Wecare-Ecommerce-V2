@@ -89,6 +89,7 @@ export const useSaleOrdersQuery = (customerId?: string) => {
     queryFn: () => fetchSaleOrders(customerId || undefined),
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!customerId, // Chỉ load khi đã chọn khách hàng
   });
 };
 
@@ -101,6 +102,7 @@ export const useSOBaoGiaQuery = (customerId?: string) => {
     queryFn: () => fetchSOBaoGia(customerId || undefined),
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!customerId, // Chỉ load khi đã chọn khách hàng
   });
 };
 
