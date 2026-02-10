@@ -205,9 +205,36 @@ export default async function handler(
             response: err?.response?.data,
             status: err?.response?.status
           });
+          // Fallback: dùng tổng tiền từ client nếu backend calc fail (đồng nhất với SO)
+          const uiTotalRaw =
+            orderTotalFromClient ??
+            req.body.orderTotal ??
+            req.body.uiTotal ??
+            req.body.totalAmount ??
+            req.body.crdfd_tongtien;
 
-          // If we can't calculate the total, log warning but allow the promotion to proceed
-          console.warn('[ApplySOBGPromotion] Skipping total validation due to calculation error, allowing promotion to proceed');
+          if (uiTotalRaw === null || uiTotalRaw === undefined || uiTotalRaw === "") {
+            return res.status(400).json({
+              error: `Không thể tính tổng đơn từ backend và thiếu tổng tiền từ client. Promotion yêu cầu tối thiểu ${minTotal.toLocaleString('vi-VN')}đ.`
+            });
+          }
+
+          const uiTotalNum =
+            typeof uiTotalRaw === "number"
+              ? uiTotalRaw
+              : Number(String(uiTotalRaw).replace(/[^\d.-]+/g, ""));
+
+          if (Number.isNaN(uiTotalNum)) {
+            return res.status(400).json({
+              error: `Tổng tiền từ client không hợp lệ để kiểm tra điều kiện promotion.`
+            });
+          }
+
+          if (uiTotalNum < minTotal) {
+            return res.status(400).json({
+              error: `Promotion "${promotionName}" yêu cầu tổng tiền tối thiểu ${minTotal.toLocaleString('vi-VN')}đ. Tổng tiền hiện tại: ${Math.round(uiTotalNum).toLocaleString('vi-VN')}đ (fallback từ client)`
+            });
+          }
         }
       }
     }
