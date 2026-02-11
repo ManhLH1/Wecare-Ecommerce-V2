@@ -709,6 +709,8 @@ const ProductGroupList: React.FC<ProductGroupListProps> = ({
   customerSelectId,
   ...otherProps
 }) => {
+  type SortMode = "price_desc" | "price_asc";
+
   const [currentPage, setCurrentPage] = useState(1); // Page từ API (theo groups)
   const [currentProductPage, setCurrentProductPage] = useState(1); // Page phân trang theo products
   const [isMobile, setIsMobile] = useState(false);
@@ -728,7 +730,7 @@ const ProductGroupList: React.FC<ProductGroupListProps> = ({
     chatLieu: [],
     priceRange: { min: 0, max: 10000000 },
   });
-  const [sortMode, setSortMode] = useState<"new" | "popular" | "price_desc" | "price_asc">("new");
+  const [sortMode, setSortMode] = useState<SortMode>("price_desc");
   
   // Số sản phẩm mỗi trang (theo yêu cầu)
   const PRODUCTS_PER_PAGE = 20;
@@ -902,24 +904,7 @@ const ProductGroupList: React.FC<ProductGroupListProps> = ({
           </div>
         </div>
 
-        {/* Category Header */}
-        <div className="bg-white border-b border-[#E9ECEF]">
-          <div className="container mx-auto px-4 py-6">
-            <h1 className="text-2xl md:text-3xl font-bold text-[#343A40] mb-3">
-              {categoryTitle}
-            </h1>
-            {descriptionHtml ? (
-              <div
-                className="prose prose-sm max-w-none text-[#6C757D] leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: descriptionHtml }}
-              />
-            ) : (
-              <p className="text-sm text-[#6C757D] leading-relaxed max-w-3xl">{categoryDescription}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="container mx-auto px-4 py-6">
+        <div className="w-full py-6">
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Filter Sidebar (Desktop) */}
             <FilterSidebar
@@ -986,14 +971,12 @@ const ProductGroupList: React.FC<ProductGroupListProps> = ({
                   <span className="text-xs text-[#6C757D] hidden sm:inline-block">Sắp xếp:</span>
                   <div className="flex bg-[#F8F9FA] p-0.5 rounded-md border border-[#E9ECEF] gap-0.5">
                     {[
-                      { key: "new", label: "Mới nhất" },
-                      { key: "popular", label: "Bán chạy" },
-                      { key: "price_desc", label: "Giá cao → thấp" },
-                      { key: "price_asc", label: "Giá thấp → cao" },
-                    ].map((option) => (
+                      { key: "price_desc" as SortMode, label: "Giá cao → thấp" },
+                      { key: "price_asc" as SortMode, label: "Giá thấp → cao" },
+                    ].map((option: { key: SortMode; label: string }) => (
                       <button
                         key={option.key}
-                        onClick={() => setSortMode(option.key as any)}
+                        onClick={() => setSortMode(option.key)}
                         className={`px-3 py-1.5 rounded text-[10px] font-medium transition-all ${
                           sortMode === option.key
                             ? "bg-white text-[#3492ab] shadow-sm border border-[#E9ECEF]"
@@ -1019,7 +1002,7 @@ const ProductGroupList: React.FC<ProductGroupListProps> = ({
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
                     {paginatedProductList.map((p) => (
                       <ProductCard key={p.crdfd_productsid || p.id} product={p} onAddToCart={onAddToCart} />
                     ))}

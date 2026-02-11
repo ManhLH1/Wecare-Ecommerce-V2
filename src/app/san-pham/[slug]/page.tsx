@@ -303,7 +303,7 @@ const ProductContent = () => {
         />
 
         {/* Main Layout - Full Width */}
-        <div className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 py-6" style={{ paddingTop: '90px' }}>
+        <div className="w-full max-w-[1920px] mx-auto py-6" style={{ paddingTop: '90px' }}>
           <div className="flex flex-col">
             {/* Main Content - Full Width */}
             <div className="w-full">
