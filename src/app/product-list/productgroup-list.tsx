@@ -52,6 +52,7 @@ interface PaginatedProductGroups {
   pagination?: {
     currentPage: number;
     totalPages: number;
+    totalProducts?: number; // Tổng số sản phẩm thực tế
   };
 }
 
@@ -114,7 +115,10 @@ const useProductsData = (
       if (customerId) params.append("customerId", customerId);
       if (searchTerm) params.append("searchTerm", searchTerm);
       if (productGroupId) params.append("product_group_Id", productGroupId);
+      // Tăng pageSize để lấy đủ products (ước tính mỗi group có ~2-5 products)
+      // Lấy 50 groups để đảm bảo có đủ ~100-250 products cho phân trang
       params.append("page", String(currentPage || 1));
+      params.append("pageSize", "50"); // Tăng từ default 10 lên 50 groups
       if (advancedFilters) {
         if (advancedFilters.thuongHieu.length) params.append("filterThuongHieu", JSON.stringify(advancedFilters.thuongHieu));
         if (advancedFilters.chatLieu.length) params.append("filterChatLieu", JSON.stringify(advancedFilters.chatLieu));
@@ -142,7 +146,12 @@ const useProductsData = (
         const cached = apiCache.get(cacheKey);
         const filteredCached = filterJsonGia(JSON.parse(JSON.stringify(cached)));
         setProductsData(filteredCached);
-        setAllLoadedGroups(filteredCached.data || {});
+        // Merge groups thay vì thay thế khi load thêm pages
+        if (currentPage > 1) {
+          setAllLoadedGroups((prev) => ({ ...prev, ...(filteredCached.data || {}) }));
+        } else {
+          setAllLoadedGroups(filteredCached.data || {});
+        }
         setLoading(false);
         return;
       }
@@ -152,7 +161,12 @@ const useProductsData = (
         const processedData = filterJsonGia(res.data);
         apiCache.set(cacheKey, processedData);
         setProductsData(processedData);
-        setAllLoadedGroups(processedData.data || {});
+        // Merge groups thay vì thay thế khi load thêm pages
+        if (currentPage > 1) {
+          setAllLoadedGroups((prev) => ({ ...prev, ...(processedData.data || {}) }));
+        } else {
+          setAllLoadedGroups(processedData.data || {});
+        }
       } else {
         setProductsData(null);
       }
@@ -695,7 +709,8 @@ const ProductGroupList: React.FC<ProductGroupListProps> = ({
   customerSelectId,
   ...otherProps
 }) => {
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1); // Page từ API (theo groups)
+  const [currentProductPage, setCurrentProductPage] = useState(1); // Page phân trang theo products
   const [isMobile, setIsMobile] = useState(false);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [showLoadMore, setShowLoadMore] = useState(true);
@@ -714,6 +729,9 @@ const ProductGroupList: React.FC<ProductGroupListProps> = ({
     priceRange: { min: 0, max: 10000000 },
   });
   const [sortMode, setSortMode] = useState<"new" | "popular" | "price_desc" | "price_asc">("new");
+  
+  // Số sản phẩm mỗi trang (theo yêu cầu)
+  const PRODUCTS_PER_PAGE = 20;
 
   const { productsData, allLoadedGroups, loading, error, clearCache } = useProductsData(
     customerSelectId || null,
@@ -730,6 +748,7 @@ const ProductGroupList: React.FC<ProductGroupListProps> = ({
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  // Danh sách tất cả products (đã filter và sort)
   const productList: ProductDetails[] = useMemo(() => {
     const data = productsData ? productsData.data : allLoadedGroups;
     if (!data) return [];
@@ -744,6 +763,12 @@ const ProductGroupList: React.FC<ProductGroupListProps> = ({
     if (sortMode === "price_asc") return filtered.sort((a, b) => extractPrice(a) - extractPrice(b));
     return filtered;
   }, [productsData, allLoadedGroups, sortMode]);
+
+  // Tính toán phân trang theo products (20 sản phẩm/trang)
+  const totalProductPages = Math.ceil(productList.length / PRODUCTS_PER_PAGE);
+  const startIndex = (currentProductPage - 1) * PRODUCTS_PER_PAGE;
+  const endIndex = startIndex + PRODUCTS_PER_PAGE;
+  const paginatedProductList = productList.slice(startIndex, endIndex);
 
   useEffect(() => {
     const brands = new Map<string, number>();
@@ -769,6 +794,7 @@ const ProductGroupList: React.FC<ProductGroupListProps> = ({
   const handleFilterChange = (type: keyof AdvancedFilters, value: any) => {
     setAdvancedFilters((prev) => ({ ...prev, [type]: value }));
     setCurrentPage(1);
+    setCurrentProductPage(1); // Reset về trang 1 khi filter
     clearCache();
   };
 
@@ -779,6 +805,7 @@ const ProductGroupList: React.FC<ProductGroupListProps> = ({
       priceRange: [filterOptions.priceRange.min, filterOptions.priceRange.max],
     });
     setCurrentPage(1);
+    setCurrentProductPage(1); // Reset về trang 1 khi reset filter
     clearCache();
   };
 
@@ -787,6 +814,11 @@ const ProductGroupList: React.FC<ProductGroupListProps> = ({
       setCurrentPage((prev) => prev + 1);
     }
   };
+
+  // Xử lý khi sort mode thay đổi - reset về trang 1
+  useEffect(() => {
+    setCurrentProductPage(1);
+  }, [sortMode]);
 
   // SEO: Generate structured data
   const structuredData = {
@@ -943,6 +975,11 @@ const ProductGroupList: React.FC<ProductGroupListProps> = ({
                   <span className="w-0.5 h-4 bg-[#3492ab] rounded-full"></span>
                   <span>
                     Tìm thấy <strong className="text-[#3492ab]">{productList.length}</strong> sản phẩm
+                    {totalProductPages > 1 && (
+                      <span className="text-[#6C757D] font-normal ml-1">
+                        (Trang {currentProductPage}/{totalProductPages})
+                      </span>
+                    )}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -983,47 +1020,52 @@ const ProductGroupList: React.FC<ProductGroupListProps> = ({
               ) : (
                 <>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
-                    {productList.map((p) => (
+                    {paginatedProductList.map((p) => (
                       <ProductCard key={p.crdfd_productsid || p.id} product={p} onAddToCart={onAddToCart} />
                     ))}
                   </div>
 
-                  {/* Load More / Pagination */}
-                  {productsData?.pagination && productsData.pagination.totalPages > 1 && (
+                  {/* Pagination theo products (20 sản phẩm/trang) */}
+                  {totalProductPages > 1 && (
                     <div className="flex justify-center mt-6">
-                      {showLoadMore && currentPage < productsData.pagination.totalPages ? (
-                        <button
-                          onClick={handleLoadMore}
-                          className="bg-white border-2 border-[#3492ab] text-[#3492ab] font-medium text-sm px-6 py-2 rounded-lg hover:bg-[#3492ab] hover:text-white transition-all shadow-sm"
-                        >
-                          Xem thêm sản phẩm
-                        </button>
-                      ) : (
-                        <Pagination
-                          count={productsData.pagination.totalPages}
-                          page={currentPage}
-                          onChange={(e, page) => {
-                            setCurrentPage(page);
-                            window.scrollTo({ top: 0, behavior: "smooth" });
-                          }}
-                          sx={{
-                            '& .MuiPaginationItem-root': {
-                              color: '#6C757D',
-                              fontSize: '0.875rem',
-                              '&.Mui-selected': {
-                                backgroundColor: '#3492ab',
-                                color: '#fff',
-                                '&:hover': {
-                                  backgroundColor: '#236E84',
-                                }
-                              },
+                      <Pagination
+                        count={totalProductPages}
+                        page={currentProductPage}
+                        onChange={(e, page) => {
+                          setCurrentProductPage(page);
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                        sx={{
+                          '& .MuiPaginationItem-root': {
+                            color: '#6C757D',
+                            fontSize: '0.875rem',
+                            '&.Mui-selected': {
+                              backgroundColor: '#3492ab',
+                              color: '#fff',
                               '&:hover': {
-                                backgroundColor: '#C5E0E8',
+                                backgroundColor: '#236E84',
                               }
+                            },
+                            '&:hover': {
+                              backgroundColor: '#C5E0E8',
                             }
-                          }}
-                        />
-                      )}
+                          }
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Load More Groups từ API (nếu cần) */}
+                  {productsData?.pagination && 
+                   productsData.pagination.totalPages > currentPage && 
+                   productList.length < PRODUCTS_PER_PAGE * totalProductPages && (
+                    <div className="flex justify-center mt-4">
+                      <button
+                        onClick={handleLoadMore}
+                        className="bg-white border-2 border-[#3492ab] text-[#3492ab] font-medium text-sm px-6 py-2 rounded-lg hover:bg-[#3492ab] hover:text-white transition-all shadow-sm"
+                      >
+                        Tải thêm nhóm sản phẩm
+                      </button>
                     </div>
                   )}
                 </>
