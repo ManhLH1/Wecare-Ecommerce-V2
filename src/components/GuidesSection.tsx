@@ -1,60 +1,60 @@
- "use client";
- import React, { useEffect, useState } from "react";
- import axios from "axios";
+"use client";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 import Link from "next/link";
 import Image from "next/image";
- import { formatDateToDDMMYYYY } from "@/utils/utils";
+import { formatDateToDDMMYYYY } from "@/utils/utils";
 
- interface PostItem {
-   cr1bb_title?: string;
-   cr1bb_header?: string;
-   cr1bb_img_url?: string;
-   createdon?: string;
-   cr1bb_tags?: string;
-   cr1bb_linkfileembedded?: string;
-   // allow unknown fields
-   [key: string]: any;
- }
+interface PostItem {
+  cr1bb_title?: string;
+  cr1bb_header?: string;
+  cr1bb_img_url?: string;
+  createdon?: string;
+  cr1bb_tags?: string;
+  cr1bb_linkfileembedded?: string;
+  // allow unknown fields
+  [key: string]: any;
+}
 
- const GuidesSection: React.FC = () => {
-   const [posts, setPosts] = useState<PostItem[]>([]);
-   const [loading, setLoading] = useState<boolean>(true);
-   const [error, setError] = useState<string | null>(null);
+const GuidesSection: React.FC = () => {
+  const [posts, setPosts] = useState<PostItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-   useEffect(() => {
-     let mounted = true;
-     const fetchPosts = async () => {
-       try {
-         setLoading(true);
-         // fetch general content (no tag) so we get latest posts; adjust tag if needed
-         const res = await axios.get<{
-           success: boolean;
-           data: { value: PostItem[] };
-         }>("/api/getDataContent?tag=");
-         if (res.data?.success && Array.isArray(res.data.data?.value)) {
-           if (!mounted) return;
-           setPosts(res.data.data.value || []);
-         } else {
-           throw new Error("Invalid data format");
-         }
-       } catch (err) {
-         console.error("Error fetching guides posts:", err);
-         if (!mounted) return;
-         setError("Không thể tải cẩm nang ngay bây giờ.");
-       } finally {
-         if (!mounted) return;
-         setLoading(false);
-       }
-     };
+  useEffect(() => {
+    let mounted = true;
+    const fetchPosts = async () => {
+      try {
+        setLoading(true);
+        // fetch general content (no tag) so we get latest posts; adjust tag if needed
+        const res = await axios.get<{
+          success: boolean;
+          data: { value: PostItem[] };
+        }>("/api/getDataContent?tag=");
+        if (res.data?.success && Array.isArray(res.data.data?.value)) {
+          if (!mounted) return;
+          setPosts(res.data.data.value || []);
+        } else {
+          throw new Error("Invalid data format");
+        }
+      } catch (err) {
+        console.error("Error fetching guides posts:", err);
+        if (!mounted) return;
+        setError("Không thể tải cẩm nang ngay bây giờ.");
+      } finally {
+        if (!mounted) return;
+        setLoading(false);
+      }
+    };
 
-     fetchPosts();
-     return () => {
-       mounted = false;
-     };
-   }, []);
+    fetchPosts();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
-   const featured = posts.length > 0 ? posts[0] : null;
-   const list = posts.slice(1, 6); // show up to 5 list items
+  const featured = posts.length > 0 ? posts[0] : null;
+  const list = posts.slice(1, 6); // show up to 5 list items
 
   const resolveImageUrl = (val: any) => {
     try {
@@ -94,7 +94,7 @@ import Image from "next/image";
   // We'll use Next.js Image for automatic optimization/responsive srcset.
 
   return (
-    <section className="w-full pt-0 pb-0 bg-white mb-6" style={{ height: '520px' }}>
+    <section className="w-full pt-0 pb-0 bg-white mb-6" style={{ minHeight: '520px', height: 'auto' }}>
       <div className="relative px-2 md:px-6">
         <div className="py-2">
           <div className="flex items-center gap-3 justify-between mb-3">
@@ -191,8 +191,8 @@ import Image from "next/image";
       </div>
     </section>
   );
- };
+};
 
- export default GuidesSection;
+export default GuidesSection;
 
 
