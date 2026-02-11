@@ -1,6 +1,15 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import axios from 'axios';
 
+function getSelfBaseUrl(req: NextApiRequest): string {
+  // Tại sao: API route chạy server-side, nên nên gọi lại chính app qua host hiện tại thay vì hardcode port (tránh đụng 8080/Apache).
+  const proto = (req.headers['x-forwarded-proto'] as string | undefined) || 'http';
+  const host = (req.headers['x-forwarded-host'] as string | undefined) || req.headers.host;
+  if (host) return `${proto}://${host}`;
+  // Lưu ý: fallback cho dev local nếu thiếu host header (hiếm)
+  return 'http://localhost:3000';
+}
+
 function removeVietnameseTones(str: string): string {
   str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
   str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e");
@@ -41,7 +50,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Search for products - getProductsOnly returns { data: {...grouped...}, pagination: {...} }
     // We search using the slug-like name converted to spaces to find relevant products
     // Use 'fullname' param to trigger AND logic in getProductsOnly, which is better for specific product lookup
-    const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/getProductsOnly`, {
+    const selfBaseUrl = getSelfBaseUrl(req);
+    const response = await axios.get(`${selfBaseUrl}/api/getProductsOnly`, {
       params: {
         fullname: searchParam,
         limit: 50
@@ -58,7 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Get product group hierarchy to help with matching
     let productGroupHierarchy = null;
     try {
-      const hierarchyResponse = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/getProductGroupHierarchy`);
+      const hierarchyResponse = await axios.get(`${selfBaseUrl}/api/getProductGroupHierarchy`);
       productGroupHierarchy = hierarchyResponse.data?.hierarchy || [];
     } catch (hierarchyError) {
       console.warn('Could not fetch product group hierarchy:', hierarchyError);
@@ -117,6 +127,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(404).json({ message: 'Product not found matching the URL' });
 
   } catch (error) {
+    // Tại sao: backend/internal API có thể trả 404 hợp lệ; không nên biến thành 500.
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      const detail =
+        typeof error.response?.data === 'string'
+          ? error.response.data
+          : error.response?.data;
+
+      console.error('Error searching product by URL (axios):', {
+        status,
+        url: error.config?.url,
+        params: error.config?.params,
+        detail,
+      });
+
+      if (status === 404) {
+        return res.status(404).json({ message: 'Upstream API not found', detail });
+      }
+
+      return res.status(status ?? 502).json({ message: 'Upstream request failed', detail });
+    }
+
     console.error('Error searching product by URL:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }

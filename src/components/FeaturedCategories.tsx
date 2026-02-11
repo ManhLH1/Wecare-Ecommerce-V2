@@ -123,6 +123,23 @@ const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ categories, loa
         <div className="p-0 md:p-1">
           {/* Mobile: horizontal scroller with 2 rows */}
           <div className="block md:hidden">
+            {/* Tiêu đề mobile */}
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-semibold text-cyan-600">
+                  DANH MỤC NỔI BẬT
+                </h3>
+                <span className="inline-block w-10 h-[3px] bg-amber-300 rounded" />
+              </div>
+              <a
+                href="/san-pham"
+                className="text-xs text-cyan-600 hover:text-cyan-700 no-underline font-normal normal-case"
+                style={{ textDecoration: 'none', textTransform: 'none' }}
+              >
+                Xem tất cả
+              </a>
+            </div>
+
             <div className="overflow-x-auto scrollbar-hide -mx-4 px-4" ref={scrollerRef}>
               <div
                 className="grid grid-flow-col gap-3 grid-rows-2 py-1"

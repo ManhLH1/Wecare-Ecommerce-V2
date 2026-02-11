@@ -29,7 +29,7 @@ const PricingPolicyPage: React.FC = () => {
                     <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 uppercase">
                       CHÍNH SÁCH GIÁ & CHƯƠNG TRÌNH KHUYẾN MÃI
                     </h1>
-                    <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-cyan-500 mx-auto mb-6"></div>
+                    <div className="w-24 h-1 bg-blue-600 mx-auto mb-6"></div>
                     <p className="text-lg md:text-xl text-gray-600 max-w-[1400px] mx-auto leading-relaxed">
                       Hệ thống chính sách giá minh bạch, linh hoạt và các chương trình ưu đãi định kỳ.
                     </p>
@@ -52,22 +52,22 @@ const PricingPolicyPage: React.FC = () => {
 
                         <p className="font-semibold text-xl text-gray-900">2. Chương trình ưu đãi & khuyến mãi định kỳ:</p>
                         <ul className="space-y-2 ml-6 list-disc">
-                          <li><strong className="text-blue-600">Ưu đãi theo tuần:</strong> Áp dụng cho từng nhóm sản phẩm hoặc danh mục cụ thể.</li>
-                          <li><strong className="text-green-600">Ưu đãi theo tháng:</strong> Bao gồm giảm giá trực tiếp, combo sản phẩm, hỗ trợ vận chuyển và voucher.</li>
-                          <li><strong className="text-purple-600">Ưu đãi theo quý:</strong> Áp dụng cho nhóm sản phẩm chủ lực hoặc theo sản lượng mua tích lũy trong quý.</li>
+                          <li><strong>Ưu đãi theo tuần:</strong> Áp dụng cho từng nhóm sản phẩm hoặc danh mục cụ thể.</li>
+                          <li><strong>Ưu đãi theo tháng:</strong> Bao gồm giảm giá trực tiếp, combo sản phẩm, hỗ trợ vận chuyển và voucher.</li>
+                          <li><strong>Ưu đãi theo quý:</strong> Áp dụng cho nhóm sản phẩm chủ lực hoặc theo sản lượng mua tích lũy trong quý.</li>
                         </ul>
 
                         <p className="font-semibold text-xl text-gray-900">3. Chính sách vận chuyển:</p>
                         <ul className="space-y-2 ml-6 list-disc">
-                          <li>Miễn phí vận chuyển (<strong className="text-green-600">Freeship</strong>) cho các đơn hàng đạt giá trị tối thiểu theo quy định của từng chương trình.</li>
+                          <li>Miễn phí vận chuyển (<strong>Freeship</strong>) cho các đơn hàng đạt giá trị tối thiểu theo quy định của từng chương trình.</li>
                           <li>Phạm vi và thời gian giao hàng được sắp xếp phù hợp với từng khu vực.</li>
                         </ul>
 
                         <p className="font-semibold text-xl text-gray-900">4. Voucher & ưu đãi dành cho khách hàng mới:</p>
                         <ul className="space-y-2 ml-6 list-disc">
-                          <li>Voucher trị giá <strong className="text-red-600 text-xl">50.000đ</strong> áp dụng cho khách hàng đặt đơn hàng lần đầu qua Zalo OA của Wecare.</li>
+                          <li>Voucher trị giá <strong className="text-xl">50.000đ</strong> áp dụng cho khách hàng đặt đơn hàng lần đầu qua Zalo OA của Wecare.</li>
                           <li>Voucher được trừ trực tiếp vào giá trị đơn hàng theo điều kiện áp dụng tại thời điểm sử dụng.</li>
-                          <li>Mỗi khách hàng chỉ được áp dụng <strong className="text-blue-600">01 lần</strong> cho đơn hàng đầu tiên.</li>
+                          <li>Mỗi khách hàng chỉ được áp dụng <strong>01 lần</strong> cho đơn hàng đầu tiên.</li>
                         </ul>
 
                         <p className="font-semibold text-xl text-gray-900">5. Cập nhật & điều chỉnh chính sách:</p>
@@ -76,23 +76,23 @@ const PricingPolicyPage: React.FC = () => {
                     </div>
 
                     {/* Contact Information */}
-                    <div className="mt-8 bg-gradient-to-r from-pink-50 to-purple-50 border-2 border-pink-300 rounded-xl p-6 md:p-8 text-center">
+                    <div className="mt-8 bg-white border border-gray-200 rounded-xl p-6 md:p-8 text-center">
                       <h3 className="text-2xl font-bold text-gray-900 mb-4 uppercase">Liên hệ</h3>
                       <p className="text-lg text-gray-700 mb-6">
                         Nếu bạn có câu hỏi về chính sách giá hoặc chương trình khuyến mại, vui lòng liên hệ:
                       </p>
                       <div className="flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-8 mb-6">
                         <div className="flex items-center text-lg">
-                          <div className="w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center mr-3">
-                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-3">
+                            <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                             </svg>
                           </div>
                           <span className="text-gray-700 font-semibold">037 833 9009</span>
                         </div>
                         <div className="flex items-center text-lg">
-                          <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center mr-3">
-                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-3">
+                            <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>
                           </div>
@@ -100,7 +100,7 @@ const PricingPolicyPage: React.FC = () => {
                         </div>
                       </div>
                       <div className="text-base text-gray-600 border-t border-gray-300 pt-4">
-                        <p><strong className="text-pink-600">Thời gian làm việc:</strong> Thứ 2 - Thứ 7 (8:00 - 17:00)</p>
+                        <p><strong>Thời gian làm việc:</strong> Thứ 2 - Thứ 7 (8:00 - 17:00)</p>
                       </div>
                     </div>
 
@@ -108,7 +108,7 @@ const PricingPolicyPage: React.FC = () => {
                     <div className="text-center mt-8">
                       <Link
                         href="/"
-                        className="w-full md:inline-flex md:w-auto justify-center items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-300 shadow-md hover:shadow-lg"
+                        className="inline-flex w-full sm:w-auto items-center justify-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-all duration-300 shadow-md hover:shadow-lg"
                       >
                         <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
