@@ -73,66 +73,17 @@ const PaymentGuidePage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Contact & Addresses */}
-                    <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8">
-                      <div className="text-center mb-6">
-                        <p className="text-2xl font-bold text-gray-900 mb-2">WECARE GROUP _ SIÊU THỊ CÔNG NGHIỆP</p>
-                      </div>
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <div className="space-y-3">
-                          <div className="flex items-center">
-                            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                              <span className="text-gray-800 text-sm">📞</span>
-                            </div>
-                            <div>
-                              <p className="font-semibold text-gray-900">Hotline:</p>
-                              <p className="font-medium">037 833 9009 - 0934 794 477 - 0823 871 339</p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center">
-                            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                              <span className="text-gray-800 text-sm">🌐</span>
-                            </div>
-                            <div>
-                              <p className="font-semibold text-gray-900">Website:</p>
-                              <a href="https://wecare.com.vn" className="text-blue-600 hover:text-blue-800 font-medium" target="_blank" rel="noopener noreferrer">https://wecare.com.vn</a>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center">
-                            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                              <span className="text-gray-800 text-sm">📱</span>
-                            </div>
-                            <div>
-                              <p className="font-semibold text-gray-900">Zalo OA:</p>
-                              <a href="https://zalo.me/wecare" className="text-blue-600 hover:text-blue-800 font-medium" target="_blank" rel="noopener noreferrer">https://zalo.me/wecare</a>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-3">
-                          <div className="flex items-start">
-                            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-3 mt-1 flex-shrink-0">
-                              <span className="text-gray-800 text-sm">🏢</span>
-                            </div>
-                            <div>
-                              <p className="font-semibold text-gray-900">Trụ sở chính:</p>
-                              <p className="text-gray-700">Lô B39, Khu Công nghiệp Phú Tài, Phường Quy Nhơn Bắc, Tỉnh Gia Lai.</p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-start">
-                            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-3 mt-1 flex-shrink-0">
-                              <span className="text-gray-800 text-sm">🏢</span>
-                            </div>
-                            <div>
-                              <p className="font-semibold text-gray-900">Chi nhánh HCM:</p>
-                              <p className="text-gray-700">14-16-18-20, Đường 36, P. Bình Phú, Q6, TP.Hồ Chí Minh.</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                    {/* Contact & Addresses - text thuần, tránh bị tách trang */}
+                    <div
+                      className="mt-8 bg-white p-0 text-base md:text-lg text-gray-800 leading-relaxed"
+                      style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}
+                    >
+                      <p className="text-2xl font-bold text-gray-900 mb-2">WECARE GROUP _ SIÊU THỊ CÔNG NGHIỆP</p>
+                      <p>- Hotline: 037 833 9009 - 0934 794 477 - 0823 871 339</p>
+                      <p>- Website: https://wecare.com.vn</p>
+                      <p>- Zalo OA: https://zalo.me/wecare</p>
+                      <p>- Trụ sở chính: Lô B39, Khu Công nghiệp Phú Tài, Phường Quy Nhơn Bắc, Tỉnh Gia Lai.</p>
+                      <p>- Chi nhánh HCM: 14-16-18-20, Đường 36, P. Bình Phú, Q6, TP. Hồ Chí Minh.</p>
                     </div>
 
                     {/* Back to Home */}

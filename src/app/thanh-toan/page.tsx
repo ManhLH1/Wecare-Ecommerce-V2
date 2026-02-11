@@ -75,33 +75,16 @@ const PricingPolicyPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Contact Information */}
-                    <div className="mt-8 bg-white border border-gray-200 rounded-xl p-6 md:p-8 text-center">
-                      <h3 className="text-2xl font-bold text-gray-900 mb-4 uppercase">Liên hệ</h3>
-                      <p className="text-lg text-gray-700 mb-6">
-                        Nếu bạn có câu hỏi về chính sách giá hoặc chương trình khuyến mại, vui lòng liên hệ:
-                      </p>
-                      <div className="flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-8 mb-6">
-                        <div className="flex items-center text-lg">
-                          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-3">
-                            <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                            </svg>
-                          </div>
-                          <span className="text-gray-700 font-semibold">037 833 9009</span>
-                        </div>
-                        <div className="flex items-center text-lg">
-                          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-3">
-                            <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
-                          </div>
-                          <span className="text-gray-700 font-semibold">support@wecare.com.vn</span>
-                        </div>
-                      </div>
-                      <div className="text-base text-gray-600 border-t border-gray-300 pt-4">
-                        <p><strong>Thời gian làm việc:</strong> Thứ 2 - Thứ 7 (8:00 - 17:00)</p>
-                      </div>
+                    {/* Contact Information - text thuần, tránh bị tách trang */}
+                    <div
+                      className="mt-8 bg-white p-0 text-base md:text-lg text-gray-800 leading-relaxed"
+                      style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}
+                    >
+                      <p className="text-2xl font-bold text-gray-900 mb-2 uppercase">Liên hệ</p>
+                      <p>Nếu bạn có câu hỏi về chính sách giá hoặc chương trình khuyến mại, vui lòng liên hệ:</p>
+                      <p>- Hotline: 037 833 9009</p>
+                      <p>- Email: support@wecare.com.vn</p>
+                      <p>- Thời gian làm việc: Thứ 2 - Thứ 7 (8:00 - 17:00)</p>
                     </div>
 
                     {/* Back to Home */}
