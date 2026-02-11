@@ -78,6 +78,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const targetSlug = (productName as string).toLowerCase().trim();
     const targetNameNormalized = removeVietnameseTones(searchParam).toLowerCase().trim();
 
+    // Một số URL mới có dạng: {industry}-{product-slug}
+    // → Tạo thêm biến thể slug bỏ phần industry để tăng khả năng match
+    const slugVariants: string[] = [targetSlug];
+    const slugParts = targetSlug.split('-');
+    if (slugParts.length > 2) {
+      const noIndustrySlug = slugParts.slice(1).join('-');
+      slugVariants.push(noIndustrySlug);
+    }
+
     // Strategy 1: Find best match
     const bestMatch = allProducts.find((product: any) => {
       const pName = product.crdfd_tensanphamtext || '';
@@ -89,15 +98,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Check if the product name matches the search param closely
       // 1. Exact match on ID (SKU)
-      if (pId.toLowerCase() === targetSlug) return true;
+      const pIdSlug = pId.toLowerCase();
+      if (slugVariants.includes(pIdSlug)) return true;
 
       // 2. Slug generation check: if we turned this product's name into a slug, would it match?
       // Simple slugify: remove tones, lower, spaces -> dashes
       const simpleSlug = removeVietnameseTones(pName).toLowerCase().trim().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-');
-      if (simpleSlug === targetSlug) return true;
-
       const fullSlug = removeVietnameseTones(pFullName).toLowerCase().trim().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-');
-      if (fullSlug === targetSlug) return true;
+
+      if (slugVariants.includes(simpleSlug)) return true;
+      if (slugVariants.includes(fullSlug)) return true;
 
       return false;
     });
@@ -106,17 +116,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json(bestMatch);
     }
 
-    // Strategy 2: Fuzzy match - try to find product that contains the search terms
-    // This is useful if the slug is slightly different
+    // Strategy 2: Fuzzy match - try to find product mà tên chứa hầu hết các từ trong slug
+    // Nới lỏng điều kiện để chịu được phần prefix ngành nghề trong URL
     const fuzzyMatch = allProducts.find((product: any) => {
       const pName = removeVietnameseTones(product.crdfd_tensanphamtext || '').toLowerCase();
       const pFullName = removeVietnameseTones(product.crdfd_fullname || '').toLowerCase();
 
-      // Check if all parts of the search param (split by -) appear in the product name
-      const searchParts = targetSlug.split('-');
-      const allPartsMatch = searchParts.every(part => pName.includes(part) || pFullName.includes(part));
+      // Bỏ bớt các part quá ngắn / noise, tính tỉ lệ match thay vì bắt buộc 100%
+      const searchParts = targetSlug.split('-').filter(part => part.length > 1);
+      if (searchParts.length === 0) return false;
 
-      return allPartsMatch;
+      const matchedParts = searchParts.filter(part => pName.includes(part) || pFullName.includes(part));
+      const matchRatio = matchedParts.length / searchParts.length;
+
+      // Chỉ cần ~60% từ trong slug xuất hiện trong tên là đủ coi như khớp
+      return matchRatio >= 0.6;
     });
 
     if (fuzzyMatch) {
