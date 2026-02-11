@@ -5,4 +5,4 @@ Dockerfile
 .git
 .gitignore
 # docker build -t wecare-ecommerce .
-# docker run -p 3000:3000 wecare-ecommerce
+# docker run -p 8080:8080 wecare-ecommerce

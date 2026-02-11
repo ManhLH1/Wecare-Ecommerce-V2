@@ -3237,7 +3237,7 @@
                     Notify(
                         "Không tìm ra dòng nào đã duyệt của " & cb_khach_hang_SOBG.Selected.'Customer name' & " và sp " & cb_san_pham_SOBG.Selected.'Tên sản phẩm',
                         NotificationType.Error,
-                        3000
+                        8080
                     )
                 )
             OnUncheck: |-

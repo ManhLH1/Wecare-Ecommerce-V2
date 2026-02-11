@@ -5,7 +5,7 @@ services:
     image: wecare-ecommerce:latest
     hostname: wecare.com.vn
     ports:
-      - "3000:3000"
+      - "8080:8080"
     labels:
       NAME: "wecare-ecommerce"
     networks:

@@ -77,7 +77,7 @@ const isPaymentTermAllowed = (
  * - productGroupCodes: Danh sách mã nhóm sản phẩm (comma-separated, format: NSP-XXXXXX)
  *
  * Example API call:
- * http://localhost:3000/api/admin-app/promotion-orders?customerCode=KH-4265&productCodes=SP-019397&productGroupCodes=NSP-000373
+ * http://localhost:8080/api/admin-app/promotion-orders?customerCode=KH-4265&productCodes=SP-019397&productGroupCodes=NSP-000373
  */
 
 // ==================== INTERFACES ====================

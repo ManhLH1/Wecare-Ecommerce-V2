@@ -7350,7 +7350,7 @@ class MeshShadingPattern extends BaseShadingPattern {
   }
   _createMeshCanvas(combinedScale, backgroundColor, cachedCanvases) {
     const EXPECTED_SCALE = 1.1;
-    const MAX_PATTERN_SIZE = 3000;
+    const MAX_PATTERN_SIZE = 8080;
     const BORDER_SIZE = 2;
     const offsetX = Math.floor(this._bounds[0]);
     const offsetY = Math.floor(this._bounds[1]);
@@ -7445,7 +7445,7 @@ const PaintType = {
   UNCOLORED: 2
 };
 class TilingPattern {
-  static MAX_PATTERN_SIZE = 3000;
+  static MAX_PATTERN_SIZE = 8080;
   constructor(IR, ctx, canvasGraphicsFactory, baseTransform) {
     this.color = IR[1];
     this.operatorList = IR[2];

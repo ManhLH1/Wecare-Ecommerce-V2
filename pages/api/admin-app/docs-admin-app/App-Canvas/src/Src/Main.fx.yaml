@@ -2556,7 +2556,7 @@ Main As screen:
                         Notify(
                             "Đơn hàng đã soạn không thể chốt đơn",
                             NotificationType.Error,
-                            3000
+                            8080
                         ),
                         UpdateContext({ShowPopup_HuyDon: false});
                         //Update record collection 
@@ -3775,7 +3775,7 @@ Main As screen:
                     Notify(
                         "Không tìm ra dòng nào đã duyệt của " & cb_khach_hang.Selected.'Customer name' & " và sp " & cb_san_pham.Selected.'Tên sản phẩm',
                         NotificationType.Error,
-                        3000
+                        8080
                     )
                 )
             OnUncheck: |-

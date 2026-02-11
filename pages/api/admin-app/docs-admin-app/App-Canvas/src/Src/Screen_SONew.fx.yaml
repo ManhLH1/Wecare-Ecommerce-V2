@@ -2826,7 +2826,7 @@ Screen_SONew As screen:
                         =UpdateContext({record_MaDH_selected: cb_donhang_SO_new.Selected});
                         If(
                            false,//(IsBlank(var_KenhTiepNhan) And !var_kenhtiepnhan_isSelected) And var_selected_khachhang.'Ngành nghề text' = "5. Shop bán lẻ",
-                            Notify("Vui lòng chọn kênh tiếp nhận",NotificationType.Warning,3000),
+                            Notify("Vui lòng chọn kênh tiếp nhận",NotificationType.Warning,8080),
                             Set(
                                 khachhang_selected,
                                 cb_khach_hang_SO_new.Selected
@@ -4002,7 +4002,7 @@ Screen_SONew As screen:
                         Notify(
                             "Đơn hàng đã soạn không thể chốt đơn",
                             NotificationType.Error,
-                            3000
+                            8080
                         ),
                         UpdateContext({ShowPopup_HuyDon: false});
                         //Update record collection 

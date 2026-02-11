@@ -4,7 +4,7 @@ REM Usage: devtunnel.bat [port]
 
 setlocal
 if "%~1"=="" (
-  set "PORT=3000"
+  set "PORT=8080"
 ) else (
   set "PORT=%~1"
 )

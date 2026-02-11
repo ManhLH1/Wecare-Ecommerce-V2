@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Search for products - getProductsOnly returns { data: {...grouped...}, pagination: {...} }
     // We search using the slug-like name converted to spaces to find relevant products
     // Use 'fullname' param to trigger AND logic in getProductsOnly, which is better for specific product lookup
-    const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/getProductsOnly`, {
+    const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/getProductsOnly`, {
       params: {
         fullname: searchParam,
         limit: 50
@@ -58,7 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Get product group hierarchy to help with matching
     let productGroupHierarchy = null;
     try {
-      const hierarchyResponse = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/getProductGroupHierarchy`);
+      const hierarchyResponse = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/getProductGroupHierarchy`);
       productGroupHierarchy = hierarchyResponse.data?.hierarchy || [];
     } catch (hierarchyError) {
       console.warn('Could not fetch product group hierarchy:', hierarchyError);
