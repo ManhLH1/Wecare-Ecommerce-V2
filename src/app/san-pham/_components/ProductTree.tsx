@@ -510,7 +510,7 @@ const ProductTree: React.FC<ProductTreeProps> = ({ onCategorySelect, onSearchPro
         {/* Left Panel (desktop) */}
         <div className="w-[300px] border-r border-gray-200 overflow-y-auto">
           <div className="p-2">
-            <h3 className="text-sm font-semibold text-gray-800 px-3 py-2 border-b border-gray-200">Danh mục sản phẩm</h3>
+            <h3 className="text-sm font-semibold text-gray-800 px-3 py-2 border-b border-gray-200">Danh mục sản phẩm 1</h3>
             <ul className="mt-2">
               {level1Groups.map((group) => (
                 <li key={group.crdfd_productgroupid} className="mb-1">

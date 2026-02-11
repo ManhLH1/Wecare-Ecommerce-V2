@@ -8,7 +8,7 @@ import LogoSvg from '@/assets/img/Logo-Wecare.png';
 
 const PaymentMethodsPage = () => {
   return (
-    <div className="bg-gray-50">
+    <div className="bg-white">
       <main>
         {/* Hero Section */}
         <section className="relative bg-gradient-to-r from-blue-600 to-purple-700 text-white overflow-hidden">
@@ -50,18 +50,16 @@ const PaymentMethodsPage = () => {
                 <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto mb-8"></div>
               </div>
 
-              <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-8 shadow-lg">
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-body">
-                      Để mang đến trải nghiệm giao dịch an toàn, minh bạch và thuận tiện, Wecare Group áp dụng phương thức thanh toán chuyển khoản ngân hàng cho toàn bộ đơn hàng.
-                    </p>
-                  </div>
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-body">
+                    Để mang đến trải nghiệm giao dịch an toàn, minh bạch và thuận tiện, Wecare Group áp dụng phương thức thanh toán chuyển khoản ngân hàng cho toàn bộ đơn hàng.
+                  </p>
                 </div>
               </div>
             </div>
@@ -69,11 +67,11 @@ const PaymentMethodsPage = () => {
         </section>
 
         {/* Payment Methods Details */}
-        <section className="py-16 bg-gray-50">
+        <section className="py-16 bg-white">
           <div className="container-responsive">
-            <div className="max-w-6xl mx-auto">
+            <div className="max-w-6xl mx-auto space-y-8">
               {/* 1. Payment Method */}
-              <div className="bg-white rounded-xl p-8 shadow-md mb-8 hover:shadow-lg transition-shadow duration-300">
+              <div>
                 <div className="flex items-start">
                   <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mr-6 flex-shrink-0">
                     <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -103,7 +101,7 @@ const PaymentMethodsPage = () => {
               </div>
 
               {/* 2. Order Processing Procedure */}
-              <div className="bg-white rounded-xl p-8 shadow-md mb-8 hover:shadow-lg transition-shadow duration-300">
+              <div>
                 <div className="flex items-start">
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mr-6 flex-shrink-0">
                     <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -127,7 +125,7 @@ const PaymentMethodsPage = () => {
               </div>
 
               {/* 3. Bank Transfer Information */}
-              <div className="bg-white rounded-xl p-8 shadow-md mb-8 hover:shadow-lg transition-shadow duration-300">
+              <div>
                 <div className="flex items-start">
                   <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mr-6 flex-shrink-0">
                     <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

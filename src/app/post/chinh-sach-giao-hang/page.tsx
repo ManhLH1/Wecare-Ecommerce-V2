@@ -8,7 +8,7 @@ import LogoSvg from '@/assets/img/Logo-Wecare.png';
 
 const ShippingPolicyPage = () => {
   return (
-    <div className="bg-gray-50">
+    <div className="bg-white">
       <main>
         {/* Hero Section */}
         <section className="relative bg-gradient-to-r from-blue-600 to-purple-700 text-white overflow-hidden">
@@ -50,18 +50,16 @@ const ShippingPolicyPage = () => {
                 <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto mb-8"></div>
               </div>
 
-              <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-8 shadow-lg">
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-body">
-                      Wecare Group luôn nỗ lực mang đến cho Quý khách trải nghiệm mua sắm thuận tiện và nhanh chóng. Chính sách giao hàng dưới đây được áp dụng nhằm đảm bảo việc cung cấp sản phẩm cho Quý khách đúng thời gian và chất lượng cam kết.
-                    </p>
-                  </div>
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-body">
+                    Wecare Group luôn nỗ lực mang đến cho Quý khách trải nghiệm mua sắm thuận tiện và nhanh chóng. Chính sách giao hàng dưới đây được áp dụng nhằm đảm bảo việc cung cấp sản phẩm cho Quý khách đúng thời gian và chất lượng cam kết.
+                  </p>
                 </div>
               </div>
             </div>
@@ -69,11 +67,11 @@ const ShippingPolicyPage = () => {
         </section>
 
         {/* Shipping Policy Details */}
-        <section className="py-16 bg-gray-50">
+        <section className="py-16 bg-white">
           <div className="container-responsive">
-            <div className="max-w-6xl mx-auto">
+            <div className="max-w-6xl mx-auto space-y-8">
               {/* 1. Shipping Scope */}
-              <div className="bg-white rounded-xl p-8 shadow-md mb-8 hover:shadow-lg transition-shadow duration-300">
+              <div>
                 <div className="flex items-start">
                   <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mr-6 flex-shrink-0">
                     <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -90,7 +88,7 @@ const ShippingPolicyPage = () => {
               </div>
 
               {/* 2. Delivery Time */}
-              <div className="bg-white rounded-xl p-8 shadow-md mb-8 hover:shadow-lg transition-shadow duration-300">
+              <div>
                 <div className="flex items-start">
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mr-6 flex-shrink-0">
                     <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -129,7 +127,7 @@ const ShippingPolicyPage = () => {
               </div>
 
               {/* 3. Shipping Cost */}
-              <div className="bg-white rounded-xl p-8 shadow-md mb-8 hover:shadow-lg transition-shadow duration-300">
+              <div>
                 <div className="flex items-start">
                   <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mr-6 flex-shrink-0">
                     <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,7 +154,7 @@ const ShippingPolicyPage = () => {
               </div>
 
               {/* 4. Inspection & Handover */}
-              <div className="bg-white rounded-xl p-8 shadow-md mb-8 hover:shadow-lg transition-shadow duration-300">
+              <div>
                 <div className="flex items-start">
                   <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mr-6 flex-shrink-0">
                     <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -196,7 +194,7 @@ const ShippingPolicyPage = () => {
               </div>
 
               {/* 5. Transportation Risk */}
-              <div className="bg-white rounded-xl p-8 shadow-md mb-8 hover:shadow-lg transition-shadow duration-300">
+              <div>
                 <div className="flex items-start">
                   <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mr-6 flex-shrink-0">
                     <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -218,7 +216,7 @@ const ShippingPolicyPage = () => {
               </div>
 
               {/* 6. Policy Adjustments */}
-              <div className="bg-white rounded-xl p-8 shadow-md mb-8 hover:shadow-lg transition-shadow duration-300">
+              <div>
                 <div className="flex items-start">
                   <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mr-6 flex-shrink-0">
                     <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

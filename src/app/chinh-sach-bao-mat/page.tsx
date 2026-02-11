@@ -8,7 +8,7 @@ import LogoSvg from '@/assets/img/Logo-Wecare.png';
 
 const PrivacyPolicyPage = () => {
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="bg-white min-h-screen">
       <main>
         {/* Hero Section */}
         <section className="relative bg-gradient-to-r from-blue-600 to-purple-700 text-white overflow-hidden">
@@ -76,7 +76,7 @@ const PrivacyPolicyPage = () => {
 
               <div className="space-y-8">
                 {/* 1. Loại thông tin được thu thập */}
-                <div id="thu-thap" className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-8 shadow-sm border border-blue-100 scroll-mt-24">
+                <div id="thu-thap" className="scroll-mt-24">
                   <div className="flex items-start mb-6">
                     <div className="flex-shrink-0 w-12 h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center text-xl font-bold mr-4 shadow-lg">
                       1
@@ -141,7 +141,7 @@ const PrivacyPolicyPage = () => {
                 </div>
 
                 {/* 2. Mục đích và phạm vi sử dụng dữ liệu */}
-                <div id="muc-dich" className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-8 shadow-sm border border-green-100 scroll-mt-24">
+                <div id="muc-dich" className="scroll-mt-24">
                   <div className="flex items-start mb-6">
                     <div className="flex-shrink-0 w-12 h-12 bg-green-600 text-white rounded-xl flex items-center justify-center text-xl font-bold mr-4 shadow-lg">
                       2
@@ -242,7 +242,7 @@ const PrivacyPolicyPage = () => {
                 </div>
 
                 {/* 3. Bảo mật thông tin cá nhân */}
-                <div id="bao-mat" className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-2xl p-8 shadow-sm border border-purple-100 scroll-mt-24">
+                <div id="bao-mat" className="scroll-mt-24">
                   <div className="flex items-start mb-6">
                     <div className="flex-shrink-0 w-12 h-12 bg-purple-600 text-white rounded-xl flex items-center justify-center text-xl font-bold mr-4 shadow-lg">
                       3
@@ -322,7 +322,7 @@ const PrivacyPolicyPage = () => {
                 </div>
 
                 {/* 4. Quyền chỉnh sửa và xóa dữ liệu */}
-                <div id="quyen-chinh-sua" className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-8 shadow-sm border border-orange-100 scroll-mt-24">
+                <div id="quyen-chinh-sua" className="scroll-mt-24">
                   <div className="flex items-start mb-6">
                     <div className="flex-shrink-0 w-12 h-12 bg-orange-600 text-white rounded-xl flex items-center justify-center text-xl font-bold mr-4 shadow-lg">
                       4
@@ -367,7 +367,7 @@ const PrivacyPolicyPage = () => {
                 </div>
 
                 {/* 5. Cập nhật chính sách */}
-                <div id="cap-nhat" className="bg-gradient-to-br from-cyan-50 to-sky-50 rounded-2xl p-8 shadow-sm border border-cyan-100 scroll-mt-24">
+                <div id="cap-nhat" className="scroll-mt-24">
                   <div className="flex items-start mb-6">
                     <div className="flex-shrink-0 w-12 h-12 bg-cyan-600 text-white rounded-xl flex items-center justify-center text-xl font-bold mr-4 shadow-lg">
                       5
