@@ -307,7 +307,7 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
   }, [latestNews]);
 
   return (
-    <div className="flex-1">
+    <div className="flex-1 mb-0 lg:mb-0">
       {/* Quick Menu - Mobile: compact icon cards with horizontal scroller */}
       <div className="mb-0 lg:hidden -mt-2">
         <div className="w-full overflow-x-auto scrollbar-hide -mx-2 px-2 lg:mx-0 lg:px-0">
@@ -337,9 +337,9 @@ const JDStyleMainContent: React.FC<JDStyleMainContentProps> = ({
       </div>
 
       {/* Hero Section + Tin tức bên phải (Desktop: ngang, Mobile: dọc) */}
-      <div id="hero-banner" ref={heroContainerRef} className="flex flex-col lg:flex-row gap-0 lg:gap-2 mb-6 lg:mb-4 lg:pl-0 lg:items-stretch">
+      <div id="hero-banner" ref={heroContainerRef} className="flex flex-col lg:flex-row gap-0 lg:gap-2 mb-0 lg:mb-4 lg:pl-0 lg:items-stretch">
         {/* Hero Banner */}
-        <div className="w-full lg:w-[70%] border border-gray-200 rounded-xl shadow-sm overflow-hidden  lg:pb-6 mb-2">
+        <div className="w-full lg:w-[70%] border border-gray-200 rounded-t-xl shadow-sm overflow-hidden  lg:pb">
           {/* Mobile: aspect ratio 16:9, Desktop: fixed height */}
           <div className="hero-banner-container relative w-full aspect-[16/9] lg:aspect-auto">
             {bestPromotions.length > 0 ? (

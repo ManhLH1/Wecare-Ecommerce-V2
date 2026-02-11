@@ -1016,7 +1016,7 @@ const HomeContent = () => {
   const showHotProducts = false;
 
   return (
-    <div className="bg-gray-50 min-h-screen flex flex-col overflow-x-hidden">
+    <div className="min-h-screen flex flex-col overflow-x-hidden" style={{ backgroundColor: '#f3f4f6' }}>
       <Head>
         <script
           type="application/ld+json"
@@ -1047,12 +1047,13 @@ const HomeContent = () => {
         />
 
         {/* Main Layout */}
-        <div className="w-full max-w-[2560px] mx-auto pt-24 md:pt-24 px-6">
+        <div className="w-full max-w-[2560px] mx-auto pt-24 md:pt-24 px-6 pb-0 lg:pb-6">
           <div className="flex flex-col lg:flex-row">
             {/* Spacer for CategoryMenu dropdown on Desktop */}
             <div className="hidden lg:block w-[280px] flex-shrink-0" />
             {/* Main Content */}
-            <div className="flex-1 min-w-0">
+            {/* Mobile: fixed 548px với overflow, Desktop: auto height - tách biệt hoàn toàn */}
+            <div className="flex-1 min-w-0 h-[548px] lg:h-auto w-full lg:w-[769px] overflow-hidden lg:overflow-visible">
               <JDStyleMainContent
                 categoryGroups={categoryGroups}
                 onCategorySelect={handleCategorySelect}

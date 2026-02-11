@@ -860,7 +860,7 @@ const JDStyleHeader: React.FC<JDStyleHeaderProps> = ({
                 {showCategoryMenu && isDesktop && (
                   <div
                     className="category-menu-dropdown absolute top-full left-0 mt-0 z-50 bg-white rounded-b-lg shadow-2xl border border-gray-200 overflow-hidden"
-                    style={{ height: '500px' }}
+                    style={{ height: '516px' }}
                     onMouseEnter={() => !isHomePage && isDesktop && setShowCategoryMenu(true)}
                     onMouseLeave={() => !isHomePage && isDesktop && setShowCategoryMenu(false)}
                   >

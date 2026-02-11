@@ -64,8 +64,8 @@ const Footer: React.FC = () => {
             <div className="is-divider small" />
             <p className="footer-description">Cung cấp vật tư kim khí, thiết bị điện - nước, hóa chất công nghiệp,... phục vụ hiệu quả cho cửa hàng kinh doanh và các nhà máy sản xuất.</p>
             <ul className="contact-info">
-              {/* <li><strong>Trụ sở 1:</strong> Lô B39, Khu Công nghiệp Phú Tài, Phường Quy Nhơn Bắc, Tỉnh Gia Lai.</li>
-              <li><strong>Trụ sở 2:</strong> 14-16-18-20, Đường 36, P. Bình Phú, TP.Hồ Chí Minh</li> */}
+              <li><strong>Trụ sở 1:</strong> Lô B39, Khu Công nghiệp Phú Tài, Phường Quy Nhơn Bắc, Tỉnh Gia Lai.</li>
+              <li><strong>Trụ sở 2:</strong> 14-16-18-20, Đường 36, P. Bình Phú, TP.Hồ Chí Minh</li>
               <li><strong>Hotline:</strong> <span className="phone">037 833 9009 - 0934 794 477 - 0823 871 339</span></li>
               <li><strong>Email:</strong> <a href="mailto:support@wecare.com.vn">support@wecare.com.vn</a></li>
             </ul>
