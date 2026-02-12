@@ -5,6 +5,40 @@ import { buildOptimizedInventoryQuery } from "./_utils/dynamicsQueryOptimizer";
 
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
 const KHO_BD_TABLE = "crdfd_kho_binh_dinhs";
+const PRODUCT_TABLE = "crdfd_productses";
+
+const escapeODataValue = (value: string) => value.replace(/'/g, "''");
+
+/**
+ * Resolve productGroupCode từ productCode bằng cách query CRM
+ */
+const resolveProductGroupCodeFromProductCode = async (
+  productCode: string,
+  headers: Record<string, string>
+): Promise<string | null> => {
+  if (!productCode) return null;
+
+  try {
+    const safeCode = escapeODataValue(productCode.trim());
+    const filter = `statecode eq 0 and crdfd_masanpham eq '${safeCode}'`;
+    const query = `$select=crdfd_masanpham,crdfd_manhomsp&$filter=${encodeURIComponent(filter)}&$top=1`;
+    const endpoint = `${BASE_URL}${PRODUCT_TABLE}?${query}`;
+
+    const response = await axiosClient.get(endpoint, { headers });
+    const product = response.data.value?.[0];
+    
+    if (product?.crdfd_manhomsp && typeof product.crdfd_manhomsp === "string") {
+      const code = product.crdfd_manhomsp.trim();
+      return code || null;
+    }
+
+    return null;
+  } catch (error) {
+    // Nếu resolve fail, return null (không crash API)
+    console.warn("[Inventory API] Failed to resolve productGroupCode:", error);
+    return null;
+  }
+};
 
 export default async function handler(
   req: NextApiRequest,
@@ -114,6 +148,9 @@ export default async function handler(
     
     const availableToSell = currentInventory - reservedQuantity;
     
+    // Resolve productGroupCode từ productCode
+    const productGroupCode = await resolveProductGroupCodeFromProductCode(productCode.trim(), headers);
+    
     const result = {
       productCode: first?.crdfd_masp || productCode,
       warehouseName: first?.crdfd_vitrikhofx || targetWarehouse || null,
@@ -121,6 +158,7 @@ export default async function handler(
       actualStock: null,
       reservedQuantity: reservedQuantity, // Số lượng đang giữ đơn
       availableToSell: availableToSell, // AvailableToSell = CurrentInventory - ReservedQuantity
+      productGroupCode: productGroupCode || undefined, // Thêm productGroupCode vào response
     };
     
     return res.status(200).json(result);

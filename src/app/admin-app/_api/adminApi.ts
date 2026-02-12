@@ -296,7 +296,8 @@ export const fetchProductPromotions = async (
   productCode?: string,
   customerCode?: string,
   region?: string,
-  paymentTerms?: string
+  paymentTerms?: string,
+  productGroupCodes?: string | string[]
 ): Promise<Promotion[]> => {
   if (!productCode) return [];
   try {
@@ -309,6 +310,14 @@ export const fetchProductPromotions = async (
     }
     if (paymentTerms) {
       params.paymentTerms = paymentTerms;
+    }
+    if (productGroupCodes) {
+      const codes = Array.isArray(productGroupCodes) 
+        ? productGroupCodes.filter(Boolean).join(',')
+        : productGroupCodes;
+      if (codes) {
+        params.productGroupCodes = codes;
+      }
     }
     const response = await axios.get(`${BASE_URL}/promotions`, { params });
     return response.data;
@@ -327,7 +336,8 @@ export const fetchProductPromotionsBatch = async (
   productCodes: string[],
   customerCode?: string,
   region?: string,
-  paymentTerms?: string
+  paymentTerms?: string,
+  productGroupCodes?: string | string[]
 ): Promise<Promotion[]> => {
   const codes = (productCodes || []).map((c) => String(c || '').trim()).filter(Boolean);
   if (codes.length === 0) return [];
@@ -337,6 +347,14 @@ export const fetchProductPromotionsBatch = async (
     if (customerCode) params.customerCode = customerCode;
     if (region) params.region = region;
     if (paymentTerms) params.paymentTerms = paymentTerms;
+    if (productGroupCodes) {
+      const groupCodes = Array.isArray(productGroupCodes) 
+        ? productGroupCodes.filter(Boolean).join(',')
+        : productGroupCodes;
+      if (groupCodes) {
+        params.productGroupCodes = groupCodes;
+      }
+    }
 
     const response = await axios.get(`${BASE_URL}/promotions`, { params });
     return response.data;

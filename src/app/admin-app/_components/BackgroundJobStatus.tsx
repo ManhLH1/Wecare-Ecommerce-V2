@@ -55,7 +55,7 @@ export default function BackgroundJobStatus({
         if (status.status === 'completed') {
           onJobComplete?.(status.result);
           if (autoHide) {
-            setTimeout(() => setIsVisible(false), 8080); // Hide after 3 seconds
+            setTimeout(() => setIsVisible(false), 3000); // Hide after 3 seconds
           }
         } else if (status.status === 'failed') {
           onJobError?.(status.error || 'Job failed');

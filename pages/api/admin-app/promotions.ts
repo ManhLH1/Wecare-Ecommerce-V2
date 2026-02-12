@@ -108,6 +108,56 @@ const resolveCustomerCodeFromPhone = async (phone: string, headers: Record<strin
   return phone;
 };
 
+/**
+ * Resolve productGroupCodes từ productCodes bằng cách query CRM
+ * Nếu không có productGroupCodes được truyền vào, tự động resolve từ productCodes
+ */
+const resolveProductGroupCodesFromProductCodes = async (
+  productCodes: string[],
+  headers: Record<string, string>
+): Promise<string[]> => {
+  if (productCodes.length === 0) return [];
+
+  try {
+    const PRODUCT_TABLE = "crdfd_productses";
+    const productFilters = productCodes
+      .map((code) => `crdfd_masanpham eq '${escapeODataValue(code.trim())}'`)
+      .join(" or ");
+    const filter = `statecode eq 0 and (${productFilters})`;
+    const query = `$select=crdfd_masanpham,crdfd_manhomsp&$filter=${encodeURIComponent(filter)}`;
+    const endpoint = `${BASE_URL}${PRODUCT_TABLE}?${query}`;
+
+    console.log(`[Promotions API] Resolving productGroupCodes for productCodes: ${productCodes.join(", ")}`);
+    const response = await axios.get(endpoint, { headers });
+    const products = response.data.value || [];
+
+    console.log(`[Promotions API] Found ${products.length} products from CRM`);
+
+    // Collect unique productGroupCodes
+    const groupCodesSet = new Set<string>();
+    products.forEach((product: any) => {
+      if (product.crdfd_manhomsp && typeof product.crdfd_manhomsp === "string") {
+        const code = product.crdfd_manhomsp.trim();
+        if (code) {
+          groupCodesSet.add(code);
+          console.log(`[Promotions API] Resolved productGroupCode: ${code} for productCode: ${product.crdfd_masanpham}`);
+        }
+      }
+    });
+
+    const result = Array.from(groupCodesSet);
+    console.log(`[Promotions API] Resolved productGroupCodes: ${result.join(", ")}`);
+    return result;
+  } catch (error: any) {
+    // Nếu resolve fail, return empty array (không crash API)
+    console.warn("[Promotions API] Failed to resolve productGroupCodes:", error?.message || error);
+    if (error?.response) {
+      console.warn("[Promotions API] Error response:", error.response.status, error.response.data);
+    }
+    return [];
+  }
+};
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -117,7 +167,7 @@ export default async function handler(
   }
 
   try {
-    const { productCode, customerCode, customerCodes, region, paymentTerms } = req.query;
+    const { productCode, customerCode, customerCodes, region, paymentTerms, productGroupCodes } = req.query;
 
     // productCode can be comma-separated; require at least one
     if (!productCode || typeof productCode !== "string" || !productCode.trim()) {
@@ -131,6 +181,7 @@ export default async function handler(
       customerCodes,
       region,
       paymentTerms,
+      productGroupCodes,
     });
     const cached = getCachedResponse(cacheKey, true); // short cache
     if (cached !== undefined) {
@@ -143,6 +194,7 @@ export default async function handler(
       customerCodes,
       region,
       paymentTerms,
+      productGroupCodes,
     });
 
     const promotions = await deduplicateRequest(dedupKey, async () => {
@@ -177,11 +229,57 @@ export default async function handler(
         .split(",")
         .map((c) => c.trim())
         .filter(Boolean);
+
+      // Support multiple product group codes (comma separated)
+      let productGroupCodesArray: string[] = [];
+      if (productGroupCodes && typeof productGroupCodes === "string" && productGroupCodes.trim()) {
+        productGroupCodesArray.push(
+          ...productGroupCodes
+            .split(",")
+            .map((c) => c.trim())
+            .filter(Boolean)
+        );
+      }
+
+      // Nếu không có productGroupCodes được truyền vào, tự động resolve từ productCodes
+      if (productGroupCodesArray.length === 0 && productCodes.length > 0) {
+        const resolvedGroupCodes = await resolveProductGroupCodesFromProductCodes(productCodes, headers);
+        productGroupCodesArray = resolvedGroupCodes;
+        // Log để debug
+        if (resolvedGroupCodes.length > 0) {
+          console.log(`[Promotions API] Auto-resolved productGroupCodes from productCodes: ${resolvedGroupCodes.join(", ")}`);
+        } else {
+          console.warn(`[Promotions API] Could not resolve productGroupCodes from productCodes: ${productCodes.join(", ")}`);
+        }
+      }
+
+      // Filter theo productGroupCode (cr1bb_manhomsp_multiple) HOẶC productCode (crdfd_masanpham_multiple)
+      // Dùng OR logic: promotion phải match với productGroupCode HOẶC productCode
+      const productOrGroupFilters: string[] = [];
+      
+      if (productGroupCodesArray.length > 0) {
+        const productGroupFilter = productGroupCodesArray
+          .map((code) => `contains(cr1bb_manhomsp_multiple,'${escapeODataValue(code)}')`)
+          .join(" or ");
+        productOrGroupFilters.push(`(${productGroupFilter})`);
+        console.log(`[Promotions API] Adding productGroupCodes filter: ${productGroupCodesArray.join(", ")}`);
+      }
+      
       if (productCodes.length > 0) {
         const productFilter = productCodes
           .map((code) => `contains(crdfd_masanpham_multiple,'${escapeODataValue(code)}')`)
           .join(" or ");
-        filters.push(`(${productFilter})`);
+        productOrGroupFilters.push(`(${productFilter})`);
+        console.log(`[Promotions API] Adding productCodes filter: ${productCodes.join(", ")}`);
+      }
+
+      // Nếu có ít nhất một điều kiện product/group, thêm vào filters với OR logic
+      if (productOrGroupFilters.length > 0) {
+        const combinedFilter = productOrGroupFilters.join(" or ");
+        filters.push(`(${combinedFilter})`);
+        console.log(`[Promotions API] Combined product/group filter (OR logic): ${combinedFilter}`);
+      } else {
+        console.warn(`[Promotions API] No productCodes or productGroupCodes available, promotions will not be filtered by product/product group`);
       }
 
     const customerCodesArray: string[] = [];
@@ -333,6 +431,71 @@ export default async function handler(
         return resolvedCustomerCodes.some((searchCode: string) => {
           return codesList.includes(searchCode);
         });
+      });
+    }
+
+    // Client-side filtering: Ensure exact product group code match (not substring)
+    // OData contains() có thể match substring, nên cần filter exact match ở client-side
+    // Dùng OR logic: promotion phải match với productGroupCode HOẶC productCode
+    if (productGroupCodesArray.length > 0 || productCodes.length > 0) {
+      promotions = promotions.filter((promo: any) => {
+        // Check productGroupCode match
+        let matchesProductGroup = false;
+        if (productGroupCodesArray.length > 0) {
+          const promoGroupCodesStr = promo.productGroupCodes || "";
+          
+          // Nếu promotion không có productGroupCodes → áp dụng cho tất cả nhóm sản phẩm
+          if (!promoGroupCodesStr || promoGroupCodesStr.trim() === "") {
+            matchesProductGroup = true;
+          } else {
+            // Parse và check exact match (case-insensitive để tránh miss match)
+            const promoGroupCodesList = promoGroupCodesStr
+              .split(',')
+              .map((c: string) => c.trim().toUpperCase())
+              .filter(Boolean);
+            
+            matchesProductGroup = productGroupCodesArray.some((code: string) => 
+              promoGroupCodesList.includes(code.trim().toUpperCase())
+            );
+          }
+        }
+
+        // Check productCode match
+        let matchesProductCode = false;
+        if (productCodes.length > 0) {
+          const promoProductCodesStr = promo.productCodes || "";
+          
+          // Nếu promotion không có productCodes → áp dụng cho tất cả sản phẩm
+          if (!promoProductCodesStr || promoProductCodesStr.trim() === "") {
+            matchesProductCode = true;
+          } else {
+            // Parse và check exact match (case-insensitive để tránh miss match)
+            const promoProductCodesList = promoProductCodesStr
+              .split(',')
+              .map((c: string) => c.trim().toUpperCase())
+              .filter(Boolean);
+            
+            matchesProductCode = productCodes.some((code: string) => 
+              promoProductCodesList.includes(code.trim().toUpperCase())
+            );
+          }
+        }
+
+        // OR logic: match productGroupCode HOẶC productCode
+        // Nếu không có điều kiện nào được check → return true (không filter)
+        if (productGroupCodesArray.length === 0 && productCodes.length === 0) {
+          return true;
+        }
+        if (productGroupCodesArray.length > 0 && productCodes.length > 0) {
+          return matchesProductGroup || matchesProductCode;
+        }
+        if (productGroupCodesArray.length > 0) {
+          return matchesProductGroup;
+        }
+        if (productCodes.length > 0) {
+          return matchesProductCode;
+        }
+        return true;
       });
     }
 

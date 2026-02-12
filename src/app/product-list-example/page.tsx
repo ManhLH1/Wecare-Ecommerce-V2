@@ -30,7 +30,7 @@ export default function ProductListExamplePage() {
         console.error("Error fetching products:", error);
         toast.error("Lỗi khi tải dữ liệu sản phẩm", {
           position: "top-right",
-          autoClose: 8080
+          autoClose: 3000
         });
       } finally {
         setLoading(false);

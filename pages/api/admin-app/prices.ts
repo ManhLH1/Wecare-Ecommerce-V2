@@ -7,6 +7,9 @@ const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
 const QUOTE_DETAIL_TABLE = "crdfd_baogiachitiets";
 const GROUP_KH_TABLE = "cr1bb_groupkhs"; // Group - KH
 const CUSTOMER_TABLE = "crdfd_customers";
+const PRODUCT_TABLE = "crdfd_productses";
+
+const escapeODataValue = (value: string) => value.replace(/'/g, "''");
 
 // Ngành nghề đặc biệt không áp dụng discount rate
 const NGANHNGHEMOI_SKIP_RATE = 283640000;
@@ -127,6 +130,37 @@ async function getCustomerGroups(
     }
   });
 }
+
+/**
+ * Resolve productGroupCode từ productCode bằng cách query CRM
+ */
+const resolveProductGroupCodeFromProductCode = async (
+  productCode: string,
+  headers: Record<string, string>
+): Promise<string | null> => {
+  if (!productCode) return null;
+
+  try {
+    const safeCode = escapeODataValue(productCode.trim());
+    const filter = `statecode eq 0 and crdfd_masanpham eq '${safeCode}'`;
+    const query = `$select=crdfd_masanpham,crdfd_manhomsp&$filter=${encodeURIComponent(filter)}&$top=1`;
+    const endpoint = `${BASE_URL}${PRODUCT_TABLE}?${query}`;
+
+    const response = await axiosClient.get(endpoint, { headers });
+    const product = response.data.value?.[0];
+    
+    if (product?.crdfd_manhomsp && typeof product.crdfd_manhomsp === "string") {
+      const code = product.crdfd_manhomsp.trim();
+      return code || null;
+    }
+
+    return null;
+  } catch (error) {
+    // Nếu resolve fail, return null (không crash API)
+    console.warn("[Prices API] Failed to resolve productGroupCode:", error);
+    return null;
+  }
+};
 
 export default async function handler(
   req: NextApiRequest,
@@ -495,6 +529,9 @@ export default async function handler(
     const firstGiatrichuyenoi = first?.crdfd_giatrichuyenoi ?? 0;
     const firstSlTheoKho = parsedQuantity * firstGiatrichuyenoi;
 
+    // Resolve productGroupCode từ productCode
+    const productGroupCode = await resolveProductGroupCodeFromProductCode(productCode.trim(), headers);
+
     const result = {
       // Object đầu tiên theo ưu tiên (backward compatibility)
       crdfd_baogiachitietid: first?.crdfd_baogiachitietid || undefined, // Thêm ID báo giá chi tiết
@@ -507,6 +544,7 @@ export default async function handler(
       crdfd_giatrichuyenoi: firstGiatrichuyenoi,
       slTheoKho: firstSlTheoKho,
       discountRate: first?.discountRate ?? null,
+      productGroupCode: productGroupCode || undefined, // Thêm productGroupCode vào response
       // Mảng tất cả các giá (theo các đơn vị khác nhau) - effective (region-prioritized)
       prices: effectivePrices,
     };

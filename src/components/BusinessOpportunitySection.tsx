@@ -484,7 +484,7 @@ const BusinessOpportunitySection: React.FC<BusinessOpportunitySectionProps> = ({
 
     const interval = setInterval(() => {
       nextSlide();
-    }, 8080); // Change slide every 3 seconds
+    }, 3000); // Change slide every 3 seconds
 
     return () => clearInterval(interval);
   }, [isAutoPlay, topRankingProducts.length]);

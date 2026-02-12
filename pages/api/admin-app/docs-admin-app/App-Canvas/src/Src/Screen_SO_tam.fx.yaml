@@ -755,14 +755,14 @@ Screen_SO_tam As screen:
                                 Notify(
                                     "Không tạo SO được vì " & trangThaiKH & "!!",
                                     NotificationType.Error,
-                                    8080
+                                    3000
                                 ),
                                 If(
                                     !IsBlank(ngungGiaoDich),
                                     Notify(
                                         "Không tạo SO được vì khách hàng " & ngungGiaoDich & "!!",
                                         NotificationType.Error,
-                                        8080
+                                        3000
                                     ),
                                     If(
                                         CountRows(soItems) > 0,
@@ -1054,12 +1054,12 @@ Screen_SO_tam As screen:
                             Notify(
                                 "Từ chối thành công",
                                 NotificationType.Success,
-                                8080
+                                3000
                             ),
                             Notify(
                                 "Vui lòng chọn sản phẩm để từ chối",
                                 NotificationType.Warning,
-                                8080
+                                3000
                             )
                         )
                     PressedBorderColor: =App.Theme.Colors.Darker40

@@ -4,6 +4,40 @@ import { getAccessToken } from "../getAccessToken";
 
 const BASE_URL = "https://wecare-ii.crm5.dynamics.com/api/data/v9.2/";
 const ACCOUNTING_STOCK_TABLE = "cr44a_tonkhoketoans";
+const PRODUCT_TABLE = "crdfd_productses";
+
+const escapeODataValue = (value: string) => value.replace(/'/g, "''");
+
+/**
+ * Resolve productGroupCode từ productCode bằng cách query CRM
+ */
+const resolveProductGroupCodeFromProductCode = async (
+  productCode: string,
+  headers: Record<string, string>
+): Promise<string | null> => {
+  if (!productCode) return null;
+
+  try {
+    const safeCode = escapeODataValue(productCode.trim());
+    const filter = `statecode eq 0 and crdfd_masanpham eq '${safeCode}'`;
+    const query = `$select=crdfd_masanpham,crdfd_manhomsp&$filter=${encodeURIComponent(filter)}&$top=1`;
+    const endpoint = `${BASE_URL}${PRODUCT_TABLE}?${query}`;
+
+    const response = await axios.get(endpoint, { headers });
+    const product = response.data.value?.[0];
+    
+    if (product?.crdfd_manhomsp && typeof product.crdfd_manhomsp === "string") {
+      const code = product.crdfd_manhomsp.trim();
+      return code || null;
+    }
+
+    return null;
+  } catch (error) {
+    // Nếu resolve fail, return null (không crash API)
+    console.warn("[Accounting Stock API] Failed to resolve productGroupCode:", error);
+    return null;
+  }
+};
 
 export default async function handler(
   req: NextApiRequest,
@@ -58,10 +92,14 @@ export default async function handler(
     const response = await axios.get(endpoint, { headers });
     const first = (response.data.value || [])[0];
 
+    // Resolve productGroupCode từ productCode
+    const productGroupCode = await resolveProductGroupCodeFromProductCode(productCode.trim(), headers);
+
     const result = {
       productCode: first?.cr1bb_masanpham || productCode,
       tenthuongmaitext: first?.cr1bb_tenthuongmaitext || thuongMaiText,
       accountingStock: first?.cr44a_tonlythuyet ?? null,
+      productGroupCode: productGroupCode || undefined, // Thêm productGroupCode vào response
     };
 
     return res.status(200).json(result);

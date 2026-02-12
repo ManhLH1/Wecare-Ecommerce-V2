@@ -1,5 +1,5 @@
 param(
-  [int]$Port = 8080
+  [int]$Port = 3000
 )
 
 Write-Host "=== Dev Tunnel for Development Mode ==="

@@ -464,14 +464,14 @@ Screens:
                                         Notify(
                                             "Không tạo SO được vì " & trangThaiKH & "!!",
                                             NotificationType.Error,
-                                            8080
+                                            3000
                                         ),
                                         If(
                                             !IsBlank(ngungGiaoDich),
                                             Notify(
                                                 "Không tạo SO được vì khách hàng " & ngungGiaoDich & "!!",
                                                 NotificationType.Error,
-                                                8080
+                                                3000
                                             ),
                                             If(
                                                 CountRows(soItems) > 0,
@@ -750,12 +750,12 @@ Screens:
                                     Notify(
                                         "Từ chối thành công",
                                         NotificationType.Success,
-                                        8080
+                                        3000
                                     ),
                                     Notify(
                                         "Vui lòng chọn sản phẩm để từ chối",
                                         NotificationType.Warning,
-                                        8080
+                                        3000
                                     )
                                 )
                               Size: =14

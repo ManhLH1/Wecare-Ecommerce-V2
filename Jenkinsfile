@@ -67,7 +67,7 @@ pipeline {
             steps {
                 script {
                     sleep 30
-                    sh "curl -f http://${VPS_HOST}:8080 || echo 'Health check warning'"
+                    sh "curl -f http://${VPS_HOST}:3000 || echo 'Health check warning'"
                 }
             }
         }

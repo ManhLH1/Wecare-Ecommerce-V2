@@ -214,11 +214,27 @@ async function recalculatePromotionEligibility(
       )
     );
 
+    // Collect productGroupCodes từ allItems để filter promotions chính xác hơn
+    const productGroupCodes = Array.from(
+      new Set(
+        allItems
+          .map((i) => i.productGroupCode)
+          .filter((c): c is string => typeof c === 'string' && c.trim().length > 0)
+      )
+    );
+
+    console.debug('[ProductTable][RECALC] Fetching promotions (batch):', {
+      uniqueProducts: uniqueCodes.length,
+      productGroupCodes: productGroupCodes.length,
+      paymentTerms: paymentTermsValue,
+    });
+
     const promotionsAll = await fetchProductPromotionsBatch(
       uniqueCodes,
       customerCodeValue || undefined,
       undefined, // region
-      paymentTermsValue
+      paymentTermsValue,
+      productGroupCodes.length > 0 ? productGroupCodes : undefined
     );
 
     const promotionsByCode = new Map<string, Promotion[]>();

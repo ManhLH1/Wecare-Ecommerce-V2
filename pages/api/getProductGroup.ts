@@ -104,7 +104,7 @@ async function fetchAllProducts(): Promise<Product[]> {
   const baseURL =
     // process.env.API_BASE_URL ;
     // ||
-    "http://localhost:8080";
+    "http://localhost:3000";
   // "http://48.217.233.52/";
   const url = `${baseURL}/api/getProductData`;
 

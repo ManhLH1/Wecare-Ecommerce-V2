@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import axios from 'axios';
 
 function getSelfBaseUrl(req: NextApiRequest): string {
-  // Tại sao: API route chạy server-side, nên nên gọi lại chính app qua host hiện tại thay vì hardcode port (tránh đụng 8080/Apache).
+  // Tại sao: API route chạy server-side, nên nên gọi lại chính app qua host hiện tại thay vì hardcode port (tránh đụng 3000/Apache).
   const proto = (req.headers['x-forwarded-proto'] as string | undefined) || 'http';
   const host = (req.headers['x-forwarded-host'] as string | undefined) || req.headers.host;
   if (host) return `${proto}://${host}`;

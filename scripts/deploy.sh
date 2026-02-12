@@ -4,7 +4,7 @@ set -e
 # Configuration từ environment variables
 SERVER_HOST="${DEPLOY_SERVER_HOST:-48.217.233.52}"
 SERVER_USER="${DEPLOY_SERVER_USER:-wecare}"
-SERVER_PORT="${DEPLOY_SERVER_PORT:-8080}"
+SERVER_PORT="${DEPLOY_SERVER_PORT:-3000}"
 DEPLOY_PATH="${DEPLOY_PATH:-/home/wecare/Wecare-Ecommerce-V2}"
 DOCKER_IMAGE_NAME="wecare-ecommerce"
 DOCKER_IMAGE_TAG="${CIRCLE_SHA1:-latest}"
@@ -52,7 +52,7 @@ echo "▶️  Starting new container..."
 docker run -d \\
   --name ${DOCKER_IMAGE_NAME} \\
   --restart unless-stopped \\
-  -p 8080:8080 \\
+  -p 3000:3000 \\
   -e NODE_ENV=production \\
   ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
 

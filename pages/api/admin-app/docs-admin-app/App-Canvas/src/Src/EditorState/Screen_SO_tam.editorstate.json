@@ -1143,7 +1143,7 @@
         {
           "AFDDataSourceName": "",
           "AutoRuleBindingEnabled": false,
-          "AutoRuleBindingString": "If(\n    CountRows(Filter(List_SO_tam, SelectedSP = true)) > 0,\n    \n    With(\n        {selectedItems: Filter(List_SO_tam, SelectedSP = true)},\n        \n        // Patch trước\n        ForAll(\n            selectedItems As recorDH,\n            Patch(\n                'Đặt hàng SOS',\n                LookUp('Đặt hàng SOS', ID = recorDH.ID),\n                {'Trạng thái đơn hàng': 'Trạng thái đơn hàng (Đặt hàng SOS)'.'Hủy đơn hàng'}\n            )\n        );\n\n        // Rồi Remove sau\n        Remove(List_SO_tam, selectedItems)\n    );\n\n    Notify(\"Từ chối thành công\", NotificationType.Success, 8080),\n\n    Notify(\"Vui lòng chọn sản phẩm để từ chối\", NotificationType.Warning, 8080)\n)\n",
+          "AutoRuleBindingString": "If(\n    CountRows(Filter(List_SO_tam, SelectedSP = true)) > 0,\n    \n    With(\n        {selectedItems: Filter(List_SO_tam, SelectedSP = true)},\n        \n        // Patch trước\n        ForAll(\n            selectedItems As recorDH,\n            Patch(\n                'Đặt hàng SOS',\n                LookUp('Đặt hàng SOS', ID = recorDH.ID),\n                {'Trạng thái đơn hàng': 'Trạng thái đơn hàng (Đặt hàng SOS)'.'Hủy đơn hàng'}\n            )\n        );\n\n        // Rồi Remove sau\n        Remove(List_SO_tam, selectedItems)\n    );\n\n    Notify(\"Từ chối thành công\", NotificationType.Success, 3000),\n\n    Notify(\"Vui lòng chọn sản phẩm để từ chối\", NotificationType.Warning, 3000)\n)\n",
           "InvariantPropertyName": "OnSelect",
           "IsLockable": false,
           "NameMapSourceSchema": "?"

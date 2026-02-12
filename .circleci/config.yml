@@ -127,14 +127,14 @@ jobs:
             chmod 700 ~/.ssh
             echo "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
             chmod 600 ~/.ssh/deploy_key
-            ssh-keyscan -p ${DEPLOY_SERVER_PORT:-8080} ${DEPLOY_SERVER_HOST} >> ~/.ssh/known_hosts 2>/dev/null || true
+            ssh-keyscan -p ${DEPLOY_SERVER_PORT:-3000} ${DEPLOY_SERVER_HOST} >> ~/.ssh/known_hosts 2>/dev/null || true
       - run:
           name: Deploy to Server
           command: |
             chmod +x scripts/deploy.sh
             DEPLOY_SERVER_HOST="${DEPLOY_SERVER_HOST:-48.217.233.52}" \
             DEPLOY_SERVER_USER="${DEPLOY_SERVER_USER:-wecare}" \
-            DEPLOY_SERVER_PORT="${DEPLOY_SERVER_PORT:-8080}" \
+            DEPLOY_SERVER_PORT="${DEPLOY_SERVER_PORT:-3000}" \
             DEPLOY_PATH="${DEPLOY_PATH:-/home/wecare/Wecare-Ecommerce-V2}" \
             ./scripts/deploy.sh
 

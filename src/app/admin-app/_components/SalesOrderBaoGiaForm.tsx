@@ -502,6 +502,15 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         )
       );
 
+      // Collect productGroupCodes từ currentProducts để filter promotions chính xác hơn
+      const productGroupCodes = Array.from(
+        new Set(
+          currentProducts
+            .map((i) => i.productGroupCode)
+            .filter((c): c is string => typeof c === 'string' && c.trim().length > 0)
+        )
+      );
+
       const paymentTermsValue =
         selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan;
 
@@ -509,7 +518,8 @@ export default function SalesOrderBaoGiaForm({ hideHeader = false }: SalesOrderB
         uniqueCodes,
         customerCodeValue || undefined,
         undefined, // region
-        paymentTermsValue
+        paymentTermsValue,
+        productGroupCodes.length > 0 ? productGroupCodes : undefined
       );
 
       const promotionsByCode = new Map<string, Promotion[]>();

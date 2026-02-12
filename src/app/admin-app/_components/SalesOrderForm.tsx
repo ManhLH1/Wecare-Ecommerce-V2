@@ -217,11 +217,21 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         )
       );
 
+      // Collect productGroupCodes từ allItems để filter promotions chính xác hơn
+      const productGroupCodes = Array.from(
+        new Set(
+          allItems
+            .map((i) => i.productGroupCode)
+            .filter((c): c is string => typeof c === 'string' && c.trim().length > 0)
+        )
+      );
+
       const paymentTermsValue =
         selectedSo?.crdfd_ieukhoanthanhtoan || selectedSo?.crdfd_dieu_khoan_thanh_toan;
 
       debug('[SalesOrderForm][RECALC] Fetching promotions (batch):', {
         uniqueProducts: uniqueCodes.length,
+        productGroupCodes: productGroupCodes.length,
         paymentTerms: paymentTermsValue,
       });
 
@@ -229,7 +239,8 @@ export default function SalesOrderForm({ hideHeader = false }: SalesOrderFormPro
         uniqueCodes,
         customerCodeValue || undefined,
         undefined, // region
-        paymentTermsValue
+        paymentTermsValue,
+        productGroupCodes.length > 0 ? productGroupCodes : undefined
       );
 
       const promotionsByCode = new Map<string, Promotion[]>();
